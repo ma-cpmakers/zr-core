@@ -138,14 +138,16 @@ function barraInert(cambio: MutationRecord): void {
 /**
  * Sotto 720 px la ricerca aperta — col fuoco nel campo, o coi risultati — copre la barra in alto, e la campanella e il profilo
  * restano bersagli coperti a metà (axe `target-size`): finché la ricerca la copre, le azioni della barra non si vedono e non
- * prendono il fuoco, e tornano appena si chiude. Dove `matchMedia` non c'è non si nasconde niente (voce #2627).
+ * prendono il fuoco, e tornano appena si chiude. Dove `matchMedia` non c'è non si nasconde niente (voce #2627). Al Tab si
+ * mostrano prima che il browser cerchi dove portare il fuoco, perché dalla ricerca arrivi a loro e non al contenuto (#2805): se
+ * il fuoco resta nella ricerca, all'uscita o al tasto dopo si nascondono di nuovo.
  */
-function azioniSottoLaRicerca(): void {
+function azioniSottoLaRicerca(tasto?: KeyboardEvent): void {
     const ricerca = document.querySelector('.zr-shell .zr-top > .zr-search');
     const azioni = ricerca?.parentElement?.querySelector<HTMLElement>(':scope > .zr-top-actions');
 
     if (azioni) {
-        azioni.style.visibility = typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) ? 'hidden' : '';
+        azioni.style.visibility = typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) && tasto?.key != 'Tab' ? 'hidden' : '';
     }
 }
 
@@ -307,6 +309,7 @@ document.addEventListener('focusout', fuoriDallaRicerca);
 // La ricerca si apre e si chiude coi suoi risultati, e lo vede l'osservatore; il campo che perde il fuoco dopo la chiusura no.
 // All'uscita il fuoco non è ancora arrivato dove va: si guarda al giro dopo.
 document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
+document.addEventListener('keydown', azioniSottoLaRicerca, true);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;

@@ -6327,6 +6327,126 @@ describe('la ricerca', () => {
         expect(ricarica).not.toHaveBeenCalled();
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
+
+    // Sprint 78 · T8 (voce 2799): le frecce nel campo muovono l'opzione attiva, ma il pannello non scorreva e dopo le prime righe
+    // l'attiva era fuori vista. jsdom non scorre (né ha `scrollIntoView`): qui si guarda che l'attiva sia chiesta in vista, dopo ogni
+    // freccia; lo scorrimento vero lo prova `scripts/uat-cornice.mjs` (V.1-V.2), in Chromium.
+    it('T8.1-T8.2 dopo ogni freccia giù o su nel campo l\'opzione attiva è chiesta in vista, quanto basta; un altro tasto non la chiede (voce 2799)', async () => {
+        const inVista = vi.fn();
+        const diPrima = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+        Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: inVista });
+        try {
+            vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati(risultatiDelServer))));
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            await conLaTastiera();
+            await scrivi('uat');
+            const premi = async (key: string) => act(async () => {
+                uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            const chiamate = () => inVista.mock.contexts.map((riga, i) => [righe().indexOf(riga as HTMLElement), inVista.mock.calls[i]]);
+            expect(righe()).toHaveLength(3);
+
+            await premi('ArrowDown');
+            await premi('ArrowDown');
+            await premi('ArrowDown');
+            await premi('ArrowUp');
+            await premi('a');
+
+            expect(chiamate()).toStrictEqual([1, 2, 0, 2].map((riga) => [riga, [{ block: 'nearest' }]]));
+            expect(uno('.zr-search .is-active')).toBe(righe()[2]);
+        } finally {
+            if (diPrima) {
+                Object.defineProperty(Element.prototype, 'scrollIntoView', diPrima);
+            } else {
+                delete (Element.prototype as Partial<Element>).scrollIntoView;
+            }
+        }
+    });
+
+    it('col fuoco sul pannello della ricerca le frecce lo fanno scorrere come sempre: l\'opzione attiva non è chiesta in vista (voce 2799; revisione dello sprint 78, R1)', async () => {
+        const inVista = vi.fn();
+        const diPrima = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+        Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: inVista });
+        try {
+            vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati(risultatiDelServer))));
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            await conLaTastiera();
+            await scrivi('uat');
+            const pannello = uno('.zr-shell .zr-top > .zr-search > .zr-search-panel');
+
+            for (const key of ['ArrowDown', 'ArrowUp']) {
+                await act(async () => {
+                    pannello?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+                    await vi.advanceTimersByTimeAsync(0);
+                });
+            }
+
+            expect([righe().length, inVista.mock.calls.length]).toStrictEqual([3, 0]);
+        } finally {
+            if (diPrima) {
+                Object.defineProperty(Element.prototype, 'scrollIntoView', diPrima);
+            } else {
+                delete (Element.prototype as Partial<Element>).scrollIntoView;
+            }
+        }
+    });
+
+    // Sprint 78 · T7 (voce 2801): la zona `role="status"` dell'`AppShell` c'è solo mentre si cerca, e i risultati la tolgono. Il
+    // pezzo della ricerca tiene una zona sua nel documento, che a ricerca finita dice quanti risultati ci sono (zr-pm, opzione A).
+    const zonaDelNumero = () => [...document.querySelectorAll('body > p[role="status"].zr-visually-hidden')];
+
+    it('T7.1 a ricerca finita la zona di stato dice quanti risultati mostra; resta nel documento, si svuota quando parte una ricerca e cambia testo quando arrivano i risultati (voce 2801)', async () => {
+        const ua = inAttesaDellaRicerca();
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? ua.promessa : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('ua');
+        await ua.arriva(trovati(risultatiDelServer));
+        const zona = zonaDelNumero()[0];
+        // Cinque risultati dal server, tre righe: il numero è quello delle righe che l'`AppShell` mostra.
+        expect([zonaDelNumero().length, righe().length, zona?.textContent]).toStrictEqual([1, 3, 'Risultati: 3']);
+
+        await scrivi('uat');
+        expect([inCaricamento(), zonaDelNumero(), zona?.textContent]).toStrictEqual(['Sto cercando…', [zona], '']);
+        await uat.arriva(trovati(nuovi));
+        expect([zonaDelNumero(), zona?.textContent, righe().length]).toStrictEqual([[zona], 'Risultati: 1', 1]);
+    });
+
+    it.each([
+        ['es', 'Resultados: 1'],
+        ['en', 'Results: 1'],
+        ['fr', 'Results: 1'],
+    ])('T7.2 con la lingua "%s" il numero dei risultati si dice nella lingua dei testi, in inglese se zr-core non la ha (voce 2801)', async (lingua, atteso) => {
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati(nuovi))));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+
+        expect([righe().length, zonaDelNumero().map((zona) => zona.textContent)]).toStrictEqual([1, [atteso]]);
+    });
+
+    it('a ricerca senza risultati la zona dice zero, e un altro giro della cornice con lo stesso numero non la riscrive (voce 2801)', async () => {
+        vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati([]))));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('uat');
+        const zona = zonaDelNumero()[0]!;
+        const testo = zona.firstChild;
+        expect([zona.textContent, testoDelPannello().startsWith('Nessun risultato per')]).toStrictEqual(['Risultati: 0', true]);
+
+        // Un altro giro della cornice, con la stessa ricerca: la pagina che cambia dentro.
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Un'altra pagina</p></Cornice>);
+        expect(testoDelPannello().startsWith('Nessun risultato per')).toBe(true);
+
+        expect(zona.firstChild).toBe(testo);
+    });
 });
 
 // Sprint 12 · T5 (voce #1464). `active={null}`: nessuna voce della barra è attiva. L'`AppShell` segna la voce che ha l'id
@@ -7174,7 +7294,8 @@ describe('chi non ha accettato i documenti legali', () => {
         if (daUnaRotta) {
             await clic(uno('.zr-bell'));
         }
-        campo.focus();
+        // Dalla v3.10.0 (sprint 78 · T4, voce 2804) il fuoco che va al campo della pagina chiude il pannello delle notifiche.
+        await act(async () => campo.focus());
         expect([diSempreInPagina(), dellaPagina()]).toStrictEqual([[true, '7', null], comEra]);
 
         // Lo stato ridotto arriva.
@@ -8239,16 +8360,36 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(campanella());
     });
 
-    it('il fuoco non si toglie a un elemento della pagina che lo ha già: arrivato su un campo fuori dal pannello senza un clic — col Tab —, chiuso il pannello resta su quel campo (sprint 31 · T3.4; sprint 32 · T2.1)', async () => {
+    // Dalla v3.10.0 (sprint 78 · T4, voce 2804) il pannello si chiude già quando il fuoco va al campo, senza il clic sulla campanella.
+    it('il fuoco non si toglie a un elemento della pagina che lo ha già: arrivato su un campo fuori dal pannello senza un clic — col Tab —, il pannello si chiude e il fuoco resta su quel campo (sprint 31 · T3.4; sprint 32 · T2.1; voce 2804)', async () => {
         vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
         await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><input id="della-pagina" /></Cornice>);
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
 
         await apri();
         expect(document.activeElement).toBe(scelta());
         await conIlFuoco(uno('#della-pagina'));
+        expect(uno('.zr-notif')).toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+    });
+
+    it('il fuoco non si toglie a un elemento della pagina che lo ha già: uscito dalla finestra il pannello resta aperto, e col fuoco tornato su un campo della pagina e il pannello chiuso col clic sulla campanella il fuoco resta su quel campo (sprint 31 · T3.4; sprint 32 · T2.1; revisione dello sprint 78, R5)', async () => {
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><input id="della-pagina" /></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+
+        await apri();
+        expect(document.activeElement).toBe(scelta());
+        // Il fuoco che lascia la finestra non va a nessun elemento (`relatedTarget` nullo): il pannello resta aperto.
+        await act(async () => scelta()?.blur());
+        await conIlFuoco(uno('#della-pagina'));
+        expect(uno('.zr-notif')).not.toBeNull();
         await clic(campanella());
         expect(uno('.zr-notif')).toBeNull();
         expect(document.activeElement).toBe(uno('#della-pagina'));
@@ -9834,8 +9975,13 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
     });
 
     it.each<[string, () => Promise<void>]>([
+        // Dalla v3.10.0 (sprint 78 · T2, voce 2800) dopo Esc il fuoco resta nel campo, che sotto 720 px copre ancora la barra:
+        // campanella e profilo tornano quando il campo lo lascia.
         ['Esc', async () => act(async () => {
             campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await prossimoGiro();
+            expect([document.activeElement, azioni()?.style.visibility]).toStrictEqual([campo(), 'hidden']);
+            campo().blur();
             await prossimoGiro();
         })],
         // Il clic fuori chiude la ricerca col `mousedown` dell'`AppShell`, che lo ascolta dal giro dopo l'apertura, e toglie il
@@ -9908,6 +10054,38 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         });
 
         expect(azioni()?.style.visibility).toBe('');
+    });
+
+    // Sprint 78 · T1 (voce 2805, regressione della v3.4.0): col fuoco nella ricerca le azioni erano nascoste, e il Tab saltava
+    // al contenuto. Al Tab si mostrano prima che il browser cerchi dove andare; il passaggio vero lo prova `scripts/uat-cornice.mjs`.
+    const tasto = async (key: string) => act(async () => {
+        campo().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+
+    it('T1.1 a 720 px o meno, col fuoco nel campo della ricerca, al Tab campanella e profilo si vedono e il Tab li raggiunge (voce 2805)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+        expect(azioni()?.style.visibility).toBe('hidden');
+
+        await tasto('Tab');
+
+        expect(azioni()?.style.visibility).toBe('');
+    });
+
+    it('T1.2 gli altri tasti nel campo lasciano campanella e profilo sotto la ricerca, e dopo il Tab, se il fuoco resta nella ricerca, si nascondono di nuovo (voce 2805)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+
+        await tasto('ArrowDown');
+        expect(azioni()?.style.visibility).toBe('hidden');
+
+        await tasto('Tab');
+        await tasto('a');
+
+        expect(azioni()?.style.visibility).toBe('hidden');
     });
 });
 
@@ -9988,7 +10166,8 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
     });
     // Dalla UAT in Chromium (26/10): l'`AppShell` chiude la ricerca con Esc solo dal campo; col fuoco nel pannello Esc non
     // faceva niente, e sotto 720 px la barra in alto restava senza campanella (riga 131 delle richieste al design system).
-    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
+    // Dalla v3.10.0 (sprint 78 · T2, voce 2800) il fuoco resta nel campo, come quando Esc parte da lì; prima andava al documento.
+    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco va al campo (voce 2800)', async () => {
         await laCornice();
         await cerca();
         await act(async () => pannello()?.focus());
@@ -9997,7 +10176,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
             pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         });
 
-        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement?.closest('.zr-search') ?? null]).toStrictEqual([false, null, null]);
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement]).toStrictEqual([false, null, uno('.zr-top .zr-search input')]);
     });
 
     it('T7 bis · un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
@@ -10011,5 +10190,427 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         });
 
         expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement]).toStrictEqual([true, pannello()]);
+    });
+});
+
+// Sprint 78 · T2 (voci 2800 e 2807, giro di accessibilità del 27/10). Esc dal campo della ricerca: l'`AppShell` chiude il
+// pannello e toglie il fuoco al campo, che finiva sul documento. Esc col cassetto aperto: dalle sue voci l'`AppShell` lo chiude
+// e il fuoco restava su una voce nascosta; dal campo della ricerca non lo chiudeva.
+describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (sprint 78, voci 2800 e 2807)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const campo = () => uno('.zr-top .zr-search input') as HTMLInputElement;
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const aperti = () => [uno('.zr-top .zr-search')?.classList.contains('is-open'), campo().getAttribute('aria-expanded'), menu().getAttribute('aria-expanded')];
+    const esc = async (dove: Element | null) => act(async () => {
+        dove?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+    const nelCampo = async () => act(async () => {
+        campo().focus();
+        await prossimoGiro();
+    });
+
+    it('T2.1 Esc dal campo chiude la ricerca e il fuoco resta nel campo; dopo, il campo perde il fuoco come sempre (voce 2800)', async () => {
+        await laCornice();
+        await nelCampo();
+        expect(aperti()[0]).toBe(true);
+
+        await esc(campo());
+
+        expect([...aperti(), document.activeElement]).toStrictEqual([false, 'false', 'false', campo()]);
+        await act(async () => campo().blur());
+        expect(document.activeElement).not.toBe(campo());
+    });
+
+    it('T2.2 un secondo Esc col pannello chiuso lascia la parola nel campo e il fuoco con lei (scelta del README, voce 2800)', async () => {
+        await laCornice();
+        await nelCampo();
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'uat');
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+            await prossimoGiro();
+        });
+
+        await esc(campo());
+        await esc(campo());
+
+        expect([campo().value, aperti()[0], document.activeElement]).toStrictEqual(['uat', false, campo()]);
+    });
+
+    it('T2.3 col cassetto aperto e il fuoco su una sua voce, Esc lo chiude e il fuoco torna ad «Apri il menu» (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        expect(aperti()[2]).toBe('true');
+        const voce = uno('.zr-shell > .zr-side a[href]') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([aperti()[2], document.activeElement]).toStrictEqual(['false', menu()]);
+    });
+
+    it('T2.4 col cassetto aperto e il fuoco nel campo della ricerca, Esc chiude ricerca e cassetto, e il fuoco resta nel campo (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        await nelCampo();
+        expect(aperti()[0]).toBe(true);
+
+        await esc(campo());
+
+        expect([...aperti(), document.activeElement]).toStrictEqual([false, 'false', 'false', campo()]);
+    });
+
+    it('T2.4 col cassetto aperto, Esc dal menu del profilo chiude il menu e lascia il cassetto aperto (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        await clic(uno('.zr-avatar-btn'));
+        const voce = uno('.zr-top-actions [role="menuitem"]') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([uno('.zr-avatar-btn')?.getAttribute('aria-expanded'), aperti()[2]]).toStrictEqual(['false', 'true']);
+    });
+
+    it('T2.4 col cassetto aperto, Esc dal menu «+» chiude il menu e lascia il cassetto aperto (voce 2807; revisione dello sprint 78, R2)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Una scheda' }, { label: 'Un elenco' }]} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(menu());
+        await clic(uno('.zr-create'));
+        const voce = uno('.zr-side .zr-menu [role="menuitem"]') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([uno('.zr-create')?.getAttribute('aria-expanded'), aperti()[2]]).toStrictEqual(['false', 'true']);
+    });
+
+    it('T2.4 col cassetto aperto, Esc dal menu Moduli lo richiude nel suo pulsante e lascia il cassetto aperto (voce 2807; revisione dello sprint 78, R2)', async () => {
+        await mostra(<Cornice dati={dati} product="pm" onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(menu());
+        await clic(uno('.zr-product-switch'));
+        const voce = uno('.zr-product-menu a') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([uno('.zr-product-switch')?.getAttribute('aria-expanded'), aperti()[2], document.activeElement]).toStrictEqual(['false', 'true', uno('.zr-product-switch')]);
+    });
+});
+
+// Sprint 78 · T4 (voce 2804): col Tab fuori dal menu del profilo, dal menu «+» o dal pannello delle notifiche restavano aperti
+// col fuoco altrove, e potevano coprirlo. Si chiudono col loro pulsante, come il selettore dalla v3.8.1 (riga 48).
+describe('i menu della barra si chiudono quando il fuoco esce (sprint 78, voce 2804)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Una scheda' }, { label: 'Un elenco' }]}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const fuocoA = async (elemento: Element | null | undefined) => act(async () => {
+        (elemento as HTMLElement).focus();
+        await vi.dynamicImportSettled();
+        await prossimoGiro();
+    });
+    const pagina = () => uno('#della-pagina');
+
+    it.each([
+        ['il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu [role="menuitem"]'],
+        ['il menu «+»', '.zr-create', '.zr-menu [role="menuitem"]'],
+        ['il pannello delle notifiche', '.zr-bell', '.zr-notif a[href], .zr-notif button'],
+    ])('T4.1-T4.2 %s si chiude quando il fuoco va da dentro a un elemento della pagina, che lo tiene (voce 2804)', async (_nome, pulsante, dentro) => {
+        await laCornice();
+        await clic(uno(pulsante));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        expect(uno(pulsante)?.getAttribute('aria-expanded')).toBe('true');
+        await fuocoA(tutti(dentro).at(-1));
+
+        await fuocoA(pagina());
+
+        expect([uno(pulsante)?.getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', pagina()]);
+    });
+
+    it('T4.3 il fuoco che passa fra due elementi del pannello delle notifiche lo lascia aperto (voce 2804)', async () => {
+        await laCornice();
+        await clic(uno('.zr-bell'));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const dentro = tutti('.zr-notif a[href], .zr-notif button');
+        expect(dentro.length).toBeGreaterThan(1);
+        await fuocoA(dentro[0]);
+
+        await fuocoA(dentro.at(-1));
+
+        expect(uno('.zr-bell')?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('T4.3 dal menu del profilo verso il suo pulsante, o col fuoco che lascia la finestra, il menu resta aperto (voce 2804)', async () => {
+        await laCornice();
+        await clic(uno('.zr-avatar-btn'));
+        await fuocoA(uno('.zr-profile-menu [role="menuitem"]'));
+
+        await fuocoA(uno('.zr-avatar-btn'));
+        await act(async () => {
+            uno('.zr-avatar-btn')?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+        });
+
+        expect(uno('.zr-avatar-btn')?.getAttribute('aria-expanded')).toBe('true');
+    });
+});
+
+// Sprint 78 · T5 (voce 2802): nel menu del profilo e nel menu «+» le frecce muovono il fuoco, Home e Fine no (il `Menu` del design
+// system ascolta le sole frecce). Col pezzo della tastiera Home e Fine vanno alla prima e all'ultima voce, come nel selettore dei
+// workspace (riga 48). Solo nei menu della cornice: un `Menu` della pagina resta com'è.
+describe('nel menu del profilo e nel «+» Home e Fine vanno alla prima e all\'ultima voce (sprint 78, voce 2802)', () => {
+    const { Menu } = componenti;
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+
+    it.each([
+        ['T5.1 il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['T5.2 il menu «+»', '.zr-create', '.zr-side .zr-menu'],
+    ])('%s: freccia giù, Fine porta il fuoco all\'ultima voce che non è spenta, Home alla prima, e il menu resta aperto (voce 2802)', async (_nome, pulsante, menu) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Una scheda' }, { label: 'Un elenco' }, { label: 'Una cartella' }, { label: 'Spenta', disabled: true }]}><button type="button">Nella pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno(pulsante));
+        const voci = () => tutti(`${menu} [role="menuitem"]:not(:disabled)`);
+        await act(async () => voci()[0]?.focus());
+        await premi('ArrowDown');
+        expect([voci().length > 2, document.activeElement]).toStrictEqual([true, voci()[1]]);
+
+        await premi('End');
+        expect([document.activeElement, uno(pulsante)?.getAttribute('aria-expanded')]).toStrictEqual([voci().at(-1), 'true']);
+        await premi('Home');
+        expect([document.activeElement, uno(pulsante)?.getAttribute('aria-expanded')]).toStrictEqual([voci()[0], 'true']);
+    });
+
+    it('un menu della pagina dentro la cornice non cambia: Fine non sposta il fuoco (voce 2802)', async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><Menu anchor={null} inline label="Della pagina" items={[{ label: 'Uno' }, { label: 'Due' }, { label: 'Tre' }]} onClose={() => {}} /></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await act(async () => tutti('.zr-main [role="menuitem"]')[0]?.focus());
+
+        await premi('End');
+
+        expect(document.activeElement).toBe(tutti('.zr-main [role="menuitem"]')[0]);
+    });
+});
+
+// Sprint 78 · T3 (voce 2806): il menu a cassetto aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva
+// verso la ricerca. Il Tab vero lo prova `scripts/uat-cornice.mjs` (K390.5-K390.7).
+describe('il menu a cassetto trattiene il fuoco (sprint 78, voce 2806)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const voci = () => tutti('.zr-shell > .zr-side a[href], .zr-shell > .zr-side button') as HTMLElement[];
+    /** Invio o spazio sul pulsante: il clic che il browser dà alla tastiera ha `detail` 0; quello del mouse, 1. */
+    const premi = async (detail: number) => act(async () => {
+        menu().focus();
+        menu().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+        await prossimoGiro();
+    });
+    const tab = async (shiftKey = false) => act(async () => {
+        (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+
+    it('T3.1 aperto con la tastiera, il fuoco va alla prima voce del cassetto; col mouse resta sul pulsante (voce 2806)', async () => {
+        await laCornice();
+
+        await premi(0);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['true', voci()[0]]);
+
+        await premi(0);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', menu()]);
+        await premi(1);
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['true', menu()]);
+    });
+
+    it('T3.2 col cassetto aperto il Tab e Maiusc+Tab girano fra le voci e il pulsante, senza uscire (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        const [prima, ultima] = [voci()[0], voci().at(-1)];
+
+        await act(async () => ultima?.focus());
+        await tab();
+        expect(document.activeElement).toBe(menu());
+        await tab();
+        expect(document.activeElement).toBe(prima);
+        await tab(true);
+        expect(document.activeElement).toBe(menu());
+        await tab(true);
+        expect(document.activeElement).toBe(ultima);
+    });
+
+    it('T3.2 col fuoco fuori dal cassetto aperto il Tab rientra sulla prima voce; a cassetto chiuso il Tab resta del browser (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        await act(async () => (uno('.zr-top .zr-search input') as HTMLElement).focus());
+
+        await tab();
+        expect(document.activeElement).toBe(voci()[0]);
+
+        await premi(0);
+        const evento = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        await act(async () => {
+            menu().dispatchEvent(evento);
+        });
+        expect([evento.defaultPrevented, document.activeElement]).toStrictEqual([false, menu()]);
+    });
+
+    it('T3.2 con un dialogo aperto sopra il cassetto, anche con un suo menu che ha il fuoco, il Tab non gira nel cassetto (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        const velo = document.createElement('div');
+        velo.className = 'zr-scrim';
+        velo.innerHTML = '<div class="zr-dialog"><div class="zr-menu"><button type="button">Una voce</button></div></div>';
+        document.body.append(velo);
+        onTestFinished(() => velo.remove());
+        const voce = velo.querySelector('button') as HTMLElement;
+        await act(async () => voce.focus());
+
+        const evento = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        await act(async () => {
+            voce.dispatchEvent(evento);
+        });
+
+        expect([evento.defaultPrevented, document.activeElement]).toStrictEqual([false, voce]);
+    });
+
+    it('dove «Apri il menu» non si vede — la finestra allargata sopra 720 px col cassetto aperto — il Tab resta del browser (voce 2806; revisione dello sprint 78, R3)', async () => {
+        await laCornice();
+        await premi(0);
+        // Il CSS del design system nasconde il pulsante sopra 720 px; qui lo nasconde il caso.
+        menu().style.display = 'none';
+        await act(async () => voci().at(-1)?.focus());
+
+        const evento = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+        await act(async () => {
+            document.activeElement?.dispatchEvent(evento);
+        });
+
+        expect([menu().getAttribute('aria-expanded'), evento.defaultPrevented]).toStrictEqual(['true', false]);
+    });
+
+    it('T3.3 chiuso il cassetto col pulsante o con Esc, il fuoco è su «Apri il menu» (voce 2806)', async () => {
+        await laCornice();
+        await premi(0);
+        await act(async () => {
+            voci()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await prossimoGiro();
+        });
+
+        expect([menu().getAttribute('aria-expanded'), document.activeElement]).toStrictEqual(['false', menu()]);
+    });
+});
+
+// Sprint 78 · T6 (voce 2803): nel pannello delle notifiche le linguette «Per me» e «Tutte» erano due fermate del Tab e le frecce
+// non facevano niente. Col pezzo della tastiera le frecce passano all'altra linguetta e la scelgono, Home e Fine vanno alla prima
+// e all'ultima, e nel giro del Tab resta la sola linguetta scelta. Il Tab vero lo prova `scripts/uat-cornice.mjs` (N.1-N.2).
+describe('le linguette del pannello delle notifiche si scorrono con le frecce (sprint 78, voce 2803)', () => {
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+    const linguette = () => tutti('.zr-notif-tabs [role="tab"]');
+    const scelta = () => linguette().map((linguetta) => linguetta.getAttribute('aria-selected'));
+    const laCampanella = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno('.zr-bell'));
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+
+    it('T6.1 dal fuoco su «Per me» la freccia a destra sceglie «Tutte», quella a sinistra torna, Fine va all\'ultima e Home alla prima (voce 2803)', async () => {
+        await laCampanella();
+        expect([linguette().length, document.activeElement, scelta()]).toStrictEqual([2, linguette()[0], ['true', 'false']]);
+
+        await premi('ArrowRight');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[1], ['false', 'true']]);
+        await premi('ArrowLeft');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        await premi('End');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[1], ['false', 'true']]);
+        await premi('Home');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        // Dall'ultima la freccia a destra torna alla prima, e dalla prima quella a sinistra va all'ultima.
+        await premi('ArrowLeft');
+        expect(document.activeElement).toBe(linguette()[1]);
+        await premi('ArrowRight');
+        expect(document.activeElement).toBe(linguette()[0]);
+    });
+
+    it('T6.2 nel giro del Tab resta solo la linguetta scelta, anche quando la sceglie un clic (voce 2803)', async () => {
+        await laCampanella();
+        await premi('Shift');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([0, -1]);
+
+        await premi('ArrowRight');
+        await premi('Shift');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([-1, 0]);
+
+        await clic(linguette()[0]);
+        await premi('Tab');
+        expect(linguette().map((linguetta) => linguetta.tabIndex)).toStrictEqual([0, -1]);
+    });
+
+    it('un tasto che non è una freccia, Home o Fine non sposta il fuoco né la scelta, e le frecce fuori dalle linguette non le toccano (voce 2803)', async () => {
+        await laCampanella();
+
+        await premi('ArrowDown');
+        expect([document.activeElement, scelta()]).toStrictEqual([linguette()[0], ['true', 'false']]);
+        await act(async () => uno('.zr-bell')?.focus());
+        await premi('ArrowRight');
+        expect([document.activeElement, scelta()]).toStrictEqual([uno('.zr-bell'), ['true', 'false']]);
+    });
+
+    it('con Alt, Ctrl o Meta le frecce, Home e Fine restano del browser (Alt+freccia è Indietro e Avanti): la linguetta non cambia (voce 2803; revisione dello sprint 78, R4)', async () => {
+        await laCampanella();
+
+        for (const modificatore of ['altKey', 'ctrlKey', 'metaKey']) {
+            for (const key of ['ArrowRight', 'ArrowLeft', 'End']) {
+                const evento = new KeyboardEvent('keydown', { key, [modificatore]: true, bubbles: true, cancelable: true });
+                await act(async () => {
+                    document.activeElement?.dispatchEvent(evento);
+                });
+                expect([modificatore, key, evento.defaultPrevented, document.activeElement, scelta()]).toStrictEqual([modificatore, key, false, linguette()[0], ['true', 'false']]);
+            }
+        }
     });
 });

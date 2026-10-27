@@ -7,7 +7,10 @@
  *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
- * workspace trova qualcosa (di norma «pro»). --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp).
+ * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
+ * --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp). Prima di un tag zr-core la lancia sulle
+ * pagine di prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con
+ * `layout.html?schede=1&crm_attivo=1&prenotazioni=1 --parola uat`: lì nessuna riga resta ➖ tranne B.1, che vuole il percorso.
  *
  * Il browser: con UAT_PAGE (il percorso del modulo che dà `conPagina` ed `entra`, quello del browser condiviso della UAT)
  * la pagina si apre lì, con la sessione che c'è; senza, un Chromium suo, per le pagine che non chiedono l'ingresso
@@ -226,11 +229,16 @@ async function ricerca(page, largo) {
     if (nelPannello) {
         await page.keyboard.press('Escape');
         await pausa(300);
+        // Dalla v3.10.0 il fuoco va al campo (#2800): a 390 px il campo col fuoco copre ancora la barra, che torna intera quando lo lascia.
         const dopo = await page.evaluate(() => ({
             aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+            nelCampo: !!document.activeElement?.matches('.zr-search input'),
             azioni: getComputedStyle(document.querySelector('.zr-shell .zr-top > .zr-top-actions') ?? document.body).visibility,
         }));
-        scrivi(!dopo.aperta && dopo.azioni !== 'hidden' ? '✅' : '❌', `${id}.6`, 'Esc col fuoco nel pannello chiude la ricerca, e la barra in alto torna intera', `aperta: ${dopo.aperta}, azioni: ${dopo.azioni}`);
+        await page.evaluate(() => document.activeElement?.blur());
+        await pausa(300);
+        const fuori = await page.evaluate(() => getComputedStyle(document.querySelector('.zr-shell .zr-top > .zr-top-actions') ?? document.body).visibility);
+        scrivi(!dopo.aperta && dopo.nelCampo && fuori !== 'hidden' ? '✅' : '❌', `${id}.6`, 'Esc col fuoco nel pannello chiude la ricerca e porta il fuoco al campo; uscito il fuoco dal campo, la barra in alto torna intera', `aperta: ${dopo.aperta}, fuoco nel campo: ${dopo.nelCampo}, azioni col fuoco nel campo: ${dopo.azioni}, dopo: ${fuori}`);
         if (dopo.aperta) {
             await page.keyboard.press('Shift+Tab');
         }
@@ -269,6 +277,29 @@ async function ricerca(page, largo) {
         dentro: !!document.activeElement?.closest('.zr-search'),
     }));
     scrivi(primaDiUscire && !uscito.aperta && !uscito.dentro && uscito.valore === parola ? '✅' : '❌', `${id}.8`, 'col fuoco uscito dal campo (Maiusc+Tab) la ricerca si chiude e la parola resta (righe 7 e 90)', `aperta prima: ${primaDiUscire}, dopo: ${uscito.aperta}, fuoco nella ricerca: ${uscito.dentro}, valore «${uscito.valore}»`);
+    // A 720 px o meno le azioni della barra stanno nascoste sotto la ricerca aperta (#2627): col Tab dalla ricerca il fuoco deve
+    // arrivare a campanella e profilo prima del contenuto (#2805, regressione della v3.4.0, rimedio della v3.10.0).
+    if (!largo) {
+        await page.keyboard.press('Control+k');
+        await page.keyboard.type(parola);
+        await pausa(800);
+        const passi = [];
+        for (let i = 0; i < 6; i++) {
+            await page.keyboard.press('Tab');
+            await pausa(200);
+            const dove = await page.evaluate(() => {
+                const a = document.activeElement;
+                return a?.closest('.zr-search') ? 'ricerca' : a?.matches('.zr-bell') ? 'campanella' : a?.matches('.zr-avatar-btn') ? 'profilo' : a?.closest('.zr-top-actions') ? 'barra' : a?.closest('main') ? 'contenuto' : a?.tagName.toLowerCase() ?? 'niente';
+            });
+            passi.push(dove);
+            if (dove === 'contenuto') break;
+        }
+        const fuori = passi.filter((dove) => dove !== 'ricerca');
+        const bene = fuori[0] !== 'contenuto' && fuori.indexOf('campanella') > -1 && fuori.indexOf('campanella') < fuori.indexOf('profilo') && (fuori.indexOf('contenuto') === -1 || fuori.indexOf('profilo') < fuori.indexOf('contenuto'));
+        scrivi(bene ? '✅' : '❌', `${id}.9`, 'col Tab dalla ricerca aperta il fuoco arriva a campanella e profilo prima del contenuto (#2805)', passi.join(' → '));
+        await page.keyboard.press('Escape');
+        await pausa(300);
+    }
 }
 
 async function campanella(page, largo) {
@@ -425,6 +456,260 @@ async function sopraIlPannello(page) {
     await page.evaluate(() => document.querySelector('.zr-detail[data-uat]')?.remove());
 }
 
+// Esc nella ricerca e nel cassetto (#2800, #2807; rimedi della v3.10.0): il fuoco non finisce sul documento.
+async function escNellaBarra(page, largo) {
+    const id = largo ? 'K' : 'K390';
+    const leggi = () => page.evaluate(() => ({
+        aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+        espansa: document.querySelector('.zr-shell .zr-top > .zr-search input')?.getAttribute('aria-expanded'),
+        cassetto: document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'),
+        valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
+        fuoco: document.activeElement?.matches('.zr-search input') ? 'campo' : document.activeElement?.matches('.zr-top-menu') ? 'menu' : document.activeElement === document.body ? 'documento' : document.activeElement?.tagName.toLowerCase(),
+    }));
+    const descrivi = (stato) => `ricerca aperta: ${stato.aperta}, aria-expanded: ${stato.espansa}, cassetto: ${stato.cassetto}, fuoco: ${stato.fuoco}, valore «${stato.valore}»`;
+    await page.keyboard.press('Control+k');
+    await page.keyboard.type(parola);
+    await pausa(800);
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const uno = await leggi();
+    scrivi(!uno.aperta && uno.espansa === 'false' && uno.fuoco === 'campo' ? '✅' : '❌', `${id}.1`, 'Esc dal campo chiude la ricerca e il fuoco resta nel campo (#2800)', descrivi(uno));
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const due = await leggi();
+    scrivi(!due.aperta && due.fuoco === 'campo' && due.valore === parola ? '✅' : '❌', `${id}.2`, 'un secondo Esc lascia la parola nel campo, col fuoco (#2800, scelta del README)', descrivi(due));
+    await page.evaluate(() => document.activeElement?.blur());
+    if (largo) {
+        return;
+    }
+    await page.click('.zr-shell .zr-top-menu');
+    await pausa(300);
+    await page.evaluate(() => document.querySelector('.zr-shell > .zr-side a[href]')?.focus());
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const tre = await leggi();
+    scrivi(tre.cassetto === 'false' && tre.fuoco === 'menu' ? '✅' : '❌', `${id}.3`, 'cassetto aperto, Esc da una sua voce: chiuso, fuoco su «Apri il menu» (#2807)', descrivi(tre));
+    await page.click('.zr-shell .zr-top-menu');
+    await pausa(300);
+    await page.focus('.zr-shell .zr-top > .zr-search input');
+    await pausa(300);
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const quattro = await leggi();
+    scrivi(quattro.cassetto === 'false' && !quattro.aperta && quattro.fuoco === 'campo' ? '✅' : '❌', `${id}.4`, 'cassetto aperto, Esc dal campo della ricerca: chiusi cassetto e ricerca, fuoco nel campo (#2807)', descrivi(quattro));
+    await page.evaluate(() => document.activeElement?.blur());
+}
+
+// Il menu a cassetto a 390 px (#2806, rimedio della v3.10.0): aperto con la tastiera il fuoco entra, il Tab resta dentro
+// (voci e pulsante), chiuso col pulsante il fuoco è su «Apri il menu».
+async function cassetto(page) {
+    const dove = () => page.evaluate(() => {
+        const a = document.activeElement;
+        return a?.matches('.zr-top-menu') ? 'pulsante' : a?.closest('.zr-shell > .zr-side') ? 'cassetto' : a?.closest('.zr-search') ? 'ricerca' : a?.closest('main') ? 'contenuto' : a?.tagName.toLowerCase() ?? 'niente';
+    });
+    const aperto = () => page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'));
+    await page.focus('.zr-shell .zr-top-menu');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const entrato = await dove();
+    scrivi((await aperto()) === 'true' && entrato === 'cassetto' ? '✅' : '❌', 'K390.5', 'Invio su «Apri il menu»: il cassetto si apre e il fuoco è sulla sua prima voce (#2806)', `fuoco: ${entrato}`);
+    // Dalla prima voce, tanti Tab quante sono le fermate del cassetto più uno: il giro passa dal pulsante e rientra.
+    const fermate = await page.evaluate(() => [...document.querySelectorAll('.zr-shell > .zr-side :is(a[href], button, input, select, textarea, [tabindex])')]
+        .filter((e) => e.tabIndex >= 0 && !e.matches(':disabled') && e.checkVisibility()).length);
+    const giro = [];
+    for (const tasto of [...Array(fermate + 1).fill('Tab'), 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+        await page.keyboard.press(tasto);
+        await pausa(100);
+        giro.push(await dove());
+    }
+    scrivi(giro.every((qui) => qui === 'cassetto' || qui === 'pulsante') && giro.includes('pulsante') ? '✅' : '❌', 'K390.6', 'col cassetto aperto Tab e Maiusc+Tab restano fra le voci e il pulsante (#2806)', giro.join(' → '));
+    await page.focus('.zr-shell .zr-top-menu');
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const chiuso = await dove();
+    scrivi((await aperto()) === 'false' && chiuso === 'pulsante' ? '✅' : '❌', 'K390.7', 'chiuso il cassetto col pulsante, il fuoco è su «Apri il menu» (#2806)', `aperto: ${await aperto()}, fuoco: ${chiuso}`);
+    await page.evaluate(() => document.activeElement?.blur());
+}
+
+// Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono quando il Tab porta il fuoco fuori (#2804,
+// rimedio della v3.10.0), come il selettore dei workspace.
+async function fuoriDaiMenu(page) {
+    for (const [id, nome, pulsante, dentro] of [
+        ['T.1', 'il menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['T.2', 'il menu «+»', '.zr-create', '.zr-menu'],
+        ['T.3', 'il pannello delle notifiche', '.zr-bell', '.zr-notif'],
+    ]) {
+        if (!(await page.$(`.zr-shell ${pulsante}`))) {
+            scrivi('➖', id, `${nome} si chiude quando il Tab esce (#2804)`, 'la pagina non ha il pulsante');
+            continue;
+        }
+        await page.focus(`.zr-shell ${pulsante}`);
+        await page.keyboard.press('Enter');
+        await pausa(500);
+        const aperto = await page.evaluate((sel) => document.querySelector(`.zr-shell ${sel}`)?.getAttribute('aria-expanded'), pulsante);
+        let fuori = false;
+        for (let i = 0; i < 30 && !fuori; i++) {
+            await page.keyboard.press('Tab');
+            await pausa(100);
+            fuori = await page.evaluate(([sel, zona]) => !document.activeElement?.closest(zona) && !document.activeElement?.matches(`.zr-shell ${sel}`), [pulsante, dentro]);
+        }
+        await pausa(200);
+        const dopo = await page.evaluate((sel) => [document.querySelector(`.zr-shell ${sel}`)?.getAttribute('aria-expanded'), document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent?.trim().slice(0, 30)], pulsante);
+        scrivi(aperto === 'true' && fuori && dopo[0] === 'false' ? '✅' : '❌', id, `${nome}, aperto con Invio, si chiude quando il Tab porta il fuoco fuori (#2804)`, `aperto: ${aperto}, uscito: ${fuori}, dopo: aria-expanded ${dopo[0]}, fuoco su «${dopo[1]}»`);
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.keyboard.press('Escape');
+        await pausa(200);
+    }
+}
+
+async function inizioEFineNeiMenu(page) {
+    for (const [id, nome, pulsante, menu] of [
+        ['M.1', 'menu del profilo', '.zr-avatar-btn', '.zr-profile-menu'],
+        ['M.2', 'menu «+»', '.zr-create', '.zr-side .zr-menu'],
+    ]) {
+        if (!(await page.$(`.zr-shell ${pulsante}`))) {
+            scrivi('➖', id, `nel ${nome} Fine e Home vanno all'ultima e alla prima voce (#2802)`, 'la pagina non ha il pulsante');
+            continue;
+        }
+        await page.focus(`.zr-shell ${pulsante}`);
+        await page.keyboard.press('Enter');
+        await pausa(500);
+        const dove = () => page.evaluate((sel) => {
+            const voci = [...document.querySelectorAll(`.zr-shell ${sel} [role="menuitem"]:not(:disabled)`)];
+            return `${voci.indexOf(document.activeElement)} di 0-${voci.length - 1}`;
+        }, menu);
+        await page.keyboard.press('ArrowDown');
+        await pausa(100);
+        const giu = await dove();
+        await page.keyboard.press('End');
+        await pausa(100);
+        const fine = await dove();
+        await page.keyboard.press('Home');
+        await pausa(100);
+        const inizio = await dove();
+        const ultima = fine.split('-').at(-1);
+        scrivi(fine === `${ultima} di 0-${ultima}` && inizio.startsWith('0 di') && Number(ultima) > 1 ? '✅' : '❌', id, `nel ${nome}, aperto con Invio, Fine va all'ultima voce e Home alla prima (#2802)`, `freccia giù: voce ${giu}, Fine: voce ${fine}, Home: voce ${inizio}`);
+        await page.keyboard.press('Escape');
+        await pausa(200);
+    }
+}
+
+async function linguetteDelleNotifiche(page) {
+    if (!(await page.$('.zr-shell .zr-bell'))) {
+        scrivi('➖', 'N.1', 'le linguette del pannello delle notifiche con le frecce (#2803)', 'la pagina non ha la campanella');
+        return;
+    }
+    await page.focus('.zr-shell .zr-bell');
+    await page.keyboard.press('Enter');
+    await pausa(500);
+    /** Su quale linguetta sta il fuoco e quale è scelta: «-» se il fuoco non è su una linguetta. */
+    const dove = () => page.evaluate(() => {
+        const linguette = [...document.querySelectorAll('.zr-shell .zr-notif-tabs [role="tab"]')];
+        return `fuoco ${linguette.indexOf(document.activeElement)}, scelta ${linguette.findIndex((linguetta) => linguetta.getAttribute('aria-selected') === 'true')}`;
+    });
+    const passi = [await dove()];
+    for (const tasto of ['ArrowRight', 'ArrowLeft', 'End', 'Home']) {
+        await page.keyboard.press(tasto);
+        await pausa(150);
+        passi.push(await dove());
+    }
+    const attesi = ['fuoco 0, scelta 0', 'fuoco 1, scelta 1', 'fuoco 0, scelta 0', 'fuoco 1, scelta 1', 'fuoco 0, scelta 0'];
+    scrivi(passi.join() === attesi.join() ? '✅' : '❌', 'N.1', 'nel pannello delle notifiche, aperto con Invio, le frecce, Home e Fine passano fra «Per me» e «Tutte» e le scelgono (#2803)', passi.join(' → '));
+
+    // Col fuoco sulla linguetta scelta, Tab va oltre le linguette e Maiusc+Tab torna a lei; scelta «Tutte», Maiusc+Tab non si ferma su «Per me».
+    const linguetta = () => page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' ? document.activeElement.textContent : '-');
+    await page.keyboard.press('Tab');
+    await pausa(150);
+    const avanti = await linguetta();
+    await page.keyboard.press('Shift+Tab');
+    await pausa(150);
+    const indietro = await linguetta();
+    await page.keyboard.press('ArrowRight');
+    await pausa(150);
+    await page.keyboard.press('Shift+Tab');
+    await pausa(150);
+    const primaDiTutte = await linguetta();
+    scrivi(avanti === '-' && indietro !== '-' && primaDiTutte === '-' ? '✅' : '❌', 'N.2', 'nel giro del Tab c\'è solo la linguetta scelta (#2803)', `Tab da «Per me»: ${avanti}; Maiusc+Tab: ${indietro}; scelta «Tutte», Maiusc+Tab: ${primaDiTutte}`);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press('Escape');
+    await pausa(200);
+}
+
+async function quantiRisultati(page) {
+    const campo = '.zr-shell .zr-top > .zr-search input';
+    if (!(await page.$(campo))) {
+        scrivi('➖', 'Q.1', 'la zona di stato dice quanti risultati (#2801)', 'la pagina non ha il campo della ricerca');
+        return;
+    }
+    await page.click(campo);
+    await page.fill(campo, parola);
+    let stato = '';
+    for (let i = 0; i < 50 && !['risultati', 'vuoto', 'errore'].includes(stato); i++) {
+        await pausa(100);
+        stato = await page.evaluate(`(${statoDellaRicerca})()`);
+    }
+    await pausa(200);
+    const letto = await page.evaluate(() => ({
+        righe: document.querySelectorAll('.zr-shell .zr-search-panel [role=option]').length,
+        zone: [...document.querySelectorAll('body > p[role=status]')].map((zona) => zona.textContent),
+    }));
+    const ok = stato !== 'errore' && letto.zone.length === 1 && /\d/.test(letto.zone[0] ?? '') && letto.zone[0].includes(String(letto.righe));
+    scrivi(stato === 'errore' ? '➖' : ok ? '✅' : '❌', 'Q.1', 'a ricerca finita la zona di stato dice quanti risultati ci sono, nella lingua della cornice (#2801)', `«${parola}»: ${stato}, ${letto.righe} righe, zona: ${letto.zone.map((zona) => `«${zona}»`).join(', ') || 'nessuna'}`);
+    await page.keyboard.press('Escape');
+    await page.fill(campo, '');
+    await page.evaluate(() => document.activeElement?.blur());
+    await pausa(200);
+}
+
+async function attivaInVista(page) {
+    const campo = '.zr-shell .zr-top > .zr-search input';
+    if (!(await page.$(campo))) {
+        scrivi('➖', 'V.1', 'l\'opzione attiva scorre in vista (#2799)', 'la pagina non ha il campo della ricerca');
+        return;
+    }
+    await page.click(campo);
+    await page.fill(campo, parola);
+    let stato = '';
+    for (let i = 0; i < 50 && !['risultati', 'vuoto', 'errore'].includes(stato); i++) {
+        await pausa(100);
+        stato = await page.evaluate(`(${statoDellaRicerca})()`);
+    }
+    await pausa(200);
+    /** Quante opzioni, quale è attiva, se il pannello scorre e se l'attiva sta tutta dentro ciò che del pannello si vede. */
+    const dove = () => page.evaluate(() => {
+        const opzioni = [...document.querySelectorAll('.zr-shell .zr-search-panel [role=option]')];
+        const attiva = document.querySelector('.zr-shell .zr-search-panel [role=option][aria-selected=true]');
+        let pannello = attiva?.parentElement;
+        while (pannello && pannello.scrollHeight <= pannello.clientHeight && !pannello.matches('.zr-search')) pannello = pannello.parentElement;
+        const a = attiva?.getBoundingClientRect();
+        const p = pannello?.getBoundingClientRect();
+        return { n: opzioni.length, i: opzioni.indexOf(attiva), scorre: !!pannello && !pannello.matches('.zr-search'), dentro: !!a && !!p && a.top >= p.top - 1 && a.bottom <= p.bottom + 1 };
+    });
+    const prima = await dove();
+    if (stato !== 'risultati' || !prima.scorre) {
+        scrivi('➖', 'V.1', 'l\'opzione attiva scorre in vista (#2799)', `«${parola}»: ${stato}, ${prima.n} opzioni, il pannello ${prima.scorre ? '' : 'non '}scorre: rilanciare con una parola che dia più risultati`);
+    } else {
+        for (let i = 1; i < prima.n; i++) {
+            await page.keyboard.press('ArrowDown');
+            await pausa(60);
+        }
+        await pausa(200);
+        const giu = await dove();
+        scrivi(giu.i === prima.n - 1 && giu.dentro ? '✅' : '❌', 'V.1', `dopo ${prima.n - 1} frecce giù l'opzione attiva, l'ultima, è nella parte visibile del pannello (#2799)`, `attiva ${giu.i} di ${prima.n}, in vista: ${giu.dentro}`);
+        for (let i = 1; i < prima.n; i++) {
+            await page.keyboard.press('ArrowUp');
+            await pausa(60);
+        }
+        await pausa(200);
+        const su = await dove();
+        scrivi(su.i === 0 && su.dentro ? '✅' : '❌', 'V.2', 'con le frecce su fino in cima la prima opzione è di nuovo in vista (#2799)', `attiva ${su.i} di ${prima.n}, in vista: ${su.dentro}`);
+    }
+    await page.keyboard.press('Escape');
+    await page.fill(campo, '');
+    await page.evaluate(() => document.activeElement?.blur());
+    await pausa(200);
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -437,6 +722,12 @@ async function uat(page, apri) {
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
     await ricerca(page, true);
+    await escNellaBarra(page, true);
+    await fuoriDaiMenu(page);
+    await inizioEFineNeiMenu(page);
+    await linguetteDelleNotifiche(page);
+    await quantiRisultati(page);
+    await attivaInVista(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);
@@ -450,6 +741,8 @@ async function uat(page, apri) {
     await page.screenshot({ path: join(cartella, 'pagina-390.png') });
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
     await ricerca(page, false);
+    await escNellaBarra(page, false);
+    await cassetto(page);
     await campanella(page, false);
 
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));

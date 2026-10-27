@@ -586,15 +586,16 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
     // tutti nel pezzo e non nel JS d'ingresso.
-    it('il pezzo della ricerca pesa, con gzip, al più 1.708 byte: la misura della v3.9.0, coi testi dei codici dei risultati, più 20, e prima quella della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7; Decisione 18762)', () => {
+    it('il pezzo della ricerca pesa, con gzip, al più 1.867 byte: la misura della v3.10.0, con la zona che dice quanti risultati, più 20; prima quella della v3.9.0, coi testi dei codici dei risultati, più 20, e prima quella della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7; Decisione 18762; voce 2801)', () => {
         const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
 
         expect(ricerca).not.toBe('');
         // Sprint 74, dopo il merge della v3.5.0 (26/10): 1.536 → 1.538, le impronte nuove dei nomi dei pezzi; il codice è lo stesso.
         // v3.8.0 (zr-pm, 26/10/2026): 1.541 col pezzo della tastiera, ancora solo le impronte nuove dei nomi dei pezzi; il tetto è la
         // misura più 20. v3.9.0 (Decisione 18762 di zr-pm): 1.688 coi testi dei codici dei risultati, che erano nel JS d'ingresso
-        // (−130 lì, +148 qui): l'ingresso si carica sempre, la ricerca solo quando serve.
-        expect(gzip(ricerca)).toBeLessThanOrEqual(1_708);
+        // (−130 lì, +148 qui): l'ingresso si carica sempre, la ricerca solo quando serve. v3.10.0 (zr-pm-07, opzione A per T7,
+        // voce 2801): 1.847 misurati con la zona che dice quanti risultati e i suoi testi, più 20.
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_867);
     });
 
     // v3.9.0 (Decisione 18762): i testi dei codici della seconda riga di un risultato, in tutte e tre le lingue, stanno nel pezzo
@@ -688,13 +689,13 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
     });
 
-    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.438 byte: la misura della v3.8.1 più 20 (1.201 nella v3.8.0, 1.321 con la sola riga 6)', () => {
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.993 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1)', () => {
         const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
 
         expect(tastiera).not.toBe('');
         // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
         // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
-        expect(gzip(tastiera)).toBeLessThanOrEqual(1_438);
+        expect(gzip(tastiera)).toBeLessThanOrEqual(1_993);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

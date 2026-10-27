@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 59,1 KB | 12,7 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 59,1 KB | 12,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 59,1 KB | 12,7 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 61,5 KB | 13,3 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 61,5 KB | 13,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 61,5 KB | 13,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -181,8 +181,8 @@ alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` 
 cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.867 la
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.993 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -341,11 +341,12 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.7.0` | i testi dei due avvisi della cornice ridotta (documenti da accettare, Zeiras che non risponde) in un pezzo a richiesta, fuori dal JS d'ingresso: 403 byte in meno, tetto 17.296 | niente | un caso che cerca uno dei due avvisi subito dopo il disegno lo aspetta (`await act(() => vi.dynamicImportSettled())`) | l'avviso compare con l'accettazione richiesta, e senza backoffice («Zeiras non risponde») |
 | `v3.8.0` | i rimedi della sola tastiera (il Tab che resta dentro un `Dialog` aperto, Esc dal pannello della ricerca) in un pezzo a richiesta, chiesto al primo tasto: chi usa solo il mouse non lo scarica | niente | il primo tasto premuto porta il pezzo: un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto); il tasto non si perde, arriva quando arriva il pezzo | Tab in un dialogo aperto resta dentro anche come primo tasto della pagina |
 | `v3.8.1` | rimedi di tastiera e di lettore di schermo: le voci «Presto» fuori dal giro del Tab, col nome «CRM, Presto»; nel selettore dei workspace Home e Fine, e il fuoco che esce lo chiude; il fuoco che esce dalla ricerca la chiude, e la parola resta; scelto un risultato il campo si svuota; scelta una voce del «+» con la tastiera il fuoco torna al «+»; nelle notifiche col nome nel titolo l'avatar è nascosto ai lettori di schermo; il primo Tab si ferma solo con un dialogo aperto; il pezzo degli avvisi che non arriva si richiede | niente | dopo il primo tasto (il pezzo della tastiera): col selettore aperto il fuoco che va fuori lo chiude; dopo una voce del «+» scelta con Invio il fuoco è sul «+». Dal montaggio (il pezzo dei rimedi): una voce «Presto» non ferma il Tab e il suo nome è «<voce>, Presto»; il fuoco che esce dalla ricerca la chiude; dopo un risultato il campo è vuoto; un Tab fuori da un dialogo non aspetta più il pezzo; l'avatar di una notifica col nome nel titolo non si trova per ruolo. Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: S.1, S.2, P.2, le righe `.7` e `.8` della ricerca |
+| `v3.10.0` | rimedi di tastiera e di lettore di schermo: a 720 px o meno, con la ricerca aperta, campanella e profilo nel giro del Tab (#2805); Esc dalla ricerca lascia il fuoco nel campo e col cassetto aperto lo chiude anche da lì (#2800, #2807); il cassetto aperto con la tastiera trattiene il fuoco (#2806); profilo, «+» e campanella si chiudono quando il Tab porta il fuoco fuori (#2804); Home e Fine nel menu del profilo e nel «+» (#2802); le linguette «Per me» e «Tutte» con le frecce, e nel giro del Tab solo quella scelta (#2803); la ricerca dice quanti risultati ha trovato (#2801); l'opzione attiva della ricerca scorre in vista (#2799) | niente | dopo il primo tasto (il pezzo della tastiera): Esc dalla ricerca lascia il fuoco nel campo; col cassetto aperto il Tab gira fra le sue voci; profilo, «+» e campanella si chiudono col fuoco che esce; nel pannello delle notifiche il Tab si ferma su una linguetta sola. Dal pezzo della ricerca: un paragrafo `role="status"` in fondo al documento, «Risultati: N». Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: K, K390, T, M, N, Q e V |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
 1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella, i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
 e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
 da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
 viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
@@ -826,8 +827,8 @@ cornice === null ? pagina : (
   fuoco va al pannello, che scorre con le frecce, e ha il contorno del design system come il contenuto. Un elemento del modulo
   con la classe del pannello non si tocca. Per chi aggiorna: con la ricerca aperta c'è una fermata del Tab in più, dopo il
   campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Esc col fuoco nel pannello chiude la
-  ricerca come dal campo (l'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento,
-  come dopo Esc nel campo. Sta nel pezzo dei rimedi (dalla `v3.8.0` in quello della tastiera, che arriva al primo tasto), ed è provvisorio
+  ricerca come dal campo (l'`AppShell` lo fa solo dal campo), e il fuoco va al campo (dalla `v3.10.0`: prima andava al
+  documento). Sta nel pezzo dei rimedi (dalla `v3.8.0` in quello della tastiera, che arriva al primo tasto), ed è provvisorio
   come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
@@ -911,12 +912,28 @@ cornice === null ? pagina : (
   come la riga lo scrive: l'avatar di «Ada» resta in una notifica di «Adamo». A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
-  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.8.1` il fuoco che esce dalla
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.10.0` al Tab si
+  mostrano prima che il browser cerchi dove portare il fuoco, e dal campo o dal pannello il Tab arriva alle azioni della barra
+  prima del contenuto (#2805: nella `v3.4.0` le saltava); se il fuoco resta nella ricerca si nascondono di nuovo. Dalla `v3.8.1` il fuoco che esce dalla
   ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
   design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
+- **Esc nella ricerca, il cassetto e i menu della barra da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
+  campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
+  il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto 720 px) Esc lo chiude anche col
+  fuoco nel campo della ricerca, che l'`AppShell` lasciava fuori, e il fuoco che era sulle sue voci torna ad «Apri il menu»
+  (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra (profilo, campanella, «+», Moduli)
+  o il selettore aperti, Esc chiude prima quelli e il cassetto resta. Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
+  sul pulsante), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
+  (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga sopra 720 px col cassetto aperto, dove il pulsante non
+  si vede, il Tab torna del browser. Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono
+  quando il fuoco va — col Tab — a un elemento che non è il loro pulsante né un menu o un pannello della cornice, e il fuoco
+  resta dove è andato (#2804: prima restavano aperti), come il selettore dei workspace dalla `v3.8.1`. Il modulo non deve fare
+  niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco sul documento, che col cassetto aperto conta le fermate
+  del Tab, o che col Tab esce da un menu della barra e lo cerca aperto, va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
+  andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé.
 - **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
   Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
   ripreso il campo c'erano ancora i risultati di prima. Il campo si svuota come lo svuota chi scrive, e la ricerca si chiude come
@@ -943,9 +960,28 @@ cornice === null ? pagina : (
   fuoco alla prima voce e Fine all'ultima (prima non facevano niente; le frecce le muove l'`AppShell`), e il fuoco che va a un
   elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
   resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
-  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina.
-  Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina. Dalla
+  `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); un `Menu`
+  della pagina resta com'è, se non sta nella barra in alto: uno che il modulo apre dalle sue azioni lì fa lo stesso. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
+- **Le linguette del pannello delle notifiche con le frecce**: dalla `v3.10.0`, nel pannello delle notifiche aperto, col fuoco
+  su «Per me» o su «Tutte», la freccia a destra o a sinistra passa all'altra linguetta e la sceglie, Home va alla prima e Fine
+  all'ultima (#2803: prima le frecce non facevano niente); con Alt, Ctrl o Meta restano del browser. Nel giro del Tab resta la sola linguetta scelta, anche quando la
+  sceglie un clic: prima il Tab si fermava su tutte e due. Il legame fra la linguetta e ciò che mostra (`aria-controls`) non c'è
+  ancora: è struttura dell'`AppShell` (riga 133 delle richieste al design system). Il modulo non deve fare niente; un test del
+  modulo che col Tab passa da «Per me» a «Tutte» va riletto. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell`
+  lo fa da sé si toglie.
+- **Quanti risultati, a chi usa un lettore di schermo**: dalla `v3.10.0`, a ricerca finita una zona di stato nascosta alla
+  vista dice quanti risultati la ricerca mostra, «Risultati: 12» nella lingua della cornice (#2801): prima la zona
+  dell'`AppShell` diceva «Sto cercando…» e spariva coi risultati, senza dire quanti erano. È un paragrafo in fondo al documento
+  (`role="status"`, classe `zr-visually-hidden`) che resta lì e si svuota a ogni ricerca che parte. Se la ricerca si chiude prima
+  che arrivi la risposta, il numero si dice lo stesso: tacere costerebbe al pezzo della ricerca più del suo tetto. Il modulo non deve fare
+  niente; un test del modulo che conta gli elementi `role="status"` della pagina va riletto. Sta nel pezzo della ricerca, ed è
+  provvisorio: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design system) si toglie.
+- **L'opzione attiva della ricerca in vista**: dalla `v3.10.0`, con le frecce giù e su nel campo della ricerca l'opzione attiva
+  scorre in vista nel pannello dei risultati, quanto basta (#2799): prima il pannello restava fermo e dopo le prime righe
+  l'opzione scelta era fuori vista. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando
+  l'`AppShell` lo fa da sé (riga 135 delle richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso

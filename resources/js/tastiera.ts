@@ -125,25 +125,61 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
 /**
  * L'`AppShell` chiude la ricerca con Esc solo dal campo: col fuoco nel pannello dei risultati (una fermata del Tab, #2720) Esc
  * non faceva niente, e sotto 720 px la barra in alto restava senza campanella. Da lì il rimedio rimanda lo stesso tasto Esc
- * al campo, e l'`AppShell` chiude la ricerca come quando Esc parte dal campo: il pannello se ne va e il fuoco non resta nel
- * campo, va al documento (il README lo dice). Il pannello è quello che l'`AppShell` scrive sotto il campo, e lo prende il
+ * al campo, che prima prende il fuoco, e l'`AppShell` chiude la ricerca come quando Esc parte dal campo: il pannello se ne va
+ * e il fuoco resta nel campo (dalla v3.10.0, #2800: prima andava al documento). Il pannello è quello che l'`AppShell` scrive
+ * sotto il campo, e lo prende il
  * fuoco solo da fermata del pezzo dei rimedi. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 131 delle richieste al
  * design system).
  */
 function escDalPannello(tasto: KeyboardEvent): void {
     const pannello = tasto.target as Element;
+    const campo = pannello.parentElement?.querySelector('input');
 
-    if (tasto.key === 'Escape' && pannello.matches?.('.zr-shell .zr-top > .zr-search > .zr-search-panel')) {
-        pannello.parentElement?.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', tasto));
+    if (tasto.key === 'Escape' && campo && pannello.matches?.('.zr-shell .zr-top > .zr-search > .zr-search-panel')) {
+        campo.focus();
+        campo.dispatchEvent(new KeyboardEvent('keydown', tasto));
+    }
+}
+
+/**
+ * Esc dal campo della ricerca: l'`AppShell` chiude il pannello e toglie il fuoco al campo, che finiva sul documento (#2800): per
+ * quel tasto il campo non si lascia togliere il fuoco. Un secondo Esc, col pannello chiuso, non svuota il campo (il README lo
+ * dice). Col cassetto aperto Esc lo chiude anche dal campo della ricerca, che l'`AppShell` lascia fuori — non con un dialogo
+ * aperto, né coi menu della barra (profilo, campanella, «+», Moduli) o col selettore aperti, che si chiudono loro —, e il fuoco che non è nella barra in alto torna
+ * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
+ * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto. In ascolto in cattura, perché
+ * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function escNellaBarra(tasto: KeyboardEvent): void {
+    const campo = tasto.target as HTMLInputElement;
+    const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
+
+    if (tasto.key === 'Escape') {
+        if (campo.matches?.('.zr-shell .zr-top > .zr-search input')) {
+            campo.blur = () => {};
+            setTimeout(() => delete (campo as Partial<HTMLInputElement>).blur);
+        }
+        if (menu && campo === document.activeElement && !document.querySelector('.zr-scrim, .zr-shell .zr-top-actions [aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"], .zr-shell .zr-ws.is-open, .zr-shell .zr-product.is-open')) {
+            setTimeout(() => {
+                if (menu.getAttribute('aria-expanded') === 'true') {
+                    menu.click();
+                }
+                if (!document.activeElement?.closest('.zr-top')) {
+                    menu.focus();
+                }
+            });
+        }
     }
 }
 
 /**
  * Nel selettore dei workspace aperto l'`AppShell` muove il fuoco con le frecce, ma Home e Fine non facevano niente (riga 48 delle
- * richieste al design system): portano il fuoco alla prima e all'ultima voce. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ * richieste al design system): portano il fuoco alla prima e all'ultima voce. Lo stesso, dalla v3.10.0, nel menu del profilo e nel
+ * menu «+» (#2802, riga 132), fra le voci che non sono spente; un `Menu` della pagina no. Provvisorio, finché l'`AppShell` non lo
+ * fa da sé.
  */
 function inizioEFine(tasto: KeyboardEvent): void {
-    const voci = (tasto.target as Element).closest?.('.zr-shell .zr-ws-menu')?.querySelectorAll<HTMLElement>('.zr-ws-item');
+    const voci = (tasto.target as Element).closest?.('.zr-shell .zr-ws-menu, .zr-shell .zr-top .zr-menu, .zr-shell .zr-side .zr-menu')?.querySelectorAll<HTMLElement>('.zr-ws-item, [role="menuitem"]:not(:disabled)');
 
     if (voci && (tasto.key === 'Home' || tasto.key === 'End')) {
         tasto.preventDefault();
@@ -152,17 +188,62 @@ function inizioEFine(tasto: KeyboardEvent): void {
 }
 
 /**
+ * Nel pannello delle notifiche le linguette «Per me» e «Tutte» erano due fermate del Tab, e le frecce non facevano niente (#2803):
+ * le frecce a destra e a sinistra passano all'altra linguetta e la scelgono, Home e Fine vanno alla prima e all'ultima, e nel giro
+ * del Tab resta la sola linguetta scelta (`tabindex` mobile), rimesso a ogni tasto, prima che il browser sposti il fuoco: anche
+ * dopo un clic. Con Alt, Ctrl o Meta i tasti restano del browser (Alt+freccia è Indietro e Avanti). Il legame fra la linguetta e ciò che mostra (`aria-controls`, `tabpanel`) è struttura dell'`AppShell`: riga 133
+ * delle richieste al design system. Provvisorio, come sopra.
+ */
+function frecceSulleLinguette(tasto: KeyboardEvent): void {
+    const linguette = [...document.querySelectorAll<HTMLElement>('.zr-shell .zr-notif-tabs [role="tab"]')];
+    const qui = linguette.indexOf(tasto.target as HTMLElement);
+    const verso = { ArrowRight: qui + 1, ArrowLeft: qui - 1, Home: 0, End: -1 }[tasto.key];
+
+    linguette.forEach((linguetta) => {
+        linguetta.tabIndex = linguetta.matches('[aria-selected="true"]') ? 0 : -1;
+    });
+    if (qui >= 0 && verso !== undefined && !tasto.altKey && !tasto.ctrlKey && !tasto.metaKey) {
+        tasto.preventDefault();
+        const scelta = linguette.at(verso % linguette.length);
+
+        scelta?.click();
+        scelta?.focus();
+    }
+}
+
+/**
+ * Nel pannello della ricerca le frecce nel campo muovono l'opzione attiva (`aria-activedescendant`), ma il pannello non scorreva:
+ * dopo le prime righe l'attiva era fuori vista (#2799). Dopo ogni freccia giù o su, quando l'`AppShell` ha scelto la nuova,
+ * l'opzione attiva scorre in vista, quanto basta. Col fuoco sul pannello le frecce lo fanno scorrere come sempre. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 135 delle richieste).
+ */
+function attivaInVista(tasto: KeyboardEvent): void {
+    if ((tasto.target as Element).matches?.('.zr-shell .zr-search input') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
+        setTimeout(() => document.querySelector('.zr-shell .zr-search .is-active')?.scrollIntoView({ block: 'nearest' }));
+    }
+}
+
+/**
  * Col fuoco che esce dal selettore dei workspace aperto verso un altro elemento — col Tab, verso la barra laterale che l'`AppShell`
  * nasconde finché il selettore è aperto — il pannello restava aperto (riga 48): si chiude col pulsante del selettore, e il fuoco
- * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Provvisorio, come sopra.
+ * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Lo stesso, dalla
+ * v3.10.0, per il menu del profilo, il menu «+» e il pannello delle notifiche (#2804): aperti, hanno il fuoco (la cornice lo dà
+ * loro), e il fuoco che va a un elemento che non è il loro pulsante, né un menu o un pannello della cornice, li chiude col loro
+ * pulsante. Provvisorio, come sopra.
  */
 function fuoriDalSelettore(uscita: FocusEvent): void {
     const selettore = (uscita.target as Element).closest?.('.zr-shell .zr-ws.is-open');
-    const verso = uscita.relatedTarget as Node | null;
+    const verso = uscita.relatedTarget as Element | null;
 
     if (selettore && verso && !selettore.contains(verso)) {
         selettore.querySelector<HTMLElement>('.zr-ws-switch')?.click();
     }
+    document.querySelectorAll<HTMLElement>('.zr-shell .zr-avatar-btn[aria-expanded="true"], .zr-shell .zr-bell[aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"]').forEach((pulsante) => {
+        const suo = (qui: Element | null): boolean => qui === pulsante || !!qui?.closest?.('.zr-menu, .zr-pop');
+
+        if (verso && !suo(verso)) {
+            pulsante.click();
+        }
+    });
 }
 
 /**
@@ -195,8 +276,38 @@ function fuocoAlPiu(): void {
     }
 }
 
+/**
+ * Il menu a cassetto (sotto 720 px) aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva verso la ricerca
+ * e la pagina (#2806). Aperto con Invio o con lo spazio — il clic della tastiera, senza `detail` — il fuoco va alla prima voce;
+ * col mouse resta sul pulsante. Finché è aperto il Tab gira fra il pulsante, che lo chiude, e le voci, e da fuori rientra sulla
+ * prima. Con un dialogo aperto, o un `DetailPanel` che trattiene il fuoco, vale lui; dove il pulsante non si vede (la finestra
+ * allargata sopra 720 px col cassetto aperto) il Tab resta del browser. Chiuso con Esc il fuoco torna al pulsante
+ * (`escNellaBarra`). Provvisorio, finché l'`AppShell` non lo fa da sé (#2341, `role="dialog"`).
+ */
+function giroDelCassetto(): HTMLElement[] {
+    const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
+
+    return menu && eUnaFermata(menu) ? [menu, ...[...(document.querySelector('.zr-shell > .zr-side')?.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO) ?? [])].filter(eUnaFermata)] : [];
+}
+
+function tabNelCassetto(tasto: KeyboardEvent): void {
+    const giro = giroDelCassetto();
+    const qui = giro.indexOf(document.activeElement as HTMLElement);
+
+    if (giro.length && tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey && !chiTrattieneIlFuoco()) {
+        tasto.preventDefault();
+        giro.at(qui < 0 ? 1 : (qui + (tasto.shiftKey ? -1 : 1)) % giro.length)?.focus();
+    }
+}
+
+function apertoIlCassetto(clic: MouseEvent): void {
+    if (!clic.detail && (clic.target as Element).closest?.('.zr-shell .zr-top-menu')) {
+        setTimeout(() => giroDelCassetto()[1]?.focus());
+    }
+}
+
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine, sceltaDalPiu];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, attivaInVista, sceltaDalPiu, tabNelCassetto];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`
@@ -222,4 +333,6 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 }
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
+document.addEventListener('keydown', escNellaBarra, true);
+document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('focusout', fuoriDalSelettore);

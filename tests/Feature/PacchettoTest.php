@@ -4313,8 +4313,8 @@ it('il README dice, in «Passare alla v3.8», versione per versione che cosa cam
 ]);
 
 // Sprint 74 (dalla UAT in Chromium, zr-pm-07 26/10): Esc dal pannello della ricerca, e dove va il fuoco.
-it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al documento (sprint 74)', function () {
-    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento, come dopo Esc nel campo.'))->toBe(1);
+it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al campo (sprint 74; sprint 78 · T2, voce 2800)', function () {
+    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo), e il fuoco va al campo (dalla `v3.10.0`: prima andava al documento).'))->toBe(1);
 });
 
 it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {
@@ -5486,8 +5486,8 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20.
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
+    // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.867 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
