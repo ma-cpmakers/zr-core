@@ -9834,8 +9834,13 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
     });
 
     it.each<[string, () => Promise<void>]>([
+        // Dalla v3.10.0 (sprint 78 · T2, voce 2800) dopo Esc il fuoco resta nel campo, che sotto 720 px copre ancora la barra:
+        // campanella e profilo tornano quando il campo lo lascia.
         ['Esc', async () => act(async () => {
             campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await prossimoGiro();
+            expect([document.activeElement, azioni()?.style.visibility]).toStrictEqual([campo(), 'hidden']);
+            campo().blur();
             await prossimoGiro();
         })],
         // Il clic fuori chiude la ricerca col `mousedown` dell'`AppShell`, che lo ascolta dal giro dopo l'apertura, e toglie il
@@ -10020,7 +10025,8 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
     });
     // Dalla UAT in Chromium (26/10): l'`AppShell` chiude la ricerca con Esc solo dal campo; col fuoco nel pannello Esc non
     // faceva niente, e sotto 720 px la barra in alto restava senza campanella (riga 131 delle richieste al design system).
-    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
+    // Dalla v3.10.0 (sprint 78 · T2, voce 2800) il fuoco resta nel campo, come quando Esc parte da lì; prima andava al documento.
+    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco va al campo (voce 2800)', async () => {
         await laCornice();
         await cerca();
         await act(async () => pannello()?.focus());
@@ -10029,7 +10035,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
             pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         });
 
-        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement?.closest('.zr-search') ?? null]).toStrictEqual([false, null, null]);
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement]).toStrictEqual([false, null, uno('.zr-top .zr-search input')]);
     });
 
     it('T7 bis · un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
@@ -10043,5 +10049,91 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         });
 
         expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement]).toStrictEqual([true, pannello()]);
+    });
+});
+
+// Sprint 78 · T2 (voci 2800 e 2807, giro di accessibilità del 27/10). Esc dal campo della ricerca: l'`AppShell` chiude il
+// pannello e toglie il fuoco al campo, che finiva sul documento. Esc col cassetto aperto: dalle sue voci l'`AppShell` lo chiude
+// e il fuoco restava su una voce nascosta; dal campo della ricerca non lo chiudeva.
+describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (sprint 78, voci 2800 e 2807)', () => {
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const campo = () => uno('.zr-top .zr-search input') as HTMLInputElement;
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const aperti = () => [uno('.zr-top .zr-search')?.classList.contains('is-open'), campo().getAttribute('aria-expanded'), menu().getAttribute('aria-expanded')];
+    const esc = async (dove: Element | null) => act(async () => {
+        dove?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        await prossimoGiro();
+    });
+    const nelCampo = async () => act(async () => {
+        campo().focus();
+        await prossimoGiro();
+    });
+
+    it('T2.1 Esc dal campo chiude la ricerca e il fuoco resta nel campo; dopo, il campo perde il fuoco come sempre (voce 2800)', async () => {
+        await laCornice();
+        await nelCampo();
+        expect(aperti()[0]).toBe(true);
+
+        await esc(campo());
+
+        expect([...aperti(), document.activeElement]).toStrictEqual([false, 'false', 'false', campo()]);
+        await act(async () => campo().blur());
+        expect(document.activeElement).not.toBe(campo());
+    });
+
+    it('T2.2 un secondo Esc col pannello chiuso lascia la parola nel campo e il fuoco con lei (scelta del README, voce 2800)', async () => {
+        await laCornice();
+        await nelCampo();
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'uat');
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+            await prossimoGiro();
+        });
+
+        await esc(campo());
+        await esc(campo());
+
+        expect([campo().value, aperti()[0], document.activeElement]).toStrictEqual(['uat', false, campo()]);
+    });
+
+    it('T2.3 col cassetto aperto e il fuoco su una sua voce, Esc lo chiude e il fuoco torna ad «Apri il menu» (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        expect(aperti()[2]).toBe('true');
+        const voce = uno('.zr-shell > .zr-side a[href]') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([aperti()[2], document.activeElement]).toStrictEqual(['false', menu()]);
+    });
+
+    it('T2.4 col cassetto aperto e il fuoco nel campo della ricerca, Esc chiude ricerca e cassetto, e il fuoco resta nel campo (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        await nelCampo();
+        expect(aperti()[0]).toBe(true);
+
+        await esc(campo());
+
+        expect([...aperti(), document.activeElement]).toStrictEqual([false, 'false', 'false', campo()]);
+    });
+
+    it('T2.4 col cassetto aperto, Esc dal menu del profilo chiude il menu e lascia il cassetto aperto (voce 2807)', async () => {
+        await laCornice();
+        await clic(menu());
+        await clic(uno('.zr-avatar-btn'));
+        const voce = uno('.zr-top-actions [role="menuitem"]') as HTMLElement;
+        await act(async () => voce.focus());
+
+        await esc(voce);
+
+        expect([uno('.zr-avatar-btn')?.getAttribute('aria-expanded'), aperti()[2]]).toStrictEqual(['false', 'true']);
     });
 });

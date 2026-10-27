@@ -125,16 +125,49 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
 /**
  * L'`AppShell` chiude la ricerca con Esc solo dal campo: col fuoco nel pannello dei risultati (una fermata del Tab, #2720) Esc
  * non faceva niente, e sotto 720 px la barra in alto restava senza campanella. Da lì il rimedio rimanda lo stesso tasto Esc
- * al campo, e l'`AppShell` chiude la ricerca come quando Esc parte dal campo: il pannello se ne va e il fuoco non resta nel
- * campo, va al documento (il README lo dice). Il pannello è quello che l'`AppShell` scrive sotto il campo, e lo prende il
+ * al campo, che prima prende il fuoco, e l'`AppShell` chiude la ricerca come quando Esc parte dal campo: il pannello se ne va
+ * e il fuoco resta nel campo (dalla v3.10.0, #2800: prima andava al documento). Il pannello è quello che l'`AppShell` scrive
+ * sotto il campo, e lo prende il
  * fuoco solo da fermata del pezzo dei rimedi. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 131 delle richieste al
  * design system).
  */
 function escDalPannello(tasto: KeyboardEvent): void {
     const pannello = tasto.target as Element;
+    const campo = pannello.parentElement?.querySelector('input');
 
-    if (tasto.key === 'Escape' && pannello.matches?.('.zr-shell .zr-top > .zr-search > .zr-search-panel')) {
-        pannello.parentElement?.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', tasto));
+    if (tasto.key === 'Escape' && campo && pannello.matches?.('.zr-shell .zr-top > .zr-search > .zr-search-panel')) {
+        campo.focus();
+        campo.dispatchEvent(new KeyboardEvent('keydown', tasto));
+    }
+}
+
+/**
+ * Esc dal campo della ricerca: l'`AppShell` chiude il pannello e toglie il fuoco al campo, che finiva sul documento (#2800): per
+ * quel tasto il campo non si lascia togliere il fuoco. Un secondo Esc, col pannello chiuso, non svuota il campo (il README lo
+ * dice). Col cassetto aperto Esc lo chiude anche dal campo della ricerca, che l'`AppShell` lascia fuori — non con un dialogo
+ * aperto, né coi menu della barra o col selettore aperti, che si chiudono loro —, e il fuoco che non è nella barra in alto torna
+ * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. In ascolto in cattura, perché
+ * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function escNellaBarra(tasto: KeyboardEvent): void {
+    const campo = tasto.target as HTMLInputElement;
+    const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
+
+    if (tasto.key === 'Escape') {
+        if (campo.matches?.('.zr-shell .zr-top > .zr-search input')) {
+            campo.blur = () => {};
+            setTimeout(() => delete (campo as Partial<HTMLInputElement>).blur);
+        }
+        if (menu && !document.querySelector('.zr-scrim, .zr-shell .zr-top-actions [aria-expanded="true"], .zr-shell .zr-ws.is-open')) {
+            setTimeout(() => {
+                if (menu.getAttribute('aria-expanded') === 'true') {
+                    menu.click();
+                }
+                if (!document.activeElement?.closest('.zr-top')) {
+                    menu.focus();
+                }
+            });
+        }
     }
 }
 
@@ -222,4 +255,5 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 }
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
+document.addEventListener('keydown', escNellaBarra, true);
 document.addEventListener('focusout', fuoriDalSelettore);

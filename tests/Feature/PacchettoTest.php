@@ -4313,8 +4313,8 @@ it('il README dice, in «Passare alla v3.8», versione per versione che cosa cam
 ]);
 
 // Sprint 74 (dalla UAT in Chromium, zr-pm-07 26/10): Esc dal pannello della ricerca, e dove va il fuoco.
-it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al documento (sprint 74)', function () {
-    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento, come dopo Esc nel campo.'))->toBe(1);
+it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al campo (sprint 74; sprint 78 · T2, voce 2800)', function () {
+    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo), e il fuoco va al campo (dalla `v3.10.0`: prima andava al documento).'))->toBe(1);
 });
 
 it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {

@@ -226,11 +226,16 @@ async function ricerca(page, largo) {
     if (nelPannello) {
         await page.keyboard.press('Escape');
         await pausa(300);
+        // Dalla v3.10.0 il fuoco va al campo (#2800): a 390 px il campo col fuoco copre ancora la barra, che torna intera quando lo lascia.
         const dopo = await page.evaluate(() => ({
             aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+            nelCampo: !!document.activeElement?.matches('.zr-search input'),
             azioni: getComputedStyle(document.querySelector('.zr-shell .zr-top > .zr-top-actions') ?? document.body).visibility,
         }));
-        scrivi(!dopo.aperta && dopo.azioni !== 'hidden' ? '✅' : '❌', `${id}.6`, 'Esc col fuoco nel pannello chiude la ricerca, e la barra in alto torna intera', `aperta: ${dopo.aperta}, azioni: ${dopo.azioni}`);
+        await page.evaluate(() => document.activeElement?.blur());
+        await pausa(300);
+        const fuori = await page.evaluate(() => getComputedStyle(document.querySelector('.zr-shell .zr-top > .zr-top-actions') ?? document.body).visibility);
+        scrivi(!dopo.aperta && dopo.nelCampo && fuori !== 'hidden' ? '✅' : '❌', `${id}.6`, 'Esc col fuoco nel pannello chiude la ricerca e porta il fuoco al campo; uscito il fuoco dal campo, la barra in alto torna intera', `aperta: ${dopo.aperta}, fuoco nel campo: ${dopo.nelCampo}, azioni col fuoco nel campo: ${dopo.azioni}, dopo: ${fuori}`);
         if (dopo.aperta) {
             await page.keyboard.press('Shift+Tab');
         }
@@ -448,6 +453,50 @@ async function sopraIlPannello(page) {
     await page.evaluate(() => document.querySelector('.zr-detail[data-uat]')?.remove());
 }
 
+// Esc nella ricerca e nel cassetto (#2800, #2807; rimedi della v3.10.0): il fuoco non finisce sul documento.
+async function escNellaBarra(page, largo) {
+    const id = largo ? 'K' : 'K390';
+    const leggi = () => page.evaluate(() => ({
+        aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
+        espansa: document.querySelector('.zr-shell .zr-top > .zr-search input')?.getAttribute('aria-expanded'),
+        cassetto: document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'),
+        valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
+        fuoco: document.activeElement?.matches('.zr-search input') ? 'campo' : document.activeElement?.matches('.zr-top-menu') ? 'menu' : document.activeElement === document.body ? 'documento' : document.activeElement?.tagName.toLowerCase(),
+    }));
+    const descrivi = (stato) => `ricerca aperta: ${stato.aperta}, aria-expanded: ${stato.espansa}, cassetto: ${stato.cassetto}, fuoco: ${stato.fuoco}, valore «${stato.valore}»`;
+    await page.keyboard.press('Control+k');
+    await page.keyboard.type(parola);
+    await pausa(800);
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const uno = await leggi();
+    scrivi(!uno.aperta && uno.espansa === 'false' && uno.fuoco === 'campo' ? '✅' : '❌', `${id}.1`, 'Esc dal campo chiude la ricerca e il fuoco resta nel campo (#2800)', descrivi(uno));
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const due = await leggi();
+    scrivi(!due.aperta && due.fuoco === 'campo' && due.valore === parola ? '✅' : '❌', `${id}.2`, 'un secondo Esc lascia la parola nel campo, col fuoco (#2800, scelta del README)', descrivi(due));
+    await page.evaluate(() => document.activeElement?.blur());
+    if (largo) {
+        return;
+    }
+    await page.click('.zr-shell .zr-top-menu');
+    await pausa(300);
+    await page.evaluate(() => document.querySelector('.zr-shell > .zr-side a[href]')?.focus());
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const tre = await leggi();
+    scrivi(tre.cassetto === 'false' && tre.fuoco === 'menu' ? '✅' : '❌', `${id}.3`, 'cassetto aperto, Esc da una sua voce: chiuso, fuoco su «Apri il menu» (#2807)', descrivi(tre));
+    await page.click('.zr-shell .zr-top-menu');
+    await pausa(300);
+    await page.focus('.zr-shell .zr-top > .zr-search input');
+    await pausa(300);
+    await page.keyboard.press('Escape');
+    await pausa(300);
+    const quattro = await leggi();
+    scrivi(quattro.cassetto === 'false' && !quattro.aperta && quattro.fuoco === 'campo' ? '✅' : '❌', `${id}.4`, 'cassetto aperto, Esc dal campo della ricerca: chiusi cassetto e ricerca, fuoco nel campo (#2807)', descrivi(quattro));
+    await page.evaluate(() => document.activeElement?.blur());
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -460,6 +509,7 @@ async function uat(page, apri) {
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
     await ricerca(page, true);
+    await escNellaBarra(page, true);
     await piu(page);
     await selettore(page);
     await campanella(page, true);
@@ -473,6 +523,7 @@ async function uat(page, apri) {
     await page.screenshot({ path: join(cartella, 'pagina-390.png') });
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
     await ricerca(page, false);
+    await escNellaBarra(page, false);
     await campanella(page, false);
 
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
