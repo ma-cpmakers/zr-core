@@ -7,7 +7,10 @@
  *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
- * workspace trova qualcosa (di norma «pro»). --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp).
+ * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
+ * --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp). Prima di un tag zr-core la lancia sulle
+ * pagine di prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con
+ * `layout.html?schede=1&crm_attivo=1&prenotazioni=1 --parola uat`: lì nessuna riga resta ➖ tranne B.1, che vuole il percorso.
  *
  * Il browser: con UAT_PAGE (il percorso del modulo che dà `conPagina` ed `entra`, quello del browser condiviso della UAT)
  * la pagina si apre lì, con la sessione che c'è; senza, un Chromium suo, per le pagine che non chiedono l'ingresso
@@ -510,8 +513,11 @@ async function cassetto(page) {
     await pausa(300);
     const entrato = await dove();
     scrivi((await aperto()) === 'true' && entrato === 'cassetto' ? '✅' : '❌', 'K390.5', 'Invio su «Apri il menu»: il cassetto si apre e il fuoco è sulla sua prima voce (#2806)', `fuoco: ${entrato}`);
+    // Dalla prima voce, tanti Tab quante sono le fermate del cassetto più uno: il giro passa dal pulsante e rientra.
+    const fermate = await page.evaluate(() => [...document.querySelectorAll('.zr-shell > .zr-side :is(a[href], button, input, select, textarea, [tabindex])')]
+        .filter((e) => e.tabIndex >= 0 && !e.matches(':disabled') && e.checkVisibility()).length);
     const giro = [];
-    for (const tasto of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+    for (const tasto of [...Array(fermate + 1).fill('Tab'), 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
         await page.keyboard.press(tasto);
         await pausa(100);
         giro.push(await dove());

@@ -182,7 +182,7 @@ cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm)
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.867 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.967 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.993 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -924,10 +924,11 @@ cornice === null ? pagina : (
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
   il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto 720 px) Esc lo chiude anche col
   fuoco nel campo della ricerca, che l'`AppShell` lasciava fuori, e il fuoco che era sulle sue voci torna ad «Apri il menu»
-  (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra o il selettore aperti, Esc chiude
-  prima quelli e il cassetto resta. Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
+  (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra (profilo, campanella, «+», Moduli)
+  o il selettore aperti, Esc chiude prima quelli e il cassetto resta. Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
   sul pulsante), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
-  (#2806: prima il Tab usciva verso la ricerca). Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono
+  (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga sopra 720 px col cassetto aperto, dove il pulsante non
+  si vede, il Tab torna del browser. Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono
   quando il fuoco va — col Tab — a un elemento che non è il loro pulsante né un menu o un pannello della cornice, e il fuoco
   resta dove è andato (#2804: prima restavano aperti), come il selettore dei workspace dalla `v3.8.1`. Il modulo non deve fare
   niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco sul documento, che col cassetto aperto conta le fermate
@@ -961,11 +962,11 @@ cornice === null ? pagina : (
   resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
   Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina. Dalla
   `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); un `Menu`
-  della pagina resta com'è. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  della pagina resta com'è, se non sta nella barra in alto: uno che il modulo apre dalle sue azioni lì fa lo stesso. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
 - **Le linguette del pannello delle notifiche con le frecce**: dalla `v3.10.0`, nel pannello delle notifiche aperto, col fuoco
   su «Per me» o su «Tutte», la freccia a destra o a sinistra passa all'altra linguetta e la sceglie, Home va alla prima e Fine
-  all'ultima (#2803: prima le frecce non facevano niente). Nel giro del Tab resta la sola linguetta scelta, anche quando la
+  all'ultima (#2803: prima le frecce non facevano niente); con Alt, Ctrl o Meta restano del browser. Nel giro del Tab resta la sola linguetta scelta, anche quando la
   sceglie un clic: prima il Tab si fermava su tutte e due. Il legame fra la linguetta e ciò che mostra (`aria-controls`) non c'è
   ancora: è struttura dell'`AppShell` (riga 133 delle richieste al design system). Il modulo non deve fare niente; un test del
   modulo che col Tab passa da «Per me» a «Tutte» va riletto. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell`
@@ -973,7 +974,8 @@ cornice === null ? pagina : (
 - **Quanti risultati, a chi usa un lettore di schermo**: dalla `v3.10.0`, a ricerca finita una zona di stato nascosta alla
   vista dice quanti risultati la ricerca mostra, «Risultati: 12» nella lingua della cornice (#2801): prima la zona
   dell'`AppShell` diceva «Sto cercando…» e spariva coi risultati, senza dire quanti erano. È un paragrafo in fondo al documento
-  (`role="status"`, classe `zr-visually-hidden`) che resta lì e si svuota a ogni ricerca che parte. Il modulo non deve fare
+  (`role="status"`, classe `zr-visually-hidden`) che resta lì e si svuota a ogni ricerca che parte. Se la ricerca si chiude prima
+  che arrivi la risposta, il numero si dice lo stesso: tacere costerebbe al pezzo della ricerca più del suo tetto. Il modulo non deve fare
   niente; un test del modulo che conta gli elementi `role="status"` della pagina va riletto. Sta nel pezzo della ricerca, ed è
   provvisorio: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design system) si toglie.
 - **L'opzione attiva della ricerca in vista**: dalla `v3.10.0`, con le frecce giù e su nel campo della ricerca l'opzione attiva
