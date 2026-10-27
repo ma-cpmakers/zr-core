@@ -655,6 +655,55 @@ async function quantiRisultati(page) {
     await pausa(200);
 }
 
+async function attivaInVista(page) {
+    const campo = '.zr-shell .zr-top > .zr-search input';
+    if (!(await page.$(campo))) {
+        scrivi('➖', 'V.1', 'l\'opzione attiva scorre in vista (#2799)', 'la pagina non ha il campo della ricerca');
+        return;
+    }
+    await page.click(campo);
+    await page.fill(campo, parola);
+    let stato = '';
+    for (let i = 0; i < 50 && !['risultati', 'vuoto', 'errore'].includes(stato); i++) {
+        await pausa(100);
+        stato = await page.evaluate(`(${statoDellaRicerca})()`);
+    }
+    await pausa(200);
+    /** Quante opzioni, quale è attiva, se il pannello scorre e se l'attiva sta tutta dentro ciò che del pannello si vede. */
+    const dove = () => page.evaluate(() => {
+        const opzioni = [...document.querySelectorAll('.zr-shell .zr-search-panel [role=option]')];
+        const attiva = document.querySelector('.zr-shell .zr-search-panel [role=option][aria-selected=true]');
+        let pannello = attiva?.parentElement;
+        while (pannello && pannello.scrollHeight <= pannello.clientHeight && !pannello.matches('.zr-search')) pannello = pannello.parentElement;
+        const a = attiva?.getBoundingClientRect();
+        const p = pannello?.getBoundingClientRect();
+        return { n: opzioni.length, i: opzioni.indexOf(attiva), scorre: !!pannello && !pannello.matches('.zr-search'), dentro: !!a && !!p && a.top >= p.top - 1 && a.bottom <= p.bottom + 1 };
+    });
+    const prima = await dove();
+    if (stato !== 'risultati' || !prima.scorre) {
+        scrivi('➖', 'V.1', 'l\'opzione attiva scorre in vista (#2799)', `«${parola}»: ${stato}, ${prima.n} opzioni, il pannello ${prima.scorre ? '' : 'non '}scorre: rilanciare con una parola che dia più risultati`);
+    } else {
+        for (let i = 1; i < prima.n; i++) {
+            await page.keyboard.press('ArrowDown');
+            await pausa(60);
+        }
+        await pausa(200);
+        const giu = await dove();
+        scrivi(giu.i === prima.n - 1 && giu.dentro ? '✅' : '❌', 'V.1', `dopo ${prima.n - 1} frecce giù l'opzione attiva, l'ultima, è nella parte visibile del pannello (#2799)`, `attiva ${giu.i} di ${prima.n}, in vista: ${giu.dentro}`);
+        for (let i = 1; i < prima.n; i++) {
+            await page.keyboard.press('ArrowUp');
+            await pausa(60);
+        }
+        await pausa(200);
+        const su = await dove();
+        scrivi(su.i === 0 && su.dentro ? '✅' : '❌', 'V.2', 'con le frecce su fino in cima la prima opzione è di nuovo in vista (#2799)', `attiva ${su.i} di ${prima.n}, in vista: ${su.dentro}`);
+    }
+    await page.keyboard.press('Escape');
+    await page.fill(campo, '');
+    await page.evaluate(() => document.activeElement?.blur());
+    await pausa(200);
+}
+
 async function uat(page, apri) {
     const errori = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
@@ -672,6 +721,7 @@ async function uat(page, apri) {
     await inizioEFineNeiMenu(page);
     await linguetteDelleNotifiche(page);
     await quantiRisultati(page);
+    await attivaInVista(page);
     await piu(page);
     await selettore(page);
     await campanella(page, true);

@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 60,9 KB | 13,3 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 60,9 KB | 13,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 60,9 KB | 13,3 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 61,5 KB | 13,3 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 61,5 KB | 13,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 61,5 KB | 13,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -182,7 +182,7 @@ cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm)
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.867 la
-ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.901 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.967 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
@@ -975,6 +975,10 @@ cornice === null ? pagina : (
   (`role="status"`, classe `zr-visually-hidden`) che resta lì e si svuota a ogni ricerca che parte. Il modulo non deve fare
   niente; un test del modulo che conta gli elementi `role="status"` della pagina va riletto. Sta nel pezzo della ricerca, ed è
   provvisorio: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design system) si toglie.
+- **L'opzione attiva della ricerca in vista**: dalla `v3.10.0`, con le frecce giù e su nel campo della ricerca l'opzione attiva
+  scorre in vista nel pannello dei risultati, quanto basta (#2799): prima il pannello restava fermo e dopo le prime righe
+  l'opzione scelta era fuori vista. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando
+  l'`AppShell` lo fa da sé (riga 135 delle richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso

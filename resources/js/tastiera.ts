@@ -212,6 +212,17 @@ function frecceSulleLinguette(tasto: KeyboardEvent): void {
 }
 
 /**
+ * Nel pannello della ricerca le frecce nel campo muovono l'opzione attiva (`aria-activedescendant`), ma il pannello non scorreva:
+ * dopo le prime righe l'attiva era fuori vista (#2799). Dopo ogni freccia giù o su, quando l'`AppShell` ha scelto la nuova,
+ * l'opzione attiva scorre in vista, quanto basta. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 135 delle richieste).
+ */
+function attivaInVista(tasto: KeyboardEvent): void {
+    if ((tasto.target as Element).closest?.('.zr-shell .zr-search') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
+        setTimeout(() => document.querySelector('.zr-shell .zr-search .is-active')?.scrollIntoView({ block: 'nearest' }));
+    }
+}
+
+/**
  * Col fuoco che esce dal selettore dei workspace aperto verso un altro elemento — col Tab, verso la barra laterale che l'`AppShell`
  * nasconde finché il selettore è aperto — il pannello restava aperto (riga 48): si chiude col pulsante del selettore, e il fuoco
  * resta dove è andato. Fra le voci e il pulsante non si chiude, e nemmeno quando il fuoco lascia la finestra. Lo stesso, dalla
@@ -295,7 +306,7 @@ function apertoIlCassetto(clic: MouseEvent): void {
 }
 
 /** I rimedi di questo pezzo, uno per tasto premuto: ascoltano il documento da quando il pezzo arriva, e `ripeti` li chiama per i tasti di prima. */
-const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, sceltaDalPiu, tabNelCassetto];
+const gestori = [tabRestaDentro, escDalPannello, inizioEFine, frecceSulleLinguette, attivaInVista, sceltaDalPiu, tabNelCassetto];
 
 /**
  * Un tasto premuto prima che il pezzo arrivasse: i rimedi lo vedono come se arrivasse adesso, sullo stesso elemento. `fermato`

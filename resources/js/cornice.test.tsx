@@ -6328,6 +6328,45 @@ describe('la ricerca', () => {
         expect(partite(fetchFinto)).toStrictEqual([ricercaDi('lancio')]);
     });
 
+    // Sprint 78 · T8 (voce 2799): le frecce nel campo muovono l'opzione attiva, ma il pannello non scorreva e dopo le prime righe
+    // l'attiva era fuori vista. jsdom non scorre (né ha `scrollIntoView`): qui si guarda che l'attiva sia chiesta in vista, dopo ogni
+    // freccia; lo scorrimento vero lo prova `scripts/uat-cornice.mjs` (V.1-V.2), in Chromium.
+    it('T8.1-T8.2 dopo ogni freccia giù o su nel campo l\'opzione attiva è chiesta in vista, quanto basta; un altro tasto non la chiede (voce 2799)', async () => {
+        const inVista = vi.fn();
+        const diPrima = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+        Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: inVista });
+        try {
+            vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati(risultatiDelServer))));
+            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+            await act(async () => {
+                await vi.dynamicImportSettled();
+            });
+            await conLaTastiera();
+            await scrivi('uat');
+            const premi = async (key: string) => act(async () => {
+                uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            const chiamate = () => inVista.mock.contexts.map((riga, i) => [righe().indexOf(riga as HTMLElement), inVista.mock.calls[i]]);
+            expect(righe()).toHaveLength(3);
+
+            await premi('ArrowDown');
+            await premi('ArrowDown');
+            await premi('ArrowDown');
+            await premi('ArrowUp');
+            await premi('a');
+
+            expect(chiamate()).toStrictEqual([1, 2, 0, 2].map((riga) => [riga, [{ block: 'nearest' }]]));
+            expect(uno('.zr-search .is-active')).toBe(righe()[2]);
+        } finally {
+            if (diPrima) {
+                Object.defineProperty(Element.prototype, 'scrollIntoView', diPrima);
+            } else {
+                delete (Element.prototype as Partial<Element>).scrollIntoView;
+            }
+        }
+    });
+
     // Sprint 78 · T7 (voce 2801): la zona `role="status"` dell'`AppShell` c'è solo mentre si cerca, e i risultati la tolgono. Il
     // pezzo della ricerca tiene una zona sua nel documento, che a ricerca finita dice quanti risultati ci sono (zr-pm, opzione A).
     const zonaDelNumero = () => [...document.querySelectorAll('body > p[role="status"].zr-visually-hidden')];
