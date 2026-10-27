@@ -1,0 +1,9 @@
+{
+    "acceptanceTitle": "Hay documentos por aceptar",
+    "acceptanceText": "Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.",
+    "acceptanceAction": "Ir a los documentos",
+    "acceptanceOff": "No disponible hasta que aceptes los documentos.",
+    "downTitle": "Zeiras no responde",
+    "downText": "Los módulos, las notificaciones y la búsqueda vuelven cuando Zeiras responda. Inténtalo de nuevo en breve.",
+    "downOff": "No disponible hasta que Zeiras responda."
+}

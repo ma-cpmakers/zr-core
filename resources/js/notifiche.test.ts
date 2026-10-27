@@ -41,7 +41,10 @@ describe('la destinazione di una notifica', () => {
 
         // Sprint 70 · T1.4: le voci del registro non hanno più `notifiche`; le righe sono per id del prodotto, nell'ordine del registro.
         expect(registro.filter((voce) => 'notifiche' in voce)).toStrictEqual([]);
-        expect(Object.keys(righe)).toStrictEqual(['pm', 'crm']);
+        // Sprint 74 · T1.3: anche Bookings, con le tre righe delle prenotazioni. v3.6.1: e per prima la Dashboard, con l'invito
+        // accettato.
+        expect(Object.keys(righe)).toStrictEqual(['home', 'pm', 'crm', 'bookings']);
+        expect(righe.home).toStrictEqual([{ tipo: 'io.invito.accettato', percorso: '/impostazioni/membri' }]);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
         // Sprint 26 · T6 (voce #1773): la quarta, una menzione in un commento, apre la scheda del commento.
         expect(righe.pm).toStrictEqual([
@@ -49,6 +52,10 @@ describe('la destinazione di una notifica', () => {
             { tipo: 'com.zeiras.board.scheda.modificata', percorso: '/c/{id}' },
             { tipo: 'board.scheda.assegnata', percorso: '/c/{id}' },
             { tipo: 'board.commento.menzione', percorso: '/c/{id}' },
+            // v3.6.1: le scadenze di una scheda e il promemoria di una To-do.
+            { tipo: 'board.scheda.scade_domani', percorso: '/c/{id}' },
+            { tipo: 'board.scheda.scade_oggi', percorso: '/c/{id}' },
+            { tipo: 'board.todo.promemoria', percorso: '/todo?todo={id}' },
         ]);
         expect(righe.crm).toStrictEqual([
             { tipo: 'com.zeiras.crm.persona.creata', percorso: '/contatti/{id}' },
@@ -194,6 +201,21 @@ describe('la destinazione di una notifica', () => {
 
     // v3.2.2 (zr-crm, Decisione 16510 del #95). La modifica che un cliente chiede dal link apre il preventivo col suo `id`:
     // l'opportunità non prende il suo posto, e l'evento con lo stesso nome col prefisso non ha una destinazione.
+    // Sprint 74 · T1.3 (voce 2548). Le tre notifiche di Bookings aprono la prenotazione, col suo `id`, nel workspace della
+    // notifica; con Bookings che il workspace non ha, o senza un id che si possa scrivere, il pannello apre la pagina delle notifiche.
+    it.each(['creata', 'spostata', 'annullata'])('una notifica `bookings.prenotazione.%s` apre la prenotazione nel suo workspace; con Bookings spento, con un id fuori forma, col prefisso `com.zeiras.` o di un\'altra app no (sprint 74 · T1.3)', (fine) => {
+        const tipo = `bookings.prenotazione.${fine}`;
+
+        expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } })).toBe('https://bookings.zeiras.com/w/acme-marketing/prenotazioni/uat-prenotazione-1');
+        expect(destinazioneDellaNotifica({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, 'altro-ws', prodotti)).toBe('https://bookings.zeiras.com/w/altro-ws/prenotazioni/uat-prenotazione-1');
+        expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } }, { pm: 'attivo', crm: 'attivo' })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo, ids: { id: '../x' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo: `com.zeiras.bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo: 'bookings.prenotazione.cambiata', ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+    });
+
     it('una notifica della richiesta sul preventivo apre il preventivo col suo `id`; senza `id`, con la sola opportunità, con un id fuori forma o col tipo col prefisso, il pannello apre la pagina delle notifiche (v3.2.2)', () => {
         expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');
         expect(apre({ app: 'crm', tipo: 'crm.preventivo.richiesta', ids: { id: 'uat-preventivo-1', trattativa_id: 'uat-opportunita-1' } })).toBe(CRM + '/preventivi/uat-preventivo-1');
@@ -273,6 +295,35 @@ describe('la destinazione di una notifica', () => {
         expect(destinazioneDellaNotifica({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, 'acme-vendite', prodotti)).toBe('https://board.zeiras.com/w/acme-vendite/c/uat-scheda-1');
         // Disponibile ma non ancora attivo: il modulo si può aprire, come dal menu.
         expect(apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } }, { pm: 'disponibile' })).toBe(`${BOARD}/c/uat-scheda-1`);
+    });
+
+    // v3.6.1 (zr-backoffice-55, dal giro del 27/10/2026 i `dati` portano l'`id`): la scadenza di una scheda, domani e oggi, apre
+    // la scheda; il promemoria di una To-do apre la To-do nella sua pagina; l'invito accettato, che non è di un'app (`app: null`),
+    // apre Impostazioni › Membri della Dashboard.
+    it.each([['board.scheda.scade_domani'], ['board.scheda.scade_oggi']])('una notifica della scadenza di una scheda, «%s», apre la scheda col suo `id`; senza `id` o con un id fuori forma il pannello apre la pagina delle notifiche (v3.6.1)', (tipo) => {
+        expect(apre({ app: 'pm', tipo, ids: { id: 'uat-scheda-1' } })).toBe(`${BOARD}/c/uat-scheda-1`);
+        expect(apre({ app: 'pm', tipo, ids: {} })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo, ids: { id: 'uat scheda' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { id: 'uat-scheda-1' } })).toBeUndefined();
+    });
+
+    it('una notifica del promemoria di una To-do apre la To-do, `/todo?todo=<id>`; senza `id`, con un id fuori forma o con l\'app di un altro prodotto il pannello apre la pagina delle notifiche (v3.6.1)', () => {
+        expect(apre({ app: 'pm', tipo: 'board.todo.promemoria', ids: { id: 'uat-todo-1' } })).toBe(`${BOARD}/todo?todo=uat-todo-1`);
+        expect(apre({ app: 'pm', tipo: 'board.todo.promemoria', ids: {} })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo: 'board.todo.promemoria', ids: { id: 'uat&todo=2' } })).toBeUndefined();
+        expect(apre({ app: 'crm', tipo: 'board.todo.promemoria', ids: { id: 'uat-todo-1' } })).toBeUndefined();
+        expect(apre({ app: 'pm', tipo: 'board.todo.promemoria', ids: { id: 'uat-todo-1' } }, { pm: 'in_arrivo' })).toBeUndefined();
+    });
+
+    it('una notifica dell\'invito accettato, senza app, apre Impostazioni › Membri della Dashboard nel workspace; con l\'app della Dashboard, di un prodotto o senza la chiave `app` non ha una destinazione (v3.6.1)', () => {
+        const invito = { tipo: 'io.invito.accettato', ids: { id: 'uat-invito-1' } };
+        expect(apre({ ...invito, app: null })).toBe('https://app.zeiras.com/w/acme-marketing/impostazioni/membri');
+        // La Dashboard non è un prodotto dello stato dei prodotti: si apre anche senza moduli attivi.
+        expect(apre({ ...invito, app: null }, {})).toBe('https://app.zeiras.com/w/acme-marketing/impostazioni/membri');
+        expect(destinazioneDellaNotifica({ ...invito, app: null }, 'uat ws', prodotti)).toBeUndefined();
+        expect(apre({ ...invito, app: 'home' })).toBeUndefined();
+        expect(apre({ ...invito, app: 'pm' })).toBeUndefined();
+        expect(apre(invito)).toBeUndefined();
     });
 
     it.each(diUnaScheda)('una notifica di una scheda, di tipo «%s», senza l\'id o con un id fuori forma non ha una destinazione: mai un indirizzo con dentro quell\'id, e la board o la lista non lo sostituiscono (sprint 24 · T3.3)', (tipo) => {

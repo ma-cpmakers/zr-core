@@ -1,9 +1,15 @@
 {
+    "home": [
+        { "tipo": "io.invito.accettato", "percorso": "/impostazioni/membri" }
+    ],
     "pm": [
         { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
         { "tipo": "com.zeiras.board.scheda.modificata", "percorso": "/c/{id}" },
         { "tipo": "board.scheda.assegnata", "percorso": "/c/{id}" },
-        { "tipo": "board.commento.menzione", "percorso": "/c/{id}" }
+        { "tipo": "board.commento.menzione", "percorso": "/c/{id}" },
+        { "tipo": "board.scheda.scade_domani", "percorso": "/c/{id}" },
+        { "tipo": "board.scheda.scade_oggi", "percorso": "/c/{id}" },
+        { "tipo": "board.todo.promemoria", "percorso": "/todo?todo={id}" }
     ],
     "crm": [
         { "tipo": "com.zeiras.crm.persona.creata", "percorso": "/contatti/{id}" },
@@ -30,5 +36,10 @@
         { "tipo": "crm.scadenza.in_preavviso", "percorso": "/contatti/{persona_id}", "altrimenti": ["/aziende/{organizzazione_id}", "/scadenze"] },
         { "tipo": "crm.scadenze.riepilogo_del_giorno", "percorso": "/scadenze" },
         { "tipo": "crm.preventivo.richiesta", "percorso": "/preventivi/{id}" }
+    ],
+    "bookings": [
+        { "tipo": "bookings.prenotazione.creata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "bookings.prenotazione.spostata", "percorso": "/prenotazioni/{id}" },
+        { "tipo": "bookings.prenotazione.annullata", "percorso": "/prenotazioni/{id}" }
     ]
 }

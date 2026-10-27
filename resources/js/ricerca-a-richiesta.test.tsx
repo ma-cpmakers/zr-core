@@ -145,10 +145,10 @@ describe('una parola scritta prima che il pezzo sia arrivato (T2.2)', () => {
 });
 
 describe('una lettera battuta meno di 300 ms prima dell\'arrivo del pezzo (T2.2)', () => {
-    // L'`AppShell` dà la parola alla cornice 300 ms dopo l'ultimo tasto: all'arrivo del pezzo parte l'ultima parola che ha dato,
-    // e la lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre una ricerca è in volo: la
-    // richiesta di prima è annullata e i risultati sono quelli di ciò che è nel campo.
-    it('all\'arrivo parte la parola che la cornice aveva, e 200 ms dopo quella che è nel campo, che annulla la prima: i risultati sono i suoi', async () => {
+    // L'`AppShell` dà la parola alla cornice 300 ms dopo l'ultimo tasto, e la lettera battuta in quei 300 ms parte al loro
+    // scadere. Dalla `v3.6.0` il tasto annulla la richiesta di prima (voce 2062, seconda lettura R2): la parola che la cornice
+    // aveva non parte più all'arrivo del pezzo, e i risultati sono quelli di ciò che è nel campo.
+    it('il tasto annulla la parola che la cornice aveva: all\'arrivo del pezzo non parte, e 200 ms dopo parte quella che è nel campo; i risultati sono i suoi', async () => {
         const pezzo = pezzoInRitardo();
         await mostra(dati);
         await scrivi('ada');
@@ -161,14 +161,14 @@ describe('una lettera battuta meno di 300 ms prima dell\'arrivo del pezzo (T2.2)
         expect(cercate()).toStrictEqual([]);
 
         await pezzo.arriva();
-        expect(cercate().map(([, corpo]) => corpo)).toStrictEqual([JSON.stringify({ q: 'ada' })]);
+        expect(cercate()).toStrictEqual([]);
 
         await passano(200);
-        expect(cercate().map(([, corpo]) => corpo)).toStrictEqual([JSON.stringify({ q: 'ada' }), JSON.stringify({ q: 'adal' })]);
-        expect(fetchFinto.mock.calls.filter(([indirizzo]) => indirizzo === '/cornice/ricerca').map(([, opzioni]) => opzioni?.signal?.aborted)).toStrictEqual([true, false]);
+        expect(cercate().map(([, corpo]) => corpo)).toStrictEqual([JSON.stringify({ q: 'adal' })]);
+        expect(fetchFinto.mock.calls.filter(([indirizzo]) => indirizzo === '/cornice/ricerca').map(([, opzioni]) => opzioni?.signal?.aborted)).toStrictEqual([false]);
 
         await passano(1_000);
-        expect(cercate()).toHaveLength(2);
+        expect(cercate()).toHaveLength(1);
         expect(campo().value).toBe('adal');
         expect(titoli()).toStrictEqual(['Lancio Q4']);
         expect(inCaricamento()).toBeNull();

@@ -58,7 +58,10 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
   (`notificationTitleWho.<tipo>`), che serve quando il nome della cosa manca, ed è la sola per un tipo di cui il
   backoffice non dà il nome (una cosa eliminata, un membro del workspace, e del CRM un contatto e una nota: il nome
   di un contatto è un dato personale): per questo delle quattro
-  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
+  assegnazioni del CRM quella di un contatto ha solo questa, e le altre tre dalla `v2.1.0` hanno anche la frase col nome — README, «La cornice», al punto «Le notifiche». Dalla `v3.6.0` la frase
+  può dire anche quando accade la cosa: il backoffice manda `quando` (l'istante e il fuso) e la cornice scrive la data
+  nella lingua di chi legge, al posto di `{when}` (giorno e ora) o di `{date}` (il solo giorno); un modulo che la vuole
+  chiede la frase all'agente di zr-core coi suoi testi, e il campo al backoffice. Dalla `v1.20.0` titoli e frasi delle notifiche stanno in un file loro per lingua
   (`vendor/zeiras/zr-core/resources/lingue/notifiche/`), e la cornice li chiede con `fetch` quando si apre la campanella:
   nelle pagine del tuo modulo non cambia niente, e se non arrivano il pannello mostra l'errore di caricamento con
   «Riprova». Nei tuoi test sì: quei file non li serve nessuno, e un caso che apre la campanella trova l'errore al posto
@@ -384,6 +387,7 @@ e che cosa dai tu è in README, «La cornice». Le forme:
 - i tipi di ciò che dai sono `LayoutDellaCorniceProps` (il layout) e `CorniceDellaPagina` (`useCornice`), dall'ingresso del
   pacchetto. Le voci hanno la forma del design system, in `vendor/zeiras/zr-core/resources/zeiras/index.d.ts`: `nav` è una
   lista di gruppi (`group`, `items`) di `NavItem`, `create` una lista di `MenuItem`, `crumbs` una lista di `ShellCrumb`;
+  il nome del «+» lo dai con `createLabel` («Nuovo nel CRM»; senza, è «Crea» nella lingua della persona);
 - **una voce di `nav` del modulo non porta `href`**: al clic la cornice chiama `onNavigate` con l'id della voce, e lì fai
   la visita di Inertia; la cornice resta montata. Con `href` la voce è un link vero: il browser ricarica la pagina e la
   cornice si rifà, come per la Dashboard e per i prodotti, a meno che tu dia `naviga`: dalla `v2.25.0` il clic semplice con un
@@ -391,6 +395,8 @@ e che cosa dai tu è in README, «La cornice». Le forme:
   l'indirizzo;
 - **il percorso** (`crumbs`) lo dà la pagina al layout, con `Pagina.layout = (props) => ({ crumbs: … })`, e il layout lo
   passa a `LayoutDellaCornice`: non passa da `useCornice`. La funzione dà sempre la chiave `crumbs`, anche senza valore.
+  Al clic su una voce del percorso la visita la fa `naviga` (dalla `v3.6.0`): da `onCrumb`, che arriva senza l'evento,
+  non navigate;
 - **senza i dati della cornice** (una pagina d'esito o d'errore, `cornice` `null`) il layout mette sopra la pagina la barra
   minima, provvisoria (dalla `v2.24.0`): il logo, le tue voci di `nav` ed «Esci» (`onLogout`). Non la costruisci tu: le
   voci le dai al layout come props, `nav`, `active` e `onNavigate`: quelle che la pagina dà con `useCornice` qui non arrivano a
@@ -415,8 +421,8 @@ chiedono («Prima di tutto»). Tu dai solo il codice, in `product`: lo stesso de
 
 Nel registro stanno anche le risorse del tuo prodotto che la ricerca mostra (passo 9). Se una chiave di `contesto` di una
 risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa:
-nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice
-(`searchContext.<voce>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
+nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua del pezzo della ricerca
+(`resources/lingue/ricerca/`, dalla `v3.9.0`) ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`). La cornice mostra il testo della lingua, mai il codice, e un
 codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core. Oggi hanno `codici` il
 membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l'opportunità del
 CRM, per l'`esito` (`vinta`, `persa`: `aperta` non è un codice, e un'opportunità aperta non mostra l'esito).
@@ -453,7 +459,11 @@ in ogni lingua: quello del suo gruppo, e quello da elenco, minuscolo, che l'invi
 modulo è attivo (il segnaposto del campo è uno solo in ogni modulo, e non nomina i tipi). Una chiave di `contesto` che
 porta un codice vuole anche `codici` (passo 8). Un risultato di
 un tipo che il registro non ha non si mostra. A zr-backoffice, che la sua
-ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo.
+ricerca (`ricerca.crea`, `POST /v1/ricerca`) dia quel tipo. Dalla `v3.6.0` zr-core può tenere le risorse di un modulo
+fuori dalla sua voce, perché non pesino nel JS d'ingresso di ogni app: è il caso di Bookings, le cui risorse stanno in un
+file del pezzo della ricerca e nella voce restano solo i tipi (`fonti`). Dove stanno lo decide zr-core: tu chiedi le
+stesse cose. Se il backoffice dà, per riconoscere una risorsa, quando accade (l'inizio di una prenotazione), la forma è
+`{il, fuso}`, come per una notifica, e la seconda riga la scrive la cornice nella lingua e nel fuso.
 
 Dalla `v2.8.0` il codice della ricerca arriva al primo uso, quando la persona mette il fuoco nel campo: per il tuo modulo
 non c'è niente da scrivere. Se non arriva, sotto il campo c'è l'errore della ricerca, e si riprova scrivendo

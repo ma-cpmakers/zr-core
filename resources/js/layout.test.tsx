@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
 import type { DatiDopo as DatiDopoDiApp, DatiSubito as DatiSubitoDiApp } from './app';
 import { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci, type LayoutDellaCorniceProps } from './index';
+import { testiDegliAvvisi } from './avvisi';
 import { testi } from './lingue';
 import { chiediLaRicerca } from './servizi';
 
@@ -568,6 +569,30 @@ describe('useCornice', () => {
         expect(creaBoard).not.toHaveBeenCalled();
     });
 
+    // Sprint 74 · T6 (voce #2719, Decisione 18231): il «+» e il suo menu hanno il nome che il modulo dà, dal layout o dalla
+    // pagina come le voci; senza, «Crea» nella lingua della persona.
+    it('il «+» e il suo menu si chiamano come dice `createLabel`, dato al layout o con `useCornice`; senza, «Crea» nella lingua (voce 2719, T6.1, T6.2)', async () => {
+        const nomeDelPiu = () => [uno('button.zr-create')?.getAttribute('aria-label'), uno('[role=menu]')?.getAttribute('aria-label')];
+        const crea = [{ label: 'UAT Opportunità', onClick: vi.fn() }];
+
+        await visita(dati, <PaginaB key="1" />, { create: crea, createLabel: 'Nuovo nel CRM' });
+        await clic(uno('button.zr-create'));
+        expect(nomeDelPiu()).toStrictEqual(['Nuovo nel CRM', 'Nuovo nel CRM']);
+        await clic(uno('button.zr-create'));
+
+        await visita(dati, <PaginaCheDa key="2" cose={{ create: crea, createLabel: 'Nuovo in Bookings' }} />);
+        await clic(uno('button.zr-create'));
+        expect(nomeDelPiu()).toStrictEqual(['Nuovo in Bookings', 'Nuovo in Bookings']);
+        await clic(uno('button.zr-create'));
+
+        for (const [lingua, nome] of [['it', 'Crea'], ['es', 'Crear'], ['en', 'Create']] as const) {
+            await visita({ ...dati, lingua }, <PaginaCheDa key={lingua} cose={{ create: crea }} />);
+            await clic(uno('button.zr-create'));
+            expect(nomeDelPiu(), lingua).toStrictEqual([nome, nome]);
+            await clic(uno('button.zr-create'));
+        }
+    });
+
     it('le funzioni possono essere nuove a ogni render: una pagina che cambia stato due volte viene resa tre volte, e il clic sul «+» chiama l\'ultima funzione (sprint 9 · T2.4)', async () => {
         const conta = { render: 0 };
         const segna = vi.fn();
@@ -715,8 +740,8 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(etichette()).toContain(t.dashboard);
         expect(etichette()).not.toContain('CRM');
         expect(sopraLaPagina()).toBeNull();
-        expect(contenitore.textContent).not.toContain(t.acceptanceTitle);
-        expect(contenitore.textContent).not.toContain(t.downTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').downTitle);
 
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="status"]')?.textContent).toBe(t.loading);
@@ -749,6 +774,9 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(forma()).toBe('zr-main is-flush');
 
         await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaCheDa key="1" cose={{ flush: true }} />);
+        // L'avviso c'è quando arriva il pezzo dei suoi testi (dalla v3.7.0): fino ad allora la pagina resta a tutta area.
+        expect([sopraLaPagina(), forma()]).toStrictEqual([null, 'zr-main is-flush']);
+        await act(() => vi.dynamicImportSettled());
         expect(sopraLaPagina()).not.toBeNull();
         expect(forma()).toBe('zr-main');
     });
@@ -785,7 +813,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(300);
         });
-        const t = testi('it');
+        const t = testiDegliAvvisi('it');
 
         expect(tutti('.zr-search-note').map((nota) => [nota.getAttribute('role'), nota.classList.contains('is-error'), nota.textContent])).toStrictEqual([['alert', true, t[testo]]]);
         await clic(uno('.zr-bell'));
@@ -893,7 +921,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         await inDue({ subito, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaB key="2" />);
         expect(etichette()).not.toContain('CRM');
-        expect(sopraLaPagina()?.textContent).toContain(testi('it').downTitle);
+        expect(sopraLaPagina()?.textContent).toContain(testiDegliAvvisi('it').downTitle);
     });
 
     it('il workspace di `dopo` vale su quello di `subito`: se fra le due richieste la sessione è passata a un altro workspace, moduli, nome e slug sono dello stesso workspace (review della PR #67, R6)', async () => {
@@ -934,7 +962,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         nodo.value = 'UAT scritto';
 
         await inDue({ subito: { ...subito, lingua }, dopo: { non_letti: true } }, <PaginaColCampo conta={conta} />);
-        const t = testi(lingua);
+        const t = testiDegliAvvisi(lingua);
 
         expect(sopraLaPagina()?.textContent).toContain(t.downTitle);
         expect(sopraLaPagina()?.textContent).toContain(t.downText);
@@ -952,7 +980,7 @@ describe('la cornice in due dati, sotto il layout', () => {
 
     it('con `dopo` che dice `accettazione_richiesta` lo stato ridotto è quello di sempre, con il suo avviso e il suo pulsante, e non quello di «Zeiras non risponde» (sprint 34 · T4.7)', async () => {
         await inDue({ subito, dopo: { prodotti: [], aziende: [], non_lette: 0, aggiornati_il: dopo.aggiornati_il, accettazione_richiesta: true } }, <PaginaA />);
-        const t = testi('it');
+        const t = testiDegliAvvisi('it');
 
         expect(sopraLaPagina()?.textContent).toContain(t.acceptanceTitle);
         expect(sopraLaPagina()?.querySelector('button')?.textContent).toBe(t.acceptanceAction);
@@ -1608,7 +1636,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: diAltra, dopo: { non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' } }, <PaginaA key="1" />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(etichette()).not.toContain('CRM');
-        expect(contenitore.textContent).toContain(testi('es').downTitle);
+        expect(contenitore.textContent).toContain(testiDegliAvvisi('es').downTitle);
     });
 
     // Sprint 44 · T3.1 (voce #2057, rilievo N2 della seconda lettura dello sprint 42): un `dopo` composto a mano che dice di
@@ -1641,7 +1669,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         await inDue({ subito: allora, dopo: nonLettiDiAltra }, <PaginaA key="1" />);
         expect(avatar()).toBe(altra.nome);
         expect(etichette()).not.toContain('CRM');
-        expect(sopraLaPagina()?.textContent).toContain(testi('es').downTitle);
+        expect(sopraLaPagina()?.textContent).toContain(testiDegliAvvisi('es').downTitle);
         await act(async () => {
             (uno('.zr-avatar-btn') as HTMLElement).click();
         });
@@ -1666,7 +1694,7 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(sopraLaPagina()).toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('7');
         expect(document.body.textContent).not.toContain(dati.persona.nome);
-        expect(document.body.textContent).not.toContain(testi('it').downTitle);
+        expect(document.body.textContent).not.toContain(testiDegliAvvisi('it').downTitle);
     });
 
     // Sprint 41 · T6 (review della PR 75, R4): due salti di Indietro, tre voci, e il menu del profilo aperto: «restano nome ed
@@ -1703,8 +1731,8 @@ describe('la cornice in due dati, sotto il layout', () => {
             expect(testo).toContain(altra.email);
             expect(testo).not.toContain(dati.persona.nome);
             expect(testo).not.toContain(dati.persona.email);
-            expect(testo).not.toContain(testi('it').downTitle);
-            expect(testo).not.toContain(testi('es').downTitle);
+            expect(testo).not.toContain(testiDegliAvvisi('it').downTitle);
+            expect(testo).not.toContain(testiDegliAvvisi('es').downTitle);
         }
     });
 
@@ -1719,8 +1747,8 @@ describe('la cornice in due dati, sotto il layout', () => {
 
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
         expect(sopraLaPagina()).toBeNull();
-        expect(contenitore.textContent).not.toContain(testi('es').downTitle);
-        expect(contenitore.textContent).not.toContain(testi('it').downTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('es').downTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').downTitle);
         expect(contenitore.textContent).not.toContain(dati.persona.nome);
         await clic(uno('.zr-bell'));
         expect(uno('.zr-notif [role="status"]')?.textContent).toBe(testi('es').loading);
@@ -1737,12 +1765,12 @@ describe('la cornice in due dati, sotto il layout', () => {
         nodo.value = 'UAT scritto';
 
         await inDue({ subito: suo, dopo: nonLetti(1, { lingua: 'it', persona: dati.persona, workspace: subito.workspace }) }, <PaginaColCampo conta={conta} />);
-        expect(sopraLaPagina()?.textContent).toContain(testi('it').downTitle);
+        expect(sopraLaPagina()?.textContent).toContain(testiDegliAvvisi('it').downTitle);
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([true, 'UAT scritto', 1]);
 
         await inDue({ subito: suo, dopo: nonLetti(3, { lingua: 'es', persona: altra, workspace: subito.workspace }) }, <PaginaColCampo conta={conta} />);
         expect(uno('.zr-avatar-btn .zr-avatar')?.getAttribute('aria-label')).toBe(altra.nome);
-        expect(sopraLaPagina()?.textContent).toContain(testi('es').downTitle);
+        expect(sopraLaPagina()?.textContent).toContain(testiDegliAvvisi('es').downTitle);
         expect([campo() === nodo, campo().value, conta.montaggi]).toStrictEqual([false, '', 2]);
 
         campo().value = 'UAT scritto di nuovo';

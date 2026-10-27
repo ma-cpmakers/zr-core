@@ -14,6 +14,7 @@ import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
 import * as dellaCampanella from './campanella';
 import { frasiARichiesta } from './campanella';
+import { testiDegliAvvisi } from './avvisi';
 import * as delleLingue from './lingue';
 import { testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
 import { registro } from './registro';
@@ -38,10 +39,11 @@ const datiDiUnMembro: DatiDellaCornice = {
 /** I dati di chi amministra il workspace: con `moduli`, il CRM spento c'è e porta a Impostazioni › Moduli. */
 const dati: DatiDellaCornice = { ...datiDiUnMembro, moduli: 'https://app.zeiras.com/w/acme-marketing/impostazioni/moduli' };
 /**
- * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, solo Project Management ha risorse nel registro; per ultimo il
- * membro del workspace, che non è di un modulo e c'è in ogni workspace.
+ * Le fonti della ricerca coi dati qui sopra: dei moduli attivi, Project Management e, dalla `v3.6.0`, Bookings (voce 2549, T2.5:
+ * i tipi da `fonti` della sua voce) hanno risorse da cercare; per ultimo il membro del workspace, che non è di un modulo e c'è in
+ * ogni workspace.
  */
-const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'home.workspace.membro'] as const;
+const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'bookings.bookings.prenotazione', 'bookings.bookings.calendario', 'home.workspace.membro'] as const;
 const esciSenzaEffetto = () => {};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /**
@@ -99,6 +101,17 @@ afterEach(async () => {
 
 async function mostra(elemento: ReactElement): Promise<void> {
     await act(async () => radice.render(elemento));
+}
+
+/**
+ * Il pezzo dei rimedi della sola tastiera già arrivato: dalla `v3.8.0` lo chiede il primo tasto, che arriva a lui quando il
+ * pezzo c'è (`tastiera.test.ts`). Qui il primo tasto è un Maiusc, che non fa niente: i tasti del caso trovano il pezzo.
+ */
+async function conLaTastiera(): Promise<void> {
+    await act(async () => {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true }));
+        await vi.dynamicImportSettled();
+    });
 }
 
 /** Il giro dopo: le risposte già pronte delle rotte finte arrivano tutte. */
@@ -328,10 +341,17 @@ describe('la Cornice', () => {
     // modulo. Quello corto resta a chi non ha accettato i documenti legali; l'invito corto anche a un browser senza
     // `Intl.ListFormat`.
     it.each<[lingua: string, prodotti: DatiDellaCornice['prodotti'], segnaposto: string, invito: string]>([
-        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        // Sprint 74 · T2.5 (voce 2549): Bookings attivo dà prenotazioni e calendari, dopo le fonti dei moduli che lo precedono nel registro.
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
+        ['es', { crm: 'attivo', bookings: 'attivo' }, 'Busca en el workspace…', 'Busca contactos, empresas, oportunidades, reservas, calendarios y miembros: escribe al menos 2 caracteres.'],
+        ['en', { bookings: 'attivo' }, 'Search the workspace…', 'Search bookings, calendars, and members: type at least 2 characters.'],
         ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'in_arrivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
-        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { pm: 'disponibile', crm: 'in_arrivo', reports: 'attivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
         ['it', {}, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
         ['es', { pm: 'attivo', crm: 'disponibile' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas y miembros: escribe al menos 2 caracteres.'],
         ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
@@ -817,7 +837,7 @@ describe('la Cornice', () => {
 
     it('dopo un `non_letti` i dati buoni letti prima lasciano la cornice ridotta col suo avviso (Indietro su una visita di prima); quelli letti dopo la fanno tornare intera (sprint 35 · T2.2)', async () => {
         const etichette = () => tutti('.zr-nav-label').map((voce) => voce.textContent);
-        const titolo = testi('it').downTitle;
+        const titolo = testiDegliAvvisi('it').downTitle;
         await mostra(<Cornice dati={{ ...dati, prodotti: [], non_letti: true, aggiornati_il: '2026-10-13T08:00:01.000000Z' }} onLogout={esciSenzaEffetto} />);
         expect(contenitore.textContent).toContain(titolo);
 
@@ -1063,6 +1083,32 @@ describe('il colore di ogni workspace nel selettore', () => {
         expect(pallini()).toStrictEqual({ Marketing: 'background: var(--plum);', 'ws-5': 'background: var(--pine);' });
     });
 
+    // Sprint 74 · C5 (voce 2730 di zr-home). Il colore che il workspace ha scelto (`colore`, uno dei cinque toni: `neutral` la parte
+    // server non lo dà) vince sulla regola dell'id; senza colore il tono resta quello della regola, anche negli altri workspace.
+    it('un workspace col suo colore ha il pallino di quel colore, non quello del suo id; gli altri restano col tono della regola (voce 2730)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        // «ws-4» per la regola è plum: col colore scelto è sky.
+        await mostra(<Cornice dati={{ ...dati, aziende: [zeta, { ...acme, workspace: [vendite, { ...marketing, colore: 'sky' }] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.map((azienda) => azienda.workspaces.map((ws) => ws.tone))).toStrictEqual([['citrus'], ['coral', 'sky']]);
+        await clic(uno('.zr-ws-switch'));
+        expect(pallini()).toStrictEqual({ Ricerca: 'background: var(--citrus);', Vendite: 'background: var(--coral);', Marketing: 'background: var(--sky);' });
+    });
+
+    it('un workspace senza id col suo colore ha il pallino di quel colore (voce 2730)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        await mostra(<Cornice dati={{ ...dati, aziende: [{ ...acme, workspace: [marketing, { nome: 'ws-5', slug: 'ws-2', colore: 'pine' }] }] }} onLogout={esciSenzaEffetto} />);
+
+        expect(appShell.mock.lastCall?.[0].companies?.[0]?.workspaces).toStrictEqual([
+            { slug: 'acme-marketing', name: 'Marketing', tone: 'plum' },
+            { slug: 'ws-2', name: 'ws-5', tone: 'pine' },
+        ]);
+    });
+
+    it('nel tipo dei dati il colore di un workspace è facoltativo ed è uno dei toni del selettore, senza neutral: lo guarda tsc (voce 2730)', () => {
+        expectTypeOf<Aziende[number]['workspace'][number]['colore']>().toEqualTypeOf<'pine' | 'citrus' | 'coral' | 'sky' | 'plum' | undefined>();
+    });
+
     it('nel tipo dei dati l\'id di un workspace è facoltativo: i dati di un frontend che non lo danno restano validi, lo guarda tsc (sprint 17 · T4.5)', () => {
         expectTypeOf<{ nome: string; slug: string }>().toExtend<Aziende[number]['workspace'][number]>();
         expectTypeOf<Aziende[number]['workspace'][number]['id']>().toEqualTypeOf<string | undefined>();
@@ -1186,7 +1232,7 @@ describe('il pannello delle notifiche', () => {
 
         await mostra(<Cornice dati={{ ...dati, prodotti: {}, aziende: [], non_lette: 0, accettazione_richiesta: true }} onLogout={esciSenzaEffetto} />);
 
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(t.acceptanceOff);
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toBe(testiDegliAvvisi('it').acceptanceOff);
         expect(uno('.zr-notif [role="status"]')).toBeNull();
     });
 
@@ -1245,11 +1291,11 @@ describe('il pannello delle notifiche', () => {
     const rotte = (elenco: unknown[]) => vi.fn(async (indirizzo: string, opzioni?: RequestInit) => (indirizzo === '/cornice/notifiche' ? risposta({ data: elenco }) : segnateFinoA(opzioni)));
 
     it.each([
-        ['it', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
-        ['es', ['Novedades en el workspace', 'Nueva área'], ['hace 5 minutos', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
-        ['en', ['News in the workspace', 'New area'], ['5 minutes ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
+        ['it', ['Novità nel workspace', 'Nuova area'], ['5 min fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['es', ['Novedades en el workspace', 'Nueva área'], ['hace 5 min', 'ayer', '1 oct'], ['Board', 'CRM', 'Informes', 'Contenidos']],
+        ['en', ['News in the workspace', 'New area'], ['5 min. ago', 'yesterday', 'Oct 1'], ['Board', 'CRM', 'Reports', 'Content']],
         // Come la scrive un sistema: la lingua è la stessa, e `Intl` non la rifiuta.
-        ['it_IT', ['Novità nel workspace', 'Nuova area'], ['5 minuti fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
+        ['it_IT', ['Novità nel workspace', 'Nuova area'], ['5 min fa', 'ieri', '1 ott'], ['Board', 'CRM', 'Report', 'Contenuti']],
     ])('con la lingua "%s", aprendo la campanella il pannello è in caricamento, poi mostra ogni notifica col titolo del suo tipo nella lingua, o quello di ripiego, e l\'ora: quella di un prodotto del registro col suo nome nella lingua, la sua icona e il suo tono, le altre senza prodotto, tutte in «Per me» come in «Tutte» (sprint 5 · T3.1; sprint 6 · T3.1-T3.3; sprint 12 · T3.1, T3.2)', async (lingua, [diRipiego, dellaCartella], [pocoFa, ieri, giorniFa], [pm, crm, reports, content]) => {
         const elenco = inAttesa();
         const fetchFinto = vi.fn((_indirizzo: string, _opzioni?: RequestInit) => elenco.promessa);
@@ -1327,7 +1373,7 @@ describe('il pannello delle notifiche', () => {
         expect(righe()).toStrictEqual([con, senza, senza, senza, senza, con, senza, senza]);
         // Il titolo resta quello del tipo, e il prodotto con l'ora restano dov'erano.
         expect(titoli()).toStrictEqual(Array(8).fill('Nuova area'));
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 minuti fa'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(8).fill('Board · 5 min fa'));
     });
 
     /** Una notifica su un'app: il backoffice dà in `risorsa_nome` il codice dell'app, non un nome. */
@@ -1359,7 +1405,7 @@ describe('il pannello delle notifiche', () => {
             ...Array(7).fill('Un modulo è stato attivato o disattivato'), 'Novità nel workspace', 'Novità nel workspace', 'Nuova area', 'Novità nel workspace', 'Novità nel workspace',
         ]);
         // Il nome sta nella seconda riga e solo lì: davanti all'ora c'è il prodotto di `app`, che queste notifiche non hanno.
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 minuti fa'));
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(Array(12).fill('5 min fa'));
         expect(voci().slice(0, 9).map((voce) => /\bpm\b|reports|crm|uat-app-nuova|home/.test(voce.textContent ?? ''))).toStrictEqual(Array(9).fill(false));
     });
 
@@ -2414,7 +2460,7 @@ describe('il pannello delle notifiche', () => {
 
     // Sprint 32 · T3 (voce #1913). Una notifica che racconta più azioni arriva dalla parte server con l'istante dell'ultima in
     // `creata_il` (lo prova `NotificheTest`): il pannello mostra quell'ora, e «Segna tutte come lette» arriva fin lì.
-    it('una notifica che racconta più azioni — nata un\'ora fa, l\'ultima azione due minuti fa — mostra «2 minuti fa» e sta sopra quella di dieci minuti fa; «Segna tutte come lette» manda l\'istante dell\'ultima azione, che non sta prima della nascita di nessuna delle due (sprint 32 · T3.1, T3.3)', async () => {
+    it('una notifica che racconta più azioni — nata un\'ora fa, l\'ultima azione due minuti fa — mostra «2 min fa» e sta sopra quella di dieci minuti fa; «Segna tutte come lette» manda l\'istante dell\'ultima azione, che non sta prima della nascita di nessuna delle due (sprint 32 · T3.1, T3.3)', async () => {
         // Come le dà la parte server: nell'ordine del backoffice, che è sull'ultima azione.
         const accorpate = [
             { id: 'uat-n62', creata_il: '2026-10-06T11:58:00.000Z', letta: false, app: 'pm', tipo: 'com.zeiras.board.lista.modificata' },
@@ -2425,10 +2471,32 @@ describe('il pannello delle notifiche', () => {
         await mostra(<Cornice dati={{ ...dati, non_lette: 2 }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-bell'));
 
-        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Board · 2 minuti fa', 'Board · 10 minuti fa']);
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['Board · 2 min fa', 'Board · 10 min fa']);
         await clic(segnaTutte());
         expect(richieste(fetchFinto).slice(0, 2)).toStrictEqual(['GET /cornice/notifiche', 'POST /cornice/notifiche/letture']);
         expect(corpoDi(fetchFinto.mock.calls[1]?.[1])).toStrictEqual({ fino_a: '2026-10-06T11:58:00.000Z', workspace: 'acme-marketing' });
+    });
+
+    // Sprint 74 · T5 (voce #2718, Decisione 18231): l'ora nella forma corta dei design di zr-home, «10 min fa», «1 h fa»; «ora»,
+    // «ieri» e la data del calendario restano quelle di prima.
+    it.each([
+        ['it', ['ora', '10 min fa', '1 h fa', '3 h fa', 'ieri', '1 ott']],
+        ['es', ['ahora', 'hace 10 min', 'hace 1 h', 'hace 3 h', 'ayer', '1 oct']],
+        ['en', ['now', '10 min. ago', '1 hr. ago', '3 hr. ago', 'yesterday', 'Oct 1']],
+    ])('con la lingua "%s" l\'ora delle notifiche è corta: minuti e ore abbreviati, «adesso», «ieri» e la data come prima (voce 2718, T5.1, T5.2)', async (lingua, attese) => {
+        const elenco = [
+            nata('uat-n86', '2026-10-06T11:59:30Z'),
+            nata('uat-n85', '2026-10-06T11:50:00Z'),
+            nata('uat-n84', '2026-10-06T11:00:00Z'),
+            nata('uat-n83', '2026-10-06T09:00:00Z'),
+            nata('uat-n82', '2026-10-05T12:00:00Z'),
+            nata('uat-n81', '2026-10-01T09:00:00Z'),
+        ];
+        vi.stubGlobal('fetch', rotte(elenco));
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 6 }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        expect(voci().map((voce) => voce.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(attese);
     });
 
     // Sprint 21 · T3 (voce #1641): da una notifica si apre la sua risorsa. Dove, lo dice il registro (`notifiche` della voce del
@@ -2570,12 +2638,15 @@ describe('il pannello delle notifiche', () => {
     it('un clic su una notifica di ogni riga delle destinazioni apre il suo primo percorso nel suo modulo, con gli id al posto dei segnaposto (sprint 70 · T1.2)', async () => {
         const righe = Object.entries(righeDelleNotifiche).flatMap(([app, delProdotto]) => delProdotto.map(({ tipo, percorso }) => ({ app, tipo, percorso })));
         const elenco = righe.map(({ app, tipo, percorso }, indice) => ({
-            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app, tipo,
+            // v3.6.1: le righe della Dashboard sono di notifiche che non vengono da un'app (`app: null`).
+            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: app === 'home' ? null : app, tipo,
             ids: Object.fromEntries([...percorso.matchAll(/\{([a-z_]+)\}/g)].map(([, chiave = '']) => [chiave, `uat-${chiave.replace('_', '-')}`])),
         }));
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
-        expect(righe).toHaveLength(28);
+        // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
+        // accettato, che si apre nella Dashboard.
+        expect(righe).toHaveLength(35);
         expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
         // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.
@@ -3476,7 +3547,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 21 · T2 (voce #1641): le notifiche del CRM arrivano con `app: 'crm'`, e davanti all'ora c'è il nome del modulo.
-    it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche del CRM, comprese le due delle aziende, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, con «CRM» (sprint 21 · T2.1, T2.2, T5.1)', async (lingua, pocoFa) => {
+    it.each([['it', '5 min fa'], ['en', '5 min. ago'], ['es', 'hace 5 min']])('con la lingua "%s", le nove notifiche del CRM, comprese le due delle aziende, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un tipo del CRM che zr-core non conosce ancora ha il titolo di ripiego, con «CRM» (sprint 21 · T2.1, T2.2, T5.1)', async (lingua, pocoFa) => {
         // Contatti, pipeline, note e aziende: opportunità, attività e «assegnata» hanno il loro caso, qui sotto (sprint 22 · T5.1).
         const delCrm = titoliPerTipo.filter(([tipo]) => /^com\.zeiras\.crm\.(persona|pipeline|nota|organizzazione)\./.test(tipo));
         const elenco = [
@@ -3497,7 +3568,7 @@ describe('il pannello delle notifiche', () => {
     // Sprint 22 · T5 (voce #1720): i nove tipi nuovi del CRM arrivano con `app: 'crm'`. I cinque eventi hanno `com.zeiras.` davanti;
     // i quattro «assegnata» no: il loro `tipo` è com'è nel backoffice, e lo stesso nome col prefisso resta un tipo che zr-core non
     // conosce.
-    it.each([['it', '5 minuti fa'], ['en', '5 minutes ago'], ['es', 'hace 5 minutos']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
+    it.each([['it', '5 min fa'], ['en', '5 min. ago'], ['es', 'hace 5 min']])('con la lingua "%s", le nove notifiche nuove del CRM, opportunità, attività e ciò che viene assegnato, hanno nel pannello il titolo del loro tipo e «CRM» davanti all\'ora; un «assegnata» con `com.zeiras.` davanti ha il titolo di ripiego (sprint 22 · T5.1, T5.2)', async (lingua, pocoFa) => {
         // Le nove del CRM: dopo, dallo sprint 24, la tabella ha la scheda assegnata di Project Management.
         const nuove = titoliPerTipo.slice(31, 40);
         const elenco = [
@@ -3521,7 +3592,7 @@ describe('il pannello delle notifiche', () => {
     });
 
     // Sprint 21 · T5 (voce #1706): le viste salvate sono di Project Management, e arrivano con `app: 'pm'`.
-    it.each([['it', '5 minuti fa', 'Board'], ['en', '5 minutes ago', 'Board'], ['es', 'hace 5 minutos', 'Board']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
+    it.each([['it', '5 min fa', 'Board'], ['en', '5 min. ago', 'Board'], ['es', 'hace 5 min', 'Board']])('con la lingua "%s", le tre notifiche delle viste di una board hanno nel pannello il titolo del loro tipo e il nome di Project Management davanti all\'ora (sprint 21 · T5.1)', async (lingua, pocoFa, nomeDelModulo) => {
         const delleViste = titoliPerTipo.filter(([tipo]) => tipo.startsWith('com.zeiras.board.vista.'));
         const elenco = delleViste.map(([tipo], indice) => ({ ...nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z'), tipo, app: 'pm' }));
         vi.stubGlobal('fetch', rotte(elenco));
@@ -4742,6 +4813,144 @@ describe('la ricerca', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
+    /** Batte una parola nel campo, come una persona, senza lasciar passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
+    async function batti(parola: string): Promise<void> {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+    /** Il testo sotto il campo, così come lo legge chi guarda: «Nessun risultato per…», «Sto cercando…», i titoli. */
+    const testoDelPannello = () => uno('.zr-search-panel')?.textContent ?? '';
+
+    it.each([
+        ['senza risultati', [], 'Nessun risultato per'],
+        ['con risultati', vecchi, 'Risultato di «ua»'],
+    ])('dopo una parola %s, una parola nuova mostra il caricamento dal tasto: né «Nessun risultato» né i risultati di prima nei 300 ms prima che l\'`AppShell` chiami la cornice, poi i suoi risultati (voce 2062 · T4.1, T4.2)', async (_caso, diPrima, testoDiPrima) => {
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? trovati(diPrima) : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        expect(testoDelPannello()).toContain(testoDiPrima);
+
+        await batti('uat');
+        const visti = [testoDelPannello()];
+        // A 1, 150 e 298 ms dal tasto: l'`AppShell` chiama la cornice a 300.
+        for (const ms of [1, 149, 148]) {
+            await act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+            visti.push(testoDelPannello());
+        }
+        expect(visti.filter((testo) => testo !== 'Sto cercando…')).toStrictEqual([]);
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(2); await giro(); });
+        await uat.arriva(trovati(nuovi));
+        expect(titoli()).toStrictEqual(['Risultato di «uat»']);
+    });
+
+    it.each([
+        ['senza risultati', []],
+        ['con risultati', vecchi],
+    ])('la risposta della parola di prima che arriva %s dopo il tasto, prima che l\'`AppShell` chiami la cornice, non si scrive sotto la parola nuova: resta il caricamento (voce 2062 · T4.1, T4.2)', async (_caso, diPrima) => {
+        const ua = inAttesaDellaRicerca();
+        const uat = inAttesaDellaRicerca();
+        vi.stubGlobal('fetch', vi.fn((_indirizzo: string, opzioni?: RequestInit) => (parolaDi(opzioni) === 'ua' ? ua.promessa : uat.promessa)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+
+        await batti('uat');
+        await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+        await ua.arriva(trovati(diPrima));
+        expect(testoDelPannello()).toBe('Sto cercando…');
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); await giro(); });
+        await uat.arriva(trovati(nuovi));
+        expect(titoli()).toStrictEqual(['Risultato di «uat»']);
+    });
+
+    it('un `input` che lascia nel campo la parola che c\'era (la stessa incollata sopra la selezione) non mette la ricerca in caricamento: l\'`AppShell` non chiama la cornice, e restano i risultati (voce 2062 · T4.2)', async () => {
+        const fetchFinto = vi.fn(async () => trovati(vecchi));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+
+        await batti('ua');
+        expect(inCaricamento()).toBeUndefined();
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000); await giro(); });
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it('nel freno dopo un 429 un tasto non mette la ricerca in caricamento: resta l\'errore (voce 2062 · T4.3)', async () => {
+        const frenata = { ok: false, status: 429, headers: new Headers({ 'Retry-After': '30' }), json: async () => ({ errore: 'troppe_richieste' }) } as unknown as Response;
+        vi.stubGlobal('fetch', vi.fn(async () => frenata));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
+
+        await batti('uat');
+        expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
+        expect(inCaricamento()).toBeUndefined();
+    });
+
+    it('sotto i 2 caratteri un tasto lascia l\'invito, e tornati alla parola di prima ci sono i suoi risultati: il caricamento non resta (voce 2062 · T4.3)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        await batti('u');
+        expect(testoDelPannello()).toContain('scrivi almeno 2 caratteri.');
+        await scrivi('ua');
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
+    it('un campo della pagina fuori dalla ricerca non la mette in caricamento: l\'ascolto del tasto sta sulla finestra e guarda solo il campo della ricerca (voce 2062 · l\'ascolto del tasto)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        const delModulo = document.createElement('input');
+        document.body.append(delModulo);
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(delModulo, 'uat');
+            delModulo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        delModulo.remove();
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
+    it('un campo dentro una `.zr-search` della pagina non mette la ricerca in caricamento, e un `input` sulla finestra passa senza errore (voce 2062 · l\'ascolto del tasto)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await scrivi('ua');
+        const delModulo = document.createElement('div');
+        delModulo.className = 'zr-search';
+        delModulo.append(document.createElement('input'));
+        document.body.append(delModulo);
+        const errori = vi.fn();
+        window.addEventListener('error', errori);
+        await act(async () => {
+            const campo = delModulo.firstChild as HTMLInputElement;
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'uat');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            window.dispatchEvent(new Event('input'));
+            document.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        window.removeEventListener('error', errori);
+        delModulo.remove();
+        expect(errori).not.toHaveBeenCalled();
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+    });
+
+    it('smontata, la cornice toglie dalla finestra l\'ascolto del tasto che vi aveva messo (voce 2062 · l\'ascolto del tasto)', async () => {
+        const messi = vi.spyOn(window, 'addEventListener');
+        const tolti = vi.spyOn(window, 'removeEventListener');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        const delTasto = messi.mock.calls.filter(([evento]) => evento === 'input').map(([, ascolto]) => ascolto);
+        expect(delTasto).toHaveLength(1);
+        await act(async () => radice.unmount());
+        expect(tolti.mock.calls.filter(([evento, ascolto]) => evento === 'input' && ascolto === delTasto[0])).toHaveLength(1);
+    });
+
     it.each([
         ['it', 'Board', ['Board', 'Aree']],
         ['es', 'Board', ['Tableros', 'Áreas']],
@@ -5078,6 +5287,110 @@ describe('la ricerca', () => {
         expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([attesa]);
     });
 
+    // Sprint 74 · T2 (voce 2549): le prenotazioni e i calendari di Bookings nella ricerca. Le loro risorse stanno in
+    // `resources/registro/ricerca.json` e i loro testi in `resources/lingue/ricerca/`, che legge solo il pezzo della ricerca. La
+    // seconda riga di una prenotazione dice quando comincia, nella lingua e nel fuso che il risultato porta, e lo stato.
+    const prenotazione = (contesto: unknown, id = '01k7p1n1') => ({ tipo: 'bookings.prenotazione', id, titolo: 'Mario Rossi · Personal training', contesto });
+    const quando = (fuso = 'Europe/Rome') => ({ il: '2026-11-04T09:00:00Z', fuso });
+
+    it.each<[lingua: string, gruppo: string, seconda: string]>([
+        ['it', 'Prenotazioni', 'mer 4 nov, 10:00 · Confermata'],
+        ['es', 'Reservas', 'mié, 4 nov, 10:00 · Confirmada'],
+        ['en', 'Bookings', 'Wed, Nov 4, 10:00 AM · Confirmed'],
+        // Una lingua che zr-core non ha: in inglese, anche la data.
+        ['zz', 'Bookings', 'Wed, Nov 4, 10:00 AM · Confirmed'],
+        // Una variante regionale che `Intl` rifiuta (`es_ES`): la data nella lingua del file dei testi, non vuota.
+        ['es_ES', 'Reservas', 'mié, 4 nov, 10:00 · Confirmada'],
+    ])('con la lingua "%s", una prenotazione sta nel suo gruppo e la seconda riga dice giorno e ora nel fuso del risultato, poi lo stato nella lingua (sprint 74 · T2.1)', async (lingua, gruppo, seconda) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([prenotazione({ quando: quando(), stato: 'confermata' })])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Mario Rossi · Personal training']);
+        expect(tutti('.zr-search-panel .zr-search-group').map((riga) => riga.textContent)).toStrictEqual([gruppo]);
+        expect(secondeRighe()).toStrictEqual([seconda]);
+    });
+
+    it('l\'ora della prenotazione è quella del fuso che il risultato porta: né quella in UTC né quella del browser (sprint 74 · T2.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            prenotazione({ quando: quando('America/New_York'), stato: 'confermata' }, '01k7p1n1'),
+            prenotazione({ quando: quando('Asia/Tokyo'), stato: 'confermata' }, '01k7p1n2'),
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual(['mer 4 nov, 04:00 · Confermata', 'mer 4 nov, 18:00 · Confermata']);
+    });
+
+    it.each<[lingua: string, testi: string[]]>([
+        ['it', ['Confermata', 'Svolta', 'Non presentato', 'Annullata']],
+        ['es', ['Confirmada', 'Realizada', 'No presentado', 'Cancelada']],
+        ['en', ['Confirmed', 'Completed', 'No-show', 'Cancelled']],
+    ])('con la lingua "%s", i quattro stati di una prenotazione hanno il loro testo; un codice che il registro non ha, o il testo di uno stato al posto del codice, non entra nella seconda riga (sprint 74 · T2.2)', async (lingua, testi) => {
+        const stati = ['confermata', 'svolta', 'non_presentato', 'annullata', 'in_attesa', 'Confermata'];
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(stati.map((stato, indice) => prenotazione({ stato }, `01k7p2n${indice}`)))));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(secondeRighe()).toStrictEqual([...testi, null, null]);
+        const pannello = uno('.zr-search-panel')?.textContent ?? '';
+        expect(['confermata', 'non_presentato', 'in_attesa'].filter((codice) => pannello.includes(codice))).toStrictEqual([]);
+    });
+
+    it.each<[lingua: string, gruppo: string]>([
+        ['it', 'Calendari di prenotazione'],
+        ['es', 'Calendarios de reservas'],
+        ['en', 'Booking calendars'],
+    ])('con la lingua "%s", un calendario di prenotazione sta nel suo gruppo, senza seconda riga, accanto a quello delle prenotazioni (sprint 74 · T2.3)', async (lingua, gruppo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'bookings.calendario', id: '01k7c4l1', titolo: 'Sala pesi', contesto: { stato: 'confermata' } },
+            prenotazione({ stato: 'svolta' }),
+        ])));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Sala pesi', 'Mario Rossi · Personal training']);
+        expect(tutti('.zr-search-panel .zr-search-group').map((riga) => riga.textContent)).toStrictEqual([gruppo, { it: 'Prenotazioni', es: 'Reservas', en: 'Bookings' }[lingua]]);
+        expect(secondeRighe()).toStrictEqual([null, { it: 'Svolta', es: 'Realizada', en: 'Completed' }[lingua]]);
+    });
+
+    it.each<[tipo: string, id: string, indirizzo: string]>([
+        ['bookings.prenotazione', '01k7p3n1', 'https://bookings.zeiras.com/w/zeta-ricerca/prenotazioni/01k7p3n1'],
+        ['bookings.calendario', '01k7c3l1', 'https://bookings.zeiras.com/w/zeta-ricerca/calendari/01k7c3l1'],
+    ])('scegliere un risultato `%s` apre la sua pagina in Bookings, nel workspace che la risposta dice e non in quello della pagina (sprint 74 · T2.4)', async (tipo, id, indirizzo) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([{ tipo, id, titolo: 'Uno da aprire', contesto: null }], 'zeta-ricerca')));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        await act(async () => {
+            righe()[0]?.click();
+            await giro();
+        });
+        expect(naviga.mock.calls).toStrictEqual([[indirizzo]]);
+    });
+
+    it.each<[caso: string, contesto: unknown, attesa: string | null]>([
+        ['con `quando` null dice solo lo stato', { quando: null, stato: 'svolta' }, 'Svolta'],
+        ['senza `quando` dice solo lo stato', { stato: 'annullata' }, 'Annullata'],
+        ['con `quando` senza il fuso dice solo lo stato', { quando: { il: '2026-11-04T09:00:00Z' }, stato: 'svolta' }, 'Svolta'],
+        ['con `quando` senza l\'istante dice solo lo stato', { quando: { fuso: 'Europe/Rome' }, stato: 'svolta' }, 'Svolta'],
+        ['con un fuso che `Intl` rifiuta dice solo lo stato', { quando: quando('Marte/Olympus'), stato: 'svolta' }, 'Svolta'],
+        ['con un istante che non è una data dice solo lo stato', { quando: { il: 'domani', fuso: 'Europe/Rome' }, stato: 'svolta' }, 'Svolta'],
+        ['con `quando` scritto come testo dice solo lo stato', { quando: '2026-11-04T09:00:00Z', stato: 'svolta' }, 'Svolta'],
+        ['con `quando` a metà e senza stato non ha una seconda riga', { quando: { il: 'domani', fuso: 'Europe/Rome' } }, null],
+        ['col solo `quando` dice giorno e ora', { quando: quando() }, 'mer 4 nov, 10:00'],
+        ['senza contesto non ha una seconda riga', null, null],
+    ])('una prenotazione %s: mai «Invalid Date», e la lista dei risultati resta intera (sprint 74 · T2.6)', async (_caso, contesto, attesa) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([prenotazione(contesto, '01k7p4n1'), { tipo: 'crm.persona', id: '01k7p4n2', titolo: 'Ada Lovelace', contesto: { ruolo: 'Direttrice' } }])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Mario Rossi · Personal training', 'Ada Lovelace']);
+        expect(secondeRighe()).toStrictEqual([attesa, 'Direttrice']);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain('Invalid');
+    });
+
     it.each<[come: string, scegli: () => void]>([
         ['con un clic', () => righe()[0]?.click()],
         ['con Invio', () => uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))],
@@ -5096,6 +5409,71 @@ describe('la ricerca', () => {
             await giro();
         });
         expect(naviga.mock.calls).toStrictEqual([['https://app.zeiras.com/w/zeta-ricerca/impostazioni/membri/01k7c1m2']]);
+    });
+
+    // Riga 60 delle richieste al design system: aperto un risultato, l'`AppShell` lascia la parola nel campo.
+    it.each<[come: string, scegli: () => void]>([
+        ['con un clic', () => righe()[0]?.click()],
+        ['con Invio', () => uno('.zr-search input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))],
+    ])('scelto un risultato %s il campo della ricerca si svuota e la ricerca resta chiusa; ripreso il campo, sotto c\'è l\'invito a scrivere (riga 60)', async (_come, scegli) => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={dati} naviga={naviga} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        expect(titoli()).toStrictEqual(['Risultato di «ua»']);
+        await act(async () => {
+            scegli();
+            await giro();
+        });
+
+        expect(naviga).toHaveBeenCalledOnce();
+        expect(campo.value).toBe('');
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(document.activeElement).not.toBe(campo);
+        await act(async () => campo.focus());
+        expect(righe()).toHaveLength(0);
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).not.toBe('');
+    });
+
+    it('chiusa la ricerca con Esc, senza scegliere un risultato, la parola resta nel campo (riga 60)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati(vecchi)));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        await act(async () => {
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await giro();
+        });
+
+        expect(uno('.zr-search-panel')).toBeNull();
+        expect(campo.value).toBe('uat');
+    });
+
+    it('Invio senza una riga da scegliere — a zero risultati — non svuota il campo: la parola resta, sotto «Nessun risultato» (riga 60)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const campo = uno('.zr-search input') as HTMLInputElement;
+
+        await scrivi('uat');
+        await act(async () => {
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            await giro();
+        });
+
+        expect(campo.value).toBe('uat');
+        expect(testoDelPannello()).toContain('Nessun risultato per');
     });
 
     it('due cartelle si aprono sulla stessa pagina del workspace e restano due risultati (sprint 6 · T5.1)', async () => {
@@ -7387,7 +7765,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([]);
         expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
         // Non è un `403 accettazione_richiesta`: niente avviso sopra la pagina, e la campanella ha ancora il suo numero.
-        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
         expect(fetchFinto).toHaveBeenCalledOnce();
 
@@ -7474,7 +7852,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(inAttesa()).toBe(false);
         expect(titoli()).toStrictEqual([]);
         expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
-        expect(contenitore.textContent).not.toContain(testi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
         expect(uno('.zr-shell')).not.toBeNull();
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
 
@@ -7729,6 +8107,7 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     /** Come il clic di una persona: il pulsante prende il fuoco, poi il clic. */
     const apri = async () => {
@@ -7768,7 +8147,7 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
 
         await apri();
 
-        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testi('it').acceptanceOff);
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testiDegliAvvisi('it').acceptanceOff);
         expect(fetchFinto).not.toHaveBeenCalled();
         expect(scelta()).not.toBeNull();
         expect(document.activeElement).toBe(scelta());
@@ -7957,6 +8336,27 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
         expect(document.activeElement).toBe(uno('.zr-top-actions > .zr-notif [role="tab"][aria-selected="true"]'));
     });
 
+
+    // Riga 85 delle richieste al design system: l'avatar di chi ha fatto è un `role="img"` col nome, dentro il pulsante della
+    // notifica; quando il titolo dice già quel nome, un lettore di schermo lo leggeva due volte.
+    it('l\'avatar di una notifica il cui titolo dice già il nome di chi ha fatto è nascosto ai lettori di schermo; quello di una notifica il cui titolo non lo dice resta com\'è, anche nelle righe che entrano con «Tutte» (riga 85)', async () => {
+        const conChi = (id: string, inPiu: Record<string, unknown>) => ({ id, creata_il: '2026-10-06T11:55:00Z', letta: false, app: 'pm', autore_nome: 'Marta Rossi', ...inPiu });
+        vi.stubGlobal('fetch', rotte(() => risposta({ data: [
+            conChi('uat-n85a', { tipo: 'com.zeiras.board.cartella.creata' }),
+            conChi('uat-n85b', { tipo: 'com.zeiras.uat.sconosciuto' }),
+            conChi('uat-n85c', { tipo: 'com.zeiras.board.cartella.creata', autore_nome: 'Bruno', per_me: false }),
+        ] })));
+        await laCornice();
+        await apri();
+        const righe = () => tutti('.zr-notif-list .zr-notif-item').map((riga) => [riga.querySelector('.zr-notif-title')?.textContent, riga.querySelector('.zr-avatar')?.getAttribute('aria-hidden') ?? null]);
+
+        expect(righe()).toStrictEqual([['\u{2068}Marta Rossi\u{2069} ha creato un\'area', 'true'], [expect.not.stringContaining('Marta'), null]]);
+
+        await clic(linguette()[1]);
+
+        expect(righe()).toStrictEqual([['\u{2068}Marta Rossi\u{2069} ha creato un\'area', 'true'], [expect.not.stringContaining('Marta'), null], ['\u{2068}Bruno\u{2069} ha creato un\'area', 'true']]);
+        expect(tutti('.zr-notif-list .zr-avatar').map((avatar) => avatar.getAttribute('aria-label'))).toStrictEqual(['Marta Rossi', 'Marta Rossi', 'Bruno']);
+    });
     it('fuori dalla cornice non si tocca niente: un pannello accanto a una barra con le stesse classi, ma non dentro la cornice, non prende il fuoco (T3.1)', async () => {
         vi.stubGlobal('fetch', rotte(() => risposta({ data: elenco })));
         await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
@@ -7982,6 +8382,142 @@ describe('aprendo la campanella il fuoco entra nel pannello delle notifiche (spr
     });
 });
 
+// Riga 11 delle richieste al design system: scelta una voce del menu «+» con la tastiera, il menu se ne va con dentro il fuoco,
+// e il fuoco restava alla pagina. Torna al «+», come dopo Esc; a chi lo prende nel frattempo non si toglie.
+describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+» (riga 11)', () => {
+    const piu = () => uno('.zr-shell .zr-create') as HTMLButtonElement;
+    const voce = (nome: string) => tutti('.zr-menu [role="menuitem"]').find((una) => una.textContent === nome) ?? null;
+    /** Come Invio o lo spazio su un pulsante: il tasto, poi il clic che il browser fa da sé. */
+    const scegli = async (elemento: HTMLElement | null, key: string) => act(async () => {
+        elemento?.focus();
+        elemento?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        elemento?.click();
+        await prossimoGiro();
+    });
+    const laCornice = async (create: { label: string; onClick?: () => void }[]) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} create={create}><button type="button" id="della-pagina">Della pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await act(async () => piu().focus());
+        await clic(piu());
+    };
+
+    it.each(['Enter', ' '])('scelta una voce col tasto «%s», il menu si chiude, la voce fa la sua parte e il fuoco è sul «+»', async (key) => {
+        const fatto = vi.fn();
+        await laCornice([{ label: 'Nuova scheda', onClick: fatto }]);
+        expect(document.activeElement).toBe(voce('Nuova scheda'));
+
+        await scegli(voce('Nuova scheda'), key);
+
+        expect(fatto).toHaveBeenCalledOnce();
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(piu());
+    });
+
+    it('una voce che dà il fuoco a un altro elemento — un dialogo che si apre, un campo — lo lascia lì', async () => {
+        await laCornice([{ label: 'Nuova scheda', onClick: () => document.getElementById('della-pagina')?.focus() }]);
+
+        await scegli(voce('Nuova scheda'), 'Enter');
+
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+    });
+
+    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo', async () => {
+        const velo = document.createElement('div');
+        velo.className = 'zr-scrim';
+        velo.innerHTML = '<div class="zr-dialog" role="dialog"><button type="button">Nel dialogo</button></div>';
+        await laCornice([{ label: 'Nuova scheda', onClick: () => document.body.append(velo) }]);
+
+        await scegli(voce('Nuova scheda'), 'Enter');
+
+        expect(uno('.zr-menu')).toBeNull();
+        expect(document.activeElement).not.toBe(piu());
+        velo.remove();
+    });
+});
+
+// Riga 6 delle richieste al design system: le voci «Presto» non portano da nessuna parte ma fermavano il Tab, e un lettore di
+// schermo leggeva «CRMPresto». Col pezzo della tastiera escono dal giro del Tab, e il nome dice la voce e lo stato, separati.
+describe('le voci «Presto» escono dal giro del Tab e dicono nome e stato separati (riga 6)', () => {
+    const voci = () => tutti('.zr-shell a.zr-nav-item');
+    const comeSono = () => voci().map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('tabindex'), voce.getAttribute('aria-label')]);
+    const conIDati = async (lingua: string, prodotti: DatiDellaCornice['prodotti']) => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, lingua, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+
+    it('col pezzo della tastiera arrivato una voce «Presto» ha `tabindex="-1"` e il nome «<voce>, Presto»; le altre restano come sono, anche quella che smette di essere «Presto», e il nome segue la lingua', async () => {
+        await conIDati('it', { pm: 'attivo', crm: 'in_arrivo' });
+        await conLaTastiera();
+
+        expect(comeSono().slice(0, 3)).toStrictEqual([['Dashboard', null, null], ['Board', null, null], ['CRM', '-1', 'CRM, Presto']]);
+        expect(comeSono().slice(3, -1).map(([nome, fermata, etichetta]) => fermata === '-1' && etichetta === `${nome}, Presto`)).toStrictEqual(Array(5).fill(true));
+        expect(comeSono().at(-1)).toStrictEqual(['Impostazioni', null, null]);
+
+        await conIDati('it', { pm: 'attivo', crm: 'attivo' });
+
+        expect(comeSono()[2]).toStrictEqual(['CRM', null, null]);
+
+        await conIDati('en', { pm: 'attivo', crm: 'in_arrivo' });
+        const soon = uno('.zr-shell a.zr-nav-item.is-soon .zr-nav-soon')?.textContent;
+
+        expect(soon).not.toBe('Presto');
+        expect(comeSono()[2]).toStrictEqual(['CRM', '-1', `CRM, ${soon}`]);
+    });
+});
+
+// Riga 48 delle richieste al design system: nel selettore dei workspace Home e Fine non facevano niente, e col Tab il fuoco usciva
+// verso la barra laterale nascosta (`aria-hidden`) col pannello ancora aperto. Col pezzo della tastiera Home e Fine vanno alla
+// prima e all'ultima voce, e il fuoco che va a un elemento fuori dal selettore lo chiude.
+describe('nel selettore dei workspace Home e Fine vanno alla prima e all\'ultima voce, e il fuoco che esce lo chiude (riga 48)', () => {
+    const voci = () => tutti('.zr-shell .zr-ws-menu .zr-ws-item');
+    const aperto = () => uno('.zr-shell .zr-ws')?.classList.contains('is-open');
+    const conIlSelettoreAperto = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(uno('.zr-ws-switch'));
+    };
+    const premi = async (key: string) => {
+        await act(async () => {
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        });
+    };
+
+    it('Fine porta il fuoco all\'ultima voce, Home alla prima, e il pannello resta aperto', async () => {
+        await conIlSelettoreAperto();
+        const [prima, , ...altre] = voci();
+
+        expect([aperto(), altre.length > 0, document.activeElement === prima]).toStrictEqual([true, true, false]);
+        await act(async () => voci()[1]?.focus());
+        await premi('End');
+        expect([document.activeElement, aperto()]).toStrictEqual([voci().at(-1), true]);
+        await premi('Home');
+        expect([document.activeElement, aperto()]).toStrictEqual([voci()[0], true]);
+    });
+
+    it('il fuoco che va alla pagina chiude il pannello e resta dove è andato; fra le voci, verso il pulsante del selettore o fuori dalla finestra il pannello resta aperto', async () => {
+        await conIlSelettoreAperto();
+
+        await act(async () => voci()[1]?.focus());
+        await act(async () => uno('.zr-ws-switch')?.focus());
+        await act(async () => {
+            uno('.zr-ws-switch')?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+        });
+        expect(aperto()).toBe(true);
+
+        await act(async () => uno('.zr-main button')?.focus());
+        expect([aperto(), document.activeElement]).toStrictEqual([false, uno('.zr-main button')]);
+    });
+});
+
 describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab resta dentro (sprint 30 · T4)', () => {
     const { Dialog, DetailPanel, Menu } = componenti;
     const senzaEffetto = () => {};
@@ -7993,6 +8529,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const conIlFuoco = async (elemento: HTMLElement | null) => {
         expect(elemento).not.toBeNull();
@@ -8690,6 +9227,7 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const barra = () => uno('.zr-shell nav.zr-nav');
 
@@ -8784,6 +9322,45 @@ describe('il menu del profilo e il selettore dei workspace aperti non danno erro
     });
 });
 
+// Riga 102 delle richieste al design system (zr-pm-07, 26/10/2026). Il `DetailPanel` non modale sta a `--z-dialog` e i menu
+// della barra in alto a `--z-dropdown`: col pannello aperto il menu del profilo e il pannello delle notifiche finivano sotto,
+// e «Esci» non si cliccava col mouse. Aperti, la cornice li alza di un gradino sopra il pannello, col token (in un DOM senza
+// geometria si guarda lo stile scritto; la prova che il clic arriva è in `scripts/uat-cornice.mjs`).
+describe('i menu della barra in alto stanno sopra il pannello di dettaglio (riga 102 delle richieste)', () => {
+    const SOPRA_IL_PANNELLO = 'calc(var(--z-dialog) + 1)';
+    const laCornice = async () => {
+        await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+
+    it('aperti, il menu del profilo e il pannello delle notifiche hanno il gradino sopra il pannello', async () => {
+        await laCornice();
+
+        await clic(uno('.zr-avatar-btn'));
+        expect(uno('.zr-top-actions > .zr-profile-menu')?.style.getPropertyValue('z-index')).toBe(SOPRA_IL_PANNELLO);
+        await clic(uno('.zr-bell'));
+        expect(uno('.zr-top-actions > .zr-pop')?.style.getPropertyValue('z-index')).toBe(SOPRA_IL_PANNELLO);
+    });
+
+    it('i pulsanti della barra e un menu nella pagina restano come sono', async () => {
+        await laCornice();
+        const nellaPagina = document.createElement('div');
+        nellaPagina.innerHTML = '<div class="zr-menu" role="menu"></div>';
+
+        await clic(uno('.zr-avatar-btn'));
+        await act(async () => {
+            uno('.zr-main')?.append(nellaPagina.firstElementChild as HTMLElement);
+        });
+
+        expect(uno('.zr-bell')?.style.getPropertyValue('z-index')).toBe('');
+        expect(uno('.zr-avatar-btn')?.style.getPropertyValue('z-index')).toBe('');
+        expect(uno('.zr-main > .zr-menu')?.style.getPropertyValue('z-index')).toBe('');
+    });
+});
+
 // Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: senza
 // questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
 // la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei
@@ -8794,6 +9371,7 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const collegamenti = () => tutti('.zr-shell > .zr-side a[href]') as HTMLAnchorElement[];
     /** Quelli con un indirizzo vero: una voce «Presto» o senza indirizzo ha `#`, e l'`AppShell` il suo clic lo gestisce da sé. */
@@ -8876,6 +9454,79 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
     });
 });
 
+// Sprint 74 · T9 (voce #2722, sì di zr-pm-07 del 26/10/2026). Le voci del percorso sono link veri, e l'`AppShell` chiama
+// `onCrumb` senza l'evento: il modulo non può fermare il browser, e un clic ricarica la pagina intera. Come per la barra
+// laterale (#2033) il clic semplice con un indirizzo di questa origine passa da `naviga`; provvisorio.
+describe('i clic sul percorso passano da `naviga` (sprint 74, voce 2722)', () => {
+    const percorso = [{ label: 'UAT Board', href: `${location.origin}/uat/board?v=1#parte` }, { label: 'UAT Senza indirizzo' }, { label: 'UAT Pagina' }];
+    const laCornice = async (naviga: (indirizzo: string) => void, onCrumb = vi.fn()) => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} naviga={naviga} crumbs={percorso} onCrumb={onCrumb} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const voci = () => tutti('.zr-shell > main > .zr-crumbbar a') as HTMLAnchorElement[];
+    /** Un clic sul collegamento, e se per il browser era già stato gestito quando è arrivato in cima (la navigazione vera non c'è in jsdom). */
+    const cliccato = (collegamento: Element, init: MouseEventInit = {}) => {
+        const resto = { visto: false };
+        const alla = (evento: Event) => {
+            resto.visto = evento.defaultPrevented;
+            evento.preventDefault();
+        };
+        window.addEventListener('click', alla);
+        collegamento.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }));
+        window.removeEventListener('click', alla);
+
+        return resto.visto;
+    };
+
+    it('T9.1 un clic semplice su una voce con un indirizzo di questa origine chiama `naviga` con quell\'indirizzo, e il browser non lo segue; T9.3 l\'indirizzo resta sulla voce', async () => {
+        const naviga = vi.fn();
+        const onCrumb = vi.fn();
+        await laCornice(naviga, onCrumb);
+
+        expect(voci().map((voce) => voce.getAttribute('href'))).toStrictEqual([percorso[0]?.href, '#']);
+        expect(cliccato(voci()[0] as Element)).toBe(true);
+        expect(naviga.mock.calls).toStrictEqual([[percorso[0]?.href]]);
+        // `onCrumb` la chiama l'`AppShell`, come prima: il modulo non deve navigare da lì.
+        expect(onCrumb).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, MouseEventInit]>([
+        ['il tasto centrale', { button: 1 }],
+        ['Ctrl', { ctrlKey: true }],
+        ['Cmd', { metaKey: true }],
+        ['Maiusc', { shiftKey: true }],
+        ['Alt', { altKey: true }],
+    ])('T9.2 con %s il clic sul percorso resta del browser', async (_nome, init) => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+
+        expect(cliccato(voci()[0] as Element, init)).toBe(false);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T9.2 un indirizzo di un\'altra origine, la voce senza indirizzo e l\'ultima voce non passano da `naviga`; un percorso della pagina con le stesse classi non è suo', async () => {
+        const naviga = vi.fn();
+        await laCornice(naviga);
+        const [prima, senza] = voci();
+
+        prima?.setAttribute('href', 'https://altra-origine.example/uat');
+        expect(cliccato(prima as Element)).toBe(false);
+        // `#`: il clic lo ferma l'`AppShell`.
+        expect(cliccato(senza as Element)).toBe(true);
+        expect(cliccato(uno('.zr-crumbbar [aria-current="page"]') as Element)).toBe(false);
+        const fuori = document.createElement('div');
+        fuori.innerHTML = `<div class="zr-crumbbar"><nav class="zr-crumbs zr-shell-crumbs"><a href="${location.origin}/uat">nella pagina</a></nav></div>`;
+        uno('.zr-main-body')?.append(fuori);
+        expect(cliccato(fuori.querySelector('a') as Element)).toBe(false);
+        fuori.remove();
+
+        expect(naviga).not.toHaveBeenCalled();
+    });
+});
+
 // Sprint 69 · T4 (voce #2344). Col selettore dei workspace o il menu Moduli aperti la barra dei moduli è nascosta e `inert`
 // (sprint 65), ma il piede della barra laterale, con «Impostazioni», restava una fermata del Tab.
 describe('col selettore aperto il piede della barra laterale non è una fermata del Tab (sprint 69 · T4, voce 2344)', () => {
@@ -8884,6 +9535,7 @@ describe('col selettore aperto il piede della barra laterale non è una fermata 
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const piede = () => uno('.zr-shell > .zr-side > .zr-side-foot');
 
@@ -8956,6 +9608,7 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const main = () => uno('.zr-shell > main.zr-main');
 
@@ -9108,6 +9761,7 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         await act(async () => {
             await vi.dynamicImportSettled();
         });
+        await conLaTastiera();
     };
     const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => uno(selettore)?.getAttribute('role') ?? null);
     const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
@@ -9204,19 +9858,37 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         expect(azioni()?.style.visibility).toBe('');
     });
 
-    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiude la ricerca dell'`AppShell` (la chiude il `mousedown` fuori), e
-    // l'elenco aperto copre ancora la barra: le azioni restano nascoste finché la ricerca non si chiude.
-    it('T2.1 col fuoco uscito dal campo e l\'elenco ancora aperto la ricerca copre la barra, e campanella e profilo restano nascosti', async () => {
+    // Lettura della PR #136, R1 e R2: Tab fuori dal campo non chiudeva la ricerca dell'`AppShell` (la chiudeva solo il `mousedown`
+    // fuori), e l'elenco aperto copriva la barra. Dalla v3.8.1 (righe 7 e 90 delle richieste al design system) la ricerca si chiude
+    // quando il fuoco va a un elemento fuori da campo e pannello: le azioni tornano. Il fuoco che lascia la finestra non la chiude.
+    it('T2.1 col fuoco uscito dal campo verso la pagina la ricerca si chiude, la parola resta, e campanella e profilo tornano (righe 7 e 90)', async () => {
         largaAlPiu720(true);
         await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><button type="button">Nella pagina</button></Cornice>);
         await nelCampo();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'uat');
+        await act(async () => {
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+        });
 
         await act(async () => {
             (uno('.zr-main button') as HTMLElement).focus();
             await prossimoGiro();
         });
 
-        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), campo() === document.activeElement, azioni()?.style.visibility]).toStrictEqual([true, false, 'hidden']);
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement, campo().value, azioni()?.style.visibility]).toStrictEqual([false, uno('.zr-main button'), 'uat', '']);
+    });
+
+    it('T2.1 il fuoco che lascia il campo senza andare a un altro elemento — la finestra che lo perde — non chiude la ricerca (righe 7 e 90)', async () => {
+        largaAlPiu720(true);
+        await laCornice();
+        await nelCampo();
+
+        await act(async () => {
+            campo().dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+            await prossimoGiro();
+        });
+
+        expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(true);
     });
 
     it('T2.3 chiusa la ricerca col fuoco ancora nel campo, la ricerca copre ancora la barra; quando il campo perde il fuoco campanella e profilo tornano', async () => {
@@ -9236,5 +9908,108 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         });
 
         expect(azioni()?.style.visibility).toBe('');
+    });
+});
+
+// Sprint 74 · T7 (voce #2720, dalla UAT di #2625 di zr-board): il pannello della ricerca scorre e dentro niente prende il fuoco
+// (il fuoco resta nel campo, che ha `aria-activedescendant`): axe dà `scrollable-region-focusable`. Rimedio provvisorio, come
+// per il contenuto (#2394).
+describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint 74, voce 2720)', () => {
+    // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const laCornice = async (lingua = 'it') => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: 'UAT Lancio' }], workspace: dati.workspace.slug })));
+        await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+    };
+    const pannello = () => uno('.zr-shell .zr-top > .zr-search > .zr-search-panel') as HTMLElement | null;
+    /** Una parola nel campo, come una persona, e i risultati che arrivano dopo i 300 ms dell'`AppShell`. */
+    const cerca = async () => {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            await vi.dynamicImportSettled();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'uat');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.advanceTimersByTimeAsync(300);
+            await vi.dynamicImportSettled();
+            await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(1);
+    };
+    const fermata = () => [pannello()?.getAttribute('tabindex'), pannello()?.getAttribute('role'), pannello()?.getAttribute('aria-label')];
+
+    it.each([
+        ['it', 'Risultati della ricerca'],
+        ['es', 'Resultados de la búsqueda'],
+        ['en', 'Search results'],
+    ])('T7.2 con la lingua "%s" il pannello coi risultati è nel giro del Tab, un gruppo che si chiama «%s»', async (lingua, nome) => {
+        await laCornice(lingua);
+        await cerca();
+
+        expect(fermata()).toStrictEqual(['0', 'group', nome]);
+    });
+
+    it('T7.2 col fuoco da tastiera il pannello ha il contorno del design system, coi soli token sull\'elemento; quando il fuoco esce non l\'ha più', async () => {
+        await laCornice();
+        await cerca();
+        const matches = Element.prototype.matches;
+        vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
+            return selettore === ':focus-visible' || matches.call(this, selettore);
+        });
+
+        await act(async () => pannello()?.focus());
+        expect([pannello()?.style.outlineOffset, pannello()?.style.cssText.includes('var(--focus)')]).toStrictEqual(['-2px', true]);
+        await act(async () => (uno('.zr-search input') as HTMLElement).focus());
+        expect(pannello()?.getAttribute('style')).toBe('');
+    });
+
+    it('T7.3 un elemento della pagina con la classe del pannello non si tocca', async () => {
+        await laCornice();
+        const estraneo = document.createElement('div');
+        estraneo.className = 'zr-search-panel';
+        await act(async () => {
+            uno('.zr-main')?.append(estraneo);
+        });
+        await cerca();
+
+        expect([estraneo.hasAttribute('tabindex'), estraneo.hasAttribute('role'), estraneo.hasAttribute('aria-label')]).toStrictEqual([false, false, false]);
+        expect(fermata()[0]).toBe('0');
+    });
+    // Dalla UAT in Chromium (26/10): l'`AppShell` chiude la ricerca con Esc solo dal campo; col fuoco nel pannello Esc non
+    // faceva niente, e sotto 720 px la barra in alto restava senza campanella (riga 131 delle richieste al design system).
+    it('T7 bis · Esc col fuoco nel pannello chiude la ricerca come dal campo: il pannello se ne va e il fuoco esce dalla ricerca', async () => {
+        await laCornice();
+        await cerca();
+        await act(async () => pannello()?.focus());
+
+        await act(async () => {
+            pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), pannello(), document.activeElement?.closest('.zr-search') ?? null]).toStrictEqual([false, null, null]);
+    });
+
+    it('T7 bis · un altro tasto nel pannello, o Esc fuori dalla ricerca, la lasciano aperta', async () => {
+        await laCornice();
+        await cerca();
+        await act(async () => pannello()?.focus());
+
+        await act(async () => {
+            pannello()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+            uno('.zr-main')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        });
+
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement]).toStrictEqual([true, pannello()]);
     });
 });

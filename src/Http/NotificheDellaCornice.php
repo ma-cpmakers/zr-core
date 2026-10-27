@@ -362,10 +362,16 @@ final class NotificheDellaCornice
      * prima, e valgono 1 e null. Se ci sono, con un'altra forma è lo stesso guasto: mai un testo al posto del conto. Di `board`
      * passa solo il nome, come `board_nome`: né l'id, né una chiave messa domani dal backoffice arrivano in pagina.
      *
+     * Una notifica può dire anche quando accade la cosa che racconta (una prenotazione: il suo inizio): `quando`, con l'istante
+     * (`il`, ISO in UTC con la Z) e il fuso in cui si legge (`fuso`, un nome IANA). È facoltativa e non fa la notifica: passa
+     * solo in quella forma, coi due testi e nient'altro, e ogni altra forma vale null, come un backoffice che non la manda (la
+     * data è un di più del titolo: senza, la notifica si mostra lo stesso). Se il browser non conosce il fuso, il titolo è
+     * quello senza la data.
+     *
      * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
      * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null, quando: array{il: string, fuso: string}|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {
@@ -388,6 +394,7 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             'azioni' => $notifica['azioni'] ?? 1, 'board_nome' => $notifica['board']['nome'] ?? null,
+            'quando' => Quando::di($notifica['quando'] ?? null),
         ];
     }
 
@@ -396,16 +403,18 @@ final class NotificheDellaCornice
      * (resources/registro/prodotti.json): lo stesso file da cui il browser compone l'indirizzo, così ciò che esce da qui è ciò
      * che il browser usa. Un elenco di chiavi per percorso, nell'ordine in cui si provano: `percorso`, poi quelli di
      * `altrimenti`; un percorso senza segnaposto ha un elenco vuoto. La voce è quella dell'app della notifica, e il tipo si
-     * cerca intero. Nessun percorso per un tipo che lì non ha una destinazione, per un'app che il registro non ha, o senza
-     * app; e nessuno per una voce «Presto», che il browser non apre: i suoi id non servono ad aprire niente. Le voci le dà
-     * `Registro`, che il file lo legge una volta per processo: qui non c'è una lettura, né una copia.
+     * cerca intero; una notifica senza app (del workspace, di un invito) cerca nella voce della Dashboard, `home` (dalla
+     * `v3.6.1`), e l'app `home`, che il backoffice non dà, non la trova, come nel browser. Nessun percorso per un tipo che lì
+     * non ha una destinazione, o per un'app che il registro non ha; e nessuno per una voce «Presto», che il browser non apre:
+     * i suoi id non servono ad aprire niente. Le voci le dà `Registro`, che il file lo legge una volta per processo: qui non
+     * c'è una lettura, né una copia.
      *
      * @return list<list<string>>
      */
     private static function chiaviDelPercorso(?string $app, string $tipo): array
     {
         foreach (Registro::voci() as $voce) {
-            foreach ($voce['id'] === $app && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
+            foreach ($voce['id'] === ($app ?? 'home') && $app !== 'home' && ($voce['presto'] ?? false) !== true ? $voce['notifiche'] ?? [] : [] as $notifica) {
                 if ($notifica['tipo'] === $tipo) {
                     return array_map(function (string $percorso): array {
                         preg_match_all(self::SEGNAPOSTO, $percorso, $segnaposto);

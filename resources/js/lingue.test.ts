@@ -1,13 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import avvisiInglesi from '../lingue/avvisi/en.json';
+import avvisiSpagnoli from '../lingue/avvisi/es.json';
+import avvisiItaliani from '../lingue/avvisi/it.json';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
+import ricercaInglese from '../lingue/ricerca/en.json';
+import ricercaSpagnola from '../lingue/ricerca/es.json';
+import ricercaItaliana from '../lingue/ricerca/it.json';
+import risorseDellaRicerca from '../registro/ricerca.json';
+import { testiDegliAvvisi } from './avvisi';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
 import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
-import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
+import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
 // italiano, spagnolo e inglese abbiano ogni testo, che l'italiano sia quello del design system (o, dove c'è una decisione, quello
@@ -15,7 +23,7 @@ import { fontiDellaRicerca, registro, type TipoDiRisorsa } from './registro';
 
 /** I tipi di risorsa del registro, `<voce>.<tipo>`, nel suo ordine: le chiavi dei loro nomi nelle lingue. */
 const tipiDelRegistro = registro.flatMap((voce) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}`));
-/** I codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nelle lingue, con `searchContext.` davanti. */
+/** I codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nei testi del pezzo della ricerca (dalla `v3.9.0`), con `searchContext.` davanti. */
 const codiciDelRegistro = registro.flatMap((voce) =>
     (voce.risorse ?? []).flatMap((risorsa) => Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `${voce.id}.${risorsa.tipo}.${chiave}.${codice}`))),
 );
@@ -24,6 +32,8 @@ const diProjectManagement: TipoDiRisorsa[] = ['pm.board.scheda', 'pm.board.board
 const delCrm: TipoDiRisorsa[] = ['crm.crm.persona', 'crm.crm.organizzazione', 'crm.crm.trattativa'];
 /** La fonte che non è di un modulo: il membro del workspace, che nel registro sta nella voce della Dashboard. */
 const deiMembri: TipoDiRisorsa[] = ['home.workspace.membro'];
+/** Le fonti di Bookings (dalla `v3.6.0`, voce 2549): i tipi di `fonti` della sua voce, le cui risorse stanno in `resources/registro/ricerca.json`. */
+const diBookings: TipoDellaRicerca[] = ['bookings.bookings.prenotazione', 'bookings.bookings.calendario'];
 
 describe('le lingue della cornice', () => {
     it("dove una lingua non ha un testo, o l'ha vuoto, quel testo è in inglese (T5.2)", () => {
@@ -144,8 +154,9 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
         expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 49, in ogni lingua, anche con un file che ne ha uno in più.
-        expect(tipiCheHa(frasiInglesi)).toHaveLength(49);
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 56 (dallo sprint 74 anche i tre di Bookings, i due promemoria
+        // delle scadenze, quello delle To-do e l'invito accettato), in ogni lingua, anche con un file che ne ha uno in più.
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(56);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -166,16 +177,16 @@ describe('le lingue della cornice', () => {
         ['it', frasiItaliane, 'Nuova scheda'],
         ['es', frasiSpagnole, 'Nueva tarjeta'],
         ['en', frasiInglesi, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 49 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 56 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(49);
+        expect(tipiConosciuti).toHaveLength(56);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 49 titoli sono 49 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 56 titoli sono 56 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(49);
+        expect(new Set(titoli).size).toBe(56);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -397,6 +408,23 @@ describe('le lingue della cornice', () => {
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });
 
+    // Sprint 74 (zr-backoffice-55, 26/10; Decisione di zr-pm: la scadenza di una scheda è divisa in due tipi): il promemoria di
+    // una To-do e la scheda che scade domani o oggi, con le parole di Project Management, e l'invito accettato. Non sono eventi:
+    // il tipo arriva senza `com.zeiras.` davanti.
+    it.each<[lingua: 'it' | 'en' | 'es', titoli: [promemoria: string, domani: string, oggi: string, invito: string]]>([
+        ['it', ['Promemoria: hai una cosa da fare', 'Una scheda scade domani', 'Una scheda scade oggi', 'Il tuo invito è stato accettato']],
+        ['en', ['Reminder: you have something to do', 'A card is due tomorrow', 'A card is due today', 'Your invitation was accepted']],
+        ['es', ['Recordatorio: tienes algo que hacer', 'Una tarjeta vence mañana', 'Una tarjeta vence hoy', 'Tu invitación fue aceptada']],
+    ])('con la lingua "%s", titoloDellaNotifica dà il titolo del promemoria di una To-do, delle due scadenze di una scheda e dell\'invito accettato; il tipo col prefisso, la scadenza non divisa e un pezzo del tipo restano col titolo di ripiego (sprint 74, zr-backoffice-55)', async (lingua, titoli) => {
+        const { titoloDellaNotifica } = await import('./frasi');
+        const tipi = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'io.invito.accettato'];
+        const cheNonConosce = ['com.zeiras.board.todo.promemoria', 'com.zeiras.io.invito.accettato', 'board.scheda.scade', 'board.todo', 'io.invito', 'invito.accettato'];
+
+        expect(tipi.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(titoli);
+        expect(titoli).not.toContain(diRipiego[lingua]);
+        expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
+    });
+
     it.each(['it', 'es', 'en'] as const)('con la lingua "%s", titoloDellaNotifica dà il titolo di ripiego a un tipo che zr-core non conosce, vuoto, mancante o che non è un testo: mai il codice del tipo, mai un testo vuoto (sprint 16 · T5.2)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const tipi: unknown[] = [
@@ -494,19 +522,18 @@ describe('le lingue della cornice', () => {
 
     // Sprint 24 · T2 (voce #1745): i testi di chi non ha accettato i documenti legali in vigore. Titolo, frase e pulsante
     // dell'avviso sopra la pagina, e la frase di campanella e ricerca spente: nessuno nomina un documento.
-    it('i quattro testi di chi non ha accettato i documenti legali sono chiavi di zr-core nelle tre lingue, e in una lingua che zr-core non ha sono in inglese (sprint 24 · T2.4)', () => {
+    it('i quattro testi di chi non ha accettato i documenti legali sono chiavi di zr-core nelle tre lingue, nei file degli avvisi e non fra i testi della cornice, e in una lingua che zr-core non ha sono in inglese (sprint 24 · T2.4; dalla v3.7.0 nel pezzo degli avvisi)', () => {
         const chiavi = ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff'] as const;
         const inInglese = ['There are documents to accept', 'To use Zeiras you need to accept the legal documents in force. Until then modules, notifications and search stay off.', 'Go to the documents', 'Not available until you accept the documents.'];
-        expect([italiano, spagnolo, inglese].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
+        expect([avvisiItaliani, avvisiSpagnoli, avvisiInglesi].map((file: Record<string, string>) => chiavi.map((chiave) => file[chiave]))).toStrictEqual([
             ['Ci sono documenti da accettare', 'Per usare Zeiras devi accettare i documenti legali in vigore. Fino ad allora moduli, notifiche e ricerca restano spenti.', 'Vai ai documenti', 'Non disponibile finché non accetti i documenti.'],
             ['Hay documentos por aceptar', 'Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.', 'Ir a los documentos', 'No disponible hasta que aceptes los documentos.'],
             inInglese,
         ]);
-        expect(chiavi.map((chiave) => testi('pt-BR')[chiave])).toStrictEqual(inInglese);
-
-        // Una lingua che ha solo un testo dell'`AppShell`: i quattro di zr-core li prende dall'inglese.
-        const tedesco = caricaLingue({ '../lingue/de.json': { notifications: 'Benachrichtigungen' } }).testi('de');
-        expect([tedesco.notifications, ...chiavi.map((chiave) => tedesco[chiave])]).toStrictEqual(['Benachrichtigungen', ...inInglese]);
+        expect(chiavi.map((chiave) => testiDegliAvvisi('pt-BR')[chiave])).toStrictEqual(inInglese);
+        expect(chiavi.map((chiave) => testiDegliAvvisi('it-IT')[chiave])).toStrictEqual(chiavi.map((chiave) => avvisiItaliani[chiave]));
+        expect([testiDegliAvvisi('es_ES').downTitle, testiDegliAvvisi('IT').downOff]).toStrictEqual([avvisiSpagnoli.downTitle, avvisiItaliani.downOff]);
+        expect([italiano, spagnolo, inglese].map((file) => chiavi.filter((chiave) => chiave in file))).toStrictEqual([[], [], []]);
     });
 
     // Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ha un
@@ -588,31 +615,39 @@ describe('le lingue della cornice', () => {
             { tipo: 'crm.trattativa', icona: 'target', percorso: '/opportunita/{id}', contenitore: false, contesto: ['pipeline', 'fase', 'esito'], codici: { esito: ['vinta', 'persa'] } },
         );
         expect(codiciDelRegistro.filter((codice) => codice.endsWith('.aperta'))).toStrictEqual([]);
-        expect([italiano, spagnolo, inglese].flatMap((file) => Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.') && chiave.endsWith('.aperta')))).toStrictEqual([]);
+        expect([italiano, spagnolo, inglese, ricercaItaliana, ricercaSpagnola, ricercaInglese].flatMap((file) => Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.') && chiave.endsWith('.aperta')))).toStrictEqual([]);
     });
 
-    it.each<[lingua: string, file: Record<string, string>, ruoli: string[]]>([
-        ['it', italiano, ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
-        ['es', spagnolo, ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
-        ['en', inglese, ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
-    ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, e la lingua non ha il testo di un codice che il registro non ha (sprint 27 · T1.3)', (_lingua, file, ruoli) => {
+    // Dalla `v3.9.0` (Decisione 18762 di zr-pm) i testi dei codici stanno coi testi del pezzo della ricerca, che è il solo a
+    // mostrarli: le lingue della cornice, che stanno nell'ingresso, non ne hanno più nessuno.
+    it.each<[lingua: string, file: Record<string, string>, dellaRicerca: Record<string, string>, ruoli: string[]]>([
+        ['it', italiano, ricercaItaliana, ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
+        ['es', spagnolo, ricercaSpagnola, ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
+        ['en', inglese, ricercaInglese, ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
+    ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, nei testi del pezzo della ricerca, e la lingua della cornice non ne ha nessuno (sprint 27 · T1.3; v3.9.0)', (_lingua, file, dellaRicerca, ruoli) => {
         expect(codiciDelRegistro).toStrictEqual([
             'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
             'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
         ]);
-        expect(codiciDelRegistro.map((codice) => file[`searchContext.${codice}`])).toStrictEqual(ruoli);
-        expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual(codiciDelRegistro.map((codice) => `searchContext.${codice}`));
+        expect(codiciDelRegistro.map((codice) => (dellaRicerca as Record<string, string>)[`searchContext.${codice}`])).toStrictEqual(ruoli);
+        expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual([]);
     });
 
     // Sprint 27 · T2 (voce #1787): il membro del workspace non è di un modulo, e il backoffice lo cerca in ogni workspace: è una
     // fonte anche dove nessun modulo è attivo. Nel registro sta nella prima voce, quella della Dashboard, ma fra le fonti viene
     // per ultimo: l'invito nomina prima quelle dei moduli.
-    it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: TipoDiRisorsa[]]>([
+    it.each<[caso: string, prodotti: Parameters<typeof fontiDellaRicerca>[0], fonti: (TipoDiRisorsa | TipoDellaRicerca)[]]>([
         ['Project Management attivo e il CRM solo disponibile', { pm: 'attivo', crm: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
         // Nell'ordine del registro, non in quello dei dati.
         ['tutti e due attivi', { crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm, ...deiMembri]],
         ['il CRM attivo e Project Management in arrivo', { pm: 'in_arrivo', crm: 'attivo' }, [...delCrm, ...deiMembri]],
-        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, deiMembri],
+        ['attivi solo moduli senza risorse', { pm: 'disponibile', crm: 'in_arrivo', flow: 'attivo', reports: 'attivo' }, deiMembri],
+        // Sprint 74 · T2.5 (voce 2549): Bookings attivo dà i tipi di `fonti` della sua voce, al suo posto nell'ordine del registro;
+        // disponibile o in arrivo, niente.
+        ['Bookings attivo', { pm: 'disponibile', crm: 'in_arrivo', bookings: 'attivo', reports: 'attivo' }, [...diBookings, ...deiMembri]],
+        ['tre moduli attivi', { bookings: 'attivo', crm: 'attivo', pm: 'attivo' }, [...diProjectManagement, ...delCrm, ...diBookings, ...deiMembri]],
+        ['Bookings disponibile', { pm: 'attivo', bookings: 'disponibile' }, [...diProjectManagement, ...deiMembri]],
+        ['Bookings in arrivo', { bookings: 'in_arrivo' }, deiMembri],
         ['nessun modulo', {}, deiMembri],
         ['uno stato che zr-core non conosce, e uno scritto `undefined`', { pm: 'sospeso', crm: undefined }, deiMembri],
     ])('con %s, le fonti della ricerca sono i tipi di risorsa dei moduli attivi nel workspace, nell\'ordine del registro, e per ultimo il membro del workspace, che c\'è in ogni workspace (sprint 25 · T4.3; sprint 27 · T2.4)', (_caso, prodotti, fonti) => {
@@ -623,6 +658,11 @@ describe('le lingue della cornice', () => {
         ['it', { pm: 'attivo', crm: 'attivo' }, 'Cerca nel workspace…', 'Cerca schede, board, aree, contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'attivo', crm: 'disponibile' }, 'Cerca nel workspace…', 'Cerca schede, board, aree e membri: scrivi almeno 2 caratteri.'],
         ['it', { pm: 'disponibile', crm: 'in_arrivo' }, 'Cerca nel workspace…', 'Cerca membri: scrivi almeno 2 caratteri.'],
+        // Sprint 74 · T2.5 (voce 2549): il segnaposto resta quello unico anche con Bookings; l'invito lo nomina solo dov'è attivo.
+        ['it', { crm: 'attivo', bookings: 'attivo' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità, prenotazioni, calendari e membri: scrivi almeno 2 caratteri.'],
+        ['it', { crm: 'attivo', bookings: 'disponibile' }, 'Cerca nel workspace…', 'Cerca contatti, aziende, opportunità e membri: scrivi almeno 2 caratteri.'],
+        ['es', { bookings: 'attivo' }, 'Busca en el workspace…', 'Busca reservas, calendarios y miembros: escribe al menos 2 caracteres.'],
+        ['en', { bookings: 'attivo' }, 'Search the workspace…', 'Search bookings, calendars, and members: type at least 2 characters.'],
         ['es', { pm: 'attivo', crm: 'attivo' }, 'Busca en el workspace…', 'Busca tarjetas, tableros, áreas, contactos, empresas, oportunidades y miembros: escribe al menos 2 caracteres.'],
         ['es', {}, 'Busca en el workspace…', 'Busca miembros: escribe al menos 2 caracteres.'],
         ['en', { pm: 'attivo', crm: 'attivo' }, 'Search the workspace…', 'Search cards, boards, areas, contacts, companies, opportunities, and members: type at least 2 characters.'],
@@ -748,6 +788,8 @@ describe('rigaDellaNotifica', () => {
         // v3.2.2: la richiesta sul preventivo, con le parole di zr-crm: la sola frase con chi; il contratto non dà il nome del preventivo.
         ['crm.preventivo.richiesta', { it: [null, 'Giulia Bianchi: un cliente ha chiesto una modifica al preventivo'], en: [null, 'Giulia Bianchi: a client asked for changes to the quote'], es: [null, 'Giulia Bianchi: un cliente ha pedido un cambio en el presupuesto'] }],
         // Sprint 77 · T3: le schede senza assegnatario, con le parole di Project Management: la sola frase con chi, che è chi è uscito.
+        // Sprint 74: l'invito accettato, con chi l'ha accettato (zr-backoffice-55: l'autore è lui).
+        ['io.invito.accettato', { it: [null, 'Giulia Bianchi ha accettato il tuo invito'], en: [null, 'Giulia Bianchi accepted your invitation'], es: [null, 'Giulia Bianchi aceptó tu invitación'] }],
         ['board.schede.senza_assegnatario', { it: [null, 'Giulia Bianchi ha lasciato il workspace: restano schede senza assegnatario'], en: [null, 'Giulia Bianchi left the workspace: some cards have no assignee'], es: [null, 'Giulia Bianchi ha dejado el workspace: quedan tarjetas sin asignar'] }],
         // Sprint 31 · T2 (voce #1866). I cinque tipi del workspace, con le parole di zr-home: di un membro il backoffice non dà il nome.
         // `com.zeiras.app.modificata` ha le sue frasi e un caso suo, più sotto: il suo `{what}` è il nome di un modulo, non un nome scritto da una persona.
@@ -766,6 +808,10 @@ describe('rigaDellaNotifica', () => {
         es: [(modulo) => `Giulia Bianchi ha activado o desactivado el módulo «${modulo}»`, 'Giulia Bianchi ha activado o desactivado un módulo'],
     };
     const SU_UN_APP = 'com.zeiras.app.modificata';
+    /** Sprint 74 · T1: i tre tipi di Bookings, che non hanno frasi con `{who}` (l'ospite non è un membro): le loro frasi, con la data, le prova «le notifiche di Bookings, con la data». */
+    const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata'];
+    /** Sprint 74: il promemoria di una To-do e le due scadenze di una scheda non hanno chi (le manda il backoffice da sé): niente frasi con `{who}`. */
+    const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi'];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
@@ -774,7 +820,7 @@ describe('rigaDellaNotifica', () => {
     it.each(lingueDiPartenza)('con la lingua "%s" ognuno dei sedici tipi di Project Management, dei due «per me», degli undici del CRM (pipeline, aziende, opportunità e attività, e le tre assegnate) e dei due del workspace ha la frase con chi e che cosa, senza riga di sotto, e quella con solo chi; gli altri tredici del CRM, i tre di un membro e le schede senza assegnatario la sola frase con chi (sprint 29 · T2.1, T2.2, T2.4; sprint 31 · T1.1, T1.2, T2.1; sprint 32 · T4.1, T4.2; sprint 34 · T3.1, T3.2)', async (lingua) => {
         const { rigaDellaNotifica } = await import('./frasi');
 
-        expect(frasi).toHaveLength(48);
+        expect(frasi).toHaveLength(49);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.workspace.'))).toHaveLength(5);
         expect(frasi.flatMap(([tipo, perLingua]) => (tipo.startsWith('com.zeiras.workspace.') && perLingua[lingua][0] !== null ? [tipo] : []))).toStrictEqual(['com.zeiras.workspace.creato', 'com.zeiras.workspace.modificato']);
         expect(frasi.filter(([tipo]) => tipo.startsWith('com.zeiras.board.'))).toHaveLength(16);
@@ -852,10 +898,10 @@ describe('rigaDellaNotifica', () => {
 
     it('ogni tipo che ha un titolo ha le sue frasi; uno che zr-core non conosce, o che non è un testo, resta com\'è anche con chi (sprint 29 · T2.5; sprint 31 · T2.1)', async () => {
         const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
-        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP]);
+        const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS, ...SENZA_CHI]);
         const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(conUnTitolo).toHaveLength(49);
+        expect(conUnTitolo).toHaveLength(56);
         expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
@@ -903,15 +949,18 @@ describe('rigaDellaNotifica', () => {
         expect(riga('{who} {what}', '{what} {who}').titolo.match(/[\u{2068}\u{2069}]/gu)).toHaveLength(4);
     });
 
-    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 77, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1)', (_lingua, file) => {
+    it.each(lingueDiPartenza)('nella lingua "%s" le frasi sono 78, ognuna di un tipo che ha un titolo e coi suoi posti una volta sola: `{who}` e `{what}`, o il solo `{who}` (sprint 29 · T2.7; sprint 31 · T1.1, T2.1; sprint 32 · T4.3; sprint 34 · T3.1; sprint 74 · T1.1)', (_lingua, file) => {
         const posti = (testo: string) => (testo.match(/\{[^{}]*\}/g) ?? []).sort();
         const chiavi = Object.keys(file).filter((chiave) => chiave.startsWith('notificationTitleWho'));
 
         expect(chiavi.sort()).toStrictEqual(frasi.flatMap(([tipo, perLingua]) => [...(perLingua.it[0] === null ? [] : [`notificationTitleWhoWhat.${tipo}`]), `notificationTitleWho.${tipo}`]).concat([`notificationTitleWhoWhat.${SU_UN_APP}`, `notificationTitleWho.${SU_UN_APP}`]).sort());
-        expect(chiavi).toHaveLength(77);
+        // Sprint 74 · T1 (Decisione di zr-pm del 26/10): nessuna delle tre notifiche di Bookings, che non dicono mai chi.
+        // Sprint 74: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che non hanno chi; l'invito accettato sì.
+        expect(chiavi).toHaveLength(78);
+        expect(chiavi.filter((chiave) => [...DI_BOOKINGS, ...SENZA_CHI].some((tipo) => chiave.endsWith(`.${tipo}`)))).toStrictEqual([]);
         for (const chiave of chiavi) {
             const [famiglia, tipo] = [chiave.slice(0, chiave.indexOf('.')), chiave.slice(chiave.indexOf('.') + 1)];
-            expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, famiglia === 'notificationTitleWhoWhat' ? ['{what}', '{who}'] : ['{who}']]);
+            expect([chiave, posti(file[chiave] ?? '')]).toStrictEqual([chiave, { notificationTitleWhoWhat: ['{what}', '{who}'] }[famiglia] ?? ['{who}']]);
             expect([chiave, typeof file[`notificationTitle.${tipo}`]]).toStrictEqual([chiave, 'string']);
         }
     });
@@ -1068,7 +1117,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             }
             expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
         }
-        expect(tipi).toHaveLength(49 + 4);
+        expect(tipi).toHaveLength(56 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
                 expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);
@@ -1080,7 +1129,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
-        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?)?|Under)\../.test(chiave);
+        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?|WhatWhen|When)?|Under)\../.test(chiave);
 
         for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
             expect(typeof testiDelFile.notificationTitle).toBe('string');
@@ -1582,5 +1631,163 @@ describe('la riga sotto il titolo: quante azioni, e in quale board (sprint 34 ·
         // Frasi arrivate senza quelle della riga di sotto (un file di prima, ancora in memoria): la riga non c'è.
         const diPrima = Object.fromEntries(Object.entries(frasiItaliane).filter(([chiave]) => !chiave.startsWith('notificationUnder'))) as FrasiDelleNotifiche;
         expect(rigaConLeFrasi(diPrima, { ...diAda, azioni: 3, board_nome: 'Lancio' }, 'it')).toStrictEqual({ titolo: titoloDiAda });
+    });
+});
+
+// Sprint 74 · T1 (voce 2548; Decisione di zr-pm del 26/10). Le tre notifiche di Bookings dicono quando: la parte server passa
+// `quando` (l'istante in UTC e il fuso della pagina), e la cornice scrive il giorno e l'ora in quel fuso e nella lingua di chi
+// legge, al posto di `{when}`. Chi prenota è un ospite, e il backoffice non ne dà il nome (`autore_nome` null): il titolo dice il
+// nome del servizio (`risorsa_nome`) e la data, o la sola data quando il nome non c'è. Senza un `quando` che sa scrivere il
+// titolo è quello del tipo, senza la data: mai un segnaposto, mai «Invalid Date», mai un posto vuoto.
+describe('le notifiche di Bookings, con la data', () => {
+    const frasiDi = { it: frasiItaliane, en: frasiInglesi, es: frasiSpagnole } as Record<string, FrasiDelleNotifiche>;
+    const ROMA = { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' };
+    const TOKYO = { il: '2026-11-04T09:00:00Z', fuso: 'Asia/Tokyo' };
+    const prenotazione = (fine: string, quando?: unknown, risorsa_nome: unknown = 'Personal training') => ({ tipo: `bookings.prenotazione.${fine}`, autore_nome: null, risorsa_nome, quando });
+    const isolato = (titolo: string) => titolo.replace('Personal training', '\u2068Personal training\u2069');
+    const conLaData = (titolo: string, data: string) => `${isolato(titolo)}\u2068${data}\u2069`;
+    const riga = (fine: string, lingua: string, quando?: unknown, risorsa_nome?: unknown) => rigaConLeFrasi(frasiDi[lingua]!, prenotazione(fine, quando, risorsa_nome), lingua);
+    const quandiCheNonSiScrivono: unknown[] = [
+        undefined, null, '2026-11-04T09:00:00Z', 7, [], {}, { il: '2026-11-04T09:00:00Z' }, { fuso: 'Europe/Rome' },
+        { il: '2026-11-04T09:00:00Z', fuso: 'Europa/Roma' }, { il: '2026-11-04T09:00:00Z', fuso: '' }, { il: '2026-11-04T09:00:00Z', fuso: 7 },
+        { il: 'domani', fuso: 'Europe/Rome' }, { il: '', fuso: 'Europe/Rome' }, { il: null, fuso: 'Europe/Rome' },
+    ];
+
+    it.each([
+        ['it', 'creata', 'Nuova prenotazione: Personal training, ', 'Nuova prenotazione, ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['it', 'spostata', 'Prenotazione spostata: Personal training, a ', 'Prenotazione spostata a ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['it', 'annullata', 'Prenotazione annullata: Personal training, ', 'Prenotazione annullata, ', 'mer 4 nov, 10:00', 'mer 4 nov, 18:00'],
+        ['en', 'creata', 'New booking: Personal training, ', 'New booking, ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['en', 'spostata', 'Booking moved: Personal training, to ', 'Booking moved to ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['en', 'annullata', 'Booking cancelled: Personal training, ', 'Booking cancelled, ', 'Wed, Nov 4, 10:00 AM', 'Wed, Nov 4, 06:00 PM'],
+        ['es', 'creata', 'Nueva reserva: Personal training, ', 'Nueva reserva, ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+        ['es', 'spostata', 'Reserva movida: Personal training, al ', 'Reserva movida al ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+        ['es', 'annullata', 'Reserva cancelada: Personal training, ', 'Reserva cancelada, ', 'mié, 4 nov, 10:00', 'mié, 4 nov, 18:00'],
+    ])('in "%s" la notifica `.%s` ha il titolo col servizio e la data, o con la sola data senza il servizio, nel fuso della notifica e non in UTC o in quello del browser (sprint 74 · T1.1, T1.2)', (lingua, fine, colServizio, soloData, aRoma, aTokyo) => {
+        expect(riga(fine, lingua, ROMA)).toStrictEqual({ titolo: conLaData(colServizio, aRoma) });
+        expect(riga(fine, lingua, TOKYO)).toStrictEqual({ titolo: conLaData(colServizio, aTokyo) });
+        for (const senzaNome of [null, '', '   ']) {
+            expect([senzaNome, riga(fine, lingua, ROMA, senzaNome)]).toStrictEqual([senzaNome, { titolo: conLaData(soloData, aRoma) }]);
+        }
+    });
+
+    it.each([
+        ['it', 'creata', 'Nuova prenotazione'], ['it', 'spostata', 'Prenotazione spostata'], ['it', 'annullata', 'Prenotazione annullata'],
+        ['en', 'creata', 'New booking'], ['en', 'spostata', 'Booking moved'], ['en', 'annullata', 'Booking cancelled'],
+        ['es', 'creata', 'Nueva reserva'], ['es', 'spostata', 'Reserva movida'], ['es', 'annullata', 'Reserva cancelada'],
+    ])('in "%s" la notifica `.%s` senza un `quando` che si sa scrivere ha il titolo del tipo, col servizio sotto se c\'è (sprint 74 · T1.2, T1.4)', (lingua, fine, delTipo) => {
+        for (const quando of quandiCheNonSiScrivono) {
+            const conIlServizio = riga(fine, lingua, quando);
+            expect([quando, conIlServizio]).toStrictEqual([quando, { titolo: delTipo, sotto: 'Personal training' }]);
+            expect([quando, riga(fine, lingua, quando, null)]).toStrictEqual([quando, { titolo: delTipo }]);
+            expect(conIlServizio.titolo).not.toMatch(/\{when\}|\{what\}|Invalid|NaN|\u2068\u2069|, $| $/);
+        }
+    });
+
+    it.each(['it', 'en', 'es'])('in "%s" nessun nome di persona nel titolo, nemmeno se il backoffice lo mandasse, con la data o senza (sprint 74 · T1.1, T1.4; Decisione di zr-pm del 26/10; revisione, R1)', (lingua) => {
+        for (const fine of ['creata', 'spostata', 'annullata']) {
+            for (const risorsa_nome of ['Personal training', null]) {
+                for (const quando of [ROMA, ...quandiCheNonSiScrivono]) {
+                    // Lo stesso titolo, e la stessa riga di sotto, che senza chi (seconda lettura della revisione, N2).
+                    const conChi = rigaConLeFrasi(frasiDi[lingua]!, { ...prenotazione(fine, quando, risorsa_nome), autore_nome: 'Mario Rossi' }, lingua);
+                    expect([fine, risorsa_nome, quando, conChi]).toStrictEqual([fine, risorsa_nome, quando, riga(fine, lingua, quando, risorsa_nome)]);
+                    expect(conChi.titolo.includes('Mario Rossi')).toBe(false);
+                }
+            }
+        }
+    });
+
+    it('i tipi di Bookings che il backoffice non manda — col prefisso `com.zeiras.`, o la `.cambiata` di prima — hanno il titolo di ripiego (sprint 74 · T1.8)', async () => {
+        const { titoloDellaNotifica } = await import('./frasi');
+        for (const tipo of ['com.zeiras.bookings.prenotazione.creata', 'com.zeiras.bookings.prenotazione.spostata', 'bookings.prenotazione.cambiata', 'com.zeiras.bookings.prenotazione.cambiata', 'bookings.prenotazione']) {
+            expect([tipo, titoloDellaNotifica(tipo, 'it')]).toStrictEqual([tipo, 'Novità nel workspace']);
+        }
+        expect(titoloDellaNotifica('bookings.prenotazione.spostata', 'it')).toBe('Prenotazione spostata');
+    });
+
+    // Revisione dello sprint 74 (R1): la data si scrive nella lingua dei testi (`linguaDeiTesti`), come la ricerca e la data
+    // relativa del pannello: con «es_ES» Intl rifiuterebbe il codice, e con una lingua che la cornice non ha la frase è inglese.
+    it.each([
+        ['es_ES', 'es', 'Nueva reserva: Personal training, ', 'mié, 4 nov, 10:00', '3 de noviembre de 2026'],
+        ['zz', 'en', 'New booking: Personal training, ', 'Wed, Nov 4, 10:00 AM', 'November 3, 2026'],
+        ['fr', 'en', 'New booking: Personal training, ', 'Wed, Nov 4, 10:00 AM', 'November 3, 2026'],
+    ])('con la lingua "%s" la data del titolo è nella lingua dei testi ("%s"), come la frase (revisione dello sprint 74, R1)', (lingua, deiTesti, titolo, aRoma, giorno) => {
+        expect(rigaConLeFrasi(frasiDi[deiTesti]!, prenotazione('creata', ROMA), lingua)).toStrictEqual({ titolo: conLaData(titolo, aRoma) });
+        const scadenza = rigaConLeFrasi(frasiDi[deiTesti]!, { tipo: 'crm.scadenza.in_preavviso', autore_nome: null, risorsa_nome: 'Certificato medico', quando: { il: '2026-11-02T23:00:00Z', fuso: 'Europe/Rome' } }, lingua);
+        expect(scadenza.titolo.endsWith(`\u2068${giorno}\u2069`)).toBe(true);
+    });
+
+    // Sprint 74 · T1.7 (zr-pm, zr-crm): il preavviso di una scadenza non ha chi; col nome del tipo (`risorsa_nome`) e `quando`
+    // il titolo dice che cosa scade e il giorno, nel fuso della notifica, col mese per esteso e l'anno, senza l'ora.
+    it.each([
+        ['it', 'Certificato medico scade il ', '3 novembre 2026'],
+        ['en', 'Certificato medico is due ', 'November 3, 2026'],
+        ['es', 'Certificato medico vence el ', '3 de noviembre de 2026'],
+    ])('in "%s" il preavviso di una scadenza col nome e la data ha il titolo con che cosa e il giorno nel fuso della notifica; senza il nome o la data, il titolo di prima (sprint 74 · T1.7)', (lingua, titolo, giorno) => {
+        const scadenza = (risorsa_nome: unknown, quando: unknown, autore_nome: unknown = null) => rigaConLeFrasi(frasiDi[lingua]!, { tipo: 'crm.scadenza.in_preavviso', autore_nome, risorsa_nome, quando }, lingua);
+        // Mezzanotte del 3 novembre a Roma: in UTC è ancora il 2.
+        const MEZZANOTTE = { il: '2026-11-02T23:00:00Z', fuso: 'Europe/Rome' };
+        const conLaData = `${titolo.replace('Certificato medico', '\u2068Certificato medico\u2069')}\u2068${giorno}\u2069`;
+        const diPrima = frasiDi[lingua]!['notificationTitle.crm.scadenza.in_preavviso'];
+
+        expect(scadenza('Certificato medico', MEZZANOTTE)).toStrictEqual({ titolo: conLaData });
+        expect(scadenza('Certificato medico', MEZZANOTTE, 'Giulia Bianchi')).toStrictEqual({ titolo: conLaData });
+        expect(scadenza(null, MEZZANOTTE)).toStrictEqual({ titolo: diPrima });
+        for (const quando of [null, undefined, { il: '2026-11-02T23:00:00Z' }, { il: '2026-11-02T23:00:00Z', fuso: 'Europa/Roma' }]) {
+            expect(scadenza('Certificato medico', quando)).toStrictEqual({ titolo: diPrima, sotto: 'Certificato medico' });
+        }
+        expect(typeof diPrima).toBe('string');
+    });
+
+    it('senza la frase col servizio resta quella con la sola data, col servizio sotto; e `{when}` dentro il nome del servizio resta testo (sprint 74 · T1.4)', () => {
+        const { 'notificationTitleWhatWhen.bookings.prenotazione.creata': _tolta, ...frasi } = frasiItaliane as FrasiDelleNotifiche;
+        expect(rigaConLeFrasi(frasi, prenotazione('creata', ROMA), 'it')).toStrictEqual({ titolo: 'Nuova prenotazione, \u2068mer 4 nov, 10:00\u2069', sotto: 'Personal training' });
+        expect(rigaConLeFrasi(frasiItaliane, prenotazione('creata', ROMA, 'Corso {when} {what}'), 'it').titolo).toBe('Nuova prenotazione: \u2068Corso {when} {what}\u2069, \u2068mer 4 nov, 10:00\u2069');
+    });
+});
+
+// Sprint 74 · T2 (voce 2549): le risorse della ricerca di Bookings stanno in `resources/registro/ricerca.json`, i loro testi in
+// `resources/lingue/ricerca/`, e li legge solo il pezzo della ricerca; nella voce del registro ci sono solo i loro tipi (`fonti`),
+// e nelle lingue della cornice i loro nomi da elenco, per l'invito.
+describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => {
+    const dellaRicerca = risorseDellaRicerca as Record<string, RisorsaDelProdotto[]>;
+    const fileDellaRicerca = import.meta.glob<Record<string, unknown>>('../lingue/ricerca/*.json', { eager: true, import: 'default' });
+    /**
+     * Le chiavi dei testi del pezzo: il nome del gruppo di ogni risorsa, `<voce>.<tipo>`, e il testo di ogni suo codice; poi,
+     * dalla `v3.9.0`, il testo di ogni codice delle risorse del registro.
+     */
+    const chiavi = [
+        ...Object.entries(dellaRicerca).flatMap(([id, risorse]) =>
+            risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
+        ),
+        ...codiciDelRegistro.map((codice) => `searchContext.${codice}`),
+    ];
+
+    it('ogni lingua della cornice ha il suo file dei testi della ricerca, con tutte e sole le chiavi delle risorse di ricerca.json e dei codici del registro, e testi non vuoti senza spazi ai bordi (T2.1, T2.2, T2.3; v3.9.0)', () => {
+        expect(Object.keys(fileDellaRicerca).map((percorso) => percorso.replace(/^.*\/|\.json$/g, '')).sort()).toStrictEqual([...lingue].sort());
+        expect(chiavi).toStrictEqual([
+            'bookings.bookings.prenotazione', 'searchContext.bookings.bookings.prenotazione.stato.confermata', 'searchContext.bookings.bookings.prenotazione.stato.svolta',
+            'searchContext.bookings.bookings.prenotazione.stato.non_presentato', 'searchContext.bookings.bookings.prenotazione.stato.annullata', 'bookings.bookings.calendario',
+            'searchContext.home.workspace.membro.ruolo.proprietario', 'searchContext.home.workspace.membro.ruolo.amministratore', 'searchContext.home.workspace.membro.ruolo.membro',
+            'searchContext.crm.crm.trattativa.esito.vinta', 'searchContext.crm.crm.trattativa.esito.persa',
+        ]);
+        for (const testi of Object.values(fileDellaRicerca)) {
+            expect(Object.keys(testi).sort()).toStrictEqual([...chiavi].sort());
+            expect(Object.values(testi).filter((testo) => typeof testo !== 'string' || testo === '' || testo.trim() !== testo)).toStrictEqual([]);
+        }
+    });
+
+    it('una voce del registro ha `risorse` o `fonti`, mai tutte e due; `fonti` sono i tipi delle sue risorse in ricerca.json, nel loro ordine, e ognuno ha il suo nome da elenco nelle lingue della cornice (T2.5)', () => {
+        expect(registro.filter((voce) => voce.risorse && voce.fonti).map((voce) => voce.id)).toStrictEqual([]);
+        expect(registro.filter((voce) => voce.fonti).map((voce) => [voce.id, voce.fonti])).toStrictEqual(Object.entries(dellaRicerca).map(([id, risorse]) => [id, risorse.map((risorsa) => risorsa.tipo)]));
+        const tipi: TipoDellaRicerca[] = ['bookings.bookings.prenotazione', 'bookings.bookings.calendario'];
+        expect(Object.entries(dellaRicerca).flatMap(([id, risorse]) => risorse.map((risorsa) => `${id}.${risorsa.tipo}`))).toStrictEqual(tipi);
+        expect([italiano, spagnolo, inglese].map((file) => tipi.map((tipo) => (file as Record<string, string>)[`searchSource.${tipo}`]))).toStrictEqual([
+            ['prenotazioni', 'calendari'],
+            ['reservas', 'calendarios'],
+            ['bookings', 'calendars'],
+        ]);
+        // Il nome del gruppo e i testi dei codici non stanno nelle lingue della cornice: sono del pezzo.
+        expect([italiano, spagnolo, inglese].flatMap((file) => chiavi.filter((chiave) => Object.hasOwn(file, chiave)))).toStrictEqual([]);
     });
 });

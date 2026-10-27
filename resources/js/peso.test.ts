@@ -5,6 +5,9 @@ import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
 import { build, type Plugin } from 'vite';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import avvisiInglesi from '../lingue/avvisi/en.json';
+import avvisiSpagnoli from '../lingue/avvisi/es.json';
+import avvisiItaliani from '../lingue/avvisi/it.json';
 import generato from './zeiras/componenti.js?raw';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
@@ -89,8 +92,30 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * v3.2.3 (voce 2544): altri 17 byte sul tetto (la misura è 19 sopra la v3.2.2, che pesava 17.476), perché un modulo spento
  * non si mostra a chi non può attivarlo, come nella griglia della Home, tranne il modulo aperto e i «Presto» del registro
  * (zr-pm, 24/10/2026, Decisioni 16812 e 16828: se una patch futura libera byte, il tetto riscende).
+ *
+ * v3.6.0: +80 per le fonti di Bookings nell'invito della ricerca (voce 2549 T2.7), e altri 75 fino a 17.650 (zr-pm, 26/10/2026,
+ * Decisione 18231): la ricerca che passa al caricamento dal primo tasto di una parola nuova (voce 2062, 42 byte misurati),
+ * l'ora corta delle notifiche (voce 2718) e il nome del «+» che dà il modulo (voce 2719); poi +25 fino a 17.675 (zr-pm,
+ * 26/10/2026, la misura + 20 come nelle altre deroghe): il colore che il workspace ha scelto nel selettore (voce 2730, 8 byte,
+ * misurati a 17.655); poi +25 fino a 17.700 (zr-pm, 26/10/2026, la misura + 20): la ricerca che non resta in caricamento
+ * quando nel campo si incolla la parola che c'era già (voce 2062, seconda lettura N1, 5 byte, misurati a 17.680). È l'ultimo
+ * rialzo senza contropartita: dal prossimo byte in più, prima di chiedere si porta a zr-pm che cosa togliere dall'ingresso,
+ * per esempio spostandolo in un pezzo a richiesta (zr-pm, 26/10/2026).
+ *
+ * v3.7.0: 17.296, 404 in meno (zr-pm, 26/10/2026: l'ingresso sotto i 17.400 togliendo peso, senza alzare la soglia). I sette
+ * testi dei due avvisi della cornice ridotta, nelle tre lingue, sono usciti dall'ingresso: stanno in `resources/lingue/avvisi/`
+ * e nel pezzo a richiesta degli avvisi (`DEGLI_AVVISI`), che la cornice chiede solo in quei due stati. L'ingresso pesa 403 byte
+ * in meno (17.276, misurato sopra la v3.6.1), e il tetto è la misura più 20, la regola fissa: il margine non sta nel tetto ma
+ * nel peso tolto, e chi lo vuole usare porta la sua misura (zr-pm, 26/10/2026).
+ *
+ * v3.8.1: 17.336, 40 in più (zr-pm, 26/10/2026, la misura + 20): il pezzo degli avvisi che non è arrivato si richiede ogni 5
+ * secondi, con l'attesa degli altri pezzi, finché la cornice è ridotta e la scheda in primo piano (R5 della revisione 381;
+ * 17.316 misurati).
+ *
+ * v3.9.0: 17.213, 123 in meno (Decisione 18762 di zr-pm, la misura + 20): i testi dei codici della seconda riga di un risultato
+ * della ricerca (i ruoli di un membro, l'esito di un'opportunità) stanno coi testi del pezzo della ricerca (17.193 misurati).
  */
-const TETTO_DELL_INGRESSO = 17_495;
+const TETTO_DELL_INGRESSO = 17_213;
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -102,8 +127,12 @@ const PER_LE_PAGINE = ['destinazioneDellaNotifica', 'rigaDellaNotifica', 'risors
 const DELLE_DESTINAZIONI = 'com.zeiras.crm.pipeline.creata';
 /** Ciò che nel codice costruito c'è solo nel pezzo della ricerca: l'indirizzo della sua rotta (dalla `v2.8.0`). */
 const DELLA_RICERCA = '/cornice/ricerca';
+/** Ciò che nel codice costruito c'è solo nel pezzo degli avvisi della cornice ridotta (dalla `v3.7.0`): il titolo inglese di uno dei due. */
+const DEGLI_AVVISI = 'Zeiras is not responding';
 /** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera. */
 const DEI_RIMEDI = 'MutationObserver';
+/** Ciò che nel codice costruito c'è solo nei rimedi della sola tastiera (dalla `v3.8.0`): l'ordine di due fermate del Tab. */
+const DELLA_TASTIERA = 'compareDocumentPosition';
 /** Ciò che nel codice costruito c'è solo nella barra minima di chi non ha i dati della cornice (sprint 68 · T1). */
 const DELLA_BARRA = 'var(--topbar-height)';
 
@@ -447,18 +476,18 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
     });
 
-    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri tre sono pezzi di codice, senza frasi: la campanella, la ricerca e i rimedi di tastiera', (_nome, costruita) => {
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri cinque sono pezzi di codice, senza frasi: la campanella, la ricerca, i rimedi di tastiera, gli avvisi della cornice ridotta (dalla v3.7.0) e i rimedi della sola tastiera (dalla v3.8.0)', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
-        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], ['en'], ['es'], ['it']]);
-        expect(costruita().pezzi).toHaveLength(3);
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], [], [], ['en'], ['es'], ['it']]);
+        expect(costruita().pezzi).toHaveLength(5);
     });
 
     // Sprint 33 · T1.2 (voce #1915). Che il pezzo si chieda all'apertura della campanella, e non al montaggio, lo provano i casi
     // della cornice (`cornice.test.tsx`).
     it.each(app)('«%s»: ciò che compone la riga di una notifica non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello dei rimedi (sprint 33 · T1.2)', (_nome, costruita) => {
         expect(volte(costruita().js, DELLA_CAMPANELLA)).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, true], [true, false]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, true], [true, false]]);
     });
 
     // Sprint 42 · T2.1 (voce #2054). Che il pezzo si chieda al primo fuoco nel campo, o alla prima parola, e non al montaggio, lo
@@ -474,7 +503,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it.each(app)('«%s»: nel JS d\'ingresso il nome del pezzo della campanella sta fra virgolette dentro `import(`, dove «Riprova» lo legge, e così quello della ricerca (sprint 39 · T4.2; sprint 42 · T2.1)', (_nome, costruita) => {
         const nomi = [...costruita().js.matchAll(/import\(([\x22\x27\x60])(.+?)\1/g)].map(([, , nome = '']) => nome.replace(/-[\w-]{8,}\.js$/, '-<impronta>.js'));
 
-        expect(nomi.sort()).toStrictEqual(['./campanella-<impronta>.js', './ricerca-<impronta>.js', './rimedi-<impronta>.js']);
+        expect(nomi.sort()).toStrictEqual(['./avvisi-<impronta>.js', './campanella-<impronta>.js', './ricerca-<impronta>.js', './rimedi-<impronta>.js']);
     });
 
     // Il pezzo importa il JS d'ingresso col nome del file, senza code: se un frontend serve l'ingresso con una coda sua
@@ -491,12 +520,27 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
     it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
         expect(volte(costruita().js, 'Segmenter')).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [true, true]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, false], [true, true]]);
+    });
+
+    // Sprint 74 · T1.6 (voce 2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
+    // scrive il pezzo della campanella, non il JS d'ingresso.
+    it.each(app)('«%s»: la data delle notifiche non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 74 · T1.6)', (_nome, costruita) => {
+        expect(volte(costruita().js, 'weekday')).toBe(0);
+        expect(costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA)).map((pezzo) => volte(pezzo, 'weekday'))).toStrictEqual([1]);
     });
 
     it.each(app)('«%s»: i rimedi provvisori di tastiera stanno in un pezzo a richiesta solo, non nel JS d\'ingresso (sprint 30 · T3)', (_nome, costruita) => {
         expect(costruita().js).not.toContain(DEI_RIMEDI);
         expect(costruita().aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI))).toHaveLength(1);
+    });
+
+    // Dalla v3.8.0 (zr-pm, 26/10/2026): i rimedi che servono solo a chi preme un tasto stanno in un pezzo loro, che il pezzo dei
+    // rimedi chiede al primo tasto. Che il primo tasto non si perda lo provano i casi di `tastiera.test.ts`.
+    it.each(app)('«%s»: i rimedi della sola tastiera stanno in un pezzo a richiesta solo, che non è quello dei rimedi: lo chiede quello dei rimedi, non il JS d\'ingresso (v3.8.0)', (_nome, costruita) => {
+        expect(costruita().js).not.toContain(DELLA_TASTIERA);
+        expect(costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
+        expect(costruita().pezzi.filter((pezzo) => /import\([\x22\x27\x60]\.\/tastiera-/.test(pezzo)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([true]);
     });
 
     it('in un frontend che alza `build.assetsInlineLimit` i file delle frasi restano file: come `data:` nel JS la CSP di tutti (`connect-src \'self\'`) fermerebbe la richiesta (sprint 30 · T1)', () => {
@@ -506,9 +550,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // Sprint 42 · T3 (voce #2054, T2.5): con la ricerca in un pezzo a richiesta il tetto era sceso a 18.229 byte. Sprint 50 ·
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.495 byte: la misura della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
+    // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.213 byte: il tetto della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_495);
+        expect(TETTO_DELL_INGRESSO).toBe(17_213);
     });
 
     // Sprint 70 · T1.1 (voce #2429): le righe delle destinazioni stanno solo nel pezzo della campanella, che le legge quando un
@@ -530,19 +576,47 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.495 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.213 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
         expect(volte(testo, '17.478')).toBe(file === 'README.md' ? 1 : 0);
-        expect([volte(testo, '17.495 byte') > 0, volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '17.213 byte') > 0, volte(testo, '17.336 byte'), volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
-    it('il pezzo della ricerca pesa, con gzip, al più 1.004 byte: la misura (sprint 42 · T2.5)', () => {
+    // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
+    // tutti nel pezzo e non nel JS d'ingresso.
+    it('il pezzo della ricerca pesa, con gzip, al più 1.708 byte: la misura della v3.9.0, coi testi dei codici dei risultati, più 20, e prima quella della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7; Decisione 18762)', () => {
         const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
 
         expect(ricerca).not.toBe('');
-        expect(gzip(ricerca)).toBeLessThanOrEqual(1_004);
+        // Sprint 74, dopo il merge della v3.5.0 (26/10): 1.536 → 1.538, le impronte nuove dei nomi dei pezzi; il codice è lo stesso.
+        // v3.8.0 (zr-pm, 26/10/2026): 1.541 col pezzo della tastiera, ancora solo le impronte nuove dei nomi dei pezzi; il tetto è la
+        // misura più 20. v3.9.0 (Decisione 18762 di zr-pm): 1.688 coi testi dei codici dei risultati, che erano nel JS d'ingresso
+        // (−130 lì, +148 qui): l'ingresso si carica sempre, la ricerca solo quando serve.
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_708);
+    });
+
+    // v3.9.0 (Decisione 18762): i testi dei codici della seconda riga di un risultato, in tutte e tre le lingue, stanno nel pezzo
+    // della ricerca, e nel JS d'ingresso non c'è nessuno: rimessi nelle lingue della cornice, l'ingresso li porterebbe tutti.
+    it('i testi dei codici dei risultati della ricerca non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo della ricerca (v3.9.0)', () => {
+        const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
+        const testi = ['Amministratore', 'Administrador', 'Ganada', 'Perdida', 'Vinta'];
+
+        expect(testi.map((testo) => volte(soloCornice.js, testo))).toStrictEqual([0, 0, 0, 0, 0]);
+        expect(testi.map((testo) => volte(ricerca, testo) > 0)).toStrictEqual([true, true, true, true, true]);
+    });
+
+    // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta stanno in un pezzo a richiesta, con le tre lingue,
+    // e non nel JS d'ingresso. Il pezzo ha un tetto suo: la misura più 20.
+    it('i testi dei due avvisi della cornice ridotta non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo degli avvisi, che non è un altro pezzo, e pesa con gzip al più 778 byte (v3.7.0)', () => {
+        const titoli = [avvisiItaliani.downTitle, avvisiSpagnoli.downTitle, avvisiInglesi.downTitle, avvisiItaliani.acceptanceText];
+        const [avvisi = '', ...altri] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEGLI_AVVISI));
+
+        expect([soloCornice.js, perNome.js, diSempre.js].map((js) => titoli.filter((titolo) => js.includes(titolo)))).toStrictEqual([[], [], []]);
+        expect([altri, titoli.filter((titolo) => !avvisi.includes(titolo))]).toStrictEqual([[], []]);
+        expect([DELLA_CAMPANELLA, DELLA_RICERCA, DEI_RIMEDI].filter((segno) => avvisi.includes(segno))).toStrictEqual([]);
+        expect(gzip(avvisi)).toBeLessThanOrEqual(778);
     });
 
     it('il README ha «Passare alla v2» con l\'import di prima e quello nuovo, e dice che cosa fa Chromium quando il pezzo non arriva (sprint 33 · T1.5, T1.7)', () => {
@@ -577,7 +651,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 1.988 byte: la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2) e le impronte delle frasi della v3.5.0, col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.290 byte (v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -586,12 +660,16 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Sprint 70 · T1.5 (voce #2429, Decisione 16181): dalla `v3.0.0` porta anche le righe delle destinazioni e la funzione
         // che le legge: 1.922 byte alla misura del prototipo, 1.969 con le due righe delle Scadenze (T2) e le impronte di oggi.
         // Patch v3.2.2 (Decisione 16510 di zr-pm): +16 byte per la riga che apre il preventivo dalla richiesta di un cliente.
-        // Sprint 77 · v3.5.0 (zr-pm-07, 25/10): +3 byte. Il codice del pezzo è quello di prima: coi titoli delle schede senza
-        // assegnatario i tre file delle frasi sono cambiati, e le impronte nuove nei loro nomi si comprimono peggio (1.984 → 1.988).
-        expect(gzip(campanella)).toBeLessThanOrEqual(1_988);
+        // Sprint 74 · T1.6 (voce 2548, eccezione di zr-pm: la misura vera): le tre righe di Bookings e la data delle notifiche,
+        // con la frase con la data provata prima di quella senza (2.162; il prototipo del refining, rimisurato, 2.153), e la frase
+        // senza chi col solo giorno, per il preavviso di una scadenza del CRM (zr-pm): 2.199. Dopo il merge della v3.5.0 (le sue
+        // impronte, +3) e con le notifiche di Bookings senza chi (Decisione di zr-pm del 26/10: la frase col servizio e la data, o
+        // con la sola data, al posto di quella con chi, che cosa e quando): 2.201, la misura vera. Col colore scelto del workspace
+        // (voce 2730) le impronte nuove dei nomi dei pezzi danno 2.202, col codice uguale: la misura + 20 (zr-pm, 26/10).
+        expect(gzip(campanella)).toBeLessThanOrEqual(2_290);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,8 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,9 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -603,7 +681,20 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // del design system, dopo le due letture della PR #121 (misura del 23/10: 1.666; tetto approvato da zr-pm, nota `Decisione:` 15827).
         // Sprint 76 (voce #2627): +102 byte per la testa e il piede del pannello delle notifiche con `role="none"` e per le azioni
         // della barra nascoste sotto la ricerca aperta a 720 px o meno (misura del 25/10: 1.768; deroga a misura vera, Decisione 17522).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_768);
+        // Sprint 74 (voci #2720 e #2722): +67 byte per il pannello della ricerca nel giro del Tab, col suo nome e col contorno, e +15
+        // per i clic sul percorso che passano da `naviga` (misura del 26/10: 1.850; tetto alla misura più 20, Decisione 18266).
+        // Poi +52 per Esc col fuoco nel pannello della ricerca, che passa al campo e chiude la ricerca (dalla UAT in Chromium;
+        // misura del 26/10: 1.902; tetto alla misura più 20, zr-pm 26/10).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
+    });
+
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.438 byte: la misura della v3.8.1 più 20 (1.201 nella v3.8.0, 1.321 con la sola riga 6)', () => {
+        const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
+
+        expect(tastiera).not.toBe('');
+        // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
+        // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
+        expect(gzip(tastiera)).toBeLessThanOrEqual(1_438);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

@@ -33,6 +33,17 @@ export interface NotificaDellaCornice {
      * li dà, e allora la notifica apre la pagina delle notifiche.
      */
     ids?: Record<string, string>;
+    /**
+     * Quando accade la cosa che la notifica racconta (dalla `v3.6.0`: l'inizio di una prenotazione, il giorno di una scadenza):
+     * l'istante e il fuso in cui si legge. `null` quando il backoffice non lo dà, o non nella forma concordata.
+     */
+    quando?: QuandoDellaCornice | null;
+}
+
+/** Un istante come lo danno le rotte della cornice (dalla `v3.6.0`): `il` in UTC, con la `Z`; `fuso`, il nome IANA in cui si legge (`Europe/Rome`). */
+export interface QuandoDellaCornice {
+    il: string;
+    fuso: string;
 }
 
 /** Un risultato della ricerca come lo dà POST /cornice/ricerca: il contratto non dice di che prodotto è. */
@@ -50,9 +61,10 @@ export interface RisultatoDellaRicerca {
      * tipo (`risorse[].contesto`), coi soli testi non vuoti: mai un `null` fra i valori, e `null` tutto il contesto quando non
      * ne resta nessuno — sempre per un'azienda, una board e una cartella. Sono le stesse chiavi che fanno la seconda riga del
      * risultato. Il tipo ammette ancora un `null` fra i valori, e che `contesto` manchi: una parte server finta di prima della
-     * `v1.15.0` non lo dà, e vale come `null`.
+     * `v1.15.0` non lo dà, e vale come `null`. Dalla `v3.6.0` un valore solo può non essere un testo: `quando` (la data di una
+     * prenotazione), nella forma di `QuandoDellaCornice`.
      */
-    contesto?: Record<string, string | null> | null | undefined;
+    contesto?: Record<string, string | QuandoDellaCornice | null> | null | undefined;
 }
 
 /**

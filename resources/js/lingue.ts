@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { CodiceDelContesto, IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } from './registro';
+import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -10,15 +10,15 @@ import type { CodiceDelContesto, IdDiProdotto, TipoDiRisorsa, VoceDelRegistro } 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
  * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
- * minuscolo, per `searchSource.<voce>.<tipo>`, il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
- * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Le frasi delle notifiche non sono qui: stanno in
- * un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
+ * minuscolo, per `searchSource.<voce>.<tipo>` (anche delle risorse di `resources/registro/ricerca.json`, `TipoDellaRicerca`). Il testo
+ * di ogni codice che una chiave di `contesto` può portare (il ruolo di un membro del workspace) non è qui dalla `v3.9.0`: sta coi
+ * testi del pezzo della ricerca, in `resources/lingue/ricerca/`, perché lo mostra solo una riga dei risultati. Le frasi delle
+ * notifiche non sono qui: stanno in un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  */
 export type TestiDellaCornice = Required<AppShellLabels> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
-    Record<`searchSource.${TipoDiRisorsa}`, string> &
-    Record<`searchContext.${CodiceDelContesto}`, string> & {
+    Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Moduli. */
@@ -42,32 +42,6 @@ export type TestiDellaCornice = Required<AppShellLabels> &
      * nome non ha un numero da dire (README, «Le notifiche»).
      */
     unreadNone: string;
-    /**
-     * Il titolo dell'avviso che la cornice mette sopra la pagina a chi non ha ancora accettato i documenti legali in vigore.
-     * I quattro testi dell'accettazione non nominano un documento né una versione: quali mancano lo sa la pagina
-     * dell'accettazione, che è di zr-home, non la cornice (README, «La cornice»).
-     */
-    acceptanceTitle: string;
-    /** La frase dello stesso avviso: che cosa fare, e che cosa resta spento fino ad allora. */
-    acceptanceText: string;
-    /** Il pulsante dello stesso avviso: porta alla pagina dell'accettazione. */
-    acceptanceAction: string;
-    /**
-     * Ciò che campanella e ricerca dicono a chi non ha accettato, al posto delle notifiche e dei risultati. L'`AppShell` non
-     * ha un testo per «non disponibile»: la cornice gli dà questo al posto dei suoi tre (`notificationsError`, `searchHint`,
-     * `searchError`), su una copia.
-     */
-    acceptanceOff: string;
-    /**
-     * Il titolo dell'avviso che la cornice mette sopra la pagina quando la parte server non ha potuto leggere il backoffice
-     * (`Cornice::dopo()` con `non_letti`, dalla `v2.1.0`): l'avviso non ha un pulsante, perché non c'è niente da fare se non
-     * riprovare.
-     */
-    downTitle: string;
-    /** La frase dello stesso avviso: che cosa manca, e che torna da sé. */
-    downText: string;
-    /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
-    downOff: string;
     /**
      * Il pulsante «Salta al contenuto», il primo elemento della cornice da tastiera: porta il fuoco al contenuto della pagina.
      * L'`AppShell` non ne ha uno suo: finché non lo porta lo scrive la cornice, coi pezzi del design system (README, «La cornice»).
@@ -110,7 +84,15 @@ export type FrasiDelleNotifiche = {
      * del nome di chi e `{what}` al posto del nome della cosa (`rigaConLeFrasi`). La ha chi ha anche il titolo.
      */
     [conChiECosa: `notificationTitleWhoWhat.${string}`]: string | undefined;
-    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo. */
+    /**
+     * La frase di una notifica senza chi, col nome della cosa e la data di `quando` (dalla `v3.6.0`): il solo giorno al posto di
+     * `{date}` («Certificato medico scade il 3 novembre 2026»), il giorno e l'ora nel suo fuso al posto di `{when}` («Nuova
+     * prenotazione: Personal training, mer 4 nov, 10:00»).
+     */
+    [conCosaEData: `notificationTitleWhatWhen.${string}`]: string | undefined;
+    /** La frase con la sola data, il giorno e l'ora di `quando` al posto di `{when}`, per quando il nome della cosa non c'è (dalla `v3.6.0`): «Nuova prenotazione, mer 4 nov, 10:00». */
+    [conLaData: `notificationTitleWhen.${string}`]: string | undefined;
+    /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo, fuori dai tre di Bookings, che non dicono mai chi (dalla `v3.6.0`). */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
     /**
      * La riga sotto il titolo quando lì non c'è il nome della cosa: quante azioni la notifica racconta e in quale board sta la
@@ -216,7 +198,7 @@ const POSTO_DELLE_FONTI = '{sources}';
  * `Intl.ListFormat` anche quando ha il resto di `Intl`: lì l'invito è quello senza fonti, quante che siano le fonti, il
  * segnaposto resta quello unico, e niente lancia.
  */
-export function testiDellaRicerca(lingua: string, fonti: readonly TipoDiRisorsa[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
+export function testiDellaRicerca(lingua: string, fonti: readonly (TipoDiRisorsa | TipoDellaRicerca)[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
     const conFonti = fonti.length > 0;
 

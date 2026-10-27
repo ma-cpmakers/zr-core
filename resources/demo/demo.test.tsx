@@ -41,6 +41,8 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
         await act(async () => {
             await import('./index');
         });
+        // I pezzi a richiesta che la cornice chiede al montaggio: i rimedi e, nello stato ridotto, i testi degli avvisi.
+        await act(() => vi.dynamicImportSettled());
         // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: qui sono già arrivate, come a una seconda apertura
         // (in un browser sono un file a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
         const { frasiInMemoria } = await import('../js/prove');
@@ -179,6 +181,7 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
             await act(async () => {
                 await vi.advanceTimersByTimeAsync(800);
             });
+            await act(() => vi.dynamicImportSettled());
             expect(moduli()).toStrictEqual(['Dashboard']);
             expect([uno('.zr-product-switch'), uno('.zr-bell-count')]).toStrictEqual([null, null]);
             expect(uno('main .zr-alert strong')?.textContent).toBe('Ci sono documenti da accettare');

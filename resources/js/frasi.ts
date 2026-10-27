@@ -37,8 +37,9 @@ export function titoloDellaNotifica(tipo: unknown, lingua: string): string {
  * Il titolo e la riga di sotto di una notifica, in una lingua: con chi ha fatto e che cosa quando il backoffice lo dice e le
  * lingue hanno la frase di quel tipo, altrimenti `titoloDellaNotifica` e sotto `risorsaDellaNotifica` (`rigaConLeFrasi`). Quando
  * sotto il titolo non c'è il nome della cosa, la riga di sotto dice quante azioni la notifica racconta (`azioni`, da due in su)
- * e in quale board sta la cosa (`board_nome`). Sono gli stessi testi del pannello delle notifiche della cornice.
+ * e in quale board sta la cosa (`board_nome`). Dalla `v3.6.0`, con `quando` (`QuandoDellaCornice`), il titolo dei tipi che hanno
+ * la frase con la data dice anche quando. Sono gli stessi testi del pannello delle notifiche della cornice.
  */
-export function rigaDellaNotifica(notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown }, lingua: string): { titolo: string; sotto?: string } {
+export function rigaDellaNotifica(notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown; quando?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     return rigaConLeFrasi(frasi(lingua), notifica, lingua);
 }

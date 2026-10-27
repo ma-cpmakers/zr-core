@@ -37,9 +37,10 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * Di che app è un tipo di notifica, dal suo inizio: il backoffice dice `app` dall'evento, e la cornice cerca la destinazione
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
- * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3).
+ * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3). Dallo sprint 74 anche
+ * Bookings, coi tre tipi delle prenotazioni: `bookings.` davanti, senza `com.zeiras.` (zr-backoffice-55, #2652).
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'io.' => 'home'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -209,7 +210,8 @@ function problemiDelRegistro(array $voci): array
                 }
             }
             $percorso = $notifica['percorso'] ?? null;
-            $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*$~D';
+            // Dalla v3.6.1 anche un parametro, uno, in fondo, col suo segnaposto: `/todo?todo={id}`.
+            $formaDiUnPercorso = '~^/(?:[a-z0-9/_-]|\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})*(?:\?[a-z_]+=\{(?:'.CHIAVE_DI_UN_SEGNAPOSTO.')\})?$~D';
             $chiaviDi = function (string $unPercorso): array {
                 preg_match_all('~\{('.CHIAVE_DI_UN_SEGNAPOSTO.')\}~', $unPercorso, $segnaposto);
 
@@ -290,13 +292,17 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         ->and(problemiDelRegistro($voci))->toBe([])
         // Nessun nome: la Dashboard ha il testo `dashboard` delle lingue, ogni prodotto il testo col suo id. La Dashboard non ha tono.
         ->and(collect($voci)->map(fn (array $voce) => collect($voce)->keys()->sort()->values()->all())->all())->toBe([
-            // Dallo sprint 27 la Dashboard ha `risorse` (più sotto): il membro del workspace, la cui pagina è di app.
-            ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'risorse'],
+            // Dallo sprint 27 la Dashboard ha `risorse` (più sotto): il membro del workspace, la cui pagina è di app. Dalla `v3.6.1`
+            // anche `notifiche`: l'invito accettato apre Impostazioni › Membri.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse'],
             // Dallo sprint 24 anche Project Management ha `notifiche` (più sotto).
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
             // Dallo sprint 21 il CRM ha anche `notifiche` (più sotto), e dallo sprint 25 `risorse`.
             ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 5, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
+            // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`, e (T2) `fonti`, coi tipi delle sue risorse della ricerca, che
+            // `Registro::voci()` rimette in `risorse` da resources/registro/ricerca.json.
+            ['fonti', 'icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
+            ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'flow' => 'euro', 'reports' => 'chart',
@@ -341,14 +347,16 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
                 'contesto' => ['ruolo'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
             ],
         ])
-        // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno.
-        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm'])
+        // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno. Dallo sprint 74 (T2)
+        // Bookings, le cui risorse `registroDeiProdotti()` rimette nella voce da resources/registro/ricerca.json (caso più sotto).
+        ->and(array_keys(array_filter(array_column($voci, 'risorse', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
         // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero («Direttore»), e resta com'è. Dallo
         // sprint 28 ha dei codici anche l'opportunità, per l'esito.
+        // Dallo sprint 74 (T2.2) anche la prenotazione di Bookings, per lo stato.
         ->and(array_keys(array_filter(array_merge(...array_map(
             fn (array $voce): array => array_column($voce['risorse'] ?? [], 'codici', 'tipo'),
             $voci,
-        )))))->toBe(['workspace.membro', 'crm.trattativa']);
+        )))))->toBe(['workspace.membro', 'crm.trattativa', 'bookings.prenotazione']);
 });
 
 it('il controllo trova un «contesto» che non è un elenco di chiavi minuscole e diverse, e una chiave che una risorsa non ha (sprint 25 · T4.5)', function () {
@@ -499,6 +507,8 @@ it('il tipo `VoceDelRegistro` di registro.ts dichiara `in_arrivo`, un sì o un n
         'presto' => 'boolean',
         'in_arrivo' => 'boolean',
         'risorse?' => 'RisorsaDelProdotto[]',
+        // Sprint 74 · T2 (voce 2549): i tipi delle risorse di resources/registro/ricerca.json, per l'invito della ricerca.
+        'fonti?' => 'string[]',
         // Sprint 21 · T3: le notifiche che aprono la loro risorsa erano `notifiche?`; dalla `v3.0.0` (sprint 70 · T1.4) stanno in
         // resources/registro/notifiche.json, e la voce non ha più il campo.
     ]);
@@ -512,10 +522,30 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
     $righe = json_decode(File::get(__DIR__.'/../../resources/registro/notifiche.json'), true, flags: JSON_THROW_ON_ERROR);
 
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
-        ->and(array_keys($righe))->toBe(['pm', 'crm'])
+        // v3.6.1: per prima la Dashboard, con l'invito accettato.
+        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
-        // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo.
-        ->and(count($righe['pm']) + count($righe['crm']))->toBe(28);
+        // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
+        // promemoria di una To-do.
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(31)
+        ->and(count($righe['home']))->toBe(1)
+        // Sprint 74 · T1.3: e le tre di Bookings.
+        ->and(count($righe['bookings']))->toBe(3);
+});
+
+// Sprint 74 · T1.3 (voce #2548). Le tre notifiche di Bookings — un ospite ha prenotato, spostato o annullato — aprono il pannello
+// della prenotazione, col suo `id`.
+it('nel registro le notifiche di Bookings sono tre, col tipo intero, e aprono tutte la prenotazione, `/prenotazioni/{id}` (sprint 74 · T1.3)', function () {
+    $voci = registroDeiProdotti();
+
+    expect(problemiDelRegistro($voci))->toBe([])
+        ->and($voci[3]['id'])->toBe('bookings')
+        ->and($voci[3]['indirizzo'])->toBe('https://bookings.zeiras.com')
+        ->and($voci[3]['notifiche'] ?? null)->toBe([
+            ['tipo' => 'bookings.prenotazione.creata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'bookings.prenotazione.spostata', 'percorso' => '/prenotazioni/{id}'],
+            ['tipo' => 'bookings.prenotazione.annullata', 'percorso' => '/prenotazioni/{id}'],
+        ]);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
@@ -528,14 +558,41 @@ it('il tipo `TipoDiRisorsa` di registro.ts elenca le risorse del registro, `<pro
         ->and(valoriDelTipo('TipoDiRisorsa', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDiRisorsa());
 });
 
-it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4)', function () {
+// Sprint 74 · T2 (voce 2549): le risorse della ricerca di Bookings stanno in resources/registro/ricerca.json, per id del prodotto,
+// e le legge solo il pezzo della ricerca; la voce ne ha i tipi in `fonti`, per l'invito. La parte server le rimette nella voce, in
+// `risorse`: la ricerca ne prende le chiavi di `contesto` come per ogni altra risorsa.
+it('le risorse della ricerca di Bookings stanno in resources/registro/ricerca.json: la voce del file ha i loro tipi in `fonti` e non ha `risorse`, `Registro::voci()` le rimette nella voce, e `TipoDellaRicerca` di registro.ts le elenca (sprint 74 · T2.1-T2.5)', function () {
+    $file = json_decode(File::get(__DIR__.'/../../resources/registro/prodotti.json'), true, flags: JSON_THROW_ON_ERROR)['prodotti'];
+    $risorse = json_decode(File::get(__DIR__.'/../../resources/registro/ricerca.json'), true, flags: JSON_THROW_ON_ERROR);
+    $bookings = collect(Registro::voci())->firstWhere('id', 'bookings');
+
+    expect(array_keys($risorse))->toBe(['bookings'])
+        ->and(array_values(array_filter($file, fn (array $voce): bool => isset($voce['fonti']) && isset($voce['risorse']))))->toBe([])
+        ->and(array_column(array_filter($file, fn (array $voce): bool => isset($voce['fonti'])), 'fonti', 'id'))->toBe(['bookings' => ['bookings.prenotazione', 'bookings.calendario']])
+        ->and(array_column($risorse['bookings'], 'tipo'))->toBe($bookings['fonti'])
+        ->and($bookings['risorse'])->toBe([
+            ['tipo' => 'bookings.prenotazione', 'icona' => 'calendar', 'percorso' => '/prenotazioni/{id}', 'contenitore' => false, 'contesto' => ['quando', 'stato'], 'codici' => ['stato' => ['confermata', 'svolta', 'non_presentato', 'annullata']]],
+            ['tipo' => 'bookings.calendario', 'icona' => 'calendar', 'percorso' => '/calendari/{id}', 'contenitore' => false],
+        ])
+        ->and(tipiDellaRicerca())->toBe(['bookings.bookings.prenotazione', 'bookings.bookings.calendario'])
+        ->and(valoriDelTipo('TipoDellaRicerca', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDellaRicerca())
+        // I testi del pezzo: un file per lingua della cornice, con il nome del gruppo e i testi dei codici, e solo quelli; dalla
+        // `v3.9.0` (Decisione 18762) anche i testi dei codici delle risorse del registro, che il JS d'ingresso non porta più.
+        ->and(collect(File::files(__DIR__.'/../../resources/lingue/ricerca'))->map(fn ($f) => $f->getFilename())->sort()->values()->all())->toBe(['en.json', 'es.json', 'it.json'])
+        ->and(collect(['it', 'es', 'en'])->map(fn (string $codice) => array_keys(json_decode(File::get(__DIR__."/../../resources/lingue/ricerca/$codice.json"), true, flags: JSON_THROW_ON_ERROR)))->unique(fn (array $chiavi) => implode(',', $chiavi))->values()->all())
+        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", [...codiciDelContestoDellaRicerca(), ...codiciDelContesto()])]]);
+});
+
+it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: il testo di ognuno lo legge il pezzo della ricerca, non le lingue della cornice, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4; v3.9.0)', function () {
     expect(codiciDelContesto())->toBe([
         'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
         'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
     ])
         ->and(valoriDelTipo('CodiceDelContesto', 'resources/js/registro.ts'))->toEqualCanonicalizing(codiciDelContesto())
-        // Il testo di un codice si chiede alle lingue con `searchContext.` davanti, come il nome da elenco con `searchSource.`.
-        ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->toContain('Record<`searchContext.${CodiceDelContesto}`, string>');
+        // Il testo di un codice si chiede con `searchContext.` davanti, come il nome da elenco con `searchSource.`: dalla `v3.9.0`
+        // ai testi del pezzo della ricerca, e i testi della cornice non lo hanno più fra i loro tipi.
+        ->and(File::get(__DIR__.'/../../resources/js/ricerca.ts'))->toContain('`searchContext.${CodiceDelContesto}`')
+        ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->not->toContain('searchContext.${CodiceDelContesto}');
 });
 
 // Sprint 21 · T3 (voce #1641): da una notifica del CRM si apre la sua risorsa. Dove, lo dice il registro: parole e indirizzi sono
@@ -586,7 +643,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquatt
             ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
         // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['pm', 'crm'])
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });
@@ -608,7 +665,12 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'com.zeiras.board.scheda.modificata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.scheda.assegnata', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.commento.menzione', 'percorso' => '/c/{id}'],
+            // v3.6.1 (zr-backoffice-55): le scadenze di una scheda aprono la scheda, il promemoria di una To-do la To-do.
+            ['tipo' => 'board.scheda.scade_domani', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.scheda.scade_oggi', 'percorso' => '/c/{id}'],
+            ['tipo' => 'board.todo.promemoria', 'percorso' => '/todo?todo={id}'],
         ])
+        ->and($voci[0]['notifiche'] ?? null)->toBe([['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri']])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
         ->and($voci[2]['notifiche'] ?? [])->toHaveCount(24);
 });

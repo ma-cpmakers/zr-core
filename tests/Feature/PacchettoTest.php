@@ -899,19 +899,19 @@ it('il README dice come si usa il layout della cornice, una cosa per punto (spri
 })->with([
     // Di ogni punto la frase intera, dal grassetto: le stesse parole con un «non» davanti non passano.
     '(a) LayoutDellaCornice in un componente a livello di modulo, dato a createInertiaApp' => ['Il layout', ['**Il layout** del frontend rende `LayoutDellaCornice` ed è un componente a livello di modulo, dato a `createInertiaApp({ layout })`'], ['ed è un componente', 'e non è un componente']],
-    '(b) useCornice con le sei cose che accetta' => ['La pagina', ['**La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`actions`', '`flush`'], ['dà alla cornice montata', 'non dà alla cornice montata']],
+    '(b) useCornice con le sette cose che accetta' => ['La pagina', ['**La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`', '`nav`', '`active`', '`onNavigate`', '`create`', '`createLabel`', '`actions`', '`flush`'], ['dà alla cornice montata', 'non dà alla cornice montata']],
     '(c) il percorso si dà dal layout' => ['Il percorso', ['**Il percorso** (`crumbs`, `onCrumb`) si dà dal layout, non con `useCornice`'], ['si dà dal layout', 'non si dà dal layout']],
     '(d) una <Cornice> rimasta in una pagina fa due cornici' => ['Una `<Cornice>` rimasta in una pagina', ['**Una `<Cornice>` rimasta in una pagina** sotto il layout fa due cornici'], ['fa due cornici', 'non fa due cornici']],
     '(e) le voci con un indirizzo sono link veri: la pagina si ricarica' => ['Le voci con un indirizzo', ['**Le voci con un indirizzo** (la Dashboard, i prodotti, «Impostazioni» in fondo alla barra) sono link veri: il browser ricarica la pagina'], ['sono link veri', 'non sono link veri']],
     '(f) senza dati la barra minima è provvisoria, un pezzo a richiesta, e costa 126 byte (sprint 68 · T1.7; patch v2.24.1)' => ['Senza dati: la barra minima', ['**È provvisoria**: il design system non ha ancora la sua barra minima', '**Senza dati: la barra minima**, provvisoria (dalla `v2.24.0`)', '(`barra`, 420 byte con gzip)', 'Costa 126 byte con gzip nel JS d\'ingresso di chi usa il layout con React fuori'], ['È provvisoria', 'Non è provvisoria']],
 ]);
 
-it('le sei cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3)', function () {
+it('le sette cose che il README dice di useCornice sono quelle che accetta nel codice (sprint 9 · T3.3; sprint 74 · T6.1)', function () {
     $layout = (string) file_get_contents(__DIR__.'/../../resources/js/layout.tsx');
     preg_match('/^const nomiDellaPagina = \[([^\]]*)\] as const;$/m', $layout, $elenco);
     preg_match_all('/\'(\w+)\'/', $elenco[1] ?? '', $nomi);
 
-    expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'actions', 'flush']);
+    expect($nomi[1])->toBe(['nav', 'active', 'onNavigate', 'create', 'createLabel', 'actions', 'flush']);
 });
 
 // Sprint 68 · T2 (voce #2115): una pagina che è insieme la rotta di `entra()` e quella della richiesta rimandata.
@@ -1095,7 +1095,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1162,7 +1162,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3037,6 +3037,34 @@ it('i toni che il README elenca per tonoDelWorkspace sono quelli che il design s
         ->and($delReadme($senzaUnTono))->not->toContain('sky');
 });
 
+// Sprint 74 · C5 (voce 2730 di zr-home). Il colore che un workspace ha scelto: il README lo dice subito dopo il capoverso del
+// tono, e la parte server lo lascia passare solo se è uno dei toni che il design system ammette per un workspace, gli stessi
+// di `tonoDelWorkspace`, nello stesso ordine.
+it('il README dice, subito dopo il capoverso del tono, che il colore scelto vince sul tono dell\'id, dove sta nei dati e come lo scrive una pagina del frontend (voce 2730)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^Il colore di un workspace fuori dalla cornice .*?\n\n(.*?)(?=^$|\z)/ms', $readme, $dopo);
+
+    expect(str_contains(suUnaRiga($dopo[1] ?? ''), $frase))->toBe(true);
+})->with([
+    'da quale versione' => ['Dalla `v3.6.0` un workspace che ha scelto il suo colore'],
+    'vince sull\'id' => ['ha nel selettore quel colore, non il tono del suo `id`'],
+    'dove sta nei dati' => ['sta in ogni workspace di `aziende`, come `colore`, solo quando è uno dei cinque toni'],
+    'neutral non arriva' => ['`neutral`, il colore di chi non ne ha scelto uno, non arriva, e allora vale la regola dell\'`id`'],
+    'come lo scrive un frontend' => ['`workspace.colore ?? tonoDelWorkspace(workspace.id)`'],
+]);
+
+it('i colori di un workspace che la parte server lascia passare sono i toni che il design system ammette per un workspace, nello stesso ordine di tonoDelWorkspace (voce 2730)', function () {
+    preg_match('/^export type Tone = ([^;]+);$/m', (string) file_get_contents(__DIR__.'/../../resources/zeiras/index.d.ts'), $tone);
+    preg_match_all("/'([a-z]+)'/", $tone[1] ?? '', $nomi);
+    preg_match('/^const toni = \\[([^\\]]+)\\] as const/m', (string) file_get_contents(__DIR__.'/../../resources/js/tono.ts'), $diTono);
+    preg_match_all("/'([a-z]+)'/", $diTono[1] ?? '', $toni);
+
+    expect((new ReflectionClassConstant(Cornice::class, 'TONI_DI_UN_WORKSPACE'))->getValue())
+        ->toBe(array_values(array_diff($nomi[1], ['neutral'])))
+        ->toBe($toni[1])
+        ->not->toBe([]);
+});
+
 // Sprint 17 · review della PR #20, R1: i frontend compilano i sorgenti di zr-core dalla cartella del pacchetto col loro
 // tsconfig, e lì non li possono correggere. Il `tsc` di zr-core guarda quindi anche ciò che un tsconfig più stretto del suo
 // fermerebbe in quei sorgenti: una dichiarazione mai usata e un parametro mai usato.
@@ -3827,7 +3855,7 @@ it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo work
         // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
         ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
@@ -4065,7 +4093,9 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45, 4
         ->and(substr_count($readme, 'i titoli erano 47'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 48'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 48'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 49'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 49'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 49'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 56'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4257,6 +4287,36 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
 // Sprint 75 · T1.4 (voce #2570; revisione della PR #134, rilievi 1 e 4): il README dice le due strade del CSS, e chi resta su
 // `bundle.css`. Con `zeiras.css` un campo preso da `componenti` resterebbe senza stili; con `bundle.css` i due campi si prendono
 // dallo stesso posto, perché gli stili che un modulo porta arrivano dopo il bundle.
+// Sprint 74 (zr-pm-07, 26/10): chi passa alla v3.6 da una versione 3 di prima (Bookings dalla 3.2.1) trova, versione per
+// versione, che cosa cambia, che cosa si tocca e che cosa si controlla; e lo script UAT della cornice.
+// v3.8.1 (zr-pm-07, 26/10 sera): la sezione arriva alla v3.8.1, con una colonna per ciò che cambia nei test del modulo, così
+// zr-home, zr-board, zr-crm e zr-bookings aggiornano in un colpo solo.
+it('il README dice, in «Passare alla v3.8», versione per versione che cosa cambia, che cosa si tocca, che cosa cambia nei test del modulo e che cosa si controlla, e lo script UAT della cornice (sprint 74; v3.8.1)', function (string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    preg_match('/^### Passare alla v3\.8$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
+
+    expect(str_contains(suUnaRiga($passaggio[1] ?? ''), $frase))->toBe(true);
+})->with([
+    'le colonne' => ['| Versione | Che cosa cambia | Che cosa si tocca | Che cosa cambia nei test del modulo | Che cosa si controlla |'],
+    'la v3.2.2' => ['| `v3.2.2` |'],
+    'la v3.2.3' => ['| `v3.2.3` |'],
+    'la v3.3.0' => ['| `v3.3.0` |'],
+    'la v3.4.0' => ['| `v3.4.0` |'],
+    'la v3.5.0' => ['| `v3.5.0` |'],
+    'la v3.6.0, che cosa si tocca' => ['`createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte'],
+    'la v3.6.1' => ['| `v3.6.1` |'],
+    'la v3.7.0' => ['| `v3.7.0` |'],
+    'la v3.8.0, nei test' => ['un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto)'],
+    'la v3.8.1, nei test' => ['Un caso che si aspettava il contrario va riletto'],
+    'più versioni in un colpo' => ['un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano'],
+    'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
+]);
+
+// Sprint 74 (dalla UAT in Chromium, zr-pm-07 26/10): Esc dal pannello della ricerca, e dove va il fuoco.
+it('il README dice che Esc col fuoco nel pannello della ricerca la chiude come dal campo, e che il fuoco va al documento (sprint 74)', function () {
+    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Esc col fuoco nel pannello chiude la ricerca come dal campo (l\'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento, come dopo Esc nel campo.'))->toBe(1);
+});
+
 it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo dice anche in «Passare alla v3.3» (sprint 75 · T1.4)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     preg_match('/^### Passare alla v3\.3$(.*?)(?=^#{2,3} |\z)/ms', $readme, $passaggio);
@@ -4380,7 +4440,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
     'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che dalla `v1.20.0` si mostra pulito come i nomi nelle notifiche, senza i caratteri che cambiano la direzione del testo e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM)'],
-    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nei testi del pezzo della ricerca (`resources/lingue/ricerca/`, dalla `v3.9.0`: prima nelle lingue della cornice) con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
     'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
 ]);
 
@@ -4390,7 +4450,7 @@ it('i codici e i ruoli che il README dice per un membro sono quelli del registro
     $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
     $fraAccenti = implode(', ', array_map(fn (string $codice): string => '`'.$codice.'`', $codici));
     $nella = function (string $lingua) use ($codici, $davanti): string {
-        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/ricerca/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
 
         return implode(', ', array_map(fn (string $codice): string => '«'.$testi['searchContext.'.$davanti.$codice].'»', $codici));
     };
@@ -4421,7 +4481,7 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 49, 'es' => 49, 'it' => 49])
+        ->and(array_map('count', $titoli))->toBe(['en' => 56, 'es' => 56, 'it' => 56])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
@@ -4527,8 +4587,26 @@ it('il README dice, dalla v3.5.0, il titolo e il tipo della notifica delle sched
     'il titolo e il tipo' => ['Dalla `v3.5.0` ha un titolo anche la notifica che arriva al proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario: «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`)'],
     'senza `com.zeiras.` davanti' => ['Non è un evento nemmeno lei, e il suo `tipo` non ha `com.zeiras.` davanti'],
     'chi l\'ha fatto' => ['chi l\'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede senza assegnatario»)'],
-    'quanti sono i titoli' => ['Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario'],
+    // v3.6.0: con le tre di Bookings e le quattro del promemoria, delle scadenze di una scheda e dell'invito i titoli sono 56, e i 49 passano al passato.
+    'quanti erano i titoli' => ['Con lei i titoli erano 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario'],
     'i dati e dove si apre' => ['Nei `dati` porta solo il numero delle schede, nessun id: un clic apre la pagina delle notifiche'],
+]);
+
+// Sprint 74 (zr-backoffice-55, 26/10). Il promemoria di una To-do, le due scadenze di una scheda e l'invito accettato hanno un
+// titolo: il README lo dice nel punto «Le notifiche», coi titoli che ora sono 56.
+it('il README dice, dalla v3.6.0, i titoli e i tipi del promemoria di una To-do, delle due scadenze di una scheda e dell\'invito accettato, chi l\'ha fatto, che con loro i titoli sono 56 e che un clic apre la pagina delle notifiche', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'non sono eventi' => ['Dalla `v3.6.0` hanno un titolo anche quattro notifiche che non sono eventi, col `tipo` senza `com.zeiras.` davanti'],
+    'il promemoria' => ['il promemoria di una To-do, «Promemoria: hai una cosa da fare» (`board.todo.promemoria`)'],
+    'le due scadenze' => ['«Una scheda scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`)'],
+    'l\'invito' => ['senza prodotto l\'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`)'],
+    'chi l\'ha fatto' => ['dell\'invito chi l\'ha fatto è chi ha accettato («Marta Rossi ha accettato il tuo invito»)'],
+    'quanti sono i titoli' => ['Con loro e con le tre di Bookings (più sotto) i titoli sono 56'],
+    'dove si apre' => ['Nessuna delle quattro ha una destinazione: un clic apre la pagina delle notifiche'],
 ]);
 
 // Sprint 77 · T2.1 (voce #2677). README e guida dicono `Cornice::nuovoWorkspace()`: l'indirizzo, quando dà null, che pagina e
@@ -4577,7 +4655,7 @@ it('gli esiti che README e guida dicono per un\'opportunità sono i codici del r
     $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
     $fraAccenti = array_map(fn (string $codice): string => '`'.$codice.'`', $codici);
     $nella = function (string $lingua) use ($codici, $davanti): array {
-        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/ricerca/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
 
         return array_map(fn (string $codice): string => $testi['searchContext.'.$davanti.$codice], $codici);
     };
@@ -4613,7 +4691,7 @@ it('la guida dice nel passo del registro, e non altrove, come si dà a una risor
         ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
 })->with([
     'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
-    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua del pezzo della ricerca (`resources/lingue/ricerca/`, dalla `v3.9.0`) ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
     'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
     // Sprint 28 · T1.5: dalla `v1.18.0` li ha anche l'opportunità, e il membro non è più detto come la sola risorsa coi `codici`.
     'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi hanno `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l\'opportunità del CRM, per l\'`esito` (`vinta`, `persa`'],
@@ -5008,8 +5086,10 @@ it('in src/ il file del registro dei moduli lo apre una classe sola, `Registro`:
 
     // Nel codice, non in un commento: i commenti delle rotte possono nominare il file.
     // Sprint 70 · T1.4 (voce #2429): dalla `v3.0.0` i file sono due, le voci e le righe delle notifiche, e li legge `Registro`.
-    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json'))))->toBe(['Registro.php'])
-        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(2)
+    // Sprint 74 · T2 (voce 2549): dalla `v3.6.0` tre, con le risorse della ricerca di Bookings.
+    expect(array_keys(array_filter($sorgenti, fn (string $codice): bool => str_contains($codice, 'registro/prodotti.json') || str_contains($codice, 'registro/notifiche.json') || str_contains($codice, 'registro/ricerca.json'))))->toBe(['Registro.php'])
+        ->and(substr_count($sorgenti['Registro.php'], 'file_get_contents('))->toBe(3)
+        ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/ricerca.json')"))->toBe(1)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/prodotti.json')"))->toBe(1)
         ->and(substr_count($sorgenti['Registro.php'], "file_get_contents(__DIR__.'/../resources/registro/notifiche.json')"))->toBe(1)
         ->and(array_map(fn (string $rotta): array => [substr_count($sorgenti[$rotta], 'file_get_contents('), substr_count($sorgenti[$rotta], 'Registro::voci()')], ['Http/RicercaDellaCornice.php', 'Http/NotificheDellaCornice.php']))
@@ -5289,7 +5369,7 @@ it('il README dice il conto delle azioni e il nome della board: le due chiavi de
     expect($testo)->not->toBe('')
         ->and(str_contains($testo, $frase))->toBe(true);
 })->with([
-    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`'],
+    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`'],
     'che cosa sono le due chiavi' => ['elenco', 'dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`'],
     'da dove vengono' => ['elenco', 'sono `azioni` e `board.nome` del backoffice'],
     'il backoffice di prima' => ['elenco', 'un backoffice che non li manda è quello di prima, e valgono 1 e `null`'],
@@ -5304,7 +5384,7 @@ it('il README dice il conto delle azioni e il nome della board: le due chiavi de
     'il nome della board è difeso' => ['punto', 'Il nome della board è pulito e isolato come gli altri due nomi'],
     'una board di soli invisibili' => ['punto', 'un nome che pulito è vuoto è una board che manca'],
     'il nome della cosa resta' => ['punto', 'Quando sotto il titolo c\'è il nome della cosa — il titolo di prima, o la frase con solo chi — resta il nome'],
-    'ciò che legge rigaDellaNotifica' => ['fuori', 'Della notifica legge `tipo`, `autore_nome`, `risorsa_nome` e, dalla `v2.1.0`, `azioni` e `board_nome`'],
+    'ciò che legge rigaDellaNotifica' => ['fuori', 'Della notifica legge `tipo`, `autore_nome`, `risorsa_nome`, dalla `v2.1.0` `azioni` e `board_nome`, e dalla `v3.6.0` `quando`'],
 ]);
 
 it('il README non dice più che `azioni` e `board` non arrivano in pagina, né che la board non compare (sprint 34 · T2.8)', function (string $frase) {
@@ -5391,7 +5471,12 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.495 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.213 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
+    // v3.9.0 (Decisione 18762 di zr-pm): i testi dei codici della ricerca nel pezzo della ricerca, il tetto scende di 123, alla misura più 20.
+    'i pesi: i 123 byte della v3.9.0' => ['pesi', 'Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20: i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l\'esito di un\'opportunità) sono usciti dal JS d\'ingresso, nel pezzo della ricerca'],
+    'i pesi: i 404 byte della v3.7.0' => ['pesi', 'Dalla `v3.7.0` è sceso di 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d\'ingresso, nel pezzo a richiesta degli avvisi'],
+    'i pesi: il settimo' => ['pesi', 'Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi (circa 0,8 KB con gzip)'],
     'i pesi: i 17 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 17 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
     'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
@@ -5401,7 +5486,8 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // Sprint 60 · T1.3 (voce #2144): 30 byte in più per l'impronta di zr-auth, eccezione di zr-pm (nota 13648).
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la ricerca'],
+    // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20.
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
@@ -5443,7 +5529,8 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
     'il passaggio: niente nel codice' => ['passaggio', 'La `v2.8.0` non cambia niente nel codice di chi installa'],
     'il passaggio: nei test' => ['passaggio', 'un caso che scrive nel campo, lascia passare i 300 ms dall\'ultimo tasto e guarda subito le richieste partite non ne trova'],
     'il passaggio: la riga che c\'è già' => ['passaggio', '`beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca'],
-    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,0 KB con gzip)'],
+    // Sprint 74 · T2.7 (voce 2549): dalla `v3.6.0` il pezzo della ricerca porta le risorse di Bookings.
+    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,5 KB con gzip dalla `v3.6.0`, circa 1,7 KB dalla `v3.9.0`)'],
     'la guida: la riga dei test' => ['guida', 'Dalla `v2.8.0` dà alla cornice anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo'],
     'la guida: se non arriva' => ['guida', 'Se non arriva, sotto il campo c\'è l\'errore della ricerca, e si riprova scrivendo un\'altra parola, o la stessa'],
 ]);
@@ -5640,7 +5727,7 @@ it('il README dice le frasi delle notifiche con chi e che cosa, la discesa, il n
     'la frase con chi e che cosa' => ['notifiche', 'le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi segnaposto `{who}` e `{what}`'],
     'la frase con solo chi' => ['notifiche', 'e `notificationTitleWho.<tipo>`, col solo `{who}`'],
     // Sprint 31 · T2.4 (voce #1866): le frasi le hanno tutti i tipi; quali hanno il nome della cosa, e perché gli altri no.
-    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i quarantanove tipi che hanno un titolo; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
+    'i tipi che le hanno' => ['notifiche', 'La seconda la hanno tutti i cinquanta tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi, e dal promemoria di una To-do e dalle due scadenze di una scheda, che non hanno chi; la prima ventotto: i quattordici di Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il modulo attivato o disattivato'],
     // Sprint 32 · T4.4 (voce #1914): da quando aziende, opportunità e attività del CRM hanno la frase col nome.
     'le sei del CRM, da quando' => ['notifiche', 'Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0`'],
     // Sprint 34 · T3.4 (voce #1931): da quando le hanno le tre assegnate, e l'esempio.

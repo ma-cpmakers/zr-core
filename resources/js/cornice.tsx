@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
-import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
@@ -21,6 +21,9 @@ const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 // frontend con `exactOptionalPropertyTypes` le può scrivere così. Le voci di `nav` no (`GruppoDiVoci`): hanno la forma che
 // vuole l'`AppShell`, e per i tipi del design system una chiave facoltativa manca. Per questo la cornice dà all'`AppShell`
 // una chiave solo quando ha un valore (`senzaUndefined`, più sotto).
+
+/** Un workspace di un'azienda nei dati della cornice (`DatiDellaCornice`, `aziende`). */
+type WorkspaceDeiDati = { id?: string | undefined; nome: string; slug: string; colore?: ShellWorkspace['tone'] };
 
 /** I dati della cornice, come li dà `Cornice::dati()` della parte server: la persona, la sua lingua, il workspace in cui è entrata. */
 export interface DatiDellaCornice {
@@ -44,12 +47,14 @@ export interface DatiDellaCornice {
     prodotti: Partial<Record<IdDiProdotto, 'attivo' | 'disponibile' | 'in_arrivo' | undefined>> | (never[] & Partial<Record<IdDiProdotto, undefined>>);
     /**
      * Le aziende della persona coi loro workspace, nell'ordine dei dati: il selettore «Azienda › workspace». Senza, o se il workspace
-     * dei dati non sta in nessuna, il workspace resta testo. Dall'`id` di un workspace viene il tono del suo pallino
-     * (`tonoDelWorkspace`): è facoltativo, perché i dati scritti a mano nei test di un frontend restino validi, e senza non c'è tono.
+     * dei dati non sta in nessuna, il workspace resta testo. Il tono del suo pallino è il `colore` che il workspace ha scelto, se
+     * l'ha (dalla `v3.6.0`; la parte server lo dà solo se è uno dei cinque toni, mai `neutral`), altrimenti quello del suo `id`
+     * (`tonoDelWorkspace`). Tutti e due sono facoltativi, perché i dati scritti a mano nei test di un frontend restino validi, e
+     * senza nessuno dei due non c'è tono.
      * `nuovo_workspace` dice se la persona può creare un workspace in quell'azienda: lo ricava la parte server dal suo ruolo, che
      * al browser non arriva. Solo con `true` nell'azienda del workspace dei dati il selettore ha in fondo «Nuovo workspace».
      */
-    aziende?: { id: string; nome: string; workspace: { id?: string | undefined; nome: string; slug: string }[]; nuovo_workspace?: boolean | undefined }[] | undefined;
+    aziende?: { id: string; nome: string; workspace: WorkspaceDeiDati[]; nuovo_workspace?: boolean | undefined }[] | undefined;
     /**
      * Dove si attiva un modulo (dalla `v2.25.0`): l'indirizzo di Impostazioni › Moduli nel workspace dei dati, che la parte server dà
      * solo a chi lo amministra. Un modulo `disponibile` nel menu Moduli porta lì; senza, non porta da nessuna parte.
@@ -131,6 +136,8 @@ export interface CorniceProps {
     onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
     /** Le voci del menu «+»: i tipi che il prodotto crea. */
     create?: MenuItem[] | undefined;
+    /** Il nome del «+» e del suo menu («Nuovo nel CRM», dalla `v3.6.0`); senza, «Crea» nella lingua della persona. */
+    createLabel?: string | undefined;
     /** Altro in topbar. */
     actions?: ReactNode;
     /** L'area della pagina senza margine (la board). */
@@ -212,16 +219,17 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
 }
 
 /**
- * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col tono del suo id (tono.ts), mai del nome, dello slug o del
- * posto nell'elenco. Senza id nessun tono, nemmeno la chiave: il pallino è quello che l'`AppShell` mette da sé.
+ * Un workspace dei dati come lo vuole il selettore dell'`AppShell`: col colore che ha scelto, o col tono del suo id (tono.ts), mai
+ * del nome, dello slug o del posto nell'elenco. Senza l'uno e l'altro nessun tono, nemmeno la chiave: il pallino è quello che
+ * l'`AppShell` mette da sé.
  */
-function nelSelettore(workspace: { id?: string | undefined; nome: string; slug: string }): ShellWorkspace {
-    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: tonoDelWorkspace(workspace.id) });
+function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
+    return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: workspace.colore ?? tonoDelWorkspace(workspace.id) });
 }
 
 /**
- * Quando è arrivata una notifica, come le date del design system: «ora», «5 minuti fa», «3 ore fa», «ieri», poi «1 ott» (con
- * l'anno se non è quest'anno). Un istante che non si legge non ha ora.
+ * Quando è arrivata una notifica, nella forma corta dei design di zr-home (dalla `v3.6.0`, Decisione 18231): «ora», «5 min fa»,
+ * «3 h fa», «ieri», poi «1 ott» (con l'anno se non è quest'anno). Un istante che non si legge non ha ora.
  */
 function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
     const data = new Date(istante);
@@ -229,7 +237,7 @@ function quando(istante: string, lingua: string | undefined, adesso: Date): stri
         return undefined;
     }
     const secondi = (+adesso - +data) / 1000;
-    const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto' });
+    const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto', style: 'short' });
     if (secondi < 60) {
         return relativa.format(0, 'second');
     }
@@ -407,6 +415,9 @@ function SaltaAlContenuto({ testo }: { testo: string }) {
     );
 }
 
+/** Il pezzo dei testi degli avvisi: chi lo chiede di nuovo dopo un fallimento lo chiede come gli altri pezzi a richiesta. */
+const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
+
 /**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
  * niente di lì. Ogni modulo del registro si apre come uno `disponibile`, e se in quel workspace non è attivo lo dice il modulo,
@@ -507,6 +518,24 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
     };
     const t = testi(lingua);
+    // I testi dei due avvisi stanno in un pezzo a richiesta (dalla `v3.7.0`), chiesto la prima volta che la cornice è ridotta
+    // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
+    // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
+    // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
+    const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
+    useLayoutEffect(() => {
+        if (ridotta === 'error' && !avvisi) {
+            const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
+            const ogni = setInterval(chiedi, 5e3);
+
+            chiedi();
+
+            return () => clearInterval(ogni);
+        }
+
+        return undefined;
+    }, [ridotta, avvisi]);
+    const a = avvisi?.testiDegliAvvisi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
     // sono anche senza moduli attivi. Nello stato ridotto nessuna: i moduli non si mostrano e la ricerca è spenta, anche quando
@@ -838,6 +867,29 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // `non_letti` o l'accettazione non parte niente.
     const ridottaAdesso = useRef(ridotta);
     const diPrima = useRef<string>(undefined);
+    // A ogni tasto nel campo, con 2 caratteri o più, la ricerca è subito in caricamento: l'`AppShell` chiama la cornice 300 ms dopo
+    // l'ultimo tasto, e fino ad allora mostrerebbe lo stato della parola di prima — «Nessun risultato per» la parola nuova, o i
+    // risultati della vecchia (voce 2062, Decisione 18231; il difetto dell'`AppShell` è la riga 46 delle richieste al design system).
+    // Nello stato ridotto e in attesa l'`AppShell` non chiama la cornice, e nel freno la cornice resta all'errore: lì il tasto non
+    // cambia niente. L'ascolto sta sulla finestra, dopo quello di React: sul campo, lo stato cambiato durante l'evento ridisegnava
+    // l'`AppShell` col valore di prima, e in un browser vero il campo teneva solo il primo carattere (jsdom non lo vede; lo prova
+    // R.0 di `scripts/uat-cornice.mjs`). Conta solo il campo della ricerca dell'`AppShell`, nella sua barra in alto; un evento che non
+    // viene da un elemento (la finestra, il documento) non ha `matches` e passa. Fra il disegno dell'`AppShell` e questo ascolto,
+    // per un microtask, nel pannello c'è ancora lo stato di prima: il browser non lo disegna (R.2 dello script lo conta a parte).
+    // Un `input` che lascia nel campo il valore di prima (la stessa parola incollata sopra la selezione) non arriva all'`AppShell`,
+    // che non chiama la cornice: lì il tasto non cambia niente, o la ricerca resterebbe in caricamento. `visto` è l'ultimo valore
+    // del campo che l'ascolto ha visto: una variabile del primo disegno, l'unico di cui l'ascolto resta (`useRef`).
+    let visto: string | undefined;
+    const alTasto = useRef((e: Event) => {
+        const campo = e.target as HTMLInputElement;
+        if (campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
+            // La richiesta della parola di prima si annulla: la sua risposta, se arriva prima che l'`AppShell` chiami la cornice,
+            // non si scrive sotto la parola nuova.
+            ricercaInVolo.current?.abort();
+            ricercaInVolo.current = undefined;
+            setRicerca({ stato: 'loading' });
+        }
+    }).current;
     useLayoutEffect(() => {
         const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
         const parola = campo?.value.trim();
@@ -866,13 +918,14 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona);
+        addEventListener('input', alTasto);
 
-        return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
+        return () => (mostra(persona, 1), ricercaInVolo.current?.abort(), removeEventListener('input', alTasto));
     }, []);
-    // Il pezzo arriva una volta; `via` gli ridà il nome del contenuto a ogni cambio di lingua, anche senza una cornice nuova.
+    // Il pezzo arriva una volta; `via` gli ridà i nomi del contenuto e dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
     useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent), () => undefined);
-    }, [t.mainContent]);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
+    }, [t.mainContent, t.searchResults]);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
@@ -970,15 +1023,16 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di
     // quello dell'accettazione: la pagina resta dov'è quando compare e quando se ne va.
-    const avvisoSopraLaPagina = daAccettare || dati.non_letti ? (
+    const avvisoSopraLaPagina = a && ridotta === 'error' ? (
         <div className="zr-stack">
-            <Alert tone="warning" title={daAccettare ? t.acceptanceTitle : t.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{t.acceptanceAction}</Button> : undefined}>
-                {daAccettare ? t.acceptanceText : t.downText}
+            <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
+                {daAccettare ? a.acceptanceText : a.downText}
             </Alert>
             <div />
         </div>
     ) : null;
-    const spenta = daAccettare ? t.acceptanceOff : t.downOff;
+    // Serve solo con l'avviso, e con l'avviso i testi ci sono.
+    const spenta = (daAccettare ? a?.acceptanceOff : a?.downOff)!;
 
     const shell = (
         <AppShell

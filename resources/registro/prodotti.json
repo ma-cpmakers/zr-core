@@ -22,7 +22,7 @@
                 { "tipo": "crm.trattativa", "icona": "target", "percorso": "/opportunita/{id}", "contenitore": false, "contesto": ["pipeline", "fase", "esito"], "codici": { "esito": ["vinta", "persa"] } }
             ]
         },
-        { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true },
+        { "id": "bookings", "icona": "calendar", "tono": "sky", "indirizzo": "https://bookings.zeiras.com", "presto": false, "in_arrivo": true, "fonti": ["bookings.prenotazione", "bookings.calendario"] },
         { "id": "flow", "icona": "euro", "tono": "pine", "indirizzo": "https://flow.zeiras.com", "presto": false, "in_arrivo": true },
         { "id": "reports", "icona": "chart", "tono": "citrus", "indirizzo": "https://report.zeiras.com", "presto": true, "in_arrivo": true },
         { "id": "automations", "icona": "bolt", "tono": "plum", "indirizzo": "https://auto.zeiras.com", "presto": true, "in_arrivo": true },

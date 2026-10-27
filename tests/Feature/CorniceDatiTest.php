@@ -264,6 +264,35 @@ it('ogni workspace delle aziende porta il suo id, quello di io.workspace.elenca,
         ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']);
 });
 
+// Sprint 74 · C5 (voce 2730 di zr-home). io.workspace.elenca dà a ogni workspace il suo `colore` (dal 17/10/2026): se è uno dei
+// cinque toni del selettore esce nella riga del workspace, dopo lo slug, e la cornice lo usa al posto del tono dell'id. `neutral`
+// — il colore di chi non ne ha scelto uno — e ogni altro valore non escono, e il pallino resta quello della regola. Nessuna
+// lettura in più: il colore sta nella riga che la cornice legge già.
+it('un workspace col colore scelto, uno dei cinque toni, lo porta dopo lo slug; neutral, un colore che zr-core non conosce e un valore che non è un testo non escono (voce 2730)', function (mixed $colore, array $atteso) {
+    sessioneAMano(marketing());
+    backoffice([
+        '/v1/io/aziende' => ['data' => [['id' => 'az-a', 'nome' => 'UAT az-a']], 'successivo' => null],
+        '/v1/io/workspace' => ['data' => [[...workspaceAlPosto(0), 'colore' => $colore, 'ruolo' => 'membro', 'azienda_id' => 'az-a'], [...workspaceAlPosto(1), 'ruolo' => 'membro', 'azienda_id' => 'az-a']], 'successivo' => null],
+    ]);
+
+    expect(Cornice::dati()['aziende'])->toBe([
+        ['id' => 'az-a', 'nome' => 'UAT az-a', 'workspace' => [[...workspaceAlPosto(0), ...$atteso], workspaceAlPosto(1)], 'nuovo_workspace' => false],
+    ]);
+})->with([
+    'pine' => ['pine', ['colore' => 'pine']],
+    'citrus' => ['citrus', ['colore' => 'citrus']],
+    'coral' => ['coral', ['colore' => 'coral']],
+    'sky' => ['sky', ['colore' => 'sky']],
+    'plum' => ['plum', ['colore' => 'plum']],
+    'neutral' => ['neutral', []],
+    'un colore che zr-core non conosce' => ['teal', []],
+    'un tono scritto in un altro modo' => ['Sky', []],
+    'un testo vuoto' => ['', []],
+    'null' => [null, []],
+    'una lista' => [['sky'], []],
+    'un numero' => [3, []],
+]);
+
 // Sprint 19 · T1 (voce #1669). Ogni azienda dice se la persona può crearvi un workspace (`nuovo_workspace`): la cornice lo
 // ricava dal `ruolo` che io.workspace.elenca dà riga per riga, dentro la stessa azienda. Aprono solo `proprietario` e
 // `amministratore`, i ruoli a cui il backoffice lascia creare un workspace (io.workspace.crea): ogni altro valore, anche uno

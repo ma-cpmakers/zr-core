@@ -44,13 +44,6 @@
     "markingAllRead": "Marcando…",
     "markRestRead": "Marcar las demás",
     "unreadNone": "Ninguna notificación sin leer",
-    "acceptanceTitle": "Hay documentos por aceptar",
-    "acceptanceText": "Para usar Zeiras tienes que aceptar los documentos legales vigentes. Hasta entonces los módulos, las notificaciones y la búsqueda quedan desactivados.",
-    "acceptanceAction": "Ir a los documentos",
-    "acceptanceOff": "No disponible hasta que aceptes los documentos.",
-    "downTitle": "Zeiras no responde",
-    "downText": "Los módulos, las notificaciones y la búsqueda vuelven cuando Zeiras responda. Inténtalo de nuevo en breve.",
-    "downOff": "No disponible hasta que Zeiras responda.",
     "skipToContent": "Saltar al contenido",
     "mainContent": "Contenido",
     "notificationTitle": "Novedades en el workspace",
@@ -75,9 +68,6 @@
     "searchSource.crm.crm.persona": "contactos",
     "searchSource.crm.crm.organizzazione": "empresas",
     "searchSource.crm.crm.trattativa": "oportunidades",
-    "searchContext.home.workspace.membro.ruolo.proprietario": "Propietario",
-    "searchContext.home.workspace.membro.ruolo.amministratore": "Administrador",
-    "searchContext.home.workspace.membro.ruolo.membro": "Miembro",
-    "searchContext.crm.crm.trattativa.esito.vinta": "Ganada",
-    "searchContext.crm.crm.trattativa.esito.persa": "Perdida"
+    "searchSource.bookings.bookings.prenotazione": "reservas",
+    "searchSource.bookings.bookings.calendario": "calendarios"
 }

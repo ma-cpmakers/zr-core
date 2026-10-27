@@ -130,24 +130,36 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,1 KB | 17,1 KB | 46,0 KB | 8,5 KB |
-| la cornice e due componenti per nome | 53,4 KB | 18,2 KB | 46,0 KB | 8,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 126,0 KB | 40,5 KB | 46,0 KB | 8,5 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 59,1 KB | 12,7 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 59,1 KB | 12,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 59,1 KB | 12,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; una pagina ne scarica al più due, quello della lingua della persona e quello
 dell'inglese. Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
-di JS, i rimedi provvisori di tastiera (circa 1,8 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
+di JS, i rimedi provvisori di tastiera (circa 1,9 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
 della campanella (circa 1,3 KB con gzip; dalla `v3.0.0` circa 1,9 KB): ciò che compone le righe delle notifiche e carica le
 frasi, che la cornice chiede con `import()` quando si apre la campanella, non quando si monta, e dalla `v3.0.0` anche le righe
 del registro che dicono dove si apre ogni notifica, con la funzione che le legge. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
-(circa 1,0 KB con gzip): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
-primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Nel JS d'ingresso di queste app c'è anche l'aiuto
+(circa 1,5 KB con gzip dalla `v3.6.0`, circa 1,7 KB dalla `v3.9.0`): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
+primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi
+(circa 0,8 KB con gzip): i testi dei due avvisi della cornice ridotta, nelle tre lingue — chi non ha accettato i documenti
+legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. L'ottavo, dalla `v3.8.0`, è il
+pezzo della tastiera (circa 1,2 KB con gzip nella `v3.8.0`, circa 1,4 KB dalla `v3.8.1`): i rimedi che servono solo a chi preme un tasto — «Tab dentro un dialogo aperto» e
+Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip nella `v3.8.0`, ed è a circa 1,8 KB dalla `v3.8.1`), che lo
+chiede al primo tasto premuto: chi usa solo il mouse non lo scarica. I tasti premuti prima che arrivi non si perdono: il pezzo
+dei rimedi li tiene e glieli ripete quando arriva. Un Tab lo ferma quando un `Dialog` aperto, o un `DetailPanel` a tutta pagina
+sotto 720 px, trattiene il fuoco, perché il fuoco non ne esca prima del rimedio (arrivato il pezzo, ogni Tab porta il fuoco dove
+l'avrebbe portato il browser, o lo tiene nel dialogo; se nel frattempo il dialogo si è chiuso, il fuoco resta dov'è), e gli altri
+tasti premuti dopo quel Tab, finché il pezzo non arriva e il dialogo resta aperto, si fermano e si perdono: arriverebbero
+all'elemento da cui il Tab voleva uscire. Altrove il Tab resta del browser (dalla `v3.8.1`: nella `v3.8.0` si fermava in tutta la
+pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto premuto prima che arrivi
+il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
-I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, e quello della campanella della `v3.0.0` del 24/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.495 byte con
+I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.213 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -156,13 +168,36 @@ il codice dell'`AppShell` più grande (37 byte), e Finanze nel registro e nelle 
 di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS
 d'ingresso e stanno nel pezzo della campanella (Decisione 16181 di zr-pm). Dalla `v3.2.3` sono 17 byte in più: un modulo
 spento non si mostra nel menu Moduli a chi non può attivarlo (un'eccezione di zr-pm, Decisioni 16812 e 16828; se una patch
-libera byte, il tetto riscende). Hanno
-un tetto anche i tre pezzi di JS a richiesta, ognuno alla sua misura: 1.988 byte la campanella, 1.768 i rimedi, 1.004 la
-ricerca. Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
-per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
+libera byte, il tetto riscende). Dalla `v3.6.0` sono 80 byte in più: l'invito della ricerca nomina le prenotazioni e i
+calendari di Bookings dove Bookings è attivo, coi loro nomi da elenco nelle tre lingue (un'eccezione di zr-pm: la misura
+vera; le loro risorse e i loro testi stanno nel pezzo della ricerca), altri 75: la ricerca che passa al
+caricamento dal primo tasto di una parola nuova, l'ora corta delle notifiche e il nome del «+» che dà il modulo (un'eccezione
+di zr-pm, Decisione 18231), e altri 25: il colore che il workspace ha scelto, nel selettore (8 byte misurati, e 20 di
+margine: un'eccezione di zr-pm), e altri 25: la ricerca che non resta in caricamento quando nel campo si incolla la parola
+che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropartita, zr-pm). Dalla `v3.7.0` è sceso di
+404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
+l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
+alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` è salito di 40 byte, alla misura più 20: la
+cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
+i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
+usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
+ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+2.000 byte: Decisione 18611; i byte che
+lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
+le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
+pezzi, ancora col codice uguale, e 20 di margine (zr-pm), e di altri 147 nella `v3.9.0`, alla misura più 20: i testi dei
+codici dei risultati, usciti dal JS d'ingresso (Decisione 18762). Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
+per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm), e di altri 102 nella `v3.6.0`: 82 per il pannello della ricerca
+nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm), poi di altri 52:
+Esc col fuoco nel pannello della ricerca chiude la ricerca (zr-pm, 26/10). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
 preventivo dalla richiesta di un cliente (un'eccezione di zr-pm, Decisione 16510), e di altri 3 nella `v3.5.0`: il codice
 del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome,
-che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Dalla `v2.0.0` l'eccezione per i
+che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 17826). Nella `v3.6.0` è salito di altri
+213: le tre righe di Bookings e la data delle notifiche, col giorno e l'ora o il solo giorno (un'eccezione di zr-pm: la
+misura vera), e di altri 21 nella stessa: 1 per le impronte nuove dei nomi dei pezzi, col codice uguale, e 20 di margine
+(zr-pm). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -287,6 +322,33 @@ Una cosa cambia, con `bundle.css`, per chi prende MentionField dal suo modulo (d
 `…/zeiras/componenti` o da `window.Zeiras` (nessun frontend, il 25/10/2026): dalla `v3.3.0` il modulo di MentionField porta i
 suoi stili, che arrivano dopo il bundle e allungano la lista di AddressField. Chi è in questo caso prende anche AddressField dal
 suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra).
+
+### Passare alla v3.8
+
+Per chi viene da una versione 3 di prima, una per una: che cosa cambia per il modulo, che cosa si tocca nel codice, che cosa
+cambia nei test del modulo, che cosa si controlla. Dove non c'è niente da toccare basta l'aggiornamento (`composer update
+zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano.
+
+| Versione | Che cosa cambia | Che cosa si tocca | Che cosa cambia nei test del modulo | Che cosa si controlla |
+|---|---|---|---|---|
+| `v3.2.2` | il titolo e la destinazione della richiesta di un cliente sul preventivo (`crm.preventivo.richiesta`) | niente | niente | niente fuori dal CRM |
+| `v3.2.3` | il menu Moduli non mostra i moduli spenti a chi non li può attivare (17 byte in più nell'ingresso) | niente | un caso che da membro cerca un modulo spento nel menu Moduli non lo trova più | da membro nessun modulo spento nel menu; da proprietario o amministratore sì |
+| `v3.3.0` | `resources/css/zeiras.css`, il CSS del primo carico senza gli stili di MentionField e AddressField | niente; se il modulo li prende solo dai loro moduli, una riga del CSS («Passare alla v3.3») | niente | le pagine con i due campi hanno i loro stili |
+| `v3.4.0` | la testa e il piede del pannello delle notifiche non sono punti di riferimento; a 720 px o meno le azioni della barra in alto, con le `actions` del modulo, si nascondono sotto la ricerca aperta | niente | un test del modulo che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto | axe a 390 px con la ricerca aperta, senza `target-size` |
+| `v3.5.0` | `Cornice::nuovoWorkspace()` nella parte server; il titolo delle schede senza assegnatario | niente; «Nuovo workspace» da una pagina del modulo, se serve («Un workspace nuovo da una pagina del modulo») | niente | niente |
+| `v3.6.0` | la ricerca trova le prenotazioni e i calendari di Bookings dove Bookings è attivo; le notifiche di Bookings coi titoli e la data; la ricerca in caricamento dal primo tasto; l'ora corta delle notifiche («10 min fa»); il nome del «+» (`createLabel`); il pannello della ricerca nel giro del Tab, con Esc; i clic sul percorso passano da `naviga`; i menu della barra in alto sopra il pannello di dettaglio («Esci» si clicca a pannello aperto); i titoli del promemoria di una To-do, delle scadenze di una scheda e dell'invito accettato; nel selettore il colore che il workspace ha scelto | `createLabel` dal layout o con `useCornice`, se il «+» ha un nome suo; **non navigate da `onCrumb`**: la visita partirebbe due volte | l'ora di una notifica si legge corta («10 min fa», non «10 minuti fa»); scritta una parola, il pannello della ricerca è in caricamento fino alla risposta: un caso che cerca «Nessun risultato» la aspetta; con la ricerca aperta c'è una fermata del Tab in più, il pannello; un clic su una voce del percorso di questa origine chiama `naviga` e non cambia `location` | `scripts/uat-cornice.mjs` del tag su una pagina del modulo con il percorso e il «+» |
+| `v3.6.1` | le scadenze di una scheda e il promemoria di una To-do aprono la scheda e la To-do; l'invito accettato apre Impostazioni › Membri della Dashboard | niente | un caso che apre una di quelle notifiche e si aspetta la pagina delle notifiche trova la scheda, la To-do o Impostazioni › Membri | un clic su quelle notifiche apre la pagina, non più la pagina delle notifiche |
+| `v3.7.0` | i testi dei due avvisi della cornice ridotta (documenti da accettare, Zeiras che non risponde) in un pezzo a richiesta, fuori dal JS d'ingresso: 403 byte in meno, tetto 17.296 | niente | un caso che cerca uno dei due avvisi subito dopo il disegno lo aspetta (`await act(() => vi.dynamicImportSettled())`) | l'avviso compare con l'accettazione richiesta, e senza backoffice («Zeiras non risponde») |
+| `v3.8.0` | i rimedi della sola tastiera (il Tab che resta dentro un `Dialog` aperto, Esc dal pannello della ricerca) in un pezzo a richiesta, chiesto al primo tasto: chi usa solo il mouse non lo scarica | niente | il primo tasto premuto porta il pezzo: un caso che preme Tab come primo tasto del file, dovunque sia (dalla `v3.8.1` solo con un dialogo aperto), o Esc nel pannello della ricerca, e guarda subito dove è il fuoco lo aspetta (`await act(() => vi.dynamicImportSettled())` dopo il tasto); il tasto non si perde, arriva quando arriva il pezzo | Tab in un dialogo aperto resta dentro anche come primo tasto della pagina |
+| `v3.8.1` | rimedi di tastiera e di lettore di schermo: le voci «Presto» fuori dal giro del Tab, col nome «CRM, Presto»; nel selettore dei workspace Home e Fine, e il fuoco che esce lo chiude; il fuoco che esce dalla ricerca la chiude, e la parola resta; scelto un risultato il campo si svuota; scelta una voce del «+» con la tastiera il fuoco torna al «+»; nelle notifiche col nome nel titolo l'avatar è nascosto ai lettori di schermo; il primo Tab si ferma solo con un dialogo aperto; il pezzo degli avvisi che non arriva si richiede | niente | dopo il primo tasto (il pezzo della tastiera): col selettore aperto il fuoco che va fuori lo chiude; dopo una voce del «+» scelta con Invio il fuoco è sul «+». Dal montaggio (il pezzo dei rimedi): una voce «Presto» non ferma il Tab e il suo nome è «<voce>, Presto»; il fuoco che esce dalla ricerca la chiude; dopo un risultato il campo è vuoto; un Tab fuori da un dialogo non aspetta più il pezzo; l'avatar di una notifica col nome nel titolo non si trova per ruolo. Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: S.1, S.2, P.2, le righe `.7` e `.8` della ricerca |
+
+Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
+(`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
+1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
+Esc), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella, i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
+da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
+viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
 
 ## La parte server
 
@@ -526,7 +588,7 @@ esce.
 
 | Rotta | Risponde |
 |---|---|
-| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, ids}], aggiornati_il, workspace, persona}`: le notifiche della persona nel workspace dalla più recente, una pagina; dalla `v1.22.0` `creata_il` è l'istante dell'ultima azione che la notifica racconta — il backoffice ne accorpa più d'una in una notifica sola, e l'istante dell'ultima lo dice in `ultima_azione_il`; se non lo manda, è l'istante in cui la notifica è nata, come prima —: è l'ora che il pannello mostra, e su quella il backoffice ordina l'elenco; `ultima_azione_il` del backoffice non arriva in pagina; dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`: sono `azioni` e `board.nome` del backoffice; un backoffice che non li manda è quello di prima, e valgono 1 e `null`; di `board` passa solo il nome, mai l'id; un `azioni` che non è un intero da 1 in su, o un `board` che non è `null` né un oggetto col `nome`, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave (`{"id": "…"}` per un contatto, `{"persona_id": "…"}` per una nota legata al solo contatto): di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, fra le righe della sua app (`{id}`, `{persona_id}`) —, e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64): gli altri id, il resto di `dati` e `soggetto` non arrivano al browser; dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`: la regola è `idsDellaNotifica`, più sotto); una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore, e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che chiede può essere rimasta su un altro workspace); dalla `v2.4.0` `persona` è l'email della persona della sessione, quella di cui sono le notifiche, presa allo stesso modo: in una scheda rimasta ferma la cornice sa così che l'elenco non è di chi mostra, non lo mostra e ricarica la pagina |
+| `GET /cornice/notifiche` | `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`: le notifiche della persona nel workspace dalla più recente, una pagina; dalla `v3.6.0` `quando` dice quando accade la cosa che la notifica racconta — `{il, fuso}`, l'istante in UTC con la Z e il nome IANA del fuso in cui si legge — ed è `null` per le notifiche che non hanno una data e per ogni forma che non è quella; dalla `v1.22.0` `creata_il` è l'istante dell'ultima azione che la notifica racconta — il backoffice ne accorpa più d'una in una notifica sola, e l'istante dell'ultima lo dice in `ultima_azione_il`; se non lo manda, è l'istante in cui la notifica è nata, come prima —: è l'ora che il pannello mostra, e su quella il backoffice ordina l'elenco; `ultima_azione_il` del backoffice non arriva in pagina; dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`: sono `azioni` e `board.nome` del backoffice; un backoffice che non li manda è quello di prima, e valgono 1 e `null`; di `board` passa solo il nome, mai l'id; un `azioni` che non è un intero da 1 in su, o un `board` che non è `null` né un oggetto col `nome`, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; `app` è il codice dell'app da cui viene la notifica (`pm`, `crm`…) o `null`, com'è nel backoffice; `tipo` è il tipo dell'evento che l'ha generata (`com.zeiras.board.cartella.creata`…), com'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco, e ne può arrivare uno nuovo — il titolo glielo dà la cornice, nel browser (vedi «Le notifiche»); una notifica che il backoffice dà senza `tipo`, o con un `tipo` che non è una stringa, è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`; dalla `v1.10.0` `autore_nome` è il nome di chi ha fatto ciò che la notifica racconta, `risorsa_nome` quello della cosa a cui si riferisce (per una notifica su un'app è il codice dell'app, com'è nel backoffice: il nome da mostrare lo dà `risorsaDellaNotifica`), e `per_me` dice se è rivolta alla persona (`true`), a tutto il workspace (`false`) o se il backoffice non lo sa (`null`, che non è `false`): sono `autore.nome`, `risorsa_nome` e `per_me` del backoffice, e ognuna è `null` quando il backoffice dà `null` o non manda la chiave; di `autore` passa solo il nome; una delle tre con una forma che il contratto non ammette (un `autore` senza `nome`, un numero al posto di un testo, un `per_me` che non è un booleano) è un errore (5xx), qui e in `PATCH /cornice/notifiche/{id}/lettura`, mai una chiave tolta in silenzio; dalla `v1.11.0` `ids` sono gli id che servono ad aprire la risorsa della notifica, per chiave (`{"id": "…"}` per un contatto, `{"persona_id": "…"}` per una nota legata al solo contatto): di `dati` del backoffice passano i soli id del percorso che la notifica apre — quello che il registro dà al suo tipo, fra le righe della sua app (`{id}`, `{persona_id}`) —, e solo con un valore che ha la forma di un id (un testo di lettere, cifre, `-` e `_`, da 1 a 64): gli altri id, il resto di `dati` e `soggetto` non arrivano al browser; dalla `v1.13.0` un tipo può avere più percorsi, e gli `ids` sono quelli del primo che `dati` soddisfa per intero (per una nota di un'opportunità `{"trattativa_id": "…"}`, per una legata alla sola azienda `{"organizzazione_id": "…"}`: la regola è `idsDellaNotifica`, più sotto); una notifica di un tipo che nel registro non ha una destinazione, senza `dati`, o con un `dati` che non è un oggetto, ha `ids` vuoto (`{}`) e non è un errore, e dalla `v1.13.0` lo ha vuoto anche una il cui percorso non chiede un id (un'attività, che apre «Da fare»): se una notifica ha una destinazione lo dice `destinazioneDellaNotifica`, non `ids`; `aggiornati_il` è l'istante in cui la parte server ha cominciato a leggere l'elenco, prima di chiamare il backoffice, in UTC e nella forma del segno dei dati della cornice (`2026-10-09T21:31:05.123456Z`): l'elenco è almeno fresco quanto quell'istante; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che chiede può essere rimasta su un altro workspace); dalla `v2.4.0` `persona` è l'email della persona della sessione, quella di cui sono le notifiche, presa allo stesso modo: in una scheda rimasta ferma la cornice sa così che l'elenco non è di chi mostra, non lo mostra e ricarica la pagina |
 | `PATCH /cornice/notifiche/{id}/lettura` con `{letta}` | `{data: {id, letta}, segnata_il}`: segna letta (`true`) o non letta (`false`) quella notifica, e `letta` è ciò che il backoffice ha segnato; dalla `v1.12.0` `segnata_il` è l'istante preso dopo la risposta del backoffice, nella forma di `aggiornati_il`: la cornice lo confronta con l'istante dell'elenco — un elenco letto fin lì può dare la notifica ancora da leggere —, e una risposta che non è un 200 non lo porta; senza `letta`, o se non è un booleano, 422 `{errore: "dati_non_validi"}`; una notifica che non c'è, o di un'altra persona, 404 `{errore: "non_trovato"}`; un `id` che non è fatto di lettere, cifre, `-` e `_` (64 al più) non ha rotta: 404 |
 | `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` | `{data: {fino_a, altre}, segnate_il}`: segna lette le notifiche della persona nel workspace nate fino a `fino_a` compreso, anche quelle oltre la prima pagina; dalla `v1.22.0` la cornice manda in `fino_a` l'istante dell'ultima azione più recente fra le notifiche caricate: il backoffice segna quelle nate fino a lì, cioè tutte le caricate — ognuna è nata prima della sua ultima azione — e nessuna nata dopo il caricamento; `fino_a` è un istante con data, ora coi secondi (sei decimali al più) e fuso (`2026-10-08T10:00:00.000Z`, o `+02:00` al posto di `Z`), com'è la `creata_il` di una notifica, e quello della risposta è l'istante del backoffice, in UTC; il backoffice ne segna al più 5000 per chiamata e dice se ne restano: la parte server lo richiama con lo stesso `fino_a` finché ne restano, entro due tetti — al più 5 chiamate al backoffice per richiesta (25.000 notifiche), e nessuna chiamata nuova passati 10 secondi dall'arrivo della richiesta; `altre` è `false` quando il backoffice ha detto che non ne restano, e `true` quando un tetto ha fermato i richiami e ne restano ancora: non è un errore, e la stessa richiesta, ripetuta, continua da lì; `segnate_il` è l'istante preso dopo l'ultima risposta del backoffice, sull'orologio della parte server e nella forma di `aggiornati_il`: ciò che è stato letto prima di quell'istante può non sapere di questa lettura; `workspace` è lo slug del workspace della pagina che chiede (quello dei dati della cornice): se non è quello della sessione — da un'altra scheda la persona è entrata in un altro workspace — 409 `{errore: "workspace_diverso"}`, e non si segna niente; `persona` è l'email di chi quella pagina mostra (dalla `v2.5.0`; così la manda la cornice fino alla `v2.5.1`, e dalla `v2.6.0` la dice nell'intestazione `Persona`, come nelle altre tre richieste): se non è quella della sessione — la sessione è passata a un'altra persona, con la pagina rimasta ferma — 409 `{errore: "persona_diversa", persona: ""}`, senza chiamare il backoffice, e non si segna niente (fino alla `v2.11` `persona` era l'email della sessione); senza la chiave `persona` conta l'intestazione `Persona`, e senza né l'una né l'altra, dalla `v2.13.0`, 422 `{errore: "persona_mancante", persona: ""}`, senza chiamare il backoffice, e non si segna niente (fino alla `v2.12` valeva come prima); dalla `v2.5.1` una `persona` che c'è e non è un testo — un numero, un booleano, una lista, un oggetto, anche `null` — non vale come assente: 422 `{errore: "dati_non_validi"}`, senza chiamare il backoffice, e non si segna niente; dalla `v2.6.0` la persona si guarda prima del workspace e degli altri controlli della rotta, come sulle altre tre (sotto la tabella); senza `fino_a` o senza `workspace`, o se `fino_a` non ha quella forma, o se quell'istante non esiste, 422 `{errore: "dati_non_validi"}`; se il backoffice non risponde in tempo, risponde un errore, o risponde senza `altre` o con un `altre` che non è un booleano, alla prima chiamata o a un richiamo, è un errore (5xx) senza `segnate_il`, anche se può averne segnate: ripetere la stessa richiesta non cambia ciò che è già segnato; la rotta tiene il blocco della sessione per tutta la sua durata, e se un'altra richiesta della stessa sessione lo tiene per più di 3 secondi risponde 503 con `Retry-After: 1`, senza chiamare il backoffice; arrivata alla rotta passati 10 secondi dall'arrivo della richiesta risponde 503 `{errore: "fuori_tempo"}` con `Retry-After: 1`, anche lei senza chiamare il backoffice; il blocco dura 20 secondi da quando è preso, coi tempi di partenza, e una richiesta che i middleware del frontend tengono più a lungo prima della rotta ci arriva a blocco scaduto (vedi «Le notifiche») |
 | `POST /cornice/ricerca` con `{q}` | `{data: [{tipo, id, titolo, contesto}], workspace, persona}`: ciò che il backoffice trova nel workspace cercando `q`, coi tipi e nell'ordine del backoffice, la prima pagina (oggi, col loro `tipo`: le schede `board.scheda`, i contatti `crm.persona`, le aziende `crm.organizzazione`, le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le aree `board.cartelle` per titolo; la fonte di un modulo c'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`); dalla `v1.15.0` ogni risultato porta `contesto`: `null`, oppure un oggetto coi testi che aiutano a riconoscerlo: di ciò che il backoffice dà passano le sole chiavi che il registro dice per il tipo del risultato (`board` e `lista` di una scheda, `organizzazione` e `ruolo` di un contatto, `pipeline` e `fase` di un'opportunità), coi soli valori di testo non vuoti; una chiave che il registro non dice per quel tipo resta nella parte server; dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice (`proprietario`, `amministratore`, `membro`): l'email di un membro non esce mai; dalla `v1.18.0` di un'opportunità passa anche `esito` (`aperta`, `vinta` o `persa`), com'è arrivato: quali esiti si mostrano lo sa la cornice; dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone la ricerca è fatta: lo dice la parte server, e non segue niente di ciò che manda il browser (la pagina che cerca può essere rimasta su un altro workspace); è lì che la cornice apre un risultato, e una risposta senza `workspace` per lei è un errore della ricerca; `q` è la parola cercata e si legge solo dal corpo JSON, mai dall'indirizzo: da 2 a 100 caratteri senza gli spazi ai bordi (la cornice manda i primi 100), altrimenti 422 `{errore: "dati_non_validi"}`, e così se non è un testo o sta solo nell'indirizzo; fino alla `v1.7.0` la ricerca era una GET con la parola nell'indirizzo: dalla `v1.8.0` una GET a `/cornice/ricerca` non ha una rotta e non arriva al backoffice — risponde 405, o ciò che il frontend risponde a un indirizzo senza rotta se ha una rotta di ripiego (`Route::fallback`) —, e un test del frontend che la chiama passa alla POST; una scheda aperta prima dell'aggiornamento cerca ancora con la GET finché non si ricarica: riceve quella risposta e mostra l'errore della ricerca; dalla `v1.15.0` anche dal server del modulo al backoffice la parola viaggia nel corpo: la parte server chiama `ricerca.crea` (`POST /v1/ricerca` con `{q}`), e l'indirizzo di quella richiesta non porta query; se il backoffice frena le ricerche della persona (`429` `troppe_richieste`) la rotta risponde `429` `{errore: "troppe_richieste", persona}` (`persona`, dalla `v2.5.0`: l'email della persona della sessione, di chi è il freno) con `Retry-After`, i secondi che il backoffice ha detto, e la cornice mostra l'errore della ricerca; dalla `v1.16.0` per quei secondi, al più 60, non manda altre ricerche, qualunque cosa la persona scriva, e allo scadere non riprova da sola: parte la prima parola che la persona scrive dopo; il freno vale finché la cornice resta montata: un caricamento di pagina la rifà, e così un cambio di workspace con `LayoutDellaCornice`, e da lì la prima parola parte anche dentro quei secondi; dalla `v2.4.0` `persona` è l'email della persona della sessione, quella per cui la ricerca è fatta: viene dalla sessione, e la cornice non mostra i risultati di un'altra persona |
@@ -757,6 +819,16 @@ cornice === null ? pagina : (
   nascosto, un titolo con `tabindex="-1"` o un pulsante spento contano come qualcosa che prende il fuoco, e allora la fermata
   non c'è; in una pagina `flush` il `main` non ha il nome; dove il browser non conosce `:focus-visible` (Safari prima della
   15.4, Chrome prima dell'86, Firefox prima dell'85) il contorno non c'è e il fuoco sul contenuto scrive un errore in console.
+- **Il pannello della ricerca è una fermata del Tab**: dalla `v3.6.0`, con la ricerca aperta il pannello dei risultati ha
+  `tabindex="0"`, `role="group"` e un nome, «Risultati della ricerca» nella lingua della cornice. Quando i risultati non ci
+  stanno il pannello scorre, e dentro niente prende il fuoco (il fuoco resta nel campo, che indica il risultato scelto con
+  le frecce): prima chi usa la tastiera non poteva farlo scorrere (axe, `scrollable-region-focusable`). Col Tab dal campo il
+  fuoco va al pannello, che scorre con le frecce, e ha il contorno del design system come il contenuto. Un elemento del modulo
+  con la classe del pannello non si tocca. Per chi aggiorna: con la ricerca aperta c'è una fermata del Tab in più, dopo il
+  campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Esc col fuoco nel pannello chiude la
+  ricerca come dal campo (l'`AppShell` lo fa solo dal campo): il fuoco non torna a chi ha aperto la ricerca, va al documento,
+  come dopo Esc nel campo. Sta nel pezzo dei rimedi (dalla `v3.8.0` in quello della tastiera, che arriva al primo tasto), ed è provvisorio
+  come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna
@@ -787,6 +859,10 @@ cornice === null ? pagina : (
   trattengono niente, e con un `Menu` aperto dentro il dialogo, o col fuoco in un menu accanto, la cornice non interviene (un menu che sta
   altrove nella pagina, senza il fuoco, non cambia niente); non interviene
   nemmeno se un elemento del dialogo tiene Tab per sé (`preventDefault`), né se Tab è premuto con Ctrl, Alt o Meta.
+  Dalla `v3.8.0` il rimedio sta nel pezzo della tastiera, che arriva al primo tasto premuto: un Tab premuto prima, con un
+  dialogo aperto, si ferma, e arrivato il pezzo il fuoco va nel dialogo, o dove l'avrebbe portato il browser, anche da un
+  elemento fuori dal giro come il titolo del dialogo; gli altri tasti premuti dopo quel Tab, prima del pezzo e col dialogo
+  aperto, si fermano e si perdono (dalla `v3.8.1`): un caso che in un dialogo preme Tab e poi scrive aspetta il pezzo fra i due.
   Dalla `v1.21.0`: un `Dialog` che non ha niente su cui fermarsi — senza «×» e senza pulsanti — prende lui il fuoco al
   primo Tab, e Invio non preme più il pulsante della pagina dietro; ciò che sta dentro un elemento `inert`, o dentro un
   `<details>` chiuso, non conta come fermata, tranne il `summary` che lo apre, con ciò che ha dentro; un `iframe`, e un `video` o un `audio` coi
@@ -828,14 +904,48 @@ cornice === null ? pagina : (
 - **Il pannello delle notifiche e la barra in alto senza errori di accessibilità**: dalla `v3.4.0`, nel pannello delle
   notifiche aperto la testa e il piede (un `<header>` e un `<footer>` dell'`AppShell`) hanno `role="none"`: prima axe li
   leggeva come un secondo banner e un contentinfo dentro la pagina (`landmark-banner-is-top-level`,
-  `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). A 720 px o meno, finché la ricerca
+  `landmark-contentinfo-is-top-level`, `landmark-no-duplicate-banner`, `landmark-unique`). Dalla `v3.8.1`, in una notifica il cui titolo dice già il
+  nome di chi ha fatto, l'avatar con quel nome è nascosto ai lettori di schermo (`aria-hidden`): prima il nome si sentiva due
+  volte, dall'avatar e dal titolo; dove il titolo non lo dice — una frase senza chi, un nome tagliato — l'avatar resta com'è, e
+  un test del modulo che cerca per ruolo l'avatar di una notifica col nome nel titolo non lo trova più. Il nome si cerca intero,
+  come la riga lo scrive: l'avatar di «Ada» resta in una notifica di «Adamo». A 720 px o meno, finché la ricerca
   aperta copre la barra in alto — col fuoco nel campo, o coi risultati —, la campanella e il profilo non si vedono e non
   prendono il fuoco (`visibility: hidden` sull'elemento delle azioni, con dentro anche le `actions` che il modulo passa
-  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Tab fuori dal campo non chiude la
-  ricerca, che resta sopra la barra: le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, la scelta di un
-  risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
+  all'`AppShell`): prima restavano bersagli coperti a metà dal campo (axe: `target-size`). Dalla `v3.8.1` il fuoco che esce dalla
+  ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
+  design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
+  fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
+- **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
+  Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
+  ripreso il campo c'erano ancora i risultati di prima. Il campo si svuota come lo svuota chi scrive, e la ricerca si chiude come
+  con Esc. Chiusa con Esc o con un clic fuori, o con Invio senza una riga da scegliere, la parola resta. Il modulo non deve fare
+  niente; un test del modulo che dopo la scelta di un risultato legge la parola nel campo va riletto. È provvisorio: quando
+  l'`AppShell` svuota il campo da sé (riga 60 delle richieste al design system) si toglie, e se il pezzo dei rimedi non arriva
+  la parola resta com'era.
+- **Scelta una voce del «+» con la tastiera, il fuoco torna al «+»**: dalla `v3.8.1`, scelta una voce del menu «+» con Invio o
+  con lo spazio, il menu si chiude, la voce fa la sua parte e il fuoco torna sul «+», come dopo Esc: prima restava alla pagina, e
+  il Tab ripartiva dall'inizio. Se la voce dà il fuoco a un altro elemento — un dialogo che si apre, un campo — resta lì, e
+  con un dialogo aperto dalla voce non va al «+» dietro il velo. Un dialogo che la voce apre più tardi — dopo una richiesta, o un
+  dialogo a richiesta — trova il fuoco già sul «+», dietro il velo: in quel caso il fuoco nel dialogo lo dà il modulo. Il modulo
+  non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
+  (riga 11 delle richieste al design system) si toglie, e se il pezzo non arriva, o se la voce è scelta prima che arrivi (il
+  primo tasto premuto lo chiede), il fuoco resta alla pagina com'era.
+- **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
+  portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
+  schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della
+  cornice. Una voce che smette di essere «Presto» torna com'era. Il modulo non deve fare niente; un test del modulo che col Tab
+  raggiunge una voce «Presto» va riletto. Sta nel pezzo dei rimedi, che arriva quando la cornice si monta: il nome lo sente
+  anche chi usa un lettore di schermo col tocco, senza un tasto. Tocca solo le voci della barra laterale: un collegamento della
+  pagina con la classe `zr-nav-item` resta com'è. È provvisorio: quando l'`AppShell` lo fa da sé (riga 6 delle richieste al design system) si toglie.
+- **Home, Fine e il Tab nel selettore dei workspace**: dalla `v3.8.1`, col selettore «Azienda › workspace» aperto Home porta il
+  fuoco alla prima voce e Fine all'ultima (prima non facevano niente; le frecce le muove l'`AppShell`), e il fuoco che va a un
+  elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
+  resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
+  Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina.
+  Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  richieste al design system) si toglie.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
@@ -848,6 +958,19 @@ cornice === null ? pagina : (
   non ha una sua funzione per il clic su queste voci (è fra le richieste al design system) lo fa la cornice da sé, e quando
   l'`AppShell` la porta questo si toglie senza che il modulo cambi niente. Sta nello stesso pezzo a richiesta dei punti sopra: se
   non arriva, i clic restano del browser.
+- **Anche i collegamenti del percorso passano da `naviga`**: dalla `v3.6.0`, le voci del percorso con un indirizzo di questa
+  origine fanno come quelle della barra laterale, con le stesse eccezioni (tasti, altre origini, clic già gestiti). La voce
+  senza indirizzo (`#`) la ferma l'`AppShell`, e l'ultima, la pagina, non è un collegamento. L'`AppShell` chiama ancora
+  `onCrumb(voce, indice)`, ma senza l'evento: **non navigate da `onCrumb`**, perché il browser segue già il link, e con
+  `naviga` la visita partirebbe due volte. `onCrumb` resta per ciò che non è navigare (una misura, un registro). È provvisorio
+  come il punto sopra: quando l'`AppShell` dà l'evento a `onCrumb` (è fra le richieste al design system) si toglie.
+- **I menu della barra in alto sopra il pannello di dettaglio**: dalla `v3.6.0`, il menu del profilo e il pannello delle
+  notifiche, aperti, salgono di un gradino sopra un `DetailPanel` non modale (uno stile sull'elemento, `z-index:
+  calc(var(--z-dialog) + 1)`): prima finivano sotto il pannello, e col pannello aperto «Esci» non si cliccava col mouse (da
+  tastiera sì). Restano sotto i dialoghi e sotto il cassetto del menu; sotto i 720 px il pannello è a tutto schermo e copre la
+  barra come prima. Il modulo non deve fare niente. È provvisorio: quando il design system mette i menu della barra sopra il
+  pannello (è fra le richieste al design system) si toglie. Sta nello stesso pezzo a richiesta dei punti sopra: se non arriva,
+  i menu restano sotto il pannello.
 - **Il menu Moduli** incrocia il registro con lo stato dei prodotti nel workspace: un prodotto `attivo` porta a
   `<indirizzo>/w/<slug>`. Uno `disponibile` non è attivo lì, e dalla `v2.25.0` non porta più alla sua pagina «non attivo nel
   workspace»: porta a Impostazioni › Moduli (`moduli` nei dati, vedi «La parte server») se la persona amministra il workspace.
@@ -910,8 +1033,8 @@ cornice === null ? pagina : (
   system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello: il
   pallino dice «non letta» quando sulla campanella ce n'è una sola, «non lette» negli altri casi.
 - **Le notifiche** si caricano a ogni apertura della campanella, da `GET /cornice/notifiche`: ognuna col titolo del suo
-  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora nella lingua («5 minuti fa», «ieri»,
-  «1 ott»). Dalla `v1.22.0` una notifica che racconta più azioni mostra l'ora dell'ultima, non quella della prima. Il titolo
+  tipo nella lingua («Nuova scheda», «Una persona è entrata nel workspace») e l'ora corta nella lingua («5 min fa», «ieri»,
+  «1 ott»; corta dalla `v3.6.0`). Dalla `v1.22.0` una notifica che racconta più azioni mostra l'ora dell'ultima, non quella della prima. Il titolo
   lo dice `tipo`, e i
   titoli stanno nelle lingue di zr-core, uno per ogni tipo di evento del contratto, tranne uno che il contratto ha dal
   12/10/2026 e che non genera notifiche (più sotto): una notifica di un tipo che zr-core non
@@ -980,11 +1103,18 @@ cornice === null ? pagina : (
   proprietario e agli amministratori quando una persona lascia il workspace e restano schede senza nessun assegnatario:
   «Restano schede senza assegnatario» (`board.schede.senza_assegnatario`). Non è un evento nemmeno lei, e il suo `tipo` non
   ha `com.zeiras.` davanti; chi l'ha fatto è la persona che è uscita («Marta Rossi ha lasciato il workspace: restano schede
-  senza assegnatario»). Con lei i titoli sono 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
+  senza assegnatario»). Con lei i titoli erano 49: 38 tipi di evento, i cinque «assegnata», la menzione, il credito sotto
   zero, le due delle scadenze, la richiesta sul preventivo e le schede senza assegnatario. Nei `dati` porta solo il numero
-  delle schede, nessun id: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  delle schede, nessun id: un clic apre la pagina delle notifiche. Dalla `v3.6.0` hanno un titolo anche quattro notifiche
+  che non sono eventi, col `tipo` senza `com.zeiras.` davanti: di Project Management il promemoria di una To-do,
+  «Promemoria: hai una cosa da fare» (`board.todo.promemoria`), e la scheda che scade, con un tipo per giorno: «Una scheda
+  scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`); senza prodotto
+  l'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`). Le prime tre non hanno chi l'ha fatto, e
+  il nome della To-do o della scheda sta sotto il titolo; dell'invito chi l'ha fatto è chi ha accettato («Marta Rossi ha
+  accettato il tuo invito»). Con loro e con le tre di Bookings (più sotto) i titoli sono 56. Nessuna delle quattro ha una
+  destinazione: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
-  porta il suo nome nella lingua davanti all'ora («Project Management · 5 minuti fa»), la sua icona e il suo tono, anche se
+  porta il suo nome nella lingua davanti all'ora («Project Management · 5 min fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
   prodotto e l'icona della campanella. Dalla `v1.10.0` una notifica dice anche su che cosa, chi e per chi, quando il
   backoffice lo dice: con `risorsa_nome` ha una seconda riga, sotto il titolo, col nome della cosa («Lancio Q4»), tranne
@@ -1061,7 +1191,8 @@ cornice === null ? pagina : (
   «Lancio Q4»»): quelle di Project Management dalla `v1.19.0`, quelle del CRM, del workspace e dei moduli dalla
   `v1.21.0`. Per questo le lingue hanno due famiglie di chiavi in più: `notificationTitleWhoWhat.<tipo>`, coi
   segnaposto `{who}` e `{what}`, e `notificationTitleWho.<tipo>`, col solo `{who}` («Marta Rossi ha eliminato una
-  scheda»). La seconda la hanno tutti i quarantanove tipi che hanno un titolo; la prima ventotto: i quattordici di
+  scheda»). La seconda la hanno tutti i cinquanta tipi che hanno un titolo, fuori dai tre di Bookings, che non dicono chi, e dal
+  promemoria di una To-do e dalle due scadenze di una scheda, che non hanno chi; la prima ventotto: i quattordici di
   Project Management che non sono una cosa eliminata, del CRM le aziende, le opportunità, le attività e le pipeline
   create o modificate e le aziende, le opportunità e le attività assegnate, il workspace creato e modificato, e il
   modulo attivato o disattivato. Le aziende, le opportunità e le attività del CRM la hanno dalla `v1.22.0` («Marta
@@ -1077,6 +1208,18 @@ cornice === null ? pagina : (
   `autore_nome` e senza il nome, o per un tipo che ha solo quella, è la frase con solo chi; senza `autore_nome`, o
   per un tipo che zr-core non conosce, resta il titolo di prima col nome sotto. Il nome della cosa sta una volta
   sola: quando è nella frase non è nella seconda riga.
+  Dalla `v3.6.0` una notifica può dire anche quando accade la cosa (`quando`, vedi «Le rotte della cornice»), e la
+  data la scrive la cornice, nel fuso di `quando` e nella lingua della persona. Le notifiche con la data non hanno chi:
+  il preavviso di una scadenza del CRM, e le tre di Bookings — un ospite ha prenotato, spostato o annullato
+  (`bookings.prenotazione.creata`, `….spostata`, `….annullata`, senza `com.zeiras.` davanti), e dell'ospite, che non è
+  un membro, il backoffice non dà il nome. Col nome della cosa hanno la frase `notificationTitleWhatWhen.<tipo>`, coi
+  segnaposto `{what}` e la data: al posto di `{date}` il solo giorno («Certificato medico scade il 3 novembre 2026»), al
+  posto di `{when}` il giorno e l'ora («Nuova prenotazione: Personal training, mer 4 nov, 10:00», col nome del servizio
+  prenotato). Senza il nome della cosa le tre di Bookings hanno la frase `notificationTitleWhen.<tipo>`, col solo
+  `{when}` («Nuova prenotazione, mer 4 nov, 10:00»), che la cornice prova prima di quella con solo chi: con la data il
+  titolo non dice chi. Senza un `quando` che la cornice sa scrivere — `null`, a metà, o con un fuso che il browser non
+  conosce — il titolo è quello del tipo, col nome della cosa sotto. Le tre di Bookings aprono la prenotazione,
+  `/prenotazioni/{id}`.
   Dalla `v2.1.0`, quando sotto il titolo non c'è il nome della cosa, la seconda riga dice quante azioni la notifica
   racconta e in quale board sta la cosa: «3 volte, nella board «Lancio»» (`notificationUnder.countBoard`, coi segnaposto
   `{n}` e `{board}`), «3 volte» senza board (`notificationUnder.count`), «Nella board «Lancio»» con una sola azione
@@ -1195,7 +1338,10 @@ cornice === null ? pagina : (
   modificata o assegnata — apre la scheda, `https://board.zeiras.com/w/<slug>/c/<id>`; una di una scheda eliminata no:
   la sua pagina non c'è più. Dalla `v1.16.0` una menzione in un commento apre la scheda del commento, allo stesso
   indirizzo: l'id è quello della scheda, e `commento_id` non entra nell'indirizzo, perché Project Management non ha una
-  pagina che porti dritto a un commento. Dalla `v2.25.3` il credito di un pacchetto sotto zero apre il contatto,
+  pagina che porti dritto a un commento. Dalla `v3.6.1` la scadenza di una scheda, domani e oggi, apre la scheda allo
+  stesso indirizzo, il promemoria di una To-do apre la To-do, `https://board.zeiras.com/w/<slug>/todo?todo=<id>`, e
+  l'invito accettato, che non è di un'app, apre Impostazioni › Membri della Dashboard,
+  `https://app.zeiras.com/w/<slug>/impostazioni/membri`. Dalla `v2.25.3` il credito di un pacchetto sotto zero apre il contatto,
   `https://crm.zeiras.com/w/<slug>/contatti/<persona_id>`: l'id dell'acquisto non entra nell'indirizzo, perché un
   acquisto non ha una pagina sua. Una nota apre la cosa più
   specifica a cui è attaccata: l'opportunità se ne ha una, altrimenti il contatto, altrimenti l'azienda (fino alla
@@ -1384,6 +1530,19 @@ cornice === null ? pagina : (
   «aree» nell'invito (in inglese «Areas» e «areas», in spagnolo «Áreas» e «áreas»), e «Nuova area», «{who} ha creato l'area…»
   nei titoli delle notifiche; le chiavi, gli id degli eventi (`com.zeiras.board.cartella.*`) e il tipo `board.cartelle` non
   cambiano.
+  Dalla `v3.6.0` la ricerca trova anche le prenotazioni e i calendari di Bookings, dove Bookings è `attivo`: l'invito li
+  nomina dopo le fonti dei moduli che lo precedono nel registro («prenotazioni», «calendari»; in inglese «bookings»,
+  «calendars», in spagnolo «reservas», «calendarios»), e il segnaposto resta quello unico. Una prenotazione sta nel gruppo
+  «Prenotazioni» e un calendario in «Calendari di prenotazione» (in inglese «Bookings» e «Booking calendars», in spagnolo
+  «Reservas» e «Calendarios de reservas»); si aprono in Bookings, `/prenotazioni/{id}` e `/calendari/{id}` nel workspace
+  dei risultati. La seconda riga di una prenotazione dice quando comincia, nella lingua dei testi e nel fuso che il
+  risultato porta, poi lo stato: «mer 4 nov, 10:00 · Confermata». Gli stati sono quattro, `confermata`, `svolta`,
+  `non_presentato` e `annullata` («Confermata», «Svolta», «Non presentato», «Annullata»); un altro codice non si mostra.
+  `quando` arriva dalla parte server solo come `{il, fuso}`, l'istante in UTC con la Z e il nome IANA del fuso, come quello
+  di una notifica (un giorno che il calendario ha, un fuso che il PHP del server conosce, scritto com'è in IANA): in ogni altra forma non passa, e la seconda riga dice solo lo stato. Le risorse di Bookings non stanno
+  nella sua voce del registro: stanno in `resources/registro/ricerca.json`, e i loro testi in `resources/lingue/ricerca/`,
+  un file per lingua; li legge solo il pezzo della ricerca, e la voce ne ha i tipi in `fonti`, che servono all'invito
+  prima che il pezzo arrivi. Nel registro esportato la voce di Bookings ha quindi `fonti` e non `risorse`.
   Senza moduli attivi restano i membri: «Cerca membri: scrivi almeno 2 caratteri.» (in inglese «Search members: type at least
   2 characters.», in spagnolo «Busca miembros: escribe al menos 2 caracteres.»). Dalla `v1.15.0` alla `v1.16.0` anche il
   segnaposto nominava le fonti, al più tre, e i membri non erano una fonte. Un frontend che ha i due testi nei suoi test li
@@ -1449,7 +1608,15 @@ cornice === null ? pagina : (
   effetti non ripartono. Vale comunque lo stato arrivi: dal 403 di una rotta, o coi dati di una visita che tiene la pagina
   montata. I
   quattro testi sono di zr-core, nelle tre lingue (`acceptanceTitle`, `acceptanceText`, `acceptanceAction`,
-  `acceptanceOff`). Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
+  `acceptanceOff`). Dalla `v3.7.0` stanno in `resources/lingue/avvisi/`, coi tre di «Zeiras non risponde», e non nel JS
+  d'ingresso: la cornice li chiede in un pezzo a richiesta quando passa a uno dei due stati, e l'avviso, con la frase di
+  campanella e ricerca, c'è quando il pezzo è arrivato; fino ad allora campanella e ricerca, già spente, dicono i testi di
+  sempre. Se il pezzo non arriva perché la rete è caduta per un momento, dalla `v3.8.1` la cornice lo richiede ogni 5 secondi,
+  con l'attesa degli altri pezzi a richiesta, finché resta ridotta e la scheda è in primo piano. Dopo un rilascio che ha tolto
+  i file coi nomi di prima, con la scheda aperta, richiederlo non basta: l'aiuto di Vite manda su `window` l'evento
+  `vite:preloadError`, e un frontend che a quell'evento ricarica la pagina la ricarica anche per questo pezzo. Un caso di un frontend che cerca l'avviso subito dopo il disegno prima lo aspetta:
+  `await act(() => vi.dynamicImportSettled())`. Una lingua nuova porta anche il suo file degli avvisi; senza, gli avvisi
+  sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
@@ -1476,7 +1643,7 @@ registro: lì la riga non si mostra, e il codice mai.
 Dalla `v1.19.0` si importa anche `rigaDellaNotifica(notifica, lingua)`, per chi mostra le notifiche in una pagina
 sua: dà il titolo e la riga di sotto (`{titolo, sotto}`) come li scrive il pannello, con la frase di chi ha fatto
 quando il tipo ce l'ha — vedi «Le notifiche», più sopra —: gli stessi testi del pannello, che le sue frasi le chiede a parte (più sotto). Della notifica legge
-`tipo`, `autore_nome`, `risorsa_nome` e, dalla `v2.1.0`, `azioni` e `board_nome`: quando sotto il titolo non c'è il nome
+`tipo`, `autore_nome`, `risorsa_nome`, dalla `v2.1.0` `azioni` e `board_nome`, e dalla `v3.6.0` `quando`, per la data nel titolo: quando sotto il titolo non c'è il nome
 della cosa, `sotto` dice quante azioni la notifica racconta e in quale board; `sotto` manca quando sotto il titolo
 non c'è niente da scrivere.
 `titoloDellaNotifica` e `risorsaDellaNotifica` restano come sono: chi le usa insieme ha la riga di prima, senza le
@@ -1536,7 +1703,11 @@ backoffice, senza `com.zeiras.` davanti. Dalla `v1.14.0` ha le sue `notifiche` a
 scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.scheda.modificata`) o assegnata
 (`board.scheda.assegnata`), tutte e tre con `/c/{id}`. Dalla `v1.16.0` c'è la quarta, una menzione in un commento
 (`board.commento.menzione`), con `/c/{id}` anche lei: l'id è quello della scheda, e `commento_id`, che i `dati` portano,
-non è nel percorso. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
+non è nel percorso. Dalla `v3.6.1` Project Management ha anche le scadenze di una scheda (`board.scheda.scade_domani`,
+`board.scheda.scade_oggi`), con `/c/{id}`, e il promemoria di una To-do (`board.todo.promemoria`), con `/todo?todo={id}`:
+un percorso può finire con un parametro, uno, col suo segnaposto. E la voce della Dashboard, `home`, la prima del file,
+ha l'invito accettato (`io.invito.accettato`), con `/impostazioni/membri`: una notifica senza app (`app: null`) si cerca
+lì, e l'app `home` non c'è. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
 (`crm.acquisto.scoperto`), con `/contatti/{persona_id}`: apre il contatto, e l'`id` dell'acquisto, che i `dati` portano,
 non è nel percorso. Dalla `v3.0.0` il CRM ha anche le due notifiche delle scadenze: il preavviso
 (`crm.scadenza.in_preavviso`), con `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`, altrimenti
@@ -1553,7 +1724,8 @@ risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice 
 avere (per il `ruolo` di un membro `proprietario`, `amministratore`, `membro`). Di un codice si mostra il testo che ha
 nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo,
 che dalla `v1.20.0` si mostra pulito come i nomi nelle notifiche, senza i caratteri che cambiano la direzione del testo
-e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM). Il testo di un codice sta nelle lingue con la chiave
+e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM). Il testo di un codice sta nei testi del pezzo della ricerca
+(`resources/lingue/ricerca/`, dalla `v3.9.0`: prima nelle lingue della cornice) con la chiave
 `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo
 (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli
 (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`). Dalla `v1.18.0` ha `codici`
@@ -1588,6 +1760,11 @@ lo stesso `id` il tono è lo stesso. `id` è l'`id` del workspace, com'è in ogn
 Dà il nome di uno dei toni che il design system ammette per un workspace (`pine`, `citrus`, `coral`, `sky`, `plum`), non un
 colore: il colore lo mette il CSS del design system (`var(--<tono>)`). Due workspace possono avere lo stesso tono. Un `id`
 vuoto, mancante o che non è un testo non ha tono, e la funzione dà `undefined`.
+
+Dalla `v3.6.0` un workspace che ha scelto il suo colore (`colore` di `io.workspace.elenca`, da `workspace.modifica`) ha nel
+selettore quel colore, non il tono del suo `id`. Nei dati della cornice sta in ogni workspace di `aziende`, come `colore`, solo
+quando è uno dei cinque toni: `neutral`, il colore di chi non ne ha scelto uno, non arriva, e allora vale la regola dell'`id`.
+Una pagina del frontend che vuole il pallino del selettore scrive `workspace.colore ?? tonoDelWorkspace(workspace.id)`.
 
 ### La cornice montata una volta sola
 
@@ -1641,9 +1818,10 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   Luciano), e questa è fatta coi soli suoi pezzi, `Logo` e `Button`. Quando la barra c'è nel design system questa si toglie
   e la sostituisce lui, con una versione che lo annuncia.
 - **La pagina** dà alla cornice montata ciò che sa solo lei, con `useCornice`: le voci del prodotto (`nav`), la voce attiva
-  (`active`), `onNavigate`, le voci del menu «+» (`create`), le azioni in topbar (`actions`) e l'area senza margine
-  (`flush`). Ciò che dà vince sulle props del layout finché la pagina è montata, e sparisce quando se ne va. Nessuna voce
-  attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
+  (`active`), `onNavigate`, le voci del menu «+» (`create`) e il suo nome (`createLabel`, dalla `v3.6.0`: «Nuovo nel CRM»;
+  senza, «Crea» nella lingua), le azioni in topbar (`actions`) e l'area senza margine (`flush`). Ciò che dà vince sulle
+  props del layout finché la pagina è montata, e sparisce quando se ne va.
+  Nessuna voce attiva si dice con `null`, dal layout (`active={null}`) o dalla pagina (`useCornice({ active: null })`): `null` è un
   valore, e quello della pagina vince anche su una voce data dal layout; ciò che la pagina non dà, o dà `undefined`, resta
   del layout. Le funzioni possono essere nuove a ogni render. Una chiamata sola per pagina, nella pagina o nel suo
   involucro, non in tutti e due: due chiamate non si sommano (ognuna sostituisce tutto ciò che ha dato l'altra, e quando
@@ -1659,7 +1837,8 @@ Board.layout = (props: { board: { nome: string } }) => ({ crumbs: [{ label: prop
   della cornice, e dato dopo il montaggio la monterebbe due volte. Viene dai dati del server: la pagina lo dà con
   `Pagina.layout = (props) => ({ crumbs: … })`, una funzione a freccia, e il layout del frontend lo passa. La funzione dà
   sempre la chiave `crumbs`, anche `{ crumbs: undefined }` quando il percorso non c'è: con un oggetto vuoto (`{}`) Inertia
-  toglie il layout intero, e quella pagina resta senza cornice.
+  toglie il layout intero, e quella pagina resta senza cornice. Un clic su una voce del percorso passa da `naviga`, dalla
+  `v3.6.0`: non navigate da `onCrumb`.
 - **Quando cambia il workspace** — una visita porta un altro slug nei dati — la cornice si rifà, e la pagina con lei: la
   ricerca coi suoi risultati, i pannelli e le notifiche sono di un workspace, e quelli di prima non restano davanti a chi
   è passato a un altro. Fra pagine dello stesso workspace resta montata.
@@ -2049,7 +2228,7 @@ Che cosa vede la persona:
   `['non_letti' => true]` col segno della lettura (`aggiornati_il`) e lascia nel log una riga d'avviso, col solo tipo
   dell'errore: un `non_letti` letto prima dei dati che la cornice ha non la riduce. La cornice resta ridotta, con
   l'avviso «Zeiras non risponde» sopra la pagina, senza pulsante (`downTitle` e `downText`; campanella e ricerca dicono
-  `downOff`), e la pagina resta dov'è. Ogni altro errore di `/v1` — un 403, che dice che la persona non ha più accesso
+  `downOff`; dalla `v3.7.0` quando arriva il pezzo dei testi degli avvisi, come per l'accettazione), e la pagina resta dov'è. Ogni altro errore di `/v1` — un 403, che dice che la persona non ha più accesso
   e che la cornice ridotta nasconderebbe, un 401 `cliente_non_riconosciuto`, un 400, un 410… — e `GettoneRifiutato`
   passano, come da `Cornice::dati()`, e li tratta il frontend come prima (il 403 `accettazione_richiesta` no: dà i dati
   ridotti). Fino alla `v2.16.0` passavano anche il 404, il 409 e il 422, e una risposta guasta usciva come un errore PHP:

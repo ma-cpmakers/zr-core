@@ -86,7 +86,7 @@ final class RicercaDellaCornice
      * registro. Il resto di ciò che il backoffice dà di un risultato, il suo indirizzo in /v1 compreso, resta nella parte
      * server.
      *
-     * @return array{tipo: string, id: string, titolo: string, contesto: array<string, string>|null}
+     * @return array{tipo: string, id: string, titolo: string, contesto: array<string, string|array{il: string, fuso: string}>|null}
      */
     private static function perLaCornice(mixed $risultato): array
     {
@@ -110,7 +110,10 @@ final class RicercaDellaCornice
      * cornice mostra il titolo. Il confronto delle chiavi è esatto: in PHP la chiave numerica di un oggetto JSON è un numero, e
      * non è nessuna di quelle del registro.
      *
-     * @return array<string, string>|null
+     * Una chiave sola non porta un testo: `quando` (dalla v3.6.0, l'inizio di una prenotazione di Bookings), che passa solo nella
+     * forma di `Quando` — l'istante in UTC e il fuso, nient'altro —; in ogni altra forma non passa, come un testo vuoto.
+     *
+     * @return array<string, string|array{il: string, fuso: string}>|null
      */
     private static function contesto(string $tipo, mixed $contesto): ?array
     {
@@ -118,7 +121,11 @@ final class RicercaDellaCornice
         $testi = [];
 
         foreach (is_array($contesto) ? $contesto : [] as $chiave => $valore) {
-            if (in_array($chiave, $chiavi, true) && is_string($valore) && $valore !== '') {
+            if (! in_array($chiave, $chiavi, true)) {
+                continue;
+            }
+            $valore = $chiave === 'quando' ? Quando::di($valore) : (is_string($valore) && $valore !== '' ? $valore : null);
+            if ($valore !== null) {
                 $testi[$chiave] = $valore;
             }
         }
@@ -127,7 +134,8 @@ final class RicercaDellaCornice
     }
 
     /**
-     * Le chiavi di `contesto` che il registro dei moduli del pacchetto (resources/registro/prodotti.json) dà a un tipo di
+     * Le chiavi di `contesto` che il registro dei moduli del pacchetto (resources/registro/prodotti.json, e per Bookings
+     * resources/registro/ricerca.json, che `Registro` rimette nella sua voce) dà a un tipo di
      * risultato, in `risorse[].contesto`: lo stesso file da cui il browser compone la seconda riga del risultato, così ciò che
      * esce da qui è ciò che il browser mostra. Il tipo si cerca intero, fra le risorse di ogni voce. Nessuna chiave per un tipo
      * che lì non ne ha, o che il registro non ha. Le voci le dà `Registro`, che il file lo legge una volta per processo: qui
