@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 61,5 KB | 13,3 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 61,5 KB | 13,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 61,5 KB | 13,3 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 62,6 KB | 13,3 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 62,6 KB | 13,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 62,6 KB | 13,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -1147,8 +1147,13 @@ cornice === null ? pagina : (
   scade domani» (`board.scheda.scade_domani`) e «Una scheda scade oggi» (`board.scheda.scade_oggi`); senza prodotto
   l'invito accettato, «Il tuo invito è stato accettato» (`io.invito.accettato`). Le prime tre non hanno chi l'ha fatto, e
   il nome della To-do o della scheda sta sotto il titolo; dell'invito chi l'ha fatto è chi ha accettato («Marta Rossi ha
-  accettato il tuo invito»). Con loro e con le tre di Bookings (più sotto) i titoli sono 56. Nessuna delle quattro ha una
-  destinazione: un clic apre la pagina delle notifiche. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
+  accettato il tuo invito»). Con loro e con le tre di Bookings (più sotto) i titoli erano 56. Nessuna delle quattro ha una
+  destinazione: un clic apre la pagina delle notifiche. Dalla `v3.11.0` hanno un titolo i due tipi di evento degli sprint
+  di Project Management che il contratto ha dal 27/10/2026: `com.zeiras.board.sprint.creato`, «Sprint creato», e
+  `com.zeiras.board.sprint.modificato`, «Sprint modificato», anche quando uno sprint parte o si chiude; con chi l'ha fatto
+  «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint». Con loro i titoli sono 58: 40 tipi di evento e
+  i diciotto che non sono eventi. Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche. Gli altri tipi
+  di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Di che prodotto è lo dice `app`: se è il codice di un prodotto del
   registro, la notifica
   porta il suo nome nella lingua davanti all'ora («Project Management · 5 min fa»), la sua icona e il suo tono, anche se
   il prodotto è «Presto» o non è attivo nel workspace; con `app` `null`, o con un codice che il registro non ha, nessun
