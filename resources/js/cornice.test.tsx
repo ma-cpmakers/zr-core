@@ -8613,6 +8613,24 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
         expect(uno('.zr-menu')).toBeNull();
         expect(document.activeElement).toBe(piu());
     });
+
+    it('una voce di un menu della pagina dentro la cornice, scelta col «+» aperto, non manda il fuoco al «+»: il rimedio è del solo menu del «+» (revisione dello sprint 81, R3)', async () => {
+        await mostra(
+            <Cornice dati={dati} onLogout={esciSenzaEffetto} create={[{ label: 'Nuova board' }]}>
+                <div className="zr-menu" role="menu"><button type="button" role="menuitem" id="della-pagina">Della pagina</button></div>
+            </Cornice>,
+        );
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        await conLaTastiera();
+        await clic(piu());
+        expect(piu().getAttribute('aria-expanded')).toBe('true');
+
+        await scegli(uno('#della-pagina'), 'Enter');
+
+        expect(document.activeElement).toBe(uno('#della-pagina'));
+    });
 });
 
 // Riga 6 delle richieste al design system: le voci «Presto» non portano da nessuna parte ma fermavano il Tab, e un lettore di
@@ -10344,6 +10362,7 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
 
         expect([uno('.zr-product-switch')?.getAttribute('aria-expanded'), aperti()[2], document.activeElement]).toStrictEqual(['false', 'true', uno('.zr-product-switch')]);
     });
+
 });
 
 // Sprint 78 · T4 (voce 2804): col Tab fuori dal menu del profilo, dal menu «+» o dal pannello delle notifiche restavano aperti

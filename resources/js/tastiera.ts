@@ -251,13 +251,14 @@ function fuoriDalSelettore(uscita: FocusEvent): void {
  * restava alla pagina; un dialogo che la voce apre si ricorda chi aveva il fuoco quando si è aperto — la voce, già uscita, o la
  * pagina — e alla chiusura non lo rendeva a nessuno (#2822). Il fuoco va al «+» prima che la voce faccia la sua parte, come
  * dopo Esc (riga 11 delle richieste al design system), e il dialogo lo rende a lui. Se la voce lo dà a un altro elemento non si
- * toglie. Il menu è quello che il «+» della cornice tiene aperto. Se la scelta è il primo tasto, che chiede il pezzo, o se il
- * pezzo non arriva, il fuoco resta alla pagina com'era. Provvisorio, finché il `Menu` non lo fa da sé.
+ * toglie. Il menu è quello che il «+» della cornice tiene aperto, accanto a lui nella barra: una voce di un menu della pagina
+ * non conta. Il pezzo arriva al primo tasto: una scelta fatta prima, col mouse o col tasto che lo chiede, o senza il pezzo,
+ * lascia il fuoco com'era. Provvisorio, finché il `Menu` non lo fa da sé.
  */
 function sceltaDalPiu(clic: MouseEvent): void {
     const piu = document.querySelector<HTMLElement>('.zr-shell .zr-create[aria-expanded="true"]');
 
-    if (piu && (clic.target as Element).closest?.('.zr-shell .zr-menu > [role="menuitem"]')) {
+    if (piu && (clic.target as Element).closest?.('.zr-shell .zr-side > .zr-menu > [role="menuitem"]')) {
         piu.focus();
     }
 }
