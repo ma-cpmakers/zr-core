@@ -787,8 +787,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
         // Sprint 74 · T2.5 (voce 2549): delle risorse di resources/registro/ricerca.json le lingue della cornice hanno il solo nome da elenco.
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDellaRicerca()),
-        // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro).
-        ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContesto()),
+        // Sprint 27 · T1: il testo di ogni codice che il registro dà a una chiave di `contesto` (il ruolo di un membro) stava qui;
+        // dalla `v3.9.0` (Decisione 18762) sta coi testi del pezzo della ricerca, e qui è un testo che la cornice non ha.
     ];
 
     $problemi = [];
@@ -1503,20 +1503,23 @@ it('in ogni lingua ogni tipo di risorsa del registro ha il nome del gruppo e il 
 ]);
 
 // Sprint 27 · T1.3 (voce #1787): la ricerca trova i membri del workspace, e di un membro il backoffice dà il ruolo come codice
-// (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core, sotto
+// (`amministratore`), mai come testo da mostrare. Il testo di ogni codice è delle lingue di zr-core (dalla `v3.9.0` di quelle
+// del pezzo della ricerca, `resources/lingue/ricerca/`, e non più di quelle della cornice: Decisione 18762), sotto
 // `searchContext.<voce>.<tipo>.<chiave>.<codice>`, con le parole della pagina Impostazioni › Membri di zr-home; quali
 // codici, lo dice il registro (`risorse[].codici`), e le lingue hanno un testo per ognuno e per nessun altro.
 // Sprint 28 · T1.4 (voce #1826): dopo i tre ruoli, i due esiti di un'opportunità chiusa, con le parole che zr-crm usa per lo
 // stato di un'opportunità. `aperta` non è un codice del registro, e nessuna lingua le dà un testo.
-it('in ogni lingua i tre ruoli di un membro del workspace e i due esiti di un\'opportunità chiusa hanno il loro testo sotto il codice del registro; `aperta` non ne ha uno (sprint 27 · T1.3; sprint 28 · T1.4)', function (string $codice, array $attesi) {
-    $testi = lingueDellaCornice()[$codice];
+it('in ogni lingua i tre ruoli di un membro del workspace e i due esiti di un\'opportunità chiusa hanno il loro testo sotto il codice del registro, nei testi del pezzo della ricerca e non in quelli della cornice; `aperta` non ne ha uno (sprint 27 · T1.3; sprint 28 · T1.4; v3.9.0)', function (string $codice, array $attesi) {
+    $testi = json_decode((string) file_get_contents(__DIR__."/../../resources/lingue/ricerca/$codice.json"), true, flags: JSON_THROW_ON_ERROR);
+    $dellaCornice = lingueDellaCornice()[$codice];
 
     expect(codiciDelContesto())->toBe([
         'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
         'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
     ])
         ->and(array_map(fn (string $delRegistro) => $testi["searchContext.$delRegistro"] ?? null, codiciDelContesto()))->toBe($attesi)
-        ->and(array_values(preg_grep('/^searchContext\./', array_keys($testi)) ?: []))->toHaveCount(5)
+        ->and(array_values(preg_grep('/^searchContext\.(home|crm)\./', array_keys($testi)) ?: []))->toHaveCount(5)
+        ->and(array_values(preg_grep('/^searchContext\./', array_keys($dellaCornice)) ?: []))->toBe([])
         ->and(array_values(preg_grep('/^searchContext\..*\.aperta$/', array_keys($testi)) ?: []))->toBe([]);
 })->with([
     'italiano' => ['it', ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
@@ -1524,27 +1527,18 @@ it('in ogni lingua i tre ruoli di un membro del workspace e i due esiti di un\'o
     'spagnolo' => ['es', ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
 ]);
 
-it('il controllo trova l\'esito di un\'opportunità che manca in una lingua, e un testo per `aperta`, che non è un codice del registro (sprint 28 · T1.4)', function () {
+// v3.9.0 (Decisione 18762): un testo di un codice nelle lingue della cornice tornerebbe nel JS d'ingresso. Il controllo lo trova,
+// anche quello di un codice che il registro ha: sta coi testi del pezzo della ricerca (RegistroTest), e non qui.
+it('il controllo trova il testo di un codice nelle lingue della cornice, che sia del registro, `aperta` o un codice che il registro non ha (sprint 27 · T1.3; sprint 28 · T1.4; v3.9.0)', function () {
     $lingue = lingueDellaCornice();
-    unset($lingue['es']['searchContext.crm.crm.trattativa.esito.persa']);
     $lingue['it']['searchContext.crm.crm.trattativa.esito.aperta'] = 'Aperta';
+    $lingue['es']['searchContext.home.workspace.membro.ruolo.amministratore'] = 'Administrador';
+    $lingue['en']['searchContext.crm.crm.trattativa.esito.persa'] = 'Lost';
 
     expect(problemiDelleLingue($lingue))->toBe([
         'it: «searchContext.crm.crm.trattativa.esito.aperta» non è un testo della cornice',
-        'es: manca «searchContext.crm.crm.trattativa.esito.persa»',
-    ]);
-});
-
-it('il controllo trova il testo di un ruolo che manca in una lingua, e il testo di un codice che il registro non ha: un ruolo in più, o il ruolo di un contatto, che è un testo libero (sprint 27 · T1.3)', function () {
-    $lingue = lingueDellaCornice();
-    unset($lingue['es']['searchContext.home.workspace.membro.ruolo.amministratore']);
-    $lingue['en']['searchContext.home.workspace.membro.ruolo.ospite'] = 'Guest';
-    $lingue['it']['searchContext.crm.crm.persona.ruolo.direttore'] = 'Direttore';
-
-    expect(problemiDelleLingue($lingue))->toBe([
-        'it: «searchContext.crm.crm.persona.ruolo.direttore» non è un testo della cornice',
-        'es: manca «searchContext.home.workspace.membro.ruolo.amministratore»',
-        'en: «searchContext.home.workspace.membro.ruolo.ospite» non è un testo della cornice',
+        'es: «searchContext.home.workspace.membro.ruolo.amministratore» non è un testo della cornice',
+        'en: «searchContext.crm.crm.trattativa.esito.persa» non è un testo della cornice',
     ]);
 });
 

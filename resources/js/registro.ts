@@ -27,7 +27,8 @@ export type TipoDellaRicerca = 'bookings.bookings.prenotazione' | 'bookings.book
 
 /**
  * I codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>` (`codici`): ognuno
- * ha il suo testo in ogni lingua, con `searchContext.` davanti. Un codice nuovo entra anche qui. Dell'esito di un'opportunità
+ * ha il suo testo in ogni lingua del pezzo della ricerca (`resources/lingue/ricerca/`, dalla `v3.9.0`), con `searchContext.` davanti.
+ * Un codice nuovo entra anche qui. Dell'esito di un'opportunità
  * i codici sono due: `aperta`, che il backoffice dà per un'opportunità aperta, non è un codice e non ha un testo.
  */
 export type CodiceDelContesto = 'home.workspace.membro.ruolo.proprietario' | 'home.workspace.membro.ruolo.amministratore' | 'home.workspace.membro.ruolo.membro' | 'crm.crm.trattativa.esito.vinta' | 'crm.crm.trattativa.esito.persa';

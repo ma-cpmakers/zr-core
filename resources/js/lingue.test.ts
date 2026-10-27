@@ -8,6 +8,9 @@ import italiano from '../lingue/it.json';
 import frasiInglesi from '../lingue/notifiche/en.json';
 import frasiSpagnole from '../lingue/notifiche/es.json';
 import frasiItaliane from '../lingue/notifiche/it.json';
+import ricercaInglese from '../lingue/ricerca/en.json';
+import ricercaSpagnola from '../lingue/ricerca/es.json';
+import ricercaItaliana from '../lingue/ricerca/it.json';
 import risorseDellaRicerca from '../registro/ricerca.json';
 import { testiDegliAvvisi } from './avvisi';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
@@ -20,7 +23,7 @@ import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRic
 
 /** I tipi di risorsa del registro, `<voce>.<tipo>`, nel suo ordine: le chiavi dei loro nomi nelle lingue. */
 const tipiDelRegistro = registro.flatMap((voce) => (voce.risorse ?? []).map((risorsa) => `${voce.id}.${risorsa.tipo}`));
-/** I codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nelle lingue, con `searchContext.` davanti. */
+/** I codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: le chiavi dei loro testi nei testi del pezzo della ricerca (dalla `v3.9.0`), con `searchContext.` davanti. */
 const codiciDelRegistro = registro.flatMap((voce) =>
     (voce.risorse ?? []).flatMap((risorsa) => Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `${voce.id}.${risorsa.tipo}.${chiave}.${codice}`))),
 );
@@ -612,20 +615,22 @@ describe('le lingue della cornice', () => {
             { tipo: 'crm.trattativa', icona: 'target', percorso: '/opportunita/{id}', contenitore: false, contesto: ['pipeline', 'fase', 'esito'], codici: { esito: ['vinta', 'persa'] } },
         );
         expect(codiciDelRegistro.filter((codice) => codice.endsWith('.aperta'))).toStrictEqual([]);
-        expect([italiano, spagnolo, inglese].flatMap((file) => Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.') && chiave.endsWith('.aperta')))).toStrictEqual([]);
+        expect([italiano, spagnolo, inglese, ricercaItaliana, ricercaSpagnola, ricercaInglese].flatMap((file) => Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.') && chiave.endsWith('.aperta')))).toStrictEqual([]);
     });
 
-    it.each<[lingua: string, file: Record<string, string>, ruoli: string[]]>([
-        ['it', italiano, ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
-        ['es', spagnolo, ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
-        ['en', inglese, ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
-    ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, e la lingua non ha il testo di un codice che il registro non ha (sprint 27 · T1.3)', (_lingua, file, ruoli) => {
+    // Dalla `v3.9.0` (Decisione 18762 di zr-pm) i testi dei codici stanno coi testi del pezzo della ricerca, che è il solo a
+    // mostrarli: le lingue della cornice, che stanno nell'ingresso, non ne hanno più nessuno.
+    it.each<[lingua: string, file: Record<string, string>, dellaRicerca: Record<string, string>, ruoli: string[]]>([
+        ['it', italiano, ricercaItaliana, ['Proprietario', 'Amministratore', 'Membro', 'Vinta', 'Persa']],
+        ['es', spagnolo, ricercaSpagnola, ['Propietario', 'Administrador', 'Miembro', 'Ganada', 'Perdida']],
+        ['en', inglese, ricercaInglese, ['Owner', 'Admin', 'Member', 'Won', 'Lost']],
+    ])('con la lingua "%s", ogni codice che il registro dà a una chiave di `contesto` ha il suo testo, quello della pagina dei membri, nei testi del pezzo della ricerca, e la lingua della cornice non ne ha nessuno (sprint 27 · T1.3; v3.9.0)', (_lingua, file, dellaRicerca, ruoli) => {
         expect(codiciDelRegistro).toStrictEqual([
             'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
             'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
         ]);
-        expect(codiciDelRegistro.map((codice) => file[`searchContext.${codice}`])).toStrictEqual(ruoli);
-        expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual(codiciDelRegistro.map((codice) => `searchContext.${codice}`));
+        expect(codiciDelRegistro.map((codice) => (dellaRicerca as Record<string, string>)[`searchContext.${codice}`])).toStrictEqual(ruoli);
+        expect(Object.keys(file).filter((chiave) => chiave.startsWith('searchContext.'))).toStrictEqual([]);
     });
 
     // Sprint 27 · T2 (voce #1787): il membro del workspace non è di un modulo, e il backoffice lo cerca in ogni workspace: è una
@@ -1747,16 +1752,24 @@ describe('le notifiche di Bookings, con la data', () => {
 describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => {
     const dellaRicerca = risorseDellaRicerca as Record<string, RisorsaDelProdotto[]>;
     const fileDellaRicerca = import.meta.glob<Record<string, unknown>>('../lingue/ricerca/*.json', { eager: true, import: 'default' });
-    /** Le chiavi dei testi del pezzo: il nome del gruppo di ogni risorsa, `<voce>.<tipo>`, e il testo di ogni suo codice. */
-    const chiavi = Object.entries(dellaRicerca).flatMap(([id, risorse]) =>
-        risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
-    );
+    /**
+     * Le chiavi dei testi del pezzo: il nome del gruppo di ogni risorsa, `<voce>.<tipo>`, e il testo di ogni suo codice; poi,
+     * dalla `v3.9.0`, il testo di ogni codice delle risorse del registro.
+     */
+    const chiavi = [
+        ...Object.entries(dellaRicerca).flatMap(([id, risorse]) =>
+            risorse.flatMap((risorsa) => [`${id}.${risorsa.tipo}`, ...Object.entries(risorsa.codici ?? {}).flatMap(([chiave, codici]) => codici.map((codice) => `searchContext.${id}.${risorsa.tipo}.${chiave}.${codice}`))]),
+        ),
+        ...codiciDelRegistro.map((codice) => `searchContext.${codice}`),
+    ];
 
-    it('ogni lingua della cornice ha il suo file dei testi della ricerca, con tutte e sole le chiavi delle risorse di ricerca.json, nell\'ordine, e testi non vuoti senza spazi ai bordi (T2.1, T2.2, T2.3)', () => {
+    it('ogni lingua della cornice ha il suo file dei testi della ricerca, con tutte e sole le chiavi delle risorse di ricerca.json e dei codici del registro, e testi non vuoti senza spazi ai bordi (T2.1, T2.2, T2.3; v3.9.0)', () => {
         expect(Object.keys(fileDellaRicerca).map((percorso) => percorso.replace(/^.*\/|\.json$/g, '')).sort()).toStrictEqual([...lingue].sort());
         expect(chiavi).toStrictEqual([
             'bookings.bookings.prenotazione', 'searchContext.bookings.bookings.prenotazione.stato.confermata', 'searchContext.bookings.bookings.prenotazione.stato.svolta',
             'searchContext.bookings.bookings.prenotazione.stato.non_presentato', 'searchContext.bookings.bookings.prenotazione.stato.annullata', 'bookings.bookings.calendario',
+            'searchContext.home.workspace.membro.ruolo.proprietario', 'searchContext.home.workspace.membro.ruolo.amministratore', 'searchContext.home.workspace.membro.ruolo.membro',
+            'searchContext.crm.crm.trattativa.esito.vinta', 'searchContext.crm.crm.trattativa.esito.persa',
         ]);
         for (const testi of Object.values(fileDellaRicerca)) {
             expect(Object.keys(testi).sort()).toStrictEqual([...chiavi].sort());

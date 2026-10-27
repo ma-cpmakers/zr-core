@@ -4,5 +4,10 @@
     "searchContext.bookings.bookings.prenotazione.stato.confermata": "Confermata",
     "searchContext.bookings.bookings.prenotazione.stato.svolta": "Svolta",
     "searchContext.bookings.bookings.prenotazione.stato.non_presentato": "Non presentato",
-    "searchContext.bookings.bookings.prenotazione.stato.annullata": "Annullata"
+    "searchContext.bookings.bookings.prenotazione.stato.annullata": "Annullata",
+    "searchContext.home.workspace.membro.ruolo.proprietario": "Proprietario",
+    "searchContext.home.workspace.membro.ruolo.amministratore": "Amministratore",
+    "searchContext.home.workspace.membro.ruolo.membro": "Membro",
+    "searchContext.crm.crm.trattativa.esito.vinta": "Vinta",
+    "searchContext.crm.crm.trattativa.esito.persa": "Persa"
 }

@@ -51,8 +51,9 @@ const risorsePerTipo = new Map(
 );
 
 /**
- * I testi delle risorse di `resources/registro/ricerca.json` — il nome del gruppo, `<voce>.<tipo>`, e il testo di ogni codice,
- * `searchContext.<voce>.<tipo>.<chiave>.<codice>` —: stanno in `resources/lingue/ricerca/`, un file per lingua col codice per
+ * I testi delle risorse di `resources/registro/ricerca.json` — il nome del gruppo, `<voce>.<tipo>` — e il testo di ogni codice di
+ * ogni risorsa, `searchContext.<voce>.<tipo>.<chiave>.<codice>` (dalla `v3.9.0` anche quelli del registro, `CodiceDelContesto`, che
+ * l'ingresso non porta più) —: stanno in `resources/lingue/ricerca/`, un file per lingua col codice per
  * nome come le lingue della cornice, e li legge solo questo pezzo. Il file è quello della lingua dei testi della cornice
  * (`linguaDeiTesti`): una lingua della cornice che lì non ha il suo file, o un testo che manca o è vuoto, si mostra in inglese.
  */

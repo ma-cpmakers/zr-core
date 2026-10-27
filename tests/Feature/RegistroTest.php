@@ -576,20 +576,23 @@ it('le risorse della ricerca di Bookings stanno in resources/registro/ricerca.js
         ])
         ->and(tipiDellaRicerca())->toBe(['bookings.bookings.prenotazione', 'bookings.bookings.calendario'])
         ->and(valoriDelTipo('TipoDellaRicerca', 'resources/js/registro.ts'))->toEqualCanonicalizing(tipiDellaRicerca())
-        // I testi del pezzo: un file per lingua della cornice, con il nome del gruppo e i testi dei codici, e solo quelli.
+        // I testi del pezzo: un file per lingua della cornice, con il nome del gruppo e i testi dei codici, e solo quelli; dalla
+        // `v3.9.0` (Decisione 18762) anche i testi dei codici delle risorse del registro, che il JS d'ingresso non porta più.
         ->and(collect(File::files(__DIR__.'/../../resources/lingue/ricerca'))->map(fn ($f) => $f->getFilename())->sort()->values()->all())->toBe(['en.json', 'es.json', 'it.json'])
         ->and(collect(['it', 'es', 'en'])->map(fn (string $codice) => array_keys(json_decode(File::get(__DIR__."/../../resources/lingue/ricerca/$codice.json"), true, flags: JSON_THROW_ON_ERROR)))->unique(fn (array $chiavi) => implode(',', $chiavi))->values()->all())
-        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", codiciDelContestoDellaRicerca())]]);
+        ->toBe([['bookings.bookings.prenotazione', 'bookings.bookings.calendario', ...array_map(fn (string $codice): string => "searchContext.$codice", [...codiciDelContestoDellaRicerca(), ...codiciDelContesto()])]]);
 });
 
-it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: tsc chiede all\'inglese il testo di ognuno, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4)', function () {
+it('il tipo `CodiceDelContesto` di registro.ts elenca i codici che il registro dà alle chiavi di `contesto`, `<voce>.<tipo>.<chiave>.<codice>`: il testo di ognuno lo legge il pezzo della ricerca, non le lingue della cornice, e `aperta` non è un codice (sprint 27 · T1.4; sprint 28 · T1.4; v3.9.0)', function () {
     expect(codiciDelContesto())->toBe([
         'home.workspace.membro.ruolo.proprietario', 'home.workspace.membro.ruolo.amministratore', 'home.workspace.membro.ruolo.membro',
         'crm.crm.trattativa.esito.vinta', 'crm.crm.trattativa.esito.persa',
     ])
         ->and(valoriDelTipo('CodiceDelContesto', 'resources/js/registro.ts'))->toEqualCanonicalizing(codiciDelContesto())
-        // Il testo di un codice si chiede alle lingue con `searchContext.` davanti, come il nome da elenco con `searchSource.`.
-        ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->toContain('Record<`searchContext.${CodiceDelContesto}`, string>');
+        // Il testo di un codice si chiede con `searchContext.` davanti, come il nome da elenco con `searchSource.`: dalla `v3.9.0`
+        // ai testi del pezzo della ricerca, e i testi della cornice non lo hanno più fra i loro tipi.
+        ->and(File::get(__DIR__.'/../../resources/js/ricerca.ts'))->toContain('`searchContext.${CodiceDelContesto}`')
+        ->and(File::get(__DIR__.'/../../resources/js/lingue.ts'))->not->toContain('searchContext.${CodiceDelContesto}');
 });
 
 // Sprint 21 · T3 (voce #1641): da una notifica del CRM si apre la sua risorsa. Dove, lo dice il registro: parole e indirizzi sono

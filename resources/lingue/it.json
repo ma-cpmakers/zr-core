@@ -69,10 +69,5 @@
     "searchSource.crm.crm.organizzazione": "aziende",
     "searchSource.crm.crm.trattativa": "opportunità",
     "searchSource.bookings.bookings.prenotazione": "prenotazioni",
-    "searchSource.bookings.bookings.calendario": "calendari",
-    "searchContext.home.workspace.membro.ruolo.proprietario": "Proprietario",
-    "searchContext.home.workspace.membro.ruolo.amministratore": "Amministratore",
-    "searchContext.home.workspace.membro.ruolo.membro": "Membro",
-    "searchContext.crm.crm.trattativa.esito.vinta": "Vinta",
-    "searchContext.crm.crm.trattativa.esito.persa": "Persa"
+    "searchSource.bookings.bookings.calendario": "calendari"
 }

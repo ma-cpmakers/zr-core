@@ -1,6 +1,6 @@
 import inglese from '../lingue/en.json';
 import type { AppShellLabels } from '../zeiras/index';
-import type { CodiceDelContesto, IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
+import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
@@ -10,15 +10,15 @@ import type { CodiceDelContesto, IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
  * di ogni risorsa (il gruppo dei risultati della ricerca) per `<voce>.<tipo>`, il nome da elenco della stessa risorsa,
- * minuscolo, per `searchSource.<voce>.<tipo>` (anche delle risorse di `resources/registro/ricerca.json`, `TipoDellaRicerca`), il testo di ogni codice che una chiave di `contesto` può portare (il ruolo di un
- * membro del workspace) per `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Le frasi delle notifiche non sono qui: stanno in
- * un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
+ * minuscolo, per `searchSource.<voce>.<tipo>` (anche delle risorse di `resources/registro/ricerca.json`, `TipoDellaRicerca`). Il testo
+ * di ogni codice che una chiave di `contesto` può portare (il ruolo di un membro del workspace) non è qui dalla `v3.9.0`: sta coi
+ * testi del pezzo della ricerca, in `resources/lingue/ricerca/`, perché lo mostra solo una riga dei risultati. Le frasi delle
+ * notifiche non sono qui: stanno in un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  */
 export type TestiDellaCornice = Required<AppShellLabels> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
-    Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> &
-    Record<`searchContext.${CodiceDelContesto}`, string> & {
+    Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> & {
     /** Il titolo del gruppo dei prodotti nel menu. */
     products: string;
     /** Il nome della Dashboard, la prima voce del menu Moduli. */

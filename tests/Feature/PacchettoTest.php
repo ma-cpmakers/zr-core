@@ -4440,7 +4440,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],
     'il registro: che cosa si mostra di un codice' => ['registro', 'Di un codice si mostra il testo che ha nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo, che dalla `v1.20.0` si mostra pulito come i nomi nelle notifiche, senza i caratteri che cambiano la direzione del testo e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM)'],
-    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nelle lingue con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
+    'il registro: la chiave del testo di un codice' => ['registro', 'Il testo di un codice sta nei testi del pezzo della ricerca (`resources/lingue/ricerca/`, dalla `v3.9.0`: prima nelle lingue della cornice) con la chiave `searchContext.<voce>.<tipo>.<chiave>.<codice>`'],
     'il registro: i testi nuovi delle lingue' => ['registro', 'Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`)'],
 ]);
 
@@ -4450,7 +4450,7 @@ it('i codici e i ruoli che il README dice per un membro sono quelli del registro
     $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
     $fraAccenti = implode(', ', array_map(fn (string $codice): string => '`'.$codice.'`', $codici));
     $nella = function (string $lingua) use ($codici, $davanti): string {
-        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/ricerca/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
 
         return implode(', ', array_map(fn (string $codice): string => '«'.$testi['searchContext.'.$davanti.$codice].'»', $codici));
     };
@@ -4655,7 +4655,7 @@ it('gli esiti che README e guida dicono per un\'opportunità sono i codici del r
     $codici = array_map(fn (string $codice): string => substr($codice, strlen($davanti)), array_values(array_filter(codiciDelContesto(), fn (string $codice): bool => str_starts_with($codice, $davanti))));
     $fraAccenti = array_map(fn (string $codice): string => '`'.$codice.'`', $codici);
     $nella = function (string $lingua) use ($codici, $davanti): array {
-        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
+        $testi = json_decode((string) file_get_contents(__DIR__.'/../../resources/lingue/ricerca/'.$lingua.'.json'), true, flags: JSON_THROW_ON_ERROR);
 
         return array_map(fn (string $codice): string => $testi['searchContext.'.$davanti.$codice], $codici);
     };
@@ -4691,7 +4691,7 @@ it('la guida dice nel passo del registro, e non altrove, come si dà a una risor
         ->and(substr_count(suUnaRiga($guida), $frase))->toBe(1);
 })->with([
     'quando, e a chi si dice' => ['8. Il prodotto nel registro', 'Se una chiave di `contesto` di una risorsa non porta un testo ma un codice — uno stato, un ruolo —, dalla `v1.17.0` lo dici a zr-core insieme alla risorsa'],
-    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
+    'codici, e un testo per codice' => ['8. Il prodotto nel registro', 'nel registro la risorsa ha `codici`, coi codici che quella chiave può avere, e ogni lingua del pezzo della ricerca (`resources/lingue/ricerca/`, dalla `v3.9.0`) ha un testo per codice (`searchContext.<voce>.<tipo>.<chiave>.<codice>`)'],
     'che cosa si mostra' => ['8. Il prodotto nel registro', 'La cornice mostra il testo della lingua, mai il codice, e un codice che il registro non ha non si mostra: un codice nuovo vuole una versione nuova di zr-core'],
     // Sprint 28 · T1.5: dalla `v1.18.0` li ha anche l'opportunità, e il membro non è più detto come la sola risorsa coi `codici`.
     'chi li ha oggi' => ['8. Il prodotto nel registro', 'Oggi hanno `codici` il membro del workspace, per il `ruolo` (`proprietario`, `amministratore`, `membro`), e dalla `v1.18.0` l\'opportunità del CRM, per l\'`esito` (`vinta`, `persa`'],
@@ -5471,8 +5471,10 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.336 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.213 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
+    // v3.9.0 (Decisione 18762 di zr-pm): i testi dei codici della ricerca nel pezzo della ricerca, il tetto scende di 123, alla misura più 20.
+    'i pesi: i 123 byte della v3.9.0' => ['pesi', 'Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20: i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l\'esito di un\'opportunità) sono usciti dal JS d\'ingresso, nel pezzo della ricerca'],
     'i pesi: i 404 byte della v3.7.0' => ['pesi', 'Dalla `v3.7.0` è sceso di 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d\'ingresso, nel pezzo a richiesta degli avvisi'],
     'i pesi: il settimo' => ['pesi', 'Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi (circa 0,8 KB con gzip)'],
     'i pesi: i 17 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 17 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
@@ -5485,7 +5487,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20.
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     'i pesi: l\'eccezione finita' => ['pesi', 'Dalla `v2.0.0` l\'eccezione per i rimedi provvisori di tastiera è finita'],
@@ -5528,7 +5530,7 @@ it('il README dice della ricerca in un pezzo a richiesta quando la cornice lo ch
     'il passaggio: nei test' => ['passaggio', 'un caso che scrive nel campo, lascia passare i 300 ms dall\'ultimo tasto e guarda subito le richieste partite non ne trova'],
     'il passaggio: la riga che c\'è già' => ['passaggio', '`beforeAll(() => frasiInMemoria())`, dalla `v2.8.0` dà alla cornice anche il pezzo della ricerca'],
     // Sprint 74 · T2.7 (voce 2549): dalla `v3.6.0` il pezzo della ricerca porta le risorse di Bookings.
-    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,5 KB con gzip dalla `v3.6.0`)'],
+    'i pesi: il sesto' => ['pesi', 'Il sesto, dalla `v2.8.0`, è il pezzo della ricerca (circa 1,5 KB con gzip dalla `v3.6.0`, circa 1,7 KB dalla `v3.9.0`)'],
     'la guida: la riga dei test' => ['guida', 'Dalla `v2.8.0` dà alla cornice anche il pezzo di JS della ricerca, che in una pagina arriva al primo fuoco nel campo'],
     'la guida: se non arriva' => ['guida', 'Se non arriva, sotto il campo c\'è l\'errore della ricerca, e si riprova scrivendo un\'altra parola, o la stessa'],
 ]);

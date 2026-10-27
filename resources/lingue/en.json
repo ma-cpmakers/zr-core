@@ -69,10 +69,5 @@
     "searchSource.crm.crm.organizzazione": "companies",
     "searchSource.crm.crm.trattativa": "opportunities",
     "searchSource.bookings.bookings.prenotazione": "bookings",
-    "searchSource.bookings.bookings.calendario": "calendars",
-    "searchContext.home.workspace.membro.ruolo.proprietario": "Owner",
-    "searchContext.home.workspace.membro.ruolo.amministratore": "Admin",
-    "searchContext.home.workspace.membro.ruolo.membro": "Member",
-    "searchContext.crm.crm.trattativa.esito.vinta": "Won",
-    "searchContext.crm.crm.trattativa.esito.persa": "Lost"
+    "searchSource.bookings.bookings.calendario": "calendars"
 }

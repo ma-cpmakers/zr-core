@@ -130,9 +130,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,7 KB | 16,9 KB | 58,0 KB | 12,3 KB |
-| la cornice e due componenti per nome | 52,9 KB | 18,0 KB | 58,0 KB | 12,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 125,5 KB | 40,3 KB | 58,0 KB | 12,3 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 59,1 KB | 12,7 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 59,1 KB | 12,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 59,1 KB | 12,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -143,7 +143,7 @@ pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profil
 della campanella (circa 1,3 KB con gzip; dalla `v3.0.0` circa 1,9 KB): ciò che compone le righe delle notifiche e carica le
 frasi, che la cornice chiede con `import()` quando si apre la campanella, non quando si monta, e dalla `v3.0.0` anche le righe
 del registro che dicono dove si apre ogni notifica, con la funzione che le legge. Il sesto, dalla `v2.8.0`, è il pezzo della ricerca
-(circa 1,5 KB con gzip dalla `v3.6.0`): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
+(circa 1,5 KB con gzip dalla `v3.6.0`, circa 1,7 KB dalla `v3.9.0`): la richiesta, ciò che si fa della risposta e la riga di un risultato, che la cornice chiede al
 primo fuoco nel campo della ricerca (vedi «La ricerca», sotto). Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi
 (circa 0,8 KB con gzip): i testi dei due avvisi della cornice ridotta, nelle tre lingue — chi non ha accettato i documenti
 legali, e Zeiras che non risponde —, che la cornice chiede solo quando passa a uno di quei due stati. L'ottavo, dalla `v3.8.0`, è il
@@ -159,7 +159,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.336 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.213 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -178,14 +178,17 @@ che c'era già (5 byte misurati, e 20 di margine: l'ultimo rialzo senza contropa
 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d'ingresso, nel pezzo a richiesta degli avvisi,
 l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'ingresso sotto i 17.400 togliendo peso, senza
 alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` è salito di 40 byte, alla misura più 20: la
-cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.561 la
+cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
+i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
+usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.708 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
-pezzi, ancora col codice uguale, e 20 di margine (zr-pm). Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
+pezzi, ancora col codice uguale, e 20 di margine (zr-pm), e di altri 147 nella `v3.9.0`, alla misura più 20: i testi dei
+codici dei risultati, usciti dal JS d'ingresso (Decisione 18762). Quello dei rimedi è salito di 102 byte nella `v3.4.0`, per il pannello delle notifiche senza punti di riferimento e
 per la barra in alto sotto la ricerca (Decisione 17522 di zr-pm), e di altri 102 nella `v3.6.0`: 82 per il pannello della ricerca
 nel giro del Tab e per i clic sul percorso che passano da `naviga`, e 20 di margine (Decisione 18266 di zr-pm), poi di altri 52:
 Esc col fuoco nel pannello della ricerca chiude la ricerca (zr-pm, 26/10). Quello della campanella era di 1.969 byte, ed è salito di 16 nella `v3.2.2`: la riga del registro che apre il
@@ -1721,7 +1724,8 @@ risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice 
 avere (per il `ruolo` di un membro `proprietario`, `amministratore`, `membro`). Di un codice si mostra il testo che ha
 nella lingua, mai il codice, e un codice che il registro non ha non si mostra; una chiave senza `codici` porta un testo,
 che dalla `v1.20.0` si mostra pulito come i nomi nelle notifiche, senza i caratteri che cambiano la direzione del testo
-e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM). Il testo di un codice sta nelle lingue con la chiave
+e coi caratteri di controllo ridotti a uno spazio (il ruolo di un contatto del CRM). Il testo di un codice sta nei testi del pezzo della ricerca
+(`resources/lingue/ricerca/`, dalla `v3.9.0`: prima nelle lingue della cornice) con la chiave
 `searchContext.<voce>.<tipo>.<chiave>.<codice>`. Per il membro le lingue hanno cinque testi nuovi: il nome del gruppo
 (`home.workspace.membro`: «Membri»), il nome da elenco (`searchSource.home.workspace.membro`: «membri») e i tre ruoli
 (`searchContext.home.workspace.membro.ruolo.proprietario`, `….amministratore`, `….membro`). Dalla `v1.18.0` ha `codici`

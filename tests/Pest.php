@@ -73,8 +73,8 @@ function tipiDiRisorsa(): array
 
 /**
  * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa, `<voce>.<tipo>.<chiave>.<codice>`:
- *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti; senza quelli delle risorse di
- *                      resources/registro/ricerca.json, i cui testi sono del pezzo della ricerca
+ *                      ognuno ha un testo in ogni lingua del pezzo della ricerca (dalla `v3.9.0`), con `searchContext.` davanti;
+ *                      senza quelli delle risorse di resources/registro/ricerca.json
  */
 function codiciDelContestoDellaRicerca(): array
 {
@@ -110,7 +110,7 @@ function tipiDellaRicerca(): array
 
 /**
  * @return list<string> i codici che il registro dà a una chiave di `contesto` di una risorsa del suo file, `<voce>.<tipo>.<chiave>.<codice>`:
- *                      ognuno ha un testo in ogni lingua, con `searchContext.` davanti
+ *                      ognuno ha un testo in ogni lingua del pezzo della ricerca, con `searchContext.` davanti
  */
 function codiciDelContesto(): array
 {
