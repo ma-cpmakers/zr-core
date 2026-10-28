@@ -10717,3 +10717,76 @@ describe('le linguette del pannello delle notifiche si scorrono con le frecce (s
         }
     });
 });
+
+describe('il menu a cassetto aperto dice di essere una finestra (sprint 87, voce 2341, riga 111 delle richieste)', () => {
+    // Qui il pezzo della tastiera c'è già, per i casi di prima: che il rimedio arrivi senza un tasto lo prova
+    // `rimedi-al-montaggio.test.ts`. La finestra è larga 390 px; il cassetto c'è fino a 1023.
+    const larga = async (larghezza: number) => act(async () => {
+        (window as unknown as { happyDOM: { setViewport: (misura: { width: number; height: number }) => void } }).happyDOM.setViewport({ width: larghezza, height: 800 });
+        await prossimoGiro();
+    });
+    const laCornice = async () => {
+        await larga(390);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    afterEach(async () => larga(1024));
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const finestra = () => {
+        const lato = uno('.zr-shell > .zr-side');
+
+        return [lato?.getAttribute('role'), lato?.getAttribute('aria-modal'), Boolean(lato?.getAttribute('aria-label'))];
+    };
+    const chiusure: [string, () => Promise<void>][] = [
+        ['col pulsante', () => clic(menu())],
+        ['con Esc', () => act(async () => {
+            menu().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await prossimoGiro();
+        })],
+        ['col velo', () => clic(uno('.zr-side-scrim'))],
+    ];
+
+    it('T1.1 aperto, `aside.zr-side` ha `role="dialog"` e il suo nome, senza `aria-modal`; prima di aprirlo niente', async () => {
+        await laCornice();
+        expect(finestra()).toStrictEqual([null, null, true]);
+
+        await clic(menu());
+
+        expect([menu().getAttribute('aria-expanded'), ...finestra()]).toStrictEqual(['true', 'dialog', null, true]);
+    });
+
+    it.each(chiusure)('T1.1 chiuso %s, nessun `role`', async (_, chiudi) => {
+        await laCornice();
+        await clic(menu());
+        expect(finestra()[0]).toBe('dialog');
+
+        await chiudi();
+
+        expect([menu().getAttribute('aria-expanded'), ...finestra()]).toStrictEqual(['false', null, null, true]);
+    });
+
+    it('T1.2 allargata la finestra a 1024 px col cassetto aperto il ruolo sparisce, e ristretta torna', async () => {
+        await laCornice();
+        await clic(menu());
+
+        await larga(1024);
+        const allargata = [menu().getAttribute('aria-expanded'), finestra()[0]];
+        await larga(1023);
+
+        expect([...allargata, finestra()[0]]).toStrictEqual(['true', null, 'dialog']);
+    });
+
+    it('T1.1 un\'`aside.zr-side.is-open` della pagina, fuori dalla cornice, resta com\'è', async () => {
+        await laCornice();
+        const dellaPagina = document.body.appendChild(document.createElement('aside'));
+        dellaPagina.className = 'zr-side is-open';
+
+        await clic(menu());
+        const ruolo = dellaPagina.getAttribute('role');
+        dellaPagina.remove();
+
+        expect(ruolo).toBeNull();
+    });
+});

@@ -587,6 +587,30 @@ async function cassetto(page) {
             await pausa(300);
         }
     }
+    // Riga 111 (#2341, v3.14.0): il cassetto aperto dice di essere una finestra, non modale; chiuso col velo, non più.
+    const finestra = () => page.evaluate(() => ['role', 'aria-modal', 'aria-label'].map((nome) => document.querySelector('.zr-shell > .zr-side')?.getAttribute(nome) ?? '-').join(' '));
+    await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
+    await pausa(300);
+    const daAperto = await finestra();
+    await page.evaluate(() => document.querySelector('.zr-shell .zr-side-scrim')?.click());
+    await pausa(300);
+    const daChiuso = await finestra();
+    scrivi(/^dialog - [^-]/.test(daAperto) && /^- - [^-]/.test(daChiuso) ? '✅' : '❌', 'K390.10', 'il cassetto aperto ha `role="dialog"` col suo nome e senza `aria-modal`; chiuso col velo, nessun ruolo (riga 111, #2341)', `aperto: ${daAperto} · chiuso: ${daChiuso}`);
+    // La finestra che si allarga col cassetto aperto: l'`AppShell` lo tiene aperto, il ruolo no (T1.2 di #2341).
+    const misura = page.viewportSize();
+    await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
+    await pausa(300);
+    await page.setViewportSize({ width: 1280, height: misura.height });
+    await pausa(300);
+    const allargata = await finestra();
+    await page.setViewportSize(misura);
+    await pausa(300);
+    const ristretta = await finestra();
+    scrivi(/^- /.test(allargata) && /^dialog /.test(ristretta) ? '✅' : '❌', 'K390.11', 'col cassetto aperto, la finestra allargata a 1280 px toglie il ruolo e ristretta lo rende (#2341)', `1280: ${allargata} · ${misura.width}: ${ristretta}`);
+    if (await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded')) === 'true') {
+        await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
+        await pausa(300);
+    }
     await page.evaluate(() => document.activeElement?.blur());
 }
 

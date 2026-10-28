@@ -670,7 +670,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_290);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1,9 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 2,0 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -686,7 +686,11 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // per i clic sul percorso che passano da `naviga` (misura del 26/10: 1.850; tetto alla misura più 20, Decisione 18266).
         // Poi +52 per Esc col fuoco nel pannello della ricerca, che passa al campo e chiude la ricerca (dalla UAT in Chromium;
         // misura del 26/10: 1.902; tetto alla misura più 20, zr-pm 26/10).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_922);
+        // Sprint 87 (voce #2341, riga 111): il menu a cassetto aperto con `role="dialog"` sotto i 1024 px, anche quando la finestra
+        // si allarga, qui e non nel pezzo della tastiera perché serve a chi usa un lettore di schermo col tocco, che non preme tasti:
+        // questa è la contropartita (misura del 28/10: 1.959 al primo prototipo; tetto 1.979, la misura più 20, Decisione 19069;
+        // 1.969 nella forma senza `aria-modal` e con `matchMedia`, Decisione di zr-pm dopo la revisione della PR #145).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_979);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.993 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1)', () => {
