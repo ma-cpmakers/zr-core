@@ -162,8 +162,8 @@ it('zeiras-token.css porta i nove stili di testo di tokens.json, coi nomi del te
     $stili = $testo->reject(fn (string $nome) => str_contains($nome, '--', 2))->map(fn (string $nome) => substr($nome, 7))->values()->all();
 
     expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'caption', 'overline'])
-        // Tre variabili per stile, e la quarta nei cinque che hanno la spaziatura delle lettere.
-        ->and($testo)->toHaveCount(9 * 3 + 5)
+        // Tre variabili per stile, e la quarta nei quattro che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline).
+        ->and($testo)->toHaveCount(9 * 3 + 4)
         ->and([$css['--text-heading-1'], $css['--text-heading-1--line-height'], $css['--text-heading-1--font-weight'], $css['--text-heading-1--letter-spacing']])
         ->toBe([['26px'], ['32px'], ['650'], ['-0.01em']])
         ->and($css['--text-overline--letter-spacing'])->toBe(['0.06em'])

@@ -212,8 +212,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 68,4 KB | 11,5 KB | 3,1 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 65,3 KB | 11,0 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 69,3 KB | 11,6 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 66,2 KB | 11,2 KB | 3,1 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
