@@ -170,6 +170,20 @@ it('zeiras-token.css porta i nove stili di testo di tokens.json, coi nomi del te
         ->and($css)->not->toHaveKey('--text-heading-2--letter-spacing');
 });
 
+it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni `--text-…` del README c\'è nel file, e ci sono tutti e nove gli stili (sprint 86 · T2.1)', function () {
+    $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
+    preg_match('/^\*\*Gli stili di testo\*\*.*?(?=^\*\*`zeiras\.css`\*\*)/ms', File::get(__DIR__.'/../../README.md'), $capoverso);
+    preg_match_all('/--text-[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z-]+)?/', $capoverso[0] ?? '', $nomi);
+    $stili = collect($css)->keys()->filter(fn (string $nome) => preg_match('/^--text-[a-z0-9-]+$/', $nome) === 1 && ! str_contains(substr($nome, 2), '--'))
+        ->map(fn (string $nome) => substr($nome, 7));
+
+    expect($capoverso)->not->toBe([])
+        ->and(array_values(array_unique($nomi[0])))->toContain('--text-heading-1', '--text-heading-1--letter-spacing')
+        ->and(array_values(array_diff(array_unique($nomi[0]), array_keys($css))))->toBe([])
+        ->and($stili->reject(fn (string $stile) => str_contains($capoverso[0], "`{$stile}`"))->values()->all())->toBe([])
+        ->and($capoverso[0])->toContain('@theme inline reference', 'npm run token');
+});
+
 it('il controllo trova la variabile che manca, quella definita due volte e quella col valore scuro (T3.1)', function () {
     $token = valoriDeiToken();
     $colori = collect(json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR)['color']['tokens']);

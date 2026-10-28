@@ -43,6 +43,31 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
+**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i nove stili di `tokens.json` — `display-xl`,
+`display`, `heading-1`, `heading-2`, `heading-3`, `body`, `body-sm`, `caption`, `overline` —, coi nomi del tema di Tailwind 4:
+per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e, nei quattro che la
+hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non sta nello stile: i
+primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sei del gruppo Testo, con `--font-sans`. Con
+Tailwind 4 un modulo li porta nel tema per nome, come i colori, e scrive `text-heading-1 font-display` invece di
+`text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
+
+```css
+@theme inline reference {
+    --text-*: initial;
+    --text-heading-1: var(--text-heading-1);
+    --text-heading-1--line-height: var(--text-heading-1--line-height);
+    --text-heading-1--font-weight: var(--text-heading-1--font-weight);
+    --text-heading-1--letter-spacing: var(--text-heading-1--letter-spacing);
+    --text-heading-2: var(--text-heading-2);
+    --text-heading-2--line-height: var(--text-heading-2--line-height);
+    --text-heading-2--font-weight: var(--text-heading-2--font-weight);
+}
+```
+
+Con `reference` il tema non scrive le sue variabili nel CSS, e la classe `text-heading-1` legge quelle di `zeiras-token.css`
+(misura, interlinea, peso e spaziatura delle lettere in una classe sola); `--text-*: initial` toglie la scala di serie di
+Tailwind, così `text-lg` non c'è più. Il file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confronta.
+
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
 È per chi prende quei due campi **solo** dai loro moduli, in pagine caricate a richiesta: il CSS del primo carico pesa circa
@@ -345,6 +370,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.11.0` | i titoli dei due tipi di evento degli sprint di Project Management, «Sprint creato» e «Sprint modificato», con chi l'ha fatto «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint»: prima avevano il titolo di ripiego; un clic apre la pagina delle notifiche | niente | un caso che contava i titoli o si aspettava «Novità nel workspace» per uno sprint va riletto: la cornice ha 58 titoli | niente fuori da Project Management |
 | `v3.11.1` | scelta una voce del «+», con la tastiera o col mouse, il fuoco va al «+» prima che la voce faccia la sua parte: chiuso il dialogo che la voce apre, il fuoco torna al «+» e non alla pagina (#2822); un `Dialog` del design system aperto dalla voce senza fuoco lo prende lui, e alla chiusura lo rende al «+» | niente | un caso che dopo il clic su una voce del «+» si aspettava il fuoco sulla voce o sulla pagina va riletto | P.3 di `uat-cornice.mjs`, dove l'ultima voce del «+» apre un dialogo |
 | `v3.12.0` | col menu a cassetto aperto (sotto 720 px), un Esc dato in un `<dialog>` del browser, o che la pagina ha già gestito (`preventDefault`), chiude solo il suo: il cassetto resta aperto e il fuoco resta dove il browser lo rende (riga 136, #2826) | niente; col cassetto aperto quell'Esc non arriva agli ascolti in bolla sul `document` e sulla finestra (li ferma il rimedio sul `body`), e vale anche per un `<dialog>` non modale; un Esc gestito in bolla sul `document` chiude ancora il cassetto | un caso che col cassetto aperto dà Esc in un dialogo, o in un campo che lo gestisce, e si aspetta il cassetto chiuso va riletto | K390.8 e K390.9 di `uat-cornice.mjs` |
+| `v3.13.0` | gli stili di testo di `tokens.json` come variabili in `zeiras-token.css` (`--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight`, `--text-heading-1--letter-spacing`…; «Gli stili di testo», sopra): il CSS dei token pesa circa 0,9 KB in più, 0,1 KB con gzip | niente; per scrivere il testo per nome, gli stili nel tema di Tailwind (`@theme inline reference`) e le classi `text-<stile>` al posto dei valori scritti a mano | niente | i titoli e i testi passati a `text-<stile>` hanno la misura, l'interlinea e il peso di prima |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
