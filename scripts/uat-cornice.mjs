@@ -557,6 +557,36 @@ async function cassetto(page) {
     await pausa(300);
     const chiuso = await dove();
     scrivi((await aperto()) === 'false' && chiuso === 'pulsante' ? '✅' : '❌', 'K390.7', 'chiuso il cassetto col pulsante, il fuoco è su «Apri il menu» (#2806)', `aperto: ${await aperto()}, fuoco: ${chiuso}`);
+    // Riga 136 (#2826, v3.12.0): col cassetto aperto, Esc in un `<dialog>` del browser o già gestito dalla pagina chiude solo il suo.
+    for (const [id, come, prepara] of [
+        ['K390.8', 'Esc in un `<dialog>` modale aperto sopra chiude il dialogo e lascia il cassetto aperto', () => {
+            const dialogo = document.body.appendChild(document.createElement('dialog'));
+            dialogo.className = 'uat-136';
+            dialogo.innerHTML = '<button>ok</button>';
+            dialogo.showModal();
+            dialogo.querySelector('button').focus();
+        }],
+        ['K390.9', 'Esc che la pagina ha già gestito (`preventDefault`) lascia il cassetto aperto', () => {
+            const campo = document.querySelector('.zr-shell > .zr-side').appendChild(document.createElement('input'));
+            campo.className = 'uat-136';
+            campo.addEventListener('keydown', (tasto) => tasto.preventDefault());
+            campo.focus();
+        }],
+    ]) {
+        // Il clic dal DOM: col cassetto aperto la barra laterale sta sopra il pulsante.
+        await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
+        await pausa(300);
+        await page.evaluate(prepara);
+        await page.keyboard.press('Escape');
+        await pausa(300);
+        const esito = await page.evaluate(() => ({ cassetto: document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'), dialogo: !!document.querySelector('dialog[open]') }));
+        scrivi(esito.cassetto === 'true' && !esito.dialogo ? '✅' : '❌', id, `${come} (riga 136, #2826)`, `cassetto aperto: ${esito.cassetto}, dialogo aperto: ${esito.dialogo}`);
+        await page.evaluate(() => document.querySelectorAll('.uat-136').forEach((e) => e.remove()));
+        if (esito.cassetto === 'true') {
+            await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
+            await pausa(300);
+        }
+    }
     await page.evaluate(() => document.activeElement?.blur());
 }
 

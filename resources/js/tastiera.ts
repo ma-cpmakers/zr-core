@@ -147,7 +147,8 @@ function escDalPannello(tasto: KeyboardEvent): void {
  * dice). Col cassetto aperto Esc lo chiude anche dal campo della ricerca, che l'`AppShell` lascia fuori — non con un dialogo
  * aperto, né coi menu della barra (profilo, campanella, «+», Moduli) o col selettore aperti, che si chiudono loro —, e il fuoco che non è nella barra in alto torna
  * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
- * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto. In ascolto in cattura, perché
+ * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto; e
+ * nemmeno, fuori dalla ricerca, un Esc dato in un `<dialog>` o già gestito, che i rimedi fermano prima dell'`AppShell` (riga 136). In ascolto in cattura, perché
  * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
  */
 function escNellaBarra(tasto: KeyboardEvent): void {
@@ -161,6 +162,9 @@ function escNellaBarra(tasto: KeyboardEvent): void {
         }
         if (menu && campo === document.activeElement && !document.querySelector('.zr-scrim, .zr-shell .zr-top-actions [aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"], .zr-shell .zr-ws.is-open, .zr-shell .zr-product.is-open')) {
             setTimeout(() => {
+                if ((tasto.defaultPrevented || campo.closest('dialog')) && !campo.matches('.zr-shell .zr-top > .zr-search input')) {
+                    return;
+                }
                 if (menu.getAttribute('aria-expanded') === 'true') {
                     menu.click();
                 }

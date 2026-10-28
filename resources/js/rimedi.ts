@@ -147,7 +147,7 @@ function azioniSottoLaRicerca(tasto?: KeyboardEvent): void {
     const azioni = ricerca?.parentElement?.querySelector<HTMLElement>(':scope > .zr-top-actions');
 
     if (azioni) {
-        azioni.style.visibility = typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) && tasto?.key != 'Tab' ? 'hidden' : '';
+        azioni.style.visibility = self.matchMedia?.('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) && tasto?.key != 'Tab' ? 'hidden' : '';
     }
 }
 
@@ -257,6 +257,19 @@ function fuoriDallaRicerca(uscita: FocusEvent): void {
     }
 }
 
+/**
+ * Col menu a cassetto aperto, un Esc dato con un `<dialog>` aperto, o che un altro ha già gestito (`preventDefault`), chiudeva il
+ * suo e anche il cassetto (riga 136 delle richieste al design system): l'`AppShell` ascolta Esc sul documento. Quel tasto si
+ * ferma sul `body`, dopo la pagina e prima del documento; il dialogo del browser si chiude lo stesso, che è il browser a
+ * chiuderlo, e il pezzo di tastiera non sposta il fuoco. A cassetto chiuso Esc arriva a tutti come prima. Provvisorio,
+ * finché l'`AppShell` non lo fa da sé.
+ */
+function escGiaDiUnAltro(tasto: KeyboardEvent): void {
+    if (tasto.key === 'Escape' && (tasto.defaultPrevented || (tasto.target as Element).closest('dialog')) && document.querySelector('.zr-shell.is-drawer')) {
+        tasto.stopPropagation();
+    }
+}
+
 /** La cornice dà la sua `naviga` e i nomi (di nuovo a ogni cambio di lingua): da qui in poi i clic sulla barra laterale passano da lì. */
 export function via(daUsare: (indirizzo: string) => void, ...nomiDellaCornice: typeof nomi): void {
     naviga = daUsare;
@@ -310,6 +323,7 @@ document.addEventListener('focusout', fuoriDallaRicerca);
 // All'uscita il fuoco non è ancora arrivato dove va: si guarda al giro dopo.
 document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
 document.addEventListener('keydown', azioniSottoLaRicerca, true);
+document.body.addEventListener('keydown', escGiaDiUnAltro);
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;

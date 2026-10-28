@@ -10363,6 +10363,55 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
         expect([uno('.zr-product-switch')?.getAttribute('aria-expanded'), aperti()[2], document.activeElement]).toStrictEqual(['false', 'true', uno('.zr-product-switch')]);
     });
 
+    // Sprint 84 · T1 (voce 2826, riga 136 delle richieste al design system): col cassetto aperto un Esc dato in un `<dialog>`
+    // aperto, o già gestito da un altro, chiudeva anche il cassetto.
+    it('riga 136, T1.1: col cassetto aperto, Esc in un `<dialog>` aperto sopra lascia il cassetto aperto', async () => {
+        await laCornice();
+        await clic(menu());
+        const dialogo = document.body.appendChild(document.createElement('dialog'));
+        dialogo.setAttribute('open', '');
+        const pulsante = dialogo.appendChild(document.createElement('button'));
+        await act(async () => pulsante.focus());
+
+        await esc(pulsante);
+        const fuoco = document.activeElement;
+        dialogo.remove();
+
+        expect([aperti()[2], fuoco]).toStrictEqual(['true', pulsante]);
+    });
+
+    it('riga 136, T1.2: col cassetto aperto, un Esc che la pagina ha già gestito (`preventDefault`) lascia il cassetto aperto', async () => {
+        await laCornice();
+        await clic(menu());
+        const campoDelModulo = document.body.appendChild(document.createElement('input'));
+        campoDelModulo.addEventListener('keydown', (tasto) => tasto.preventDefault());
+        await act(async () => campoDelModulo.focus());
+
+        await esc(campoDelModulo);
+        campoDelModulo.remove();
+
+        expect(aperti()[2]).toBe('true');
+    });
+
+    it('riga 136, T1.4: a cassetto chiuso, un Esc in un `<dialog>` aperto arriva ancora al documento e alla finestra', async () => {
+        await laCornice();
+        const arrivati: string[] = [];
+        const alDocumento = (tasto: KeyboardEvent) => arrivati.push(`documento ${tasto.key}`);
+        const allaFinestra = (tasto: KeyboardEvent) => arrivati.push(`finestra ${tasto.key}`);
+        document.addEventListener('keydown', alDocumento);
+        addEventListener('keydown', allaFinestra);
+        const dialogo = document.body.appendChild(document.createElement('dialog'));
+        dialogo.setAttribute('open', '');
+        const pulsante = dialogo.appendChild(document.createElement('button'));
+
+        await esc(pulsante);
+        dialogo.remove();
+        document.removeEventListener('keydown', alDocumento);
+        removeEventListener('keydown', allaFinestra);
+
+        expect([aperti()[2], arrivati]).toStrictEqual(['false', ['documento Escape', 'finestra Escape']]);
+    });
+
 });
 
 // Sprint 78 · T4 (voce 2804): col Tab fuori dal menu del profilo, dal menu «+» o dal pannello delle notifiche restavano aperti
