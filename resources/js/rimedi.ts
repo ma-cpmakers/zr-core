@@ -265,7 +265,7 @@ function fuoriDallaRicerca(uscita: FocusEvent): void {
  * finché l'`AppShell` non lo fa da sé.
  */
 function escGiaDiUnAltro(tasto: KeyboardEvent): void {
-    if (tasto.key === 'Escape' && (tasto.defaultPrevented || (tasto.target as Element).closest('dialog')) && document.querySelector('.is-drawer')) {
+    if (tasto.key === 'Escape' && (tasto.defaultPrevented || (tasto.target as Element).closest('dialog')) && document.querySelector('.zr-shell.is-drawer')) {
         tasto.stopPropagation();
     }
 }

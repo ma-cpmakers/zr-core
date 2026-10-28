@@ -10374,9 +10374,10 @@ describe('Esc nella ricerca e nel cassetto: il fuoco non finisce sul documento (
         await act(async () => pulsante.focus());
 
         await esc(pulsante);
+        const fuoco = document.activeElement;
         dialogo.remove();
 
-        expect(aperti()[2]).toBe('true');
+        expect([aperti()[2], fuoco]).toStrictEqual(['true', pulsante]);
     });
 
     it('riga 136, T1.2: col cassetto aperto, un Esc che la pagina ha già gestito (`preventDefault`) lascia il cassetto aperto', async () => {
