@@ -10717,3 +10717,58 @@ describe('le linguette del pannello delle notifiche si scorrono con le frecce (s
         }
     });
 });
+
+describe('il menu a cassetto aperto dice di essere una finestra (sprint 87, voce 2341, riga 111 delle richieste)', () => {
+    // Nessun tasto premuto prima: chi usa un lettore di schermo col tocco non ne preme, e il pezzo della tastiera non arriva.
+    const laCornice = async () => {
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+    };
+    const menu = () => uno('.zr-top .zr-top-menu') as HTMLButtonElement;
+    const finestra = () => {
+        const lato = uno('.zr-shell > .zr-side');
+
+        return [lato?.getAttribute('role'), lato?.getAttribute('aria-modal'), Boolean(lato?.getAttribute('aria-label'))];
+    };
+    const chiusure: [string, () => Promise<void>][] = [
+        ['col pulsante', () => clic(menu())],
+        ['con Esc', () => act(async () => {
+            menu().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await prossimoGiro();
+        })],
+        ['col velo', () => clic(uno('.zr-side-scrim'))],
+    ];
+
+    it('T1.1 aperto, `aside.zr-side` ha `role="dialog"`, `aria-modal="true"` e il suo nome; prima di aprirlo niente', async () => {
+        await laCornice();
+        expect(finestra()).toStrictEqual([null, null, true]);
+
+        await clic(menu());
+
+        expect([menu().getAttribute('aria-expanded'), ...finestra()]).toStrictEqual(['true', 'dialog', 'true', true]);
+    });
+
+    it.each(chiusure)('T1.1 chiuso %s, né `role` né `aria-modal`', async (_, chiudi) => {
+        await laCornice();
+        await clic(menu());
+        expect(finestra()[0]).toBe('dialog');
+
+        await chiudi();
+
+        expect([menu().getAttribute('aria-expanded'), ...finestra()]).toStrictEqual(['false', null, null, true]);
+    });
+
+    it('T1.1 un\'`aside.zr-side.is-open` della pagina, fuori dalla cornice, resta com\'è', async () => {
+        await laCornice();
+        const dellaPagina = document.body.appendChild(document.createElement('aside'));
+        dellaPagina.className = 'zr-side is-open';
+
+        await clic(menu());
+        const attributi = [dellaPagina.getAttribute('role'), dellaPagina.getAttribute('aria-modal')];
+        dellaPagina.remove();
+
+        expect(attributi).toStrictEqual([null, null]);
+    });
+});

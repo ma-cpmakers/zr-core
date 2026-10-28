@@ -325,6 +325,25 @@ document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
 document.addEventListener('keydown', azioniSottoLaRicerca, true);
 document.body.addEventListener('keydown', escGiaDiUnAltro);
 
+/**
+ * Sotto 720 px il menu a cassetto aperto copre la pagina, ma non diceva di essere una finestra (riga 111 delle richieste al design
+ * system, #2341): aperto ha `role="dialog"` e `aria-modal`, accanto al nome che l'`AppShell` gli dà; chiuso torna com'era. Sta qui
+ * e non nel pezzo di tastiera: serve anche a chi usa un lettore di schermo col tocco, che non preme tasti. L'osservatore lo vede
+ * perché il velo del cassetto entra ed esce col cassetto. Solo la barra laterale della cornice, non un'`aside` della pagina con la
+ * stessa classe. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function cassetto(): void {
+    document.querySelectorAll('.zr-shell > .zr-side').forEach((lato) => {
+        if (lato.matches('.is-open')) {
+            lato.setAttribute('role', 'dialog');
+            lato.setAttribute('aria-modal', 'true');
+        } else {
+            lato.removeAttribute('role');
+            lato.removeAttribute('aria-modal');
+        }
+    });
+}
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;
 
@@ -343,6 +362,7 @@ new MutationObserver((cambi) => {
         });
     }
     azioniSottoLaRicerca();
+    cassetto();
     tastiera?.aOgniCambio();
     vociPresto();
     contenuto();
