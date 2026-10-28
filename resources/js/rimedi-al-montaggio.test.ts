@@ -38,7 +38,7 @@ it('l\'avatar di una notifica il cui titolo dice un nome che comincia come il su
     expect([...document.querySelectorAll('.zr-avatar')].map((avatar) => avatar.getAttribute('aria-hidden'))).toStrictEqual([null, 'true']);
 });
 
-it('sotto i 1024 px il menu a cassetto aperto ha `role="dialog"` senza un tasto, e senza che il pezzo della tastiera sia chiesto; chiuso, nessun ruolo (#2341, riga 111)', async () => {
+it('sotto i 1024 px il menu a cassetto aperto ha `role="dialog"` senza un tasto, e senza che il pezzo della tastiera sia chiesto; chiuso, nessun ruolo (voce 2341, riga 111)', async () => {
     (window as unknown as { happyDOM: { setViewport: (misura: { width: number; height: number }) => void } }).happyDOM.setViewport({ width: 390, height: 800 });
     document.body.innerHTML = '<div class="zr-shell"><aside class="zr-side" aria-label="Navigazione principale"><nav></nav></aside><header class="zr-top"></header></div>';
     await import('./rimedi');
