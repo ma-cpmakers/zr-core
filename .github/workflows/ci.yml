@@ -121,5 +121,10 @@ jobs:
       - name: I componenti del design system come modulo ES (il file generato è quello che il bundle genera)
         run: npm run componenti -- --controlla
 
+      # resources/css/zeiras-token.css esce da scripts/token-css.mjs, da resources/zeiras/tokens.json: qui si rigenera in memoria e
+      # si confronta col file. Un riallineamento dei token senza rigenerare, o il file ritoccato a mano, ferma la CI (voce #2828).
+      - name: Le variabili dei token (il file generato è quello che tokens.json genera)
+        run: npm run token -- --controlla
+
       - name: Test (Pest, Testbench)
         run: ./vendor/bin/pest

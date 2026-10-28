@@ -32,6 +32,18 @@ function valoriDeiToken(): array
     foreach ($token['type']['families'] as $famiglia => $testo) {
         $valori["--font-$famiglia"] = $valore($testo);
     }
+    // Sprint 86 · T1.1 (voce #2828): ogni stile di testo coi nomi del tema di Tailwind 4 — la misura, l'interlinea, il peso e, dove
+    // c'è, la spaziatura delle lettere.
+    foreach ($token['type']['groups'] as $gruppo) {
+        foreach ($gruppo['styles'] as $stile) {
+            $valori["--text-{$stile['name']}"] = $stile['fontSize'];
+            $valori["--text-{$stile['name']}--line-height"] = $stile['lineHeight'];
+            $valori["--text-{$stile['name']}--font-weight"] = (string) $stile['fontWeight'];
+            if (isset($stile['letterSpacing'])) {
+                $valori["--text-{$stile['name']}--letter-spacing"] = $stile['letterSpacing'];
+            }
+        }
+    }
 
     return $valori;
 }
@@ -142,6 +154,34 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
         ->and(array_keys(variabiliDiRoot($css)))->toEqualCanonicalizing(array_keys(valoriDeiToken()))
         // Un blocco :root e nient'altro: niente tema scuro, niente @import, niente @font-face.
         ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}$/');
+});
+
+it('zeiras-token.css porta i nove stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1)', function () {
+    $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
+    $testo = collect($css)->keys()->filter(fn (string $nome) => str_starts_with($nome, '--text-'))->values();
+    $stili = $testo->reject(fn (string $nome) => str_contains(substr($nome, 2), '--'))->map(fn (string $nome) => substr($nome, 7))->values()->all();
+
+    expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'caption', 'overline'])
+        // Tre variabili per stile, e la quarta nei quattro che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline).
+        ->and($testo)->toHaveCount(9 * 3 + 4)
+        ->and([$css['--text-heading-1'], $css['--text-heading-1--line-height'], $css['--text-heading-1--font-weight'], $css['--text-heading-1--letter-spacing']])
+        ->toBe([['26px'], ['32px'], ['650'], ['-0.01em']])
+        ->and($css['--text-overline--letter-spacing'])->toBe(['0.06em'])
+        ->and($css)->not->toHaveKey('--text-heading-2--letter-spacing');
+});
+
+it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni `--text-…` del README c\'è nel file, e ci sono tutti e nove gli stili (sprint 86 · T2.1)', function () {
+    $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
+    preg_match('/^\*\*Gli stili di testo\*\*.*?(?=^\*\*`zeiras\.css`\*\*)/ms', File::get(__DIR__.'/../../README.md'), $capoverso);
+    preg_match_all('/--text-[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z-]+)?/', $capoverso[0] ?? '', $nomi);
+    $stili = collect($css)->keys()->filter(fn (string $nome) => preg_match('/^--text-[a-z0-9-]+$/', $nome) === 1 && ! str_contains(substr($nome, 2), '--'))
+        ->map(fn (string $nome) => substr($nome, 7));
+
+    expect($capoverso)->not->toBe([])
+        ->and(array_values(array_unique($nomi[0])))->toContain('--text-heading-1', '--text-heading-1--letter-spacing')
+        ->and(array_values(array_diff(array_unique($nomi[0]), array_keys($css))))->toBe([])
+        ->and($stili->reject(fn (string $stile) => str_contains($capoverso[0], "`{$stile}`"))->values()->all())->toBe([])
+        ->and($capoverso[0])->toContain('@theme inline reference', 'npm run token');
 });
 
 it('il controllo trova la variabile che manca, quella definita due volte e quella col valore scuro (T3.1)', function () {

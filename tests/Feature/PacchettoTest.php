@@ -2171,6 +2171,7 @@ function comandiCheRigeneranoEConfrontano(): array
     return [
         'la favicon' => ['npm run favicon -- --controlla'],
         'i componenti del design system' => ['npm run componenti -- --controlla'],
+        'le variabili dei token' => ['npm run token -- --controlla'],
     ];
 }
 
@@ -2232,6 +2233,14 @@ it('la CI rigenera in memoria il modulo dei componenti del design system e lo co
 
     expect(difettiDelPassoCheLancia('npm run componenti -- --controlla', $ci))->toBe([])
         ->and($package['scripts']['componenti'] ?? null)->toBe('node scripts/componenti.mjs');
+});
+
+it('la CI rigenera in memoria le variabili dei token e le confronta col file, dopo npm ci; lo script è di questo repo (sprint 86 · T1.1)', function () {
+    $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
+    $package = json_decode((string) file_get_contents(__DIR__.'/../../package.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(difettiDelPassoCheLancia('npm run token -- --controlla', $ci))->toBe([])
+        ->and($package['scripts']['token'] ?? null)->toBe('node scripts/token-css.mjs');
 });
 
 // Sprint 16 · T2 (voce #1472). Il pacchetto porta la sua configurazione, `config/zr-core.php`: è lì che un modulo scrive le
