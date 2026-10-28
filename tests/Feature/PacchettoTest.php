@@ -4312,6 +4312,8 @@ it('il README dice, in «Passare alla v3.8», versione per versione che cosa cam
     'la v3.8.1, nei test' => ['Un caso che si aspettava il contrario va riletto'],
     'la v3.11.0' => ['| `v3.11.0` |'],
     'la v3.11.1' => ['| `v3.11.1` |'],
+    'la v3.12.0' => ['| `v3.12.0` |'],
+    'la v3.12.0, nei test' => ['un caso che col cassetto aperto dà Esc in un dialogo, o in un campo che lo gestisce, e si aspetta il cassetto chiuso va riletto'],
     'più versioni in un colpo' => ['un modulo indietro di più versioni le fa tutte in un colpo solo: le righe si sommano'],
     'lo script' => ['Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo'],
 ]);
