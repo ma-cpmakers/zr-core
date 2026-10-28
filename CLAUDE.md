@@ -74,7 +74,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8, vitest 5.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
-  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), Pest. Nessun `composer.lock` nel repo (è una libreria).
+  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), le variabili dei token rigenerate e confrontate (`npm run token -- --controlla`, dalla `v3.13.0`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
 - `zeiras/zr-auth` `^0.12.41`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:
@@ -132,8 +132,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 84 chiuso (`v3.12.0`, #2826 in `test_umano`: la
-   riga 136, Esc in un dialogo col cassetto aperto); #2722 e #2549 in `test_uat` fino all'UAT di Board con la cornice nuova
-   (#2625 di zr-board, 29/10); prossimo: refining dello sprint 85 dall'alto del Backlog prodotto.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 86 chiuso (`v3.13.0`, #2828 in `test_umano`: gli
+   stili di testo in zeiras-token.css); #2827 (sprint 85) `in_corso` fino alla parte 2, dopo il 30/10 23:00 UTC; #2826, #2828,
+   #2722 e #2549 si accettano con l'UAT di Board (#2625 di zr-board); prossimo: refining dello sprint 87 dall'alto del Backlog.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
