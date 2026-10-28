@@ -324,22 +324,24 @@ document.addEventListener('focusout', fuoriDallaRicerca);
 document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
 document.addEventListener('keydown', azioniSottoLaRicerca, true);
 document.body.addEventListener('keydown', escGiaDiUnAltro);
+self.matchMedia?.('(max-width: 1023px)').addEventListener('change', cassetto);
 
 /**
- * Sotto 720 px il menu a cassetto aperto copre la pagina, ma non diceva di essere una finestra (riga 111 delle richieste al design
- * system, #2341): aperto ha `role="dialog"` e `aria-modal`, accanto al nome che l'`AppShell` gli dà; chiuso torna com'era. Sta qui
- * e non nel pezzo di tastiera: serve anche a chi usa un lettore di schermo col tocco, che non preme tasti. L'osservatore lo vede
- * perché il velo del cassetto entra ed esce col cassetto. Solo la barra laterale della cornice, non un'`aside` della pagina con la
- * stessa classe. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ * Sotto i 1024 px la barra laterale è un menu a cassetto, che aperto copre la pagina ma non diceva di essere una finestra (riga
+ * 111 delle richieste al design system, #2341): aperto ha `role="dialog"`, accanto al nome che l'`AppShell` gli dà; chiuso torna
+ * com'era. Non `aria-modal`: il pulsante che lo chiude sta nella barra in alto, fuori dal cassetto, e il velo è nascosto ai
+ * lettori di schermo, quindi chi usa il tocco resterebbe chiuso dentro (Decisione di zr-pm dopo la revisione della PR #145).
+ * L'osservatore lo vede perché il velo entra ed esce col cassetto; la finestra che si allarga col cassetto aperto lo dice
+ * `matchMedia`, perché lo stato dell'`AppShell` resta aperto e la barra torna al suo posto. Sta qui e non nel pezzo di tastiera:
+ * serve anche a chi usa un lettore di schermo col tocco, che non preme tasti. Solo la barra laterale della cornice, non
+ * un'`aside` della pagina con la stessa classe. Provvisorio, finché l'`AppShell` non lo fa da sé.
  */
 function cassetto(): void {
     document.querySelectorAll('.zr-shell > .zr-side').forEach((lato) => {
-        if (lato.matches('.is-open')) {
+        if (lato.matches('.is-open') && self.matchMedia?.('(max-width: 1023px)').matches) {
             lato.setAttribute('role', 'dialog');
-            lato.setAttribute('aria-modal', 'true');
         } else {
             lato.removeAttribute('role');
-            lato.removeAttribute('aria-modal');
         }
     });
 }

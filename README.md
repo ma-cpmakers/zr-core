@@ -160,9 +160,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 62,6 KB | 13,3 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 62,6 KB | 13,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 62,6 KB | 13,3 KB |
+| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 63,1 KB | 13,3 KB |
+| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 63,1 KB | 13,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 63,1 KB | 13,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -376,9 +376,9 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.10.0` | rimedi di tastiera e di lettore di schermo: a 720 px o meno, con la ricerca aperta, campanella e profilo nel giro del Tab (#2805); Esc dalla ricerca lascia il fuoco nel campo e col cassetto aperto lo chiude anche da lì (#2800, #2807); il cassetto aperto con la tastiera trattiene il fuoco (#2806); profilo, «+» e campanella si chiudono quando il Tab porta il fuoco fuori (#2804); Home e Fine nel menu del profilo e nel «+» (#2802); le linguette «Per me» e «Tutte» con le frecce, e nel giro del Tab solo quella scelta (#2803); la ricerca dice quanti risultati ha trovato (#2801); l'opzione attiva della ricerca scorre in vista (#2799) | niente | dopo il primo tasto (il pezzo della tastiera): Esc dalla ricerca lascia il fuoco nel campo; col cassetto aperto il Tab gira fra le sue voci; profilo, «+» e campanella si chiudono col fuoco che esce; nel pannello delle notifiche il Tab si ferma su una linguetta sola. Dal pezzo della ricerca: un paragrafo `role="status"` in fondo al documento, «Risultati: N». Un caso che si aspettava il contrario va riletto | `scripts/uat-cornice.mjs` del tag: K, K390, T, M, N, Q e V |
 | `v3.11.0` | i titoli dei due tipi di evento degli sprint di Project Management, «Sprint creato» e «Sprint modificato», con chi l'ha fatto «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint»: prima avevano il titolo di ripiego; un clic apre la pagina delle notifiche | niente | un caso che contava i titoli o si aspettava «Novità nel workspace» per uno sprint va riletto: la cornice ha 58 titoli | niente fuori da Project Management |
 | `v3.11.1` | scelta una voce del «+», con la tastiera o col mouse, il fuoco va al «+» prima che la voce faccia la sua parte: chiuso il dialogo che la voce apre, il fuoco torna al «+» e non alla pagina (#2822); un `Dialog` del design system aperto dalla voce senza fuoco lo prende lui, e alla chiusura lo rende al «+» | niente | un caso che dopo il clic su una voce del «+» si aspettava il fuoco sulla voce o sulla pagina va riletto | P.3 di `uat-cornice.mjs`, dove l'ultima voce del «+» apre un dialogo |
-| `v3.12.0` | col menu a cassetto aperto (sotto 720 px), un Esc dato in un `<dialog>` del browser, o che la pagina ha già gestito (`preventDefault`), chiude solo il suo: il cassetto resta aperto e il fuoco resta dove il browser lo rende (riga 136, #2826) | niente; col cassetto aperto quell'Esc non arriva agli ascolti in bolla sul `document` e sulla finestra (li ferma il rimedio sul `body`), e vale anche per un `<dialog>` non modale; un Esc gestito in bolla sul `document` chiude ancora il cassetto | un caso che col cassetto aperto dà Esc in un dialogo, o in un campo che lo gestisce, e si aspetta il cassetto chiuso va riletto | K390.8 e K390.9 di `uat-cornice.mjs` |
+| `v3.12.0` | col menu a cassetto aperto (sotto i 1024 px), un Esc dato in un `<dialog>` del browser, o che la pagina ha già gestito (`preventDefault`), chiude solo il suo: il cassetto resta aperto e il fuoco resta dove il browser lo rende (riga 136, #2826) | niente; col cassetto aperto quell'Esc non arriva agli ascolti in bolla sul `document` e sulla finestra (li ferma il rimedio sul `body`), e vale anche per un `<dialog>` non modale; un Esc gestito in bolla sul `document` chiude ancora il cassetto | un caso che col cassetto aperto dà Esc in un dialogo, o in un campo che lo gestisce, e si aspetta il cassetto chiuso va riletto | K390.8 e K390.9 di `uat-cornice.mjs` |
 | `v3.13.0` | gli stili di testo di `tokens.json` come variabili in `zeiras-token.css` (`--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight`, `--text-heading-1--letter-spacing`…; «Gli stili di testo», sopra): il CSS dei token pesa circa 0,9 KB in più, 0,1 KB con gzip | niente; per scrivere il testo per nome, gli stili nel tema di Tailwind (`@theme inline reference`) e le classi `text-<stile>` al posto dei valori scritti a mano | niente | i titoli e i testi passati a `text-<stile>` hanno la misura, l'interlinea e il peso di prima |
-| `v3.14.0` | sotto 720 px il menu a cassetto aperto ha `role="dialog"` e `aria-modal="true"`, e chiuso torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`: un caso che la cercava così va riletto | K390.10 di `uat-cornice.mjs` |
+| `v3.14.0` | sotto i 1024 px, dove la barra laterale è un menu a cassetto, il cassetto aperto ha `role="dialog"`, e chiuso — o con la finestra allargata — torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); niente `aria-modal`, perché il pulsante che lo chiude sta fuori dal cassetto; il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`; con un `Dialog` o un `DetailPanel` del modulo aperto sopra, i dialoghi per ruolo sono due: un caso che ne cercava uno solo (`getByRole('dialog')`) va riletto | K390.10 di `uat-cornice.mjs` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -959,25 +959,27 @@ cornice === null ? pagina : (
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
 - **Esc nella ricerca, il cassetto e i menu della barra da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
-  il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto 720 px) Esc lo chiude anche col
+  il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto i 1024 px) Esc lo chiude anche col
   fuoco nel campo della ricerca, che l'`AppShell` lasciava fuori, e il fuoco che era sulle sue voci torna ad «Apri il menu»
   (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra (profilo, campanella, «+», Moduli)
   o il selettore aperti, Esc chiude prima quelli e il cassetto resta; dalla `v3.12.0` resta anche con un Esc dato in un `<dialog>`
   del browser o già gestito dalla pagina (`preventDefault`): si chiude solo il dialogo (riga 136, #2826). Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
   sul pulsante), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
-  (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga sopra 720 px col cassetto aperto, dove il pulsante non
+  (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga a 1024 px o più col cassetto aperto, dove il pulsante non
   si vede, il Tab torna del browser. Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono
   quando il fuoco va — col Tab — a un elemento che non è il loro pulsante né un menu o un pannello della cornice, e il fuoco
   resta dove è andato (#2804: prima restavano aperti), come il selettore dei workspace dalla `v3.8.1`. Il modulo non deve fare
   niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco sul documento, che col cassetto aperto conta le fermate
   del Tab, o che col Tab esce da un menu della barra e lo cerca aperto, va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
   andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé.
-- **Il menu a cassetto è una finestra**: dalla `v3.14.0`, sotto 720 px, il menu a cassetto aperto copre la pagina e lo dice:
-  la barra laterale della cornice ha `role="dialog"` e `aria-modal="true"`, accanto al suo nome; chiuso — col pulsante, con Esc o
-  col velo — torna senza (riga 111, #2341). Un'`aside` della pagina con la stessa classe resta com'è. Il modulo non deve fare
-  niente; un test del modulo che col cassetto aperto cerca la barra laterale per ruolo (`complementary`) la trova come `dialog`.
-  Sta nel pezzo dei rimedi, che arriva a cornice montata, anche senza un tasto premuto. È provvisorio, finché l'`AppShell` non lo
-  fa da sé.
+- **Il menu a cassetto è una finestra**: dalla `v3.14.0`, sotto i 1024 px — dove la barra laterale è un menu a cassetto —
+  il cassetto aperto copre la pagina e lo dice: la barra laterale della cornice ha `role="dialog"`, accanto al suo nome; chiuso
+  — col pulsante, con Esc o col velo — o con la finestra allargata a 1024 px o più, torna senza (riga 111, #2341). Non ha
+  `aria-modal`: il pulsante che chiude il cassetto sta nella barra in alto, fuori dal cassetto, e chi usa un lettore di schermo
+  col tocco non lo troverebbe più. Un'`aside` della pagina con la stessa classe resta com'è. Il modulo non deve fare niente; un
+  test del modulo che col cassetto aperto cerca la barra laterale per ruolo (`complementary`) la trova come `dialog`, e uno che
+  cerca il suo dialogo per ruolo ne trova due. Sta nel pezzo dei rimedi, che arriva a cornice montata, anche senza un tasto
+  premuto. È provvisorio, finché l'`AppShell` non lo fa da sé.
 - **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
   Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
   ripreso il campo c'erano ancora i risultati di prima. Il campo si svuota come lo svuota chi scrive, e la ricerca si chiude come

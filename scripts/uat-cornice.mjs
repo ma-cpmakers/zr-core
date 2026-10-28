@@ -587,7 +587,7 @@ async function cassetto(page) {
             await pausa(300);
         }
     }
-    // Riga 111 (#2341, v3.14.0): il cassetto aperto dice di essere una finestra; chiuso col velo, non più.
+    // Riga 111 (#2341, v3.14.0): il cassetto aperto dice di essere una finestra, non modale; chiuso col velo, non più.
     const finestra = () => page.evaluate(() => ['role', 'aria-modal', 'aria-label'].map((nome) => document.querySelector('.zr-shell > .zr-side')?.getAttribute(nome) ?? '-').join(' '));
     await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
     await pausa(300);
@@ -595,7 +595,7 @@ async function cassetto(page) {
     await page.evaluate(() => document.querySelector('.zr-shell .zr-side-scrim')?.click());
     await pausa(300);
     const daChiuso = await finestra();
-    scrivi(/^dialog true [^-]/.test(daAperto) && /^- - [^-]/.test(daChiuso) ? '✅' : '❌', 'K390.10', 'il cassetto aperto ha `role="dialog"` e `aria-modal="true"` col suo nome; chiuso col velo, né l\'uno né l\'altro (riga 111, #2341)', `aperto: ${daAperto} · chiuso: ${daChiuso}`);
+    scrivi(/^dialog - [^-]/.test(daAperto) && /^- - [^-]/.test(daChiuso) ? '✅' : '❌', 'K390.10', 'il cassetto aperto ha `role="dialog"` col suo nome e senza `aria-modal`; chiuso col velo, nessun ruolo (riga 111, #2341)', `aperto: ${daAperto} · chiuso: ${daChiuso}`);
     await page.evaluate(() => document.activeElement?.blur());
 }
 

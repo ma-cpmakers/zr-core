@@ -686,9 +686,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // per i clic sul percorso che passano da `naviga` (misura del 26/10: 1.850; tetto alla misura più 20, Decisione 18266).
         // Poi +52 per Esc col fuoco nel pannello della ricerca, che passa al campo e chiude la ricerca (dalla UAT in Chromium;
         // misura del 26/10: 1.902; tetto alla misura più 20, zr-pm 26/10).
-        // Sprint 87 (voce #2341, riga 111): il menu a cassetto aperto con `role="dialog"` e `aria-modal`, qui e non nel pezzo della
-        // tastiera perché serve a chi usa un lettore di schermo col tocco, che non preme tasti: questa è la contropartita (misura del
-        // 28/10: 1.959 al primo prototipo, 1.963 nella forma scritta; tetto 1.979, la misura del prototipo più 20, Decisione 19069).
+        // Sprint 87 (voce #2341, riga 111): il menu a cassetto aperto con `role="dialog"` sotto i 1024 px, anche quando la finestra
+        // si allarga, qui e non nel pezzo della tastiera perché serve a chi usa un lettore di schermo col tocco, che non preme tasti:
+        // questa è la contropartita (misura del 28/10: 1.959 al primo prototipo; tetto 1.979, la misura più 20, Decisione 19069;
+        // 1.969 nella forma senza `aria-modal` e con `matchMedia`, Decisione di zr-pm dopo la revisione della PR #145).
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_979);
     });
 

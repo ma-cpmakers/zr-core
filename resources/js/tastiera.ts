@@ -283,11 +283,11 @@ function fuocoAlPiu(): void {
 }
 
 /**
- * Il menu a cassetto (sotto 720 px) aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva verso la ricerca
+ * Il menu a cassetto (sotto i 1024 px) aperto con la tastiera lasciava il fuoco su «Apri il menu», e il Tab usciva verso la ricerca
  * e la pagina (#2806). Aperto con Invio o con lo spazio — il clic della tastiera, senza `detail` — il fuoco va alla prima voce;
  * col mouse resta sul pulsante. Finché è aperto il Tab gira fra il pulsante, che lo chiude, e le voci, e da fuori rientra sulla
  * prima. Con un dialogo aperto, o un `DetailPanel` che trattiene il fuoco, vale lui; dove il pulsante non si vede (la finestra
- * allargata sopra 720 px col cassetto aperto) il Tab resta del browser. Chiuso con Esc il fuoco torna al pulsante
+ * allargata a 1024 px o più col cassetto aperto) il Tab resta del browser. Chiuso con Esc il fuoco torna al pulsante
  * (`escNellaBarra`). Provvisorio, finché l'`AppShell` non lo fa da sé (#2341, `role="dialog"`).
  */
 function giroDelCassetto(): HTMLElement[] {
