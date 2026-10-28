@@ -48,7 +48,7 @@ zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e, nei quattro che la
 hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non sta nello stile: i
 primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sei del gruppo Testo, con `--font-sans`. Con
-Tailwind 4 un modulo li porta nel tema per nome, come i colori, e scrive `text-heading-1 font-display` invece di
+Tailwind 4 un modulo li porta nel tema per nome, con le due famiglie, e scrive `text-heading-1 font-display` invece di
 `text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
 
 ```css
@@ -61,12 +61,17 @@ Tailwind 4 un modulo li porta nel tema per nome, come i colori, e scrive `text-h
     --text-heading-2: var(--text-heading-2);
     --text-heading-2--line-height: var(--text-heading-2--line-height);
     --text-heading-2--font-weight: var(--text-heading-2--font-weight);
+    --font-display: var(--font-display);
+    --font-sans: var(--font-sans);
 }
 ```
 
 Con `reference` il tema non scrive le sue variabili nel CSS, e la classe `text-heading-1` legge quelle di `zeiras-token.css`
-(misura, interlinea, peso e spaziatura delle lettere in una classe sola); `--text-*: initial` toglie la scala di serie di
-Tailwind, così `text-lg` non c'è più. Il file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confronta.
+(misura, interlinea, peso e spaziatura delle lettere in una classe sola), e `font-display` e `font-sans` ci sono perché le
+due famiglie stanno nel tema. `--text-*: initial` toglie la scala di serie di Tailwind: `text-xs`, `text-sm`, `text-base`,
+`text-lg` e le altre spariscono dalla build senza errore, e un testo che le usava torna alla misura che eredita. Prima di
+metterlo, un modulo cerca nel suo codice quelle classi e le passa a uno stile; senza quella riga le due scale convivono. Il
+file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confronta.
 
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
