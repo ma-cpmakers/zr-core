@@ -159,7 +159,7 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
 it('zeiras-token.css porta i nove stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1)', function () {
     $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
     $testo = collect($css)->keys()->filter(fn (string $nome) => str_starts_with($nome, '--text-'))->values();
-    $stili = $testo->reject(fn (string $nome) => str_contains($nome, '--', 2))->map(fn (string $nome) => substr($nome, 7))->values()->all();
+    $stili = $testo->reject(fn (string $nome) => str_contains(substr($nome, 2), '--'))->map(fn (string $nome) => substr($nome, 7))->values()->all();
 
     expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'caption', 'overline'])
         // Tre variabili per stile, e la quarta nei quattro che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline).
