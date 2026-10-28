@@ -211,10 +211,12 @@ alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` 
 cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.922 i rimedi, 1.867 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 1.979 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1` e 1.993 dalla `v3.10.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
-lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
+1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
+una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
 pezzi, ancora col codice uguale, e 20 di margine (zr-pm), e di altri 147 nella `v3.9.0`, alla misura più 20: i testi dei
@@ -376,6 +378,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.11.1` | scelta una voce del «+», con la tastiera o col mouse, il fuoco va al «+» prima che la voce faccia la sua parte: chiuso il dialogo che la voce apre, il fuoco torna al «+» e non alla pagina (#2822); un `Dialog` del design system aperto dalla voce senza fuoco lo prende lui, e alla chiusura lo rende al «+» | niente | un caso che dopo il clic su una voce del «+» si aspettava il fuoco sulla voce o sulla pagina va riletto | P.3 di `uat-cornice.mjs`, dove l'ultima voce del «+» apre un dialogo |
 | `v3.12.0` | col menu a cassetto aperto (sotto 720 px), un Esc dato in un `<dialog>` del browser, o che la pagina ha già gestito (`preventDefault`), chiude solo il suo: il cassetto resta aperto e il fuoco resta dove il browser lo rende (riga 136, #2826) | niente; col cassetto aperto quell'Esc non arriva agli ascolti in bolla sul `document` e sulla finestra (li ferma il rimedio sul `body`), e vale anche per un `<dialog>` non modale; un Esc gestito in bolla sul `document` chiude ancora il cassetto | un caso che col cassetto aperto dà Esc in un dialogo, o in un campo che lo gestisce, e si aspetta il cassetto chiuso va riletto | K390.8 e K390.9 di `uat-cornice.mjs` |
 | `v3.13.0` | gli stili di testo di `tokens.json` come variabili in `zeiras-token.css` (`--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight`, `--text-heading-1--letter-spacing`…; «Gli stili di testo», sopra): il CSS dei token pesa circa 0,9 KB in più, 0,1 KB con gzip | niente; per scrivere il testo per nome, gli stili nel tema di Tailwind (`@theme inline reference`) e le classi `text-<stile>` al posto dei valori scritti a mano | niente | i titoli e i testi passati a `text-<stile>` hanno la misura, l'interlinea e il peso di prima |
+| `v3.14.0` | sotto 720 px il menu a cassetto aperto ha `role="dialog"` e `aria-modal="true"`, e chiuso torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`: un caso che la cercava così va riletto | K390.10 di `uat-cornice.mjs` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -969,6 +972,12 @@ cornice === null ? pagina : (
   niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco sul documento, che col cassetto aperto conta le fermate
   del Tab, o che col Tab esce da un menu della barra e lo cerca aperto, va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
   andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé.
+- **Il menu a cassetto è una finestra**: dalla `v3.14.0`, sotto 720 px, il menu a cassetto aperto copre la pagina e lo dice:
+  la barra laterale della cornice ha `role="dialog"` e `aria-modal="true"`, accanto al suo nome; chiuso — col pulsante, con Esc o
+  col velo — torna senza (riga 111, #2341). Un'`aside` della pagina con la stessa classe resta com'è. Il modulo non deve fare
+  niente; un test del modulo che col cassetto aperto cerca la barra laterale per ruolo (`complementary`) la trova come `dialog`.
+  Sta nel pezzo dei rimedi, che arriva a cornice montata, anche senza un tasto premuto. È provvisorio, finché l'`AppShell` non lo
+  fa da sé.
 - **Scelto un risultato, il campo della ricerca si svuota**: dalla `v3.8.1`, aperto un risultato — col clic sulla riga, o con
   Invio sulla riga attiva — il campo della ricerca torna vuoto e la ricerca resta chiusa: prima la parola restava nel campo, e
   ripreso il campo c'erano ancora i risultati di prima. Il campo si svuota come lo svuota chi scrive, e la ricerca si chiude come
