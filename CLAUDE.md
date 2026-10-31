@@ -132,9 +132,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 87 chiuso (`v3.14.0`, #2341 in `test_umano`: il
-   cassetto con `role="dialog"`); #2827 (sprint 85) in `test_umano` dal 31/10, parte 2 fatta e accettata da zr-pm (la porta lui
-   in done); #2341, #2826, #2828, #2722 e #2549 si accettano con l'UAT di Board (#2625 di zr-board); il Backlog ha
-   solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (Decisione di zr-pm, 0369921).
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 87 chiuso (`v3.14.0`); #2341, #2826, #2828 e
+   #2549 accettate il 31/10 con la UAT nella cornice di Bookings (zr-pm 9867a7d); #2722 resta in `test_uat` finché #2625 di
+   zr-board non è in produzione (Bookings non ha un percorso); la correzione di `uat-cornice.mjs` (100b60c, `sprint-88`) va in
+   main con la prossima PR; il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
