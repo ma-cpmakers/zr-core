@@ -70,6 +70,12 @@ const scrivi = (esito, id, cosa, prova) => {
 };
 const pausa = (ms) => new Promise((fatto) => setTimeout(fatto, ms));
 
+/** La pagina della UAT, come l'ha data il browser dopo l'ingresso, e come ci si torna: la scrive `uat`, a ogni misura. */
+let pagina = '';
+let tornaAllaPagina = async () => undefined;
+/** Un clic (un risultato, una voce del percorso) ha portato altrove, magari in un altro modulo con un'altra cornice. */
+const fuoriDallaPagina = (page) => page.url() !== pagina;
+
 /**
  * Le violazioni di axe, divise fra la cornice e la pagina del modulo. È della pagina ciò che sta nel contenuto (`main`
  * dell'`AppShell`, fuori dal percorso e tranne il `main` stesso); il resto è della cornice.
@@ -261,7 +267,15 @@ async function ricerca(page, largo) {
                 valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
                 aperta: !!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'),
             }));
-            scrivi(dopo.valore === '' && !dopo.aperta ? '✅' : '❌', `${id}.7`, 'scelto un risultato col clic il campo si svuota e la ricerca resta chiusa (riga 60)', `valore «${dopo.valore}», aperta: ${dopo.aperta}`);
+            // In un modulo vero il risultato apre la sua risorsa, anche in un altro modulo (31/10/2026: un contatto del CRM, con
+            // un'altra versione di zr-core): lì il campo vuoto è quello della pagina nuova, e la riga non si giudica. Si torna
+            // alla pagina, o tutte le righe dopo proverebbero la cornice dell'altro modulo.
+            if (fuoriDallaPagina(page)) {
+                scrivi('➖', `${id}.7`, 'scelto un risultato il campo si svuota (riga 60)', `il risultato ha aperto ${page.url()}: la riga si prova sulle pagine di prova`);
+                await tornaAllaPagina();
+            } else {
+                scrivi(dopo.valore === '' && !dopo.aperta ? '✅' : '❌', `${id}.7`, 'scelto un risultato col clic il campo si svuota e la ricerca resta chiusa (riga 60)', `valore «${dopo.valore}», aperta: ${dopo.aperta}`);
+            }
         }
     }
     // Il fuoco che esce dal campo verso un altro elemento chiude la ricerca, e la parola resta (righe 7 e 90, rimedio della v3.8.1).
@@ -351,9 +365,20 @@ async function piu(page) {
     await pausa(300);
     const sullaVoce = await page.evaluate(() => document.activeElement?.getAttribute('role') === 'menuitem');
     await page.keyboard.press('Enter');
+    // Una voce può aprire una pagina del modulo (Bookings, 31/10/2026: «Nuova prenotazione per un cliente» passa da una
+    // visita di Inertia e apre un dialogo): si aspetta il dialogo per un secondo e mezzo, e senza si misura il ritorno al «+».
+    await page.waitForFunction(() => document.activeElement?.closest('dialog[open], [role=dialog][aria-modal=true]'), null, { timeout: 1500 }).catch(() => undefined);
     await pausa(300);
-    const dopo = await page.evaluate(() => ({ menu: !!document.querySelector('[role=menu]'), piu: document.activeElement?.matches('.zr-shell .zr-create') ?? false, attivo: document.activeElement?.tagName }));
-    scrivi(sullaVoce && !dopo.menu && dopo.piu ? '✅' : '❌', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `voce col fuoco: ${sullaVoce}, menu aperto: ${dopo.menu}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
+    const dopo = await page.evaluate(() => ({ menu: !!document.querySelector('[role=menu]'), piu: document.activeElement?.matches('.zr-shell .zr-create') ?? false, attivo: document.activeElement?.tagName, nelDialogo: !!document.activeElement?.closest('dialog[open], [role=dialog][aria-modal=true]') }));
+    if (dopo.nelDialogo) {
+        // La voce ha aperto un dialogo del modulo, che prende il fuoco (31/10/2026, «Nuova prenotazione per un cliente» di
+        // Bookings): è giusto così, e il ritorno al «+» alla chiusura lo prova P.3.
+        scrivi('➖', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `la voce ha aperto un dialogo, col fuoco dentro${fuoriDallaPagina(page) ? ` (${page.url()})` : ''}: la riga si prova con una voce che non apre niente`);
+        await page.keyboard.press('Escape');
+        await pausa(300);
+    } else {
+        scrivi(sullaVoce && !dopo.menu && dopo.piu ? '✅' : '❌', 'P.2', 'scelta una voce del menu «+» con Invio, il fuoco torna al «+» (riga 11)', `voce col fuoco: ${sullaVoce}, menu aperto: ${dopo.menu}, fuoco su ${dopo.piu ? '«+»' : dopo.attivo}`);
+    }
 }
 
 // L'ultima voce del «+», se apre un dialogo: chiuso con Esc, il fuoco torna al «+» (#2822, Decisione 18962). Il dialogo si
@@ -405,7 +430,12 @@ async function selettore(page) {
     await page.keyboard.press('Home');
     await pausa(200);
     const inizio = await dove();
-    scrivi(fine.ultima > 0 && fine.qui === fine.ultima && inizio.qui === 0 && inizio.aperto ? '✅' : '❌', 'S.1', 'nel selettore dei workspace Fine va all\'ultima voce e Home alla prima (riga 48)', `Fine: voce ${fine.qui} di 0-${fine.ultima}, Home: voce ${inizio.qui}, aperto: ${inizio.aperto}`);
+    if (fine.ultima < 1) {
+        // Una voce sola (31/10/2026, il workspace della UAT di Bookings): Home e Fine vanno tutti e due lì, e non dicono niente.
+        scrivi('➖', 'S.1', 'Home e Fine nel selettore dei workspace (riga 48)', `il selettore ha ${fine.ultima + 1} voce: servono almeno due workspace`);
+    } else {
+        scrivi(fine.qui === fine.ultima && inizio.qui === 0 && inizio.aperto ? '✅' : '❌', 'S.1', 'nel selettore dei workspace Fine va all\'ultima voce e Home alla prima (riga 48)', `Fine: voce ${fine.qui} di 0-${fine.ultima}, Home: voce ${inizio.qui}, aperto: ${inizio.aperto}`);
+    }
     await page.keyboard.press('End');
     await page.keyboard.press('Tab');
     await pausa(300);
@@ -802,31 +832,55 @@ async function uat(page, apri) {
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
     await pausa(800);
+    pagina = page.url();
+    tornaAllaPagina = async () => {
+        if (fuoriDallaPagina(page)) {
+            await apri(indirizzo);
+            await page.waitForSelector('.zr-shell', { timeout: 15000 });
+            await pausa(800);
+        }
+    };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
     await ricerca(page, true);
+    await tornaAllaPagina();
     await escNellaBarra(page, true);
+    await tornaAllaPagina();
     await fuoriDaiMenu(page);
+    await tornaAllaPagina();
     await inizioEFineNeiMenu(page);
+    await tornaAllaPagina();
     await linguetteDelleNotifiche(page);
+    await tornaAllaPagina();
     await quantiRisultati(page);
+    await tornaAllaPagina();
     await attivaInVista(page);
+    await tornaAllaPagina();
     await piu(page);
+    await tornaAllaPagina();
     await selettore(page);
+    await tornaAllaPagina();
     await campanella(page, true);
+    await tornaAllaPagina();
     await sopraIlPannello(page);
+    await tornaAllaPagina();
     await percorso(page);
+    await tornaAllaPagina();
     await dialogoDalPiu(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
     await pausa(800);
+    pagina = page.url();
     await page.screenshot({ path: join(cartella, 'pagina-390.png') });
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
     await ricerca(page, false);
+    await tornaAllaPagina();
     await escNellaBarra(page, false);
+    await tornaAllaPagina();
     await cassetto(page);
+    await tornaAllaPagina();
     await campanella(page, false);
 
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
