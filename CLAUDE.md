@@ -133,8 +133,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 
 ## Progetto sulla board
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 87 chiuso (`v3.14.0`, #2341 in `test_umano`: il
-   cassetto con `role="dialog"`); #2827 (sprint 85) `in_corso` fino alla parte 2, dopo il 30/10 23:00 UTC o prima se cambia
-   l'account degli zr-*; #2341, #2826, #2828, #2722 e #2549 si accettano con l'UAT di Board (#2625 di zr-board); il Backlog ha
+   cassetto con `role="dialog"`); #2827 (sprint 85) in `test_umano` dal 31/10, parte 2 fatta e accettata da zr-pm (la porta lui
+   in done); #2341, #2826, #2828, #2722 e #2549 si accettano con l'UAT di Board (#2625 di zr-board); il Backlog ha
    solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (Decisione di zr-pm, 0369921).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
