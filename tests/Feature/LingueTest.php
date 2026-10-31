@@ -1217,20 +1217,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 90 tipi della versione d3e474de e l\'elenco 50, con crm.campo.creato e workspace.eliminato (sprint 79 · T2.1, T2.2, T2.3)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 97 tipi della versione 400c8d51 e l\'elenco 57, con crm.campo.creato e workspace.eliminato (sprint 79 · T2.1, T2.2, T2.3)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('d3e474de')
-        ->and($contratto['tipi'])->toHaveCount(90)
-        // L'impronta dei tipi di d3e474de, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('400c8d51')
+        ->and($contratto['tipi'])->toHaveCount(97)
+        // L'impronta dei tipi di 400c8d51, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('909530079b7f8121cdaf9c33f14d0d5c28e289230d30320b1e6bf4803c84eb19')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(90)
-        ->and($contratto['non_arrivano'])->toHaveCount(50)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('ae065e7392ce00d6985fb59a03058461df75b8f53874ef6592b4434d5ce50cf3')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(97)
+        ->and($contratto['non_arrivano'])->toHaveCount(57)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
