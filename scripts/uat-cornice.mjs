@@ -10,7 +10,8 @@
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
  * --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp). Prima di un tag zr-core la lancia sulle
  * pagine di prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con
- * `layout.html?schede=1&crm_attivo=1&prenotazioni=1 --parola uat`: lì nessuna riga resta ➖ tranne B.1, che vuole il percorso.
+ * `layout.html?schede=1&crm_attivo=1&prenotazioni=1 --parola uat`: lì nessuna riga resta ➖ tranne B.1, che vuole il percorso,
+ * e si prova con `pagina=percorso` in più (lì restano ➖ M.2 e P.3: il «+» ha una voce sola).
  *
  * Il browser: con UAT_PAGE (il percorso del modulo che dà `conPagina` ed `entra`, quello del browser condiviso della UAT)
  * la pagina si apre lì, con la sessione che c'è; senza, un Chromium suo, per le pagine che non chiedono l'ingresso

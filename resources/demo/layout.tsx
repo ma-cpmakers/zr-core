@@ -243,8 +243,9 @@ function Percorso({ visita }: Props) {
     );
 }
 
-// Il percorso viene dai dati del «server»: Inertia lo dà al layout mentre lo rende, prima che la pagina si monti.
-Percorso.layout = (props: Props) => ({ crumbs: [{ label: props.cornice?.workspace.nome ?? '' }, { label: props.cartella ?? '' }] });
+// Il percorso viene dai dati del «server»: Inertia lo dà al layout mentre lo rende, prima che la pagina si monti. La prima voce
+// ha un indirizzo di questa origine: un clic semplice passa da `naviga`, con un modificatore resta del browser (#2722).
+Percorso.layout = (props: Props) => ({ crumbs: [{ label: props.cornice?.workspace.nome ?? '', href: indirizzoDi('lunga') }, { label: props.cartella ?? '' }] });
 
 function NessunaAttiva({ visita }: Props) {
     const contatori = useContatori();
@@ -451,7 +452,11 @@ function leggiConLaLingua(nome: Nome): Props {
  * cronologia. Con `lenta` la risposta aspetta quei millisecondi, e porta i dati letti al clic.
  */
 function vai(nome: Nome, preserveScroll = false, lenta?: number) {
-    router.visit(indirizzoDi(nome, lenta), { preserveScroll });
+    visita(indirizzoDi(nome, lenta), preserveScroll);
+}
+
+function visita(indirizzo: string, preserveScroll = false) {
+    router.visit(indirizzo, { preserveScroll });
 }
 
 function Collegamenti() {
@@ -517,7 +522,13 @@ function Layout({ cornice, subito, dopo, crumbs, children }: Pick<LayoutDellaCor
             active="oggi"
             crumbs={crumbs}
             onLogout={() => console.info('UAT esci')}
-            naviga={(indirizzo) => console.info('UAT naviga', indirizzo)}
+            naviga={(indirizzo) => {
+                console.info('UAT naviga', indirizzo);
+                // Una pagina di prova (la prima voce del percorso) si apre con una visita di Inertia; il resto lo dice solo la console.
+                if (new URL(indirizzo, window.location.href).searchParams.has('pagina')) {
+                    visita(indirizzo);
+                }
+            }}
         >
             {children}
         </LayoutDellaCornice>
