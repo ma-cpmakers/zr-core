@@ -660,8 +660,11 @@ async function fuoriDaiMenu(page) {
         await page.keyboard.press('Enter');
         await pausa(500);
         const aperto = await page.evaluate((sel) => document.querySelector(`.zr-shell ${sel}`)?.getAttribute('aria-expanded'), pulsante);
+        // Tanti Tab quante le voci che prendono il fuoco nella zona, più qualcuno: in un modulo vero il pannello delle
+        // notifiche ne ha decine (Board, 54).
+        const voci = await page.evaluate((zona) => document.querySelectorAll(`.zr-shell ${zona} :is(a[href], button, input, select, textarea, [tabindex]):not([tabindex="-1"]):not(:disabled)`).length, dentro);
         let fuori = false;
-        for (let i = 0; i < 30 && !fuori; i++) {
+        for (let i = 0; i < voci + 10 && !fuori; i++) {
             await page.keyboard.press('Tab');
             await pausa(100);
             fuori = await page.evaluate(([sel, zona]) => !document.activeElement?.closest(zona) && !document.activeElement?.matches(`.zr-shell ${sel}`), [pulsante, dentro]);
@@ -700,8 +703,16 @@ async function inizioEFineNeiMenu(page) {
         await page.keyboard.press('Home');
         await pausa(100);
         const inizio = await dove();
+        // Con due voci la freccia giù porta già all'ultima: Fine si prova di nuovo dopo Home.
+        await page.keyboard.press('End');
+        await pausa(100);
+        const ancoraFine = await dove();
         const ultima = fine.split('-').at(-1);
-        scrivi(fine === `${ultima} di 0-${ultima}` && inizio.startsWith('0 di') && Number(ultima) > 1 ? '✅' : '❌', id, `nel ${nome}, aperto con Invio, Fine va all'ultima voce e Home alla prima (#2802)`, `freccia giù: voce ${giu}, Fine: voce ${fine}, Home: voce ${inizio}`);
+        if (Number(ultima) < 1) {
+            scrivi('➖', id, `nel ${nome} Fine e Home vanno all'ultima e alla prima voce (#2802)`, `il menu ha una voce sola (${fine})`);
+        } else {
+            scrivi(fine === `${ultima} di 0-${ultima}` && inizio.startsWith('0 di') && ancoraFine === fine ? '✅' : '❌', id, `nel ${nome}, aperto con Invio, Fine va all'ultima voce e Home alla prima (#2802)`, `freccia giù: voce ${giu}, Fine: voce ${fine}, Home: voce ${inizio}, Fine: voce ${ancoraFine}`);
+        }
         await page.keyboard.press('Escape');
         await pausa(200);
     }
