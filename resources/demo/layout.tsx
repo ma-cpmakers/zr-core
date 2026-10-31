@@ -452,11 +452,7 @@ function leggiConLaLingua(nome: Nome): Props {
  * cronologia. Con `lenta` la risposta aspetta quei millisecondi, e porta i dati letti al clic.
  */
 function vai(nome: Nome, preserveScroll = false, lenta?: number) {
-    visita(indirizzoDi(nome, lenta), preserveScroll);
-}
-
-function visita(indirizzo: string, preserveScroll = false) {
-    router.visit(indirizzo, { preserveScroll });
+    router.visit(indirizzoDi(nome, lenta), { preserveScroll });
 }
 
 function Collegamenti() {
@@ -525,8 +521,9 @@ function Layout({ cornice, subito, dopo, crumbs, children }: Pick<LayoutDellaCor
             naviga={(indirizzo) => {
                 console.info('UAT naviga', indirizzo);
                 // Una pagina di prova (la prima voce del percorso) si apre con una visita di Inertia; il resto lo dice solo la console.
-                if (new URL(indirizzo, window.location.href).searchParams.has('pagina')) {
-                    visita(indirizzo);
+                const pagina = new URL(indirizzo, window.location.href).searchParams.get('pagina');
+                if (pagina !== null && pagina in pagine) {
+                    vai(pagina as Nome);
                 }
             }}
         >
