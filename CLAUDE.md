@@ -135,7 +135,7 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 87 chiuso (`v3.14.0`); #2341, #2826, #2828 e
    #2549 accettate il 31/10 con la UAT nella cornice di Bookings (zr-pm 9867a7d); #2722 in `test_umano` il 31/10 con la UAT
    sulle pagine di prova (consegna 19208: in produzione nessun modulo dà il percorso alla cornice, zr-pm a12b0d0); le
-   correzioni di `uat-cornice.mjs` e la pagina «Percorso» (100b60c, 8df8d7d, 65d94c0, `sprint-88`) vanno in main con la
-   prossima PR; il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
+   correzioni di `uat-cornice.mjs` e la pagina «Percorso» sono in main con la PR #146 (sprint 88, senza tag: il pacchetto
+   non cambia); il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
