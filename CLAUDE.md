@@ -137,6 +137,7 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
    pagine di prova (consegna 19208: in produzione nessun modulo dà il percorso alla cornice, zr-pm a12b0d0); le
    correzioni di `uat-cornice.mjs` e la pagina «Percorso» sono in main con la PR #146 (sprint 88, senza tag: il pacchetto
    non cambia); sprint 89 chiuso (`v3.14.1`): #2856, Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, accettata
-   il 01/11 (zr-pm 19344); il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
+   il 01/11 (zr-pm 19344); sprint 90 chiuso (`v3.14.2`): #2871, il `Dialog` prende il fuoco e lo rende, accettata
+   il 01/11 (consegna 19427); il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
