@@ -413,7 +413,8 @@ async function dialogoDalPiu(page) {
 
 // Un `Dialog` aperto col mouse prende il fuoco sul suo primo elemento, e chiuso col mouse dalla sua «×» lo rende al pulsante che
 // lo ha aperto (#2871, rimedio della v3.14.2 nel pezzo dei rimedi). Il pulsante e il dialogo sono finti, con le classi del
-// `Dialog` del design system: le pagine di prova e i moduli non hanno sempre un `Dialog` che si apre con un clic.
+// `Dialog` del design system: le pagine di prova e i moduli non hanno sempre un `Dialog` che si apre con un clic. Prima della «×»
+// un campo nascosto e un pulsante spento, che il fuoco non prende: il rimedio li salta.
 async function dialogoColMouse(page) {
     const dialogo = '.zr-scrim:not(.is-inline) > .zr-dialog';
     await page.evaluate(() => {
@@ -425,8 +426,8 @@ async function dialogoColMouse(page) {
             const velo = document.createElement('div');
             velo.className = 'zr-scrim';
             velo.dataset.uat = 'velo';
-            velo.innerHTML = '<div class="zr-dialog" role="dialog" aria-label="UAT"><header class="zr-dialog-head"><h2>UAT</h2><button type="button" aria-label="Chiudi">×</button></header><div class="zr-dialog-body"><input aria-label="Nome"></div></div>';
-            velo.querySelector('button').addEventListener('click', () => velo.remove());
+            velo.innerHTML = '<div class="zr-dialog" role="dialog" aria-label="UAT"><header class="zr-dialog-head"><h2>UAT</h2><input type="hidden" name="uat"><button type="button" disabled>Spento</button><button type="button" aria-label="Chiudi">×</button></header><div class="zr-dialog-body"><input aria-label="Nome"></div></div>';
+            velo.querySelector('[aria-label="Chiudi"]').addEventListener('click', () => velo.remove());
             document.body.append(velo);
         });
         document.querySelector('.zr-shell > main')?.prepend(apre);
@@ -435,11 +436,11 @@ async function dialogoColMouse(page) {
     await pausa(400);
     const dentro = await page.evaluate((sel) => [!!document.activeElement?.closest(sel), document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName], dialogo);
     await page.screenshot({ path: join(cartella, 'dialogo-col-mouse-1280.png') });
-    await page.click(`${dialogo} .zr-dialog-head button`);
+    await page.click(`${dialogo} .zr-dialog-head [aria-label="Chiudi"]`);
     await pausa(400);
     const dopo = await page.evaluate((sel) => [!document.querySelector(sel), document.activeElement?.matches('[data-uat="apre"]') ?? false, document.activeElement?.tagName], dialogo);
     await page.evaluate(() => document.querySelectorAll('[data-uat="apre"], [data-uat="velo"]').forEach((finto) => finto.remove()));
-    scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', 'un `Dialog` aperto col mouse prende il fuoco sul suo primo elemento; chiuso con la «×», il fuoco torna al pulsante che lo ha aperto (#2871)', `dialogo finto; fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco ${dopo[1] ? 'sul pulsante' : `su ${dopo[2]}`}`);
+    scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', 'un `Dialog` aperto col mouse prende il fuoco sul primo elemento che lo prende; chiuso con la «×», il fuoco torna al pulsante che lo ha aperto (#2871)', `dialogo finto; fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco ${dopo[1] ? 'sul pulsante' : `su ${dopo[2]}`}`);
 }
 
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio

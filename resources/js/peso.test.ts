@@ -691,7 +691,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // questa è la contropartita (misura del 28/10: 1.959 al primo prototipo; tetto 1.979, la misura più 20, Decisione 19069;
         // 1.969 nella forma senza `aria-modal` e con `matchMedia`, Decisione di zr-pm dopo la revisione della PR #145).
         // Sprint 90 (voce #2871): il `Dialog` che si apre prende il fuoco e alla chiusura lo rende, qui perché un dialogo si apre
-        // anche col mouse, prima di ogni tasto (misura del 01/11: 2.028 al prototipo; tetto 2.048, la misura più 20, per eccezione:
+        // anche col mouse, prima di ogni tasto (misura del 01/11: 2.028 al prototipo, 2.046 coi rilievi della revisione; tetto 2.048, la misura del prototipo più 20, per eccezione:
         // l'accessibilità vale più di 55 byte, Decisione 19411; se una contropartita libera byte, il tetto riscende di tanto).
         expect(gzip(rimedi)).toBeLessThanOrEqual(2_048);
     });
