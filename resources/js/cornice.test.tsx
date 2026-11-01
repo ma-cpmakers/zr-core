@@ -9520,7 +9520,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         });
 
         // Il campo nascosto (`type="hidden"`) che in happy-dom prende il fuoco, e in un browser no, lo prova G.1 di `uat-cornice.mjs`.
-        it('il primo elemento che il fuoco non può prendere — un pulsante spento — si salta: il fuoco va al primo che lo prende (T1.1, revisione della PR #152)', async () => {
+        it('il primo elemento che il fuoco non può prendere — un pulsante spento — si salta: il fuoco va al primo che lo prende (T1.1, revisione della PR 152)', async () => {
             largaAlPiu720(false);
             const senzaChiudi = (aperto: boolean) => (
                 <>
@@ -9534,7 +9534,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             expect(document.activeElement).toBe(uno('#conferma'));
         });
 
-        it('una conferma aperta da dentro un dialogo: chiusa, il fuoco torna nel dialogo; chiuso anche lui, al pulsante che l\'aveva aperto (T1.3, revisione della PR #152)', async () => {
+        it('una conferma aperta da dentro un dialogo: chiusa, il fuoco torna nel dialogo; chiuso anche lui, al pulsante che l\'aveva aperto (T1.3, revisione della PR 152)', async () => {
             largaAlPiu720(false);
             const annidati = (primo: boolean, conferma: boolean) => (
                 <>
