@@ -90,9 +90,26 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
  */
 function dialogoSopraIlPannello(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement) {
-        (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)'));
+        (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => {
+            dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)');
+            if (!dialogo.contains(document.activeElement)) {
+                aperti.push([dialogo, document.activeElement]);
+                [...dialogo.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].some((fermata) => (fermata.focus(), document.activeElement === fermata));
+            }
+        });
     }
 }
+
+/**
+ * Il `Dialog` del design system non sposta il fuoco (voce 2871; zr-pm, 01/11/2026, Decisione 19411): quando un dialogo entra
+ * nel documento col fuoco fuori, `dialogoSopraIlPannello` si ricorda chi lo aveva e lo dà al primo elemento del dialogo che lo
+ * prende (senza indicazione, la «×» Chiudi dell'intestazione; un campo nascosto o un pulsante spento si saltano). Un ricordo per
+ * dialogo: una conferma aperta da dentro un dialogo rende il fuoco al dialogo, e lui al pulsante che l'aveva aperto. Il fuoco già dentro — portato dal modulo, o da `autoFocus` di
+ * React su «Annulla» — resta dov'è, e allora il ritorno è del modulo. Quando quel dialogo esce dal documento e il fuoco è
+ * rimasto sul `body`, l'osservatore lo riporta a chi lo aveva (se non era il `body` stesso); a un elemento che lo ha preso nel
+ * frattempo non si toglie.
+ */
+let aperti: [dialogo: HTMLElement, loAveva: Element | null][] = [];
 
 /**
  * Ciò che entra fra le azioni della barra in alto: i due menu che la barra apre, il profilo e le notifiche, quelli che
@@ -363,6 +380,13 @@ new MutationObserver((cambi) => {
             avatarFuoriDalMenu(aggiunto);
         });
     }
+    // I dialoghi a cui `dialogoSopraIlPannello` ha dato il fuoco e che sono usciti: il fuoco rimasto sul `body` torna a chi lo aveva.
+    aperti = aperti.filter(([dialogo, loAveva]) => {
+        if (!dialogo.isConnected && document.activeElement === document.body && loAveva !== document.body) {
+            (loAveva as HTMLElement | null)?.focus();
+        }
+        return dialogo.isConnected;
+    });
     azioniSottoLaRicerca();
     cassetto();
     tastiera?.aOgniCambio();
