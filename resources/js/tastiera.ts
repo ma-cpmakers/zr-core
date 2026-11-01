@@ -14,8 +14,8 @@ const PRENDONO_IL_FUOCO = 'a[href], button, input, select, textarea, summary, if
  * chiuso, di cui si vede solo il `summary` che lo apre (il primo), con ciò che ha dentro.
  */
 function nascosto(elemento: HTMLElement): boolean {
-    for (let su: HTMLElement | null = elemento, sotto: HTMLElement | null = null; su !== null; sotto = su, su = su.parentElement) {
-        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto !== null && su.matches('details:not([open])') && !sotto.matches('summary:first-of-type'))) {
+    for (let su: HTMLElement | null = elemento, sotto: HTMLElement | null = null; su; sotto = su, su = su.parentElement) {
+        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto && su.matches('details:not([open])') && !sotto.matches('summary:first-of-type'))) {
             return true;
         }
     }
@@ -31,7 +31,7 @@ function nascosto(elemento: HTMLElement): boolean {
  * dentro un `iframe` il tasto non arriva alla pagina.
  */
 function eUnaFermata(elemento: HTMLElement): boolean {
-    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') !== null || nascosto(elemento) || (elemento.matches('iframe') && !(elemento.clientWidth && elemento.clientHeight))) {
+    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') || nascosto(elemento) || (elemento.matches('iframe') && !(elemento.clientWidth && elemento.clientHeight))) {
         return false;
     }
     if (elemento instanceof HTMLInputElement && elemento.type === 'radio' && !elemento.checked && elemento.name !== '') {
@@ -50,7 +50,7 @@ function eUnaFermata(elemento: HTMLElement): boolean {
 let preso: [dialogo: HTMLElement, loAveva: Element | null] | null = null;
 
 function fuocoAChiLoAveva(): void {
-    if (preso !== null && !preso[0].isConnected) {
+    if (preso && !preso[0].isConnected) {
         const loAveva = preso[1];
 
         preso = null;
@@ -76,13 +76,13 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
  * larghezza non si può chiedere (`matchMedia` manca) il pannello non trattiene.
  */
 function chiTrattieneIlFuoco(): HTMLElement | null {
-    if (document.querySelector('.zr-shell') === null) {
+    if (!document.querySelector('.zr-shell')) {
         return null;
     }
     const aperti = (selettore: string): HTMLElement | null => [...document.querySelectorAll<HTMLElement>(selettore)].pop() ?? null;
 
     return aperti(DIALOGO_APERTO)
-        ?? (typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
+        ?? (self.matchMedia?.('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
 }
 
 /**
@@ -96,14 +96,15 @@ function chiTrattieneIlFuoco(): HTMLElement | null {
 function tabRestaDentro(tasto: KeyboardEvent): void {
     const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey ? chiTrattieneIlFuoco() : null;
 
-    if (dentro === null || dentro.querySelector('.zr-menu') !== null || document.activeElement?.closest('.zr-menu')) {
+    if (!dentro || dentro.querySelector('.zr-menu') || document.activeElement?.closest('.zr-menu')) {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
-    const [prima, ultima] = [fermate[0], fermate[fermate.length - 1]];
+    const [prima] = fermate;
+    const ultima = fermate.at(-1);
     const attivo = document.activeElement;
 
-    if (prima === undefined || ultima === undefined) {
+    if (!prima || !ultima) {
         // Niente su cui fermarsi: il fuoco non esce lo stesso, e va a chi trattiene. Il `Dialog` non ha un `tabindex`, e senza
         // non lo può prendere: resterebbe sul pulsante dietro il velo, che Invio premerebbe.
         tasto.preventDefault();
@@ -112,11 +113,8 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
         }
         dentro.tabIndex = -1;
         dentro.focus();
-    } else if (attivo === null || !dentro.contains(attivo)) {
-        tasto.preventDefault();
-        (tasto.shiftKey ? ultima : prima).focus();
-    } else if (tasto.shiftKey ? !(attivo.compareDocumentPosition(prima) & Node.DOCUMENT_POSITION_PRECEDING) : !(attivo.compareDocumentPosition(ultima) & Node.DOCUMENT_POSITION_FOLLOWING)) {
-        // Dopo l'attivo, o prima con Maiusc, non c'è un'altra fermata: il browser uscirebbe dal dialogo.
+    } else if (attivo === null || !dentro.contains(attivo) || (tasto.shiftKey ? !(attivo.compareDocumentPosition(prima) & Node.DOCUMENT_POSITION_PRECEDING) : !(attivo.compareDocumentPosition(ultima) & Node.DOCUMENT_POSITION_FOLLOWING))) {
+        // Da fuori entra; e dopo l'attivo, o prima con Maiusc, non c'è un'altra fermata: il browser uscirebbe dal dialogo.
         tasto.preventDefault();
         (tasto.shiftKey ? ultima : prima).focus();
     }
@@ -177,6 +175,19 @@ function escNellaBarra(tasto: KeyboardEvent): void {
 }
 
 /**
+ * Finché un dialogo o un pannello a tutta pagina trattiene il fuoco, Ctrl+K e Cmd+K (senza Alt, come li legge l'`AppShell`) non
+ * arrivano all'`AppShell`, che aprirebbe la ricerca sotto di loro, dove non si vede (sprint 89, zr-pm 01/11/2026). In ascolto
+ * sulla radice del documento, dopo la pagina e prima dell'`AppShell`, che ascolta sul documento: chi nel dialogo usa Ctrl+K lo
+ * riceve ancora. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function ctrlKFermo(tasto: KeyboardEvent): void {
+    if ((tasto.ctrlKey || tasto.metaKey) && !tasto.altKey && /^k$/i.test(tasto.key) && chiTrattieneIlFuoco()) {
+        tasto.preventDefault();
+        tasto.stopPropagation();
+    }
+}
+
+/**
  * Nel selettore dei workspace aperto l'`AppShell` muove il fuoco con le frecce, ma Home e Fine non facevano niente (riga 48 delle
  * richieste al design system): portano il fuoco alla prima e all'ultima voce. Lo stesso, dalla v3.10.0, nel menu del profilo e nel
  * menu «+» (#2802, riga 132), fra le voci che non sono spente; un `Menu` della pagina no. Provvisorio, finché l'`AppShell` non lo
@@ -206,7 +217,7 @@ function frecceSulleLinguette(tasto: KeyboardEvent): void {
     linguette.forEach((linguetta) => {
         linguetta.tabIndex = linguetta.matches('[aria-selected="true"]') ? 0 : -1;
     });
-    if (qui >= 0 && verso !== undefined && !tasto.altKey && !tasto.ctrlKey && !tasto.metaKey) {
+    if (qui >= 0 && verso !== undefined && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey) {
         tasto.preventDefault();
         const scelta = linguette.at(verso % linguette.length);
 
@@ -221,7 +232,7 @@ function frecceSulleLinguette(tasto: KeyboardEvent): void {
  * l'opzione attiva scorre in vista, quanto basta. Col fuoco sul pannello le frecce lo fanno scorrere come sempre. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 135 delle richieste).
  */
 function attivaInVista(tasto: KeyboardEvent): void {
-    if ((tasto.target as Element).matches?.('.zr-shell .zr-search input') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
+    if ((tasto.target as Element).matches?.('.zr-shell .zr-top > .zr-search input') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
         setTimeout(() => document.querySelector('.zr-shell .zr-search .is-active')?.scrollIntoView({ block: 'nearest' }));
     }
 }
@@ -242,9 +253,7 @@ function fuoriDalSelettore(uscita: FocusEvent): void {
         selettore.querySelector<HTMLElement>('.zr-ws-switch')?.click();
     }
     document.querySelectorAll<HTMLElement>('.zr-shell .zr-avatar-btn[aria-expanded="true"], .zr-shell .zr-bell[aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"]').forEach((pulsante) => {
-        const suo = (qui: Element | null): boolean => qui === pulsante || !!qui?.closest?.('.zr-menu, .zr-pop');
-
-        if (verso && !suo(verso)) {
+        if (verso && verso !== pulsante && !verso.closest?.('.zr-menu, .zr-pop')) {
             pulsante.click();
         }
     });
@@ -340,6 +349,7 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
 document.addEventListener('keydown', escNellaBarra, true);
+document.documentElement.addEventListener('keydown', ctrlKFermo);
 document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('click', sceltaDalPiu, true);
 document.addEventListener('focusout', fuoriDalSelettore);

@@ -693,13 +693,15 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_979);
     });
 
-    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.993 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1)', () => {
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
         const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
 
         expect(tastiera).not.toBe('');
         // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
         // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
-        expect(gzip(tastiera)).toBeLessThanOrEqual(1_993);
+        // v3.14.1 (sprint 89, zr-pm 01/11/2026): Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, 1.999 byte con le forme
+        // del pezzo unificate (revisione della PR #150: in ascolto sulla radice, senza Alt); il tetto è il massimo della Decisione 18611.
+        expect(gzip(tastiera)).toBeLessThanOrEqual(2_000);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
