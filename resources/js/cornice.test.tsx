@@ -9412,6 +9412,50 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             expect(gradino()).toBe('');
         });
     });
+
+    // Sprint 89 (zr-pm-07, 01/11/2026): Ctrl+K apriva la ricerca sotto il pannello a tutta pagina, dove non si vede, e il Tab dal
+    // campo tornava nel pannello (R390.9 di uat-cornice su una pagina di zr-home).
+    describe('Ctrl+K e Cmd+K non aprono la ricerca finché un dialogo o un pannello di dettaglio sotto 720 px trattiene il fuoco (sprint 89 · T1)', () => {
+        /** Ctrl+K, o Cmd+K, sull'elemento attivo: dice se qualcuno ha fermato ciò che il browser avrebbe fatto. */
+        const ctrlK = async (key = 'k', modificatore: KeyboardEventInit = { ctrlKey: true }) => {
+            const tasto = new KeyboardEvent('keydown', { key, ...modificatore, bubbles: true, cancelable: true });
+            await act(async () => {
+                (document.activeElement ?? document.body).dispatchEvent(tasto);
+            });
+
+            return tasto.defaultPrevented;
+        };
+        const ricercaAperta = () => uno('.zr-top .zr-search')?.classList.contains('is-open');
+
+        it('col pannello sotto 720 px Ctrl+K, Ctrl+Maiusc+K e Cmd+K non fanno niente e il fuoco resta nel pannello; da 721 px in su la ricerca si apre col fuoco nel campo (T1.1)', async () => {
+            largaAlPiu720(true);
+            await laPagina(ilPannello());
+
+            for (const [key, modificatore] of [['k', { ctrlKey: true }], ['K', { ctrlKey: true, shiftKey: true }], ['k', { metaKey: true }]] as const) {
+                await conIlFuoco(uno('#titolo'));
+                expect(await ctrlK(key, modificatore)).toBe(true);
+                expect([ricercaAperta(), document.activeElement]).toStrictEqual([false, uno('#titolo')]);
+            }
+
+            largaAlPiu720(false);
+            expect(await ctrlK()).toBe(true);
+            expect([ricercaAperta(), document.activeElement]).toStrictEqual([true, uno('.zr-top .zr-search input')]);
+        });
+
+        it('con un `Dialog` aperto, a ogni larghezza, Ctrl+K non fa niente; senza dialoghi né pannelli la ricerca si apre, e K senza Ctrl o Cmd resta di chi scrive (T1.2)', async () => {
+            largaAlPiu720(false);
+            await laPagina(ilDialogo(<input id="nome" />));
+            await conIlFuoco(uno('#nome'));
+            expect(await ctrlK()).toBe(true);
+            expect([ricercaAperta(), document.activeElement]).toStrictEqual([false, uno('#nome')]);
+            expect(await ctrlK('k', {})).toBe(false);
+
+            await laPagina(<input id="nome" />);
+            await conIlFuoco(uno('#nome'));
+            expect(await ctrlK()).toBe(true);
+            expect([ricercaAperta(), document.activeElement]).toStrictEqual([true, uno('.zr-top .zr-search input')]);
+        });
+    });
 });
 
 describe('il menu del profilo e il selettore dei workspace aperti non danno errori di accessibilità (sprint 65 · T1, voce 2340)', () => {

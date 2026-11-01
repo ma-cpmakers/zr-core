@@ -76,13 +76,13 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
  * larghezza non si può chiedere (`matchMedia` manca) il pannello non trattiene.
  */
 function chiTrattieneIlFuoco(): HTMLElement | null {
-    if (document.querySelector('.zr-shell') === null) {
+    if (!document.querySelector('.zr-shell')) {
         return null;
     }
     const aperti = (selettore: string): HTMLElement | null => [...document.querySelectorAll<HTMLElement>(selettore)].pop() ?? null;
 
     return aperti(DIALOGO_APERTO)
-        ?? (typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
+        ?? (self.matchMedia?.('(max-width: 720px)').matches ? aperti('.zr-detail:not(.is-inline)') : null);
 }
 
 /**
@@ -100,10 +100,11 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
-    const [prima, ultima] = [fermate[0], fermate[fermate.length - 1]];
+    const [prima] = fermate;
+    const ultima = fermate.at(-1);
     const attivo = document.activeElement;
 
-    if (prima === undefined || ultima === undefined) {
+    if (!prima || !ultima) {
         // Niente su cui fermarsi: il fuoco non esce lo stesso, e va a chi trattiene. Il `Dialog` non ha un `tabindex`, e senza
         // non lo può prendere: resterebbe sul pulsante dietro il velo, che Invio premerebbe.
         tasto.preventDefault();
@@ -112,11 +113,8 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
         }
         dentro.tabIndex = -1;
         dentro.focus();
-    } else if (attivo === null || !dentro.contains(attivo)) {
-        tasto.preventDefault();
-        (tasto.shiftKey ? ultima : prima).focus();
-    } else if (tasto.shiftKey ? !(attivo.compareDocumentPosition(prima) & Node.DOCUMENT_POSITION_PRECEDING) : !(attivo.compareDocumentPosition(ultima) & Node.DOCUMENT_POSITION_FOLLOWING)) {
-        // Dopo l'attivo, o prima con Maiusc, non c'è un'altra fermata: il browser uscirebbe dal dialogo.
+    } else if (attivo === null || !dentro.contains(attivo) || (tasto.shiftKey ? !(attivo.compareDocumentPosition(prima) & Node.DOCUMENT_POSITION_PRECEDING) : !(attivo.compareDocumentPosition(ultima) & Node.DOCUMENT_POSITION_FOLLOWING))) {
+        // Da fuori entra; e dopo l'attivo, o prima con Maiusc, non c'è un'altra fermata: il browser uscirebbe dal dialogo.
         tasto.preventDefault();
         (tasto.shiftKey ? ultima : prima).focus();
     }
@@ -149,12 +147,18 @@ function escDalPannello(tasto: KeyboardEvent): void {
  * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
  * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto; e
  * nemmeno, fuori dalla ricerca, un Esc dato in un `<dialog>` o già gestito, che i rimedi fermano prima dell'`AppShell` (riga 136). In ascolto in cattura, perché
- * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ * l'`AppShell` ferma Esc. Allo stesso modo, finché un dialogo o un pannello a tutta pagina trattiene il fuoco, Ctrl+K e Cmd+K non
+ * arrivano all'`AppShell`, che aprirebbe la ricerca sotto di loro, dove non si vede (sprint 89, zr-pm 01/11/2026). Provvisorio,
+ * finché l'`AppShell` non lo fa da sé.
  */
 function escNellaBarra(tasto: KeyboardEvent): void {
     const campo = tasto.target as HTMLInputElement;
     const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
 
+    if ((tasto.ctrlKey || tasto.metaKey) && /^k$/i.test(tasto.key) && chiTrattieneIlFuoco()) {
+        tasto.preventDefault();
+        tasto.stopPropagation();
+    }
     if (tasto.key === 'Escape') {
         if (campo.matches?.('.zr-shell .zr-top > .zr-search input')) {
             campo.blur = () => {};
@@ -206,7 +210,7 @@ function frecceSulleLinguette(tasto: KeyboardEvent): void {
     linguette.forEach((linguetta) => {
         linguetta.tabIndex = linguetta.matches('[aria-selected="true"]') ? 0 : -1;
     });
-    if (qui >= 0 && verso !== undefined && !tasto.altKey && !tasto.ctrlKey && !tasto.metaKey) {
+    if (qui >= 0 && verso !== undefined && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey) {
         tasto.preventDefault();
         const scelta = linguette.at(verso % linguette.length);
 
@@ -221,7 +225,7 @@ function frecceSulleLinguette(tasto: KeyboardEvent): void {
  * l'opzione attiva scorre in vista, quanto basta. Col fuoco sul pannello le frecce lo fanno scorrere come sempre. Provvisorio, finché l'`AppShell` non lo fa da sé (riga 135 delle richieste).
  */
 function attivaInVista(tasto: KeyboardEvent): void {
-    if ((tasto.target as Element).matches?.('.zr-shell .zr-search input') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
+    if ((tasto.target as Element).matches?.('.zr-shell .zr-top > .zr-search input') && (tasto.key === 'ArrowDown' || tasto.key === 'ArrowUp')) {
         setTimeout(() => document.querySelector('.zr-shell .zr-search .is-active')?.scrollIntoView({ block: 'nearest' }));
     }
 }

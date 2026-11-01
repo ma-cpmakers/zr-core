@@ -642,6 +642,36 @@ async function cassetto(page) {
         await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu').click());
         await pausa(300);
     }
+    // Il pannello di dettaglio a tutta pagina copre la barra in alto: Ctrl+K non apre la ricerca sotto di lui (sprint 89, R390.9
+    // su una pagina di zr-home). Se la pagina non ne ha uno aperto, ne mette uno finto con un pulsante, come `sopraIlPannello`.
+    const finto = await page.evaluate(() => {
+        if (document.querySelector('.zr-detail:not(.is-inline)')) {
+            return false;
+        }
+        const pannello = document.createElement('aside');
+        pannello.className = 'zr-detail';
+        pannello.dataset.uat = '';
+        pannello.append(Object.assign(document.createElement('button'), { type: 'button', textContent: 'UAT' }));
+        document.body.append(pannello);
+        return true;
+    });
+    await page.evaluate(() => [...document.querySelectorAll('.zr-detail:not(.is-inline) :is(button, a[href], input)')].pop()?.focus());
+    const nelPannello = () => page.evaluate(() => [!!document.querySelector('.zr-shell .zr-top > .zr-search.is-open'), !!document.activeElement?.closest('.zr-detail')]);
+    const prima = await nelPannello();
+    await page.keyboard.press('Control+k');
+    await pausa(300);
+    const conIlPannello = await nelPannello();
+    await page.evaluate(() => document.querySelector('.zr-detail[data-uat]')?.remove());
+    await page.evaluate(() => document.activeElement?.blur());
+    let senza = [false, false];
+    if (finto) {
+        await page.keyboard.press('Control+k');
+        await pausa(300);
+        senza = await nelPannello();
+        await page.keyboard.press('Escape');
+        await pausa(300);
+    }
+    scrivi(prima[1] && !conIlPannello[0] && conIlPannello[1] && (!finto || senza[0]) ? '✅' : '❌', 'K390.12', 'col pannello di dettaglio a tutta pagina Ctrl+K non apre la ricerca e il fuoco resta nel pannello; senza, la apre (sprint 89)', `${finto ? 'pannello finto' : 'pannello della pagina'}; fuoco nel pannello prima: ${prima[1]}; dopo Ctrl+K ricerca aperta: ${conIlPannello[0]}, fuoco nel pannello: ${conIlPannello[1]}${finto ? `; senza pannello ricerca aperta: ${senza[0]}` : ''}`);
     await page.evaluate(() => document.activeElement?.blur());
 }
 
