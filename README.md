@@ -211,7 +211,7 @@ alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` 
 cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.048 i rimedi, 1.867 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
@@ -219,7 +219,8 @@ lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi:
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
 sta nel pezzo che si carica sempre perché un dialogo si apre anche col mouse (un'eccezione di zr-pm per l'accessibilità,
-Decisione 19411: se un rimedio stretto libera byte, il tetto riscende). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+Decisione 19411: se un rimedio stretto libera byte, il tetto riscende). Nella `v3.14.3` di altri 10, a 2.058: un dialogo
+senza niente che prenda il fuoco, un «Attendi», lo prende su di sé (Decisione 19428). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
 pezzi, ancora col codice uguale, e 20 di margine (zr-pm), e di altri 147 nella `v3.9.0`, alla misura più 20: i testi dei
@@ -383,6 +384,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.13.0` | gli stili di testo di `tokens.json` come variabili in `zeiras-token.css` (`--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight`, `--text-heading-1--letter-spacing`…; «Gli stili di testo», sopra): il CSS dei token pesa circa 0,9 KB in più, 0,1 KB con gzip | niente; per scrivere il testo per nome, gli stili nel tema di Tailwind (`@theme inline reference`) e le classi `text-<stile>` al posto dei valori scritti a mano | niente | i titoli e i testi passati a `text-<stile>` hanno la misura, l'interlinea e il peso di prima |
 | `v3.14.0` | sotto i 1024 px, dove la barra laterale è un menu a cassetto, il cassetto aperto ha `role="dialog"`, e chiuso — o con la finestra allargata — torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); niente `aria-modal`, perché il pulsante che lo chiude sta fuori dal cassetto; il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`; con un `Dialog` o un `DetailPanel` del modulo aperto sopra, i dialoghi per ruolo sono due: un caso che ne cercava uno solo (`getByRole('dialog')`) va riletto | K390.10 e K390.11 di `uat-cornice.mjs` |
 | `v3.14.2` | un `Dialog` del design system che si apre dentro la cornice col fuoco fuori lo prende sul suo primo elemento (senza indicazione, la «×» Chiudi dell'intestazione), e chiuso, se il fuoco è rimasto sulla pagina, lo rende all'elemento che lo aveva (#2871); il fuoco già dentro il dialogo resta dov'è: lo ha portato il modulo, o `autoFocus` di React su un pulsante; un'anteprima (`inline`) non lo prende; il tetto del pezzo dei rimedi sale a 2.048 byte | niente; chi dà già il fuoco al dialogo da sé, alla sua apertura, può continuare a farlo, e il rimedio non lo sposta | un caso che dopo l'apertura di un `Dialog` si aspettava il fuoco fuori dal dialogo, o sul `body` dopo la chiusura, va riletto | G.1 di `uat-cornice.mjs` |
+| `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

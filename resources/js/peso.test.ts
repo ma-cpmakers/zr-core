@@ -693,7 +693,8 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // Sprint 90 (voce #2871): il `Dialog` che si apre prende il fuoco e alla chiusura lo rende, qui perché un dialogo si apre
         // anche col mouse, prima di ogni tasto (misura del 01/11: 2.028 al prototipo, 2.046 coi rilievi della revisione; tetto 2.048, la misura del prototipo più 20, per eccezione:
         // l'accessibilità vale più di 55 byte, Decisione 19411; se una contropartita libera byte, il tetto riscende di tanto).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(2_048);
+        // v3.14.3: un dialogo senza niente che prenda il fuoco lo prende su di sé (misura del 01/11: 2.055; tetto 2.058, Decisione 19428).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(2_058);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
