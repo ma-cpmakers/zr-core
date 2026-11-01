@@ -14,8 +14,8 @@ const PRENDONO_IL_FUOCO = 'a[href], button, input, select, textarea, summary, if
  * chiuso, di cui si vede solo il `summary` che lo apre (il primo), con ciò che ha dentro.
  */
 function nascosto(elemento: HTMLElement): boolean {
-    for (let su: HTMLElement | null = elemento, sotto: HTMLElement | null = null; su !== null; sotto = su, su = su.parentElement) {
-        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto !== null && su.matches('details:not([open])') && !sotto.matches('summary:first-of-type'))) {
+    for (let su: HTMLElement | null = elemento, sotto: HTMLElement | null = null; su; sotto = su, su = su.parentElement) {
+        if (su.hidden || getComputedStyle(su).display === 'none' || (sotto && su.matches('details:not([open])') && !sotto.matches('summary:first-of-type'))) {
             return true;
         }
     }
@@ -31,7 +31,7 @@ function nascosto(elemento: HTMLElement): boolean {
  * dentro un `iframe` il tasto non arriva alla pagina.
  */
 function eUnaFermata(elemento: HTMLElement): boolean {
-    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') !== null || nascosto(elemento) || (elemento.matches('iframe') && !(elemento.clientWidth && elemento.clientHeight))) {
+    if (elemento.tabIndex < 0 || elemento.matches(':disabled, input[type="hidden"]') || elemento.closest('[inert]') || nascosto(elemento) || (elemento.matches('iframe') && !(elemento.clientWidth && elemento.clientHeight))) {
         return false;
     }
     if (elemento instanceof HTMLInputElement && elemento.type === 'radio' && !elemento.checked && elemento.name !== '') {
@@ -50,7 +50,7 @@ function eUnaFermata(elemento: HTMLElement): boolean {
 let preso: [dialogo: HTMLElement, loAveva: Element | null] | null = null;
 
 function fuocoAChiLoAveva(): void {
-    if (preso !== null && !preso[0].isConnected) {
+    if (preso && !preso[0].isConnected) {
         const loAveva = preso[1];
 
         preso = null;
@@ -96,7 +96,7 @@ function chiTrattieneIlFuoco(): HTMLElement | null {
 function tabRestaDentro(tasto: KeyboardEvent): void {
     const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey ? chiTrattieneIlFuoco() : null;
 
-    if (dentro === null || dentro.querySelector('.zr-menu') !== null || document.activeElement?.closest('.zr-menu')) {
+    if (!dentro || dentro.querySelector('.zr-menu') || document.activeElement?.closest('.zr-menu')) {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
@@ -147,18 +147,12 @@ function escDalPannello(tasto: KeyboardEvent): void {
  * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
  * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto; e
  * nemmeno, fuori dalla ricerca, un Esc dato in un `<dialog>` o già gestito, che i rimedi fermano prima dell'`AppShell` (riga 136). In ascolto in cattura, perché
- * l'`AppShell` ferma Esc. Allo stesso modo, finché un dialogo o un pannello a tutta pagina trattiene il fuoco, Ctrl+K e Cmd+K non
- * arrivano all'`AppShell`, che aprirebbe la ricerca sotto di loro, dove non si vede (sprint 89, zr-pm 01/11/2026). Provvisorio,
- * finché l'`AppShell` non lo fa da sé.
+ * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
  */
 function escNellaBarra(tasto: KeyboardEvent): void {
     const campo = tasto.target as HTMLInputElement;
     const menu = document.querySelector<HTMLElement>('.zr-shell .zr-top-menu[aria-expanded="true"]');
 
-    if ((tasto.ctrlKey || tasto.metaKey) && /^k$/i.test(tasto.key) && chiTrattieneIlFuoco()) {
-        tasto.preventDefault();
-        tasto.stopPropagation();
-    }
     if (tasto.key === 'Escape') {
         if (campo.matches?.('.zr-shell .zr-top > .zr-search input')) {
             campo.blur = () => {};
@@ -177,6 +171,19 @@ function escNellaBarra(tasto: KeyboardEvent): void {
                 }
             });
         }
+    }
+}
+
+/**
+ * Finché un dialogo o un pannello a tutta pagina trattiene il fuoco, Ctrl+K e Cmd+K (senza Alt, come li legge l'`AppShell`) non
+ * arrivano all'`AppShell`, che aprirebbe la ricerca sotto di loro, dove non si vede (sprint 89, zr-pm 01/11/2026). In ascolto
+ * sulla radice del documento, dopo la pagina e prima dell'`AppShell`, che ascolta sul documento: chi nel dialogo usa Ctrl+K lo
+ * riceve ancora. Provvisorio, finché l'`AppShell` non lo fa da sé.
+ */
+function ctrlKFermo(tasto: KeyboardEvent): void {
+    if ((tasto.ctrlKey || tasto.metaKey) && !tasto.altKey && /^k$/i.test(tasto.key) && chiTrattieneIlFuoco()) {
+        tasto.preventDefault();
+        tasto.stopPropagation();
     }
 }
 
@@ -246,9 +253,7 @@ function fuoriDalSelettore(uscita: FocusEvent): void {
         selettore.querySelector<HTMLElement>('.zr-ws-switch')?.click();
     }
     document.querySelectorAll<HTMLElement>('.zr-shell .zr-avatar-btn[aria-expanded="true"], .zr-shell .zr-bell[aria-expanded="true"], .zr-shell .zr-create[aria-expanded="true"]').forEach((pulsante) => {
-        const suo = (qui: Element | null): boolean => qui === pulsante || !!qui?.closest?.('.zr-menu, .zr-pop');
-
-        if (verso && !suo(verso)) {
+        if (verso && verso !== pulsante && !verso.closest?.('.zr-menu, .zr-pop')) {
             pulsante.click();
         }
     });
@@ -344,6 +349,7 @@ export function ripeti(tasto: KeyboardEvent, fermato: boolean, tab: boolean): vo
 
 gestori.forEach((gestore) => document.addEventListener('keydown', gestore));
 document.addEventListener('keydown', escNellaBarra, true);
+document.documentElement.addEventListener('keydown', ctrlKFermo);
 document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('click', sceltaDalPiu, true);
 document.addEventListener('focusout', fuoriDalSelettore);

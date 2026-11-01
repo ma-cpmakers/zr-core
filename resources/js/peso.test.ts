@@ -699,8 +699,8 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(tastiera).not.toBe('');
         // v3.8.0 (zr-pm, 26/10/2026): il Tab che resta dentro un dialogo e Esc dal pannello della ricerca, usciti dal pezzo dei
         // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
-        // v3.14.1 (sprint 89, zr-pm 01/11/2026): Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, 1.998 byte con cinque
-        // forme del pezzo unificate; il tetto è il massimo della Decisione 18611, non la misura più 20.
+        // v3.14.1 (sprint 89, zr-pm 01/11/2026): Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, 1.999 byte con le forme
+        // del pezzo unificate (revisione della PR #150: in ascolto sulla radice, senza Alt); il tetto è il massimo della Decisione 18611.
         expect(gzip(tastiera)).toBeLessThanOrEqual(2_000);
     });
 

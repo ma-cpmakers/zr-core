@@ -9442,13 +9442,16 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             expect([ricercaAperta(), document.activeElement]).toStrictEqual([true, uno('.zr-top .zr-search input')]);
         });
 
-        it('con un `Dialog` aperto, a ogni larghezza, Ctrl+K non fa niente; senza dialoghi né pannelli la ricerca si apre, e K senza Ctrl o Cmd resta di chi scrive (T1.2)', async () => {
+        it('con un `Dialog` aperto, a ogni larghezza, Ctrl+K non fa niente ma arriva ancora a chi ascolta nel dialogo; senza dialoghi né pannelli la ricerca si apre, e K senza Ctrl o Cmd, o con Alt, resta di chi scrive (T1.2)', async () => {
             largaAlPiu720(false);
             await laPagina(ilDialogo(<input id="nome" />));
+            const nelDialogo: string[] = [];
+            uno('#nome')?.addEventListener('keydown', (tasto) => nelDialogo.push(tasto.key));
             await conIlFuoco(uno('#nome'));
             expect(await ctrlK()).toBe(true);
-            expect([ricercaAperta(), document.activeElement]).toStrictEqual([false, uno('#nome')]);
+            expect([ricercaAperta(), document.activeElement, nelDialogo]).toStrictEqual([false, uno('#nome'), ['k']]);
             expect(await ctrlK('k', {})).toBe(false);
+            expect(await ctrlK('k', { ctrlKey: true, altKey: true })).toBe(false);
 
             await laPagina(<input id="nome" />);
             await conIlFuoco(uno('#nome'));
