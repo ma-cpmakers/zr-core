@@ -443,6 +443,42 @@ async function dialogoColMouse(page) {
     scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', 'un `Dialog` aperto col mouse prende il fuoco sul primo elemento che lo prende; chiuso con la «×», il fuoco torna al pulsante che lo ha aperto (#2871)', `dialogo finto; fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco ${dopo[1] ? 'sul pulsante' : `su ${dopo[2]}`}`);
 }
 
+// Un «Attendi» — un `Dialog` senza niente che prenda il fuoco — aperto dal «Salva» di un dialogo che subito dopo si chiude: il
+// fuoco va sull'«Attendi», che lo prende su di sé, e non torna al pulsante dietro il velo, dove Invio lo premerebbe (v3.14.3,
+// Decisione 19428). In un browser un `div` senza `tabindex` il fuoco non lo prende: vitest, con happy-dom, questo non lo vede.
+async function attendiDaUnDialogo(page) {
+    await page.evaluate(() => {
+        const velo = (html) => {
+            const finto = document.createElement('div');
+            finto.className = 'zr-scrim';
+            finto.dataset.uat = 'velo';
+            finto.innerHTML = html;
+            document.body.append(finto);
+            return finto;
+        };
+        const apre = document.createElement('button');
+        apre.type = 'button';
+        apre.textContent = 'UAT apre la scheda';
+        apre.dataset.uat = 'apre';
+        apre.addEventListener('click', () => {
+            const scheda = velo('<div class="zr-dialog" role="dialog" aria-label="UAT scheda"><header class="zr-dialog-head"><h2>Scheda</h2><button type="button" aria-label="Chiudi">×</button></header><div class="zr-dialog-body"><button type="button" data-uat="salva">Salva</button></div></div>');
+            scheda.querySelector('[data-uat="salva"]').addEventListener('click', () => {
+                velo('<div class="zr-dialog" role="dialog" aria-label="UAT attendi" data-uat="attendi"><div class="zr-dialog-body"><p>Salvo…</p></div></div>');
+                setTimeout(() => scheda.remove(), 150);
+            });
+        });
+        document.querySelector('.zr-shell > main')?.prepend(apre);
+    });
+    await page.click('[data-uat="apre"]');
+    await pausa(300);
+    await page.click('[data-uat="salva"]');
+    await pausa(600);
+    const dove = await page.evaluate(() => [document.querySelectorAll('[data-uat="velo"]').length, document.activeElement?.matches('[data-uat="attendi"]') ?? false, document.activeElement?.matches('[data-uat="apre"]') ?? false, document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName]);
+    await page.screenshot({ path: join(cartella, 'attendi-da-un-dialogo-1280.png') });
+    await page.evaluate(() => document.querySelectorAll('[data-uat="apre"], [data-uat="velo"]').forEach((finto) => finto.remove()));
+    scrivi(dove[0] === 1 && dove[1] && !dove[2] ? '✅' : '❌', 'G.2', 'un «Attendi» senza elementi aperto da un dialogo che si chiude prende il fuoco su di sé; il fuoco non torna al pulsante dietro il velo (v3.14.3)', `dialoghi finti aperti: ${dove[0]}; fuoco ${dove[1] ? 'sull\'«Attendi»' : dove[2] ? 'sul pulsante dietro il velo' : `su «${dove[3]}»`}`);
+}
+
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
 // della v3.8.1 nel pezzo della tastiera).
 async function selettore(page) {
@@ -943,6 +979,7 @@ async function uat(page, apri) {
     await dialogoDalPiu(page);
     await tornaAllaPagina();
     await dialogoColMouse(page);
+    await attendiDaUnDialogo(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);

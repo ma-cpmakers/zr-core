@@ -94,7 +94,7 @@ function dialogoSopraIlPannello(aggiunto: Node): void {
             dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)');
             if (!dialogo.contains(document.activeElement)) {
                 aperti.push([dialogo, document.activeElement]);
-                [...dialogo.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].some((fermata) => (fermata.focus(), document.activeElement === fermata));
+                [...dialogo.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].some((fermata) => (fermata.focus(), document.activeElement === fermata)) || (dialogo.tabIndex = -1, dialogo.focus());
             }
         });
     }
@@ -103,7 +103,9 @@ function dialogoSopraIlPannello(aggiunto: Node): void {
 /**
  * Il `Dialog` del design system non sposta il fuoco (voce 2871; zr-pm, 01/11/2026, Decisione 19411): quando un dialogo entra
  * nel documento col fuoco fuori, `dialogoSopraIlPannello` si ricorda chi lo aveva e lo dà al primo elemento del dialogo che lo
- * prende (senza indicazione, la «×» Chiudi dell'intestazione; un campo nascosto o un pulsante spento si saltano). Un ricordo per
+ * prende (senza indicazione, la «×» Chiudi dell'intestazione; un campo nascosto o un pulsante spento si saltano); un dialogo
+ * senza niente che lo prenda — un «Attendi» — lo prende su di sé, col `tabindex` a -1 (`v3.14.3`, Decisione 19428), così il
+ * fuoco non resta in un dialogo che si chiude mentre lui resta aperto, e non torna al pulsante dietro il velo. Un ricordo per
  * dialogo: una conferma aperta da dentro un dialogo rende il fuoco al dialogo, e lui al pulsante che l'aveva aperto. Il fuoco già dentro — portato dal modulo, o da `autoFocus` di
  * React su «Annulla» — resta dov'è, e allora il ritorno è del modulo. Quando quel dialogo esce dal documento e il fuoco è
  * rimasto sul `body`, l'osservatore lo riporta a chi lo aveva (se non era il `body` stesso); a un elemento che lo ha preso nel
@@ -364,7 +366,7 @@ function cassetto(): void {
 }
 
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
-const conLaCornice = (): boolean => document.querySelector('.zr-shell') !== null;
+const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
 new MutationObserver((cambi) => {
     if (!conLaCornice()) {

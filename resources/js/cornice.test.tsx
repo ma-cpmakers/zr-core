@@ -9043,6 +9043,9 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             <Dialog open title="Attendi"><p>Solo testo</p></Dialog>
         </>);
         const dialogo = uno('.zr-dialog') as HTMLElement;
+        // Dalla v3.14.3 (Decisione 19428) il dialogo il fuoco lo prende già quando entra: qui il `tabindex` si toglie, per
+        // provare che anche il Tab da solo glielo dà.
+        dialogo.removeAttribute('tabindex');
         // Il design system non dà un `tabindex` al dialogo, e in un browser `focus()` da solo non fa niente (happy-dom dà il
         // fuoco a tutto): conta il `tabindex` che il dialogo ha quando il fuoco gli è offerto.
         expect(dialogo.hasAttribute('tabindex')).toBe(false);
@@ -9192,7 +9195,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(uno('#prima'));
     });
 
-    it('chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna a chi lo aveva prima che il dialogo lo prendesse; riaperto, il dialogo non ha il `tabindex` della cornice (sprint 32 · T1.2)', async () => {
+    it('chiuso un `Dialog` che non aveva niente su cui fermarsi, il fuoco torna a chi lo aveva prima che il dialogo lo prendesse; riaperto, il dialogo il fuoco lo prende di nuovo su di sé (sprint 32 · T1.2; v3.14.3)', async () => {
         largaAlPiu720(false);
         const pagina = (aperto: boolean) => (
             <>
@@ -9211,8 +9214,9 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(uno('.zr-dialog')).toBeNull();
         expect(document.activeElement).toBe(dietro());
 
+        // Dalla v3.14.3 (Decisione 19428) il dialogo senza fermate il fuoco lo prende quando entra.
         await laPagina(pagina(true));
-        expect(uno('.zr-dialog')?.hasAttribute('tabindex')).toBe(false);
+        expect(document.activeElement).toBe(uno('.zr-dialog'));
     });
 
     it('il fuoco non è mandato a chi non è più in pagina quando il dialogo si chiude, e non si toglie a un elemento che lo ha preso nel frattempo (sprint 32 · T1.2)', async () => {
@@ -9556,6 +9560,46 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             expect(document.activeElement).toBe(uno('#nome'));
             await laPagina(annidati(false, false));
             expect(document.activeElement).toBe(dietro());
+        });
+
+        it('un dialogo senza niente che prenda il fuoco — un «Attendi» — lo prende su di sé; chiuso, il fuoco torna al pulsante che lo aveva (v3.14.3, Decisione 19428)', async () => {
+            largaAlPiu720(false);
+            const attendi = (aperto: boolean) => (
+                <>
+                    <button type="button" id="dietro">Salva</button>
+                    <Dialog open={aperto} title="Attendi"><p>Salvo…</p></Dialog>
+                </>
+            );
+            await laPagina(attendi(false));
+            await conIlFuoco(dietro());
+            await laPagina(attendi(true));
+            expect(document.activeElement).toBe(uno('.zr-dialog'));
+            expect(uno('.zr-dialog')?.tabIndex).toBe(-1);
+
+            await laPagina(attendi(false));
+            expect(document.activeElement).toBe(dietro());
+        });
+
+        it('un «Attendi» aperto da un dialogo resta aperto mentre il primo si chiude: il fuoco resta nell\'«Attendi» e non torna al pulsante dietro il velo, dove Invio lo premerebbe (v3.14.3, revisione della PR 152)', async () => {
+            largaAlPiu720(false);
+            const pagina = (scheda: boolean, attendi: boolean) => (
+                <>
+                    <button type="button" id="dietro">Apre la scheda</button>
+                    <Dialog open={scheda} title="Scheda" onClose={senzaEffetto}><input id="nome" /></Dialog>
+                    <Dialog open={attendi} title="Attendi"><p>Salvo…</p></Dialog>
+                </>
+            );
+            await laPagina(pagina(false, false));
+            await conIlFuoco(dietro());
+            await laPagina(pagina(true, false));
+            await conIlFuoco(uno('#nome'));
+            await laPagina(pagina(true, true));
+            const ilDialogo = tutti('.zr-dialog').at(-1);
+            expect(document.activeElement).toBe(ilDialogo);
+
+            await laPagina(pagina(false, true));
+            expect(document.activeElement).toBe(ilDialogo);
+            expect(document.activeElement).not.toBe(dietro());
         });
 
         it('un\'anteprima (`inline`) non prende il fuoco, e senza una cornice in pagina nemmeno un dialogo (T1.4)', async () => {
