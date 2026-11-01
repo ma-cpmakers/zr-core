@@ -8580,7 +8580,8 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
         expect(document.activeElement).toBe(uno('#della-pagina'));
     });
 
-    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo: lo dà al dialogo, e quando il dialogo se ne va torna al «+»', async () => {
+    // Dallo sprint 90 (voce 2871) il fuoco lo prende il primo elemento del dialogo, col pezzo dei rimedi, non più il dialogo.
+    it('una voce che apre un dialogo senza dargli il fuoco non lo manda al «+» dietro il velo: va nel dialogo, e quando il dialogo se ne va torna al «+»', async () => {
         const velo = document.createElement('div');
         velo.className = 'zr-scrim';
         velo.innerHTML = '<div class="zr-dialog" role="dialog"><button type="button">Nel dialogo</button></div>';
@@ -8590,7 +8591,7 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
 
         expect(uno('.zr-menu')).toBeNull();
         expect(document.activeElement).not.toBe(piu());
-        expect(document.activeElement).toBe(velo.firstElementChild);
+        expect(document.activeElement).toBe(velo.querySelector('button'));
 
         await act(async () => {
             velo.remove();
@@ -9278,10 +9279,9 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(await premi('Tab')).toBe(true);
         const alDietro = vi.spyOn(dietro() as HTMLElement, 'focus');
 
+        // Dallo sprint 90 (voce 2871) il dialogo che entra prende il fuoco da sé, sul suo primo elemento.
         await laPagina(pagina(false, true));
         expect(alDietro).not.toHaveBeenCalled();
-        expect(document.activeElement).toBe(document.body);
-        expect(await premi('Tab')).toBe(true);
         expect(document.activeElement).toBe(chiudi());
     });
 
@@ -9457,6 +9457,81 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             await conIlFuoco(uno('#nome'));
             expect(await ctrlK()).toBe(true);
             expect([ricercaAperta(), document.activeElement]).toStrictEqual([true, uno('.zr-top .zr-search input')]);
+        });
+    });
+    // Sprint 90 (zr-pm-07, 01/11/2026, Decisione 19411): il `Dialog` del design system non sposta il fuoco. Ogni modulo lo
+    // faceva da sé (zr-home: `useFuocoDelDialogo`), e chi se ne dimenticava lo lasciava fuori dal dialogo.
+    describe('un `Dialog` che si apre prende il fuoco, e alla chiusura il fuoco torna a chi lo aveva (sprint 90 · T1, voce 2871)', () => {
+        const Pagina = ({ aperto, inline = false, figli = <input id="nome" /> }: { aperto: boolean; inline?: boolean; figli?: ReactElement }) => (
+            <>
+                <button type="button" id="dietro">Apre il dialogo</button>
+                <Dialog open={aperto} inline={inline} title="Nuova scheda" onClose={senzaEffetto} footer={<button type="button" id="salva">Salva</button>}>{figli}</Dialog>
+                <button type="button" id="dopo">Dopo il dialogo</button>
+            </>
+        );
+        /** Un modulo che alla chiusura riporta il fuoco da sé, nello stesso momento in cui il dialogo esce. */
+        const ConIlSuoRitorno = ({ aperto }: { aperto: boolean }) => {
+            useLayoutEffect(() => {
+                if (!aperto) {
+                    document.getElementById('dopo')?.focus();
+                }
+            }, [aperto]);
+
+            return <Pagina aperto={aperto} />;
+        };
+
+        it('dal pulsante che lo apre, o da `body`, il fuoco va sul primo elemento del dialogo: la «×» Chiudi dell\'intestazione (T1.1)', async () => {
+            largaAlPiu720(false);
+            await laPagina(<Pagina aperto={false} />);
+            await conIlFuoco(dietro());
+            await laPagina(<Pagina aperto />);
+            expect(document.activeElement).toBe(chiudi());
+
+            await laPagina(<Pagina aperto={false} />);
+            await act(async () => (document.activeElement as HTMLElement | null)?.blur());
+            expect(document.activeElement).toBe(document.body);
+            await laPagina(<Pagina aperto />);
+            expect(document.activeElement).toBe(chiudi());
+        });
+
+        it('il fuoco già dentro il dialogo, con `autoFocus` di React o portato dal modulo, resta dov\'è (T1.2)', async () => {
+            largaAlPiu720(false);
+            await laPagina(<Pagina aperto={false} figli={<input id="nome" autoFocus />} />);
+            await conIlFuoco(dietro());
+            await laPagina(<Pagina aperto figli={<input id="nome" autoFocus />} />);
+            expect(document.activeElement).toBe(uno('#nome'));
+        });
+
+        it('chiuso il dialogo a cui ha dato il fuoco, il fuoco rimasto su `body` torna al pulsante che lo aveva; a un elemento che l\'ha preso nel frattempo non si toglie (T1.3)', async () => {
+            largaAlPiu720(false);
+            await laPagina(<Pagina aperto={false} />);
+            await conIlFuoco(dietro());
+            await laPagina(<Pagina aperto />);
+            await conIlFuoco(uno('#nome'));
+            await laPagina(<Pagina aperto={false} />);
+            expect(document.activeElement).toBe(dietro());
+
+            await laPagina(<ConIlSuoRitorno aperto={false} />);
+            await conIlFuoco(dietro());
+            await laPagina(<ConIlSuoRitorno aperto />);
+            expect(document.activeElement).toBe(chiudi());
+            await laPagina(<ConIlSuoRitorno aperto={false} />);
+            expect(document.activeElement).toBe(uno('#dopo'));
+        });
+
+        it('un\'anteprima (`inline`) non prende il fuoco, e senza una cornice in pagina nemmeno un dialogo (T1.4)', async () => {
+            largaAlPiu720(false);
+            await laPagina(<Pagina aperto={false} inline />);
+            await conIlFuoco(dietro());
+            await laPagina(<Pagina aperto inline />);
+            expect(uno('.zr-scrim.is-inline')).not.toBeNull();
+            expect(document.activeElement).toBe(dietro());
+
+            await mostra(<Pagina aperto={false} />);
+            await conIlFuoco(dietro());
+            await mostra(<Pagina aperto />);
+            expect(uno('.zr-shell')).toBeNull();
+            expect(document.activeElement).toBe(dietro());
         });
     });
 });

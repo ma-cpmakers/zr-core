@@ -90,9 +90,25 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
  */
 function dialogoSopraIlPannello(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement) {
-        (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)'));
+        (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => {
+            dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)');
+            if (!dialogo.contains(document.activeElement)) {
+                aperto = [dialogo, document.activeElement];
+                dialogo.querySelector<HTMLElement>(PRENDONO_IL_FUOCO)?.focus();
+            }
+        });
     }
 }
+
+/**
+ * Il `Dialog` del design system non sposta il fuoco (voce 2871; zr-pm, 01/11/2026, Decisione 19411): quando un dialogo entra
+ * nel documento col fuoco fuori, `dialogoSopraIlPannello` si ricorda chi lo aveva e lo dà al primo elemento del dialogo che lo
+ * prende (senza indicazione, la «×» Chiudi dell'intestazione). Il fuoco già dentro — portato dal modulo, o da `autoFocus` di
+ * React su «Annulla» — resta dov'è, e allora il ritorno è del modulo. Quando quel dialogo esce dal documento e il fuoco è
+ * rimasto sul `body`, l'osservatore lo riporta a chi lo aveva (se non era il `body` stesso); a un elemento che lo ha preso nel
+ * frattempo non si toglie.
+ */
+let aperto: [dialogo: HTMLElement, loAveva: Element | null] | undefined;
 
 /**
  * Ciò che entra fra le azioni della barra in alto: i due menu che la barra apre, il profilo e le notifiche, quelli che
@@ -362,6 +378,13 @@ new MutationObserver((cambi) => {
             dialogoSopraIlPannello(aggiunto);
             avatarFuoriDalMenu(aggiunto);
         });
+    }
+    // Il dialogo a cui `dialogoSopraIlPannello` ha dato il fuoco è uscito: il fuoco rimasto sul `body` torna a chi lo aveva.
+    if (aperto && !aperto[0].isConnected) {
+        if (document.activeElement === document.body && aperto[1] !== document.body) {
+            (aperto[1] as HTMLElement | null)?.focus();
+        }
+        aperto = undefined;
     }
     azioniSottoLaRicerca();
     cassetto();

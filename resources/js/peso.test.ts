@@ -690,7 +690,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // si allarga, qui e non nel pezzo della tastiera perché serve a chi usa un lettore di schermo col tocco, che non preme tasti:
         // questa è la contropartita (misura del 28/10: 1.959 al primo prototipo; tetto 1.979, la misura più 20, Decisione 19069;
         // 1.969 nella forma senza `aria-modal` e con `matchMedia`, Decisione di zr-pm dopo la revisione della PR #145).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_979);
+        // Sprint 90 (voce #2871): il `Dialog` che si apre prende il fuoco e alla chiusura lo rende, qui perché un dialogo si apre
+        // anche col mouse, prima di ogni tasto (misura del 01/11: 2.028 al prototipo; tetto 2.048, la misura più 20, per eccezione:
+        // l'accessibilità vale più di 55 byte, Decisione 19411; se una contropartita libera byte, il tetto riscende di tanto).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(2_048);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
