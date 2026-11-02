@@ -21,3 +21,6 @@
 
 # Le copie derivate del design system restano byte per byte come l'originale: git non ne tocca i fine riga.
 /resources/zeiras/** -text
+
+# I font del pacchetto (dalla v3.15.0) sono binari: git non ne tocca i byte.
+/resources/fonts/*.woff2 binary
