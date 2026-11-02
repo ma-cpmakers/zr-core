@@ -21,3 +21,9 @@ export function dividiIlCss(css: string): { zeiras: string; stili: Record<string
  * degli stili dei componenti di cui usa le classi; se il blocco non c'è, o usa una riga privata spezzata, lancia un errore.
  */
 export function aParte(letto: { corpo: string[]; nomi: string[] }, nome: string, divisi?: { proprie: Record<string, string[]> }): string;
+
+/** Il CSS del bundle coi font del pacchetto (dalla `v3.15.0`): l'`@import` di Google diventa quello di font.css; se il bundle chiede a Google altri font lancia un errore. */
+export function coiFontDelPacchetto(css: string): string;
+
+/** Il testo di resources/css/bundle.css (dalla `v3.15.0`): il bundle intero coi font del pacchetto, sotto il commento che lo dice generato. */
+export function bundleIntero(css: string): string;

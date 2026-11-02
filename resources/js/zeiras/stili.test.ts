@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { A_PARTE, aParte, dividiIlCss, leggi } from '../../../scripts/componenti-genera.mjs';
+import { A_PARTE, aParte, bundleIntero, coiFontDelPacchetto, dividiIlCss, leggi } from '../../../scripts/componenti-genera.mjs';
 
 // Sprint 75 · T1 (voce 2570). Dalla `v3.3.0` `npm run componenti` divide anche resources/zeiras/bundle.css (copia derivata del
 // design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `A_PARTE`, e ognuno
@@ -32,7 +32,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         const divisi = dividiIlCss(bundleCss);
         const delCss = corpo(divisi.zeiras);
 
-        expect([...piene(delCss), ...NOMI.flatMap((nome) => piene(corpo(divisi.stili[nome])))].sort()).toStrictEqual(piene(bundleCss).sort());
+        expect([...piene(delCss), ...NOMI.flatMap((nome) => piene(corpo(divisi.stili[nome])))].sort()).toStrictEqual(piene(coiFontDelPacchetto(bundleCss)).sort());
         expect(delCss).not.toMatch(/\.zr-(mention|address)/);
         expect(piene(corpo(divisi.stili.MentionField!)).every((riga) => /^\/\* MentionField[: ]|zr-mention/.test(riga))).toBe(true);
         expect(piene(corpo(divisi.stili.AddressField!)).every((riga) => /^\/\* AddressField[: ]|zr-address/.test(riga))).toBe(true);
@@ -44,10 +44,10 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         expect(divisi.proprie.MentionField).not.toContain('zr-avatar');
     });
 
-    it('in zeiras.css la prima regola è l\'`@import` dei font, come nel bundle', () => {
+    it('in zeiras.css la prima regola è l\'`@import` dei font del pacchetto, dove il bundle ha quello di Google (sprint 92 · T2.1)', () => {
         const regole = dividiIlCss(bundleCss).zeiras.replace(/\/\*[\s\S]*?\*\//g, '').trimStart();
 
-        expect(regole.startsWith("@import url('https://fonts.googleapis.com/")).toBe(true);
+        expect(regole.startsWith("@import './font.css';\n")).toBe(true);
         expect(bundleCss.trimStart().startsWith("@import url('https://fonts.googleapis.com/")).toBe(true);
     });
 
@@ -73,5 +73,40 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.
         const senzaMention = aParte(leggi(bundleJs.replaceAll('zr-mention-', 'zr-nessuno-')), 'AddressField', divisi);
         expect(senzaMention).not.toContain('MentionField.css');
+    });
+});
+
+describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint 92 · T2, voce #2945)', () => {
+    const generati = ['resources/css/zeiras.css', 'resources/css/bundle.css', ...NOMI.map((nome) => `resources/css/zeiras/${nome}.css`)];
+
+    it('nessun CSS di resources/css nomina fonts.googleapis.com o fonts.gstatic.com (T2.1)', () => {
+        for (const percorso of [...generati, 'resources/css/font.css', 'resources/css/zeiras-token.css']) {
+            expect(readFileSync(delRepo(percorso), 'utf8')).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+        }
+    });
+
+    it('resources/css/bundle.css è quello che il bundle genera: il commento che lo dice generato, poi il bundle con la sola riga dei font cambiata (T2.2)', () => {
+        const intero = readFileSync(delRepo('resources/css/bundle.css'), 'utf8');
+        const righe = corpo(intero).split('\n');
+        const delBundle = bundleCss.split('\n');
+
+        expect(intero).toBe(bundleIntero(bundleCss));
+        expect(righe).toHaveLength(delBundle.length);
+        expect(righe.filter((riga, indice) => riga !== delBundle[indice])).toStrictEqual(["@import './font.css';"]);
+        expect(righe[0]).toBe("@import './font.css';");
+    });
+
+    it('un bundle che chiede a Google altri font ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
+        const altro = bundleCss.replace('Instrument+Sans:wght@400..700', 'Instrument+Sans:wght@400..800');
+        const dueVolte = `${bundleCss}\n@import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');\n`;
+        const daGstatic = bundleCss.replace(/^.*\n/, "@font-face { font-family: 'X'; src: url(https://fonts.gstatic.com/s/x.woff2); }\n");
+
+        for (const css of [altro, dueVolte, daGstatic]) {
+            expect(() => coiFontDelPacchetto(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
+            expect(() => dividiIlCss(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
+            expect(() => bundleIntero(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
+        }
+        const senza = bundleCss.replace(/^.*\n/, '');
+        expect(coiFontDelPacchetto(senza)).toBe(`@import './font.css';\n${senza}`);
     });
 });

@@ -1,5 +1,5 @@
 // Il CSS nell'ordine del README: prima il design system (il suo @import dei font è la prima regola), poi i token.
-import '../zeiras/bundle.css';
+import '../css/bundle.css';
 import '../css/zeiras-token.css';
 import { createInertiaApp, http, router } from '@inertiajs/react';
 import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';

@@ -1,7 +1,8 @@
 // Il comando che genera resources/js/zeiras/componenti.js da resources/zeiras/bundle.js (il design system di Zeiras, copia
 // derivata), e accanto il modulo di ogni componente di `A_PARTE` (dalla `v3.1.0`: resources/js/zeiras/MentionField.js); dalla
 // `v3.3.0` divide anche resources/zeiras/bundle.css in resources/css/zeiras.css e negli stili di ogni componente di `A_PARTE`
-// (resources/css/zeiras/<Nome>.css), che il suo modulo importa:
+// (resources/css/zeiras/<Nome>.css), che il suo modulo importa; dalla `v3.15.0` scrive anche resources/css/bundle.css, il bundle
+// intero, e in tutti e due i font sono quelli del pacchetto (resources/css/font.css), non quelli di Google Fonts:
 // `npm run componenti` scrive i file; `npm run componenti -- --controlla` non scrive: rigenera in memoria, confronta coi file ed
 // esce 1 se uno non è uguale. Lo lancia la CI a ogni giro. I file non si ritoccano a mano: si rigenerano quando il bundle
 // cambia. Se il bundle non ha la forma che lo script conosce dice che cosa non torna ed esce 1, senza scrivere niente; se manca,
@@ -10,7 +11,7 @@
 // cartella lo si lanci, e non c'è niente da importare (chi vuole `genera` lo prende di là).
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { A_PARTE, aParte, componi, dividiIlCss, leggi, nonIntero } from './componenti-genera.mjs';
+import { A_PARTE, aParte, bundleIntero, componi, dividiIlCss, leggi, nonIntero } from './componenti-genera.mjs';
 
 const qui = (percorso) => new URL(`../${percorso}`, import.meta.url);
 const fileDelBundle = 'resources/zeiras/bundle.js';
@@ -59,6 +60,7 @@ try {
         [fileDelModulo, componi(letto), `${letto.nomi.length} nomi esportati`, fileDelBundle],
         ...Object.keys(A_PARTE).map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome, divisi), nome, fileDelBundle]),
         ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${Object.keys(A_PARTE).join(' e di ')}`, fileDelCss],
+        ['resources/css/bundle.css', bundleIntero(css), 'il bundle intero coi font del pacchetto', fileDelCss],
         ...Object.keys(A_PARTE).map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
     ];
 } catch (errore) {
