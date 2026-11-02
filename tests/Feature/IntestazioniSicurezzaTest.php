@@ -22,10 +22,10 @@ use Zeiras\Core\Http\IntestazioniSicurezza;
 // rispondono in produzione il 10/10/2026 — stanno scritte qui per intero: una modifica della classe che ne sposta un byte è
 // rossa. Sono funzioni pure: nessuna richiesta, nessuna configurazione.
 
-/** La CSP di tutti, quella di un modulo che non aggiunge niente: oggi zr-board (236 byte). */
-const CSP_DI_TUTTI = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+/** La CSP di tutti, quella di un modulo che non aggiunge niente: oggi zr-board (243 byte; 236 fino alla v3.14, senza `'self'` in `font-src`). */
+const CSP_DI_TUTTI = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
-/** Quella di un modulo che serve anche font suoi: oggi zr-home (243 byte). */
+/** Quella di un modulo che serve anche font suoi: oggi zr-home (243 byte). Dalla v3.15.0 è uguale a quella di tutti: `'self'` in `font-src` c'è già, e non esce due volte. */
 const CSP_DI_HOME = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
 /** La stessa, su una pagina con uno script e un riquadro di un'altra origine: oggi le pagine di zr-home con Turnstile (322 byte). */
@@ -84,16 +84,35 @@ it('compone byte per byte le tre CSP che i frontend rispondono oggi: prima le pa
     expect(strlen($attesa))->toBe($byte)
         ->and(IntestazioniSicurezza::componi($delModulo, $dellaPagina))->toBe([$attesa, []]);
 })->with([
-    'di tutti (zr-board)' => [[], [], CSP_DI_TUTTI, 236],
+    'di tutti (zr-board)' => [[], [], CSP_DI_TUTTI, 243],
     'di zr-home' => [AGGIUNTE_DI_HOME, [], CSP_DI_HOME, 243],
     'di zr-home con Turnstile' => [AGGIUNTE_DI_HOME, AGGIUNTE_DI_TURNSTILE, CSP_DI_HOME_CON_TURNSTILE, 322],
-    'una direttiva aperta senza sorgenti non esce' => [['frame-src' => []], ['frame-src' => []], CSP_DI_TUTTI, 236],
+    'una direttiva aperta senza sorgenti non esce' => [['frame-src' => []], ['frame-src' => []], CSP_DI_TUTTI, 243],
 ]);
 
 it('la costante pubblica è la CSP di tutti, quella che esce senza aggiunte; la Permissions-Policy di tutti spegne le otto funzioni (sprint 16 · T1.1)', function () {
     expect(IntestazioniSicurezza::CSP)->toBe(CSP_DI_TUTTI)
         ->and(IntestazioniSicurezza::componi())->toBe([CSP_DI_TUTTI, []])
         ->and(IntestazioniSicurezza::PERMESSI)->toBe('accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
+});
+
+// Sprint 92 · T3 (voce #2945): dalla v3.15.0 i font arrivano dal pacchetto, cioè dall'origine del modulo, e la CSP di tutti li
+// ammette con `'self'` in `font-src`. Allarga: minore, con l'annuncio. Google resta ammesso finché i moduli non sono passati ai
+// CSS del pacchetto (voce #2946, la prossima maggiore). Un modulo che `'self'` lo aggiungeva già (zr-home) non lo ha due volte.
+
+it('la CSP di tutti ammette i font dall\'origine del modulo: `font-src \'self\' https://fonts.gstatic.com` (sprint 92 · T3.1)', function () {
+    preg_match('/(?:^|; )font-src ([^;]*)/', IntestazioniSicurezza::CSP, $fontSrc);
+
+    expect($fontSrc[1] ?? null)->toBe("'self' https://fonts.gstatic.com");
+});
+
+it('un modulo che aggiunge `\'self\'` a `font-src` ha la CSP di tutti, con `\'self\'` una volta sola (sprint 92 · T3.2)', function () {
+    [$csp, $scartate] = IntestazioniSicurezza::componi(AGGIUNTE_DI_HOME);
+
+    expect($csp)->toBe(IntestazioniSicurezza::CSP)
+        ->and(substr_count($csp, "'self' https://fonts.gstatic.com"))->toBe(1)
+        ->and(substr_count($csp, "font-src 'self' 'self'"))->toBe(0)
+        ->and($scartate)->toBe([]);
 });
 
 // Sprint 16 · review, R1: `frame-src` è l'unica delle sei direttive che la CSP di tutti non ha. Nasce con la prima sorgente, e con
@@ -103,7 +122,7 @@ it('frame-src nasce con le sole sorgenti scritte: senza \'self\' non lo porta, e
     $componi = fn (array $aggiunte) => $diChi === 'modulo' ? IntestazioniSicurezza::componi($aggiunte) : IntestazioniSicurezza::componi([], $aggiunte);
     [$senza, $scartateSenza] = $componi(['frame-src' => ['https://challenges.cloudflare.com']]);
     [$con, $scartateCon] = $componi(['frame-src' => ['https://challenges.cloudflare.com', "'self'"]]);
-    $diTutti = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; ";
+    $diTutti = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; ";
     $coda = "; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
     expect(str_contains(IntestazioniSicurezza::CSP, 'frame-src'))->toBe(false)
@@ -178,13 +197,13 @@ it('ognuna delle sei direttive che si estendono prende un\'origine ammessa al su
     'script-src' => ['script-src', "script-src 'self'", "script-src 'self' https://a.example.com"],
     'style-src' => ['style-src', "style-src 'self' https://fonts.googleapis.com", "style-src 'self' https://fonts.googleapis.com https://a.example.com"],
     'img-src' => ['img-src', "img-src 'self'", "img-src 'self' https://a.example.com"],
-    'font-src' => ['font-src', 'font-src https://fonts.gstatic.com', 'font-src https://fonts.gstatic.com https://a.example.com'],
+    'font-src' => ['font-src', 'font-src \'self\' https://fonts.gstatic.com', 'font-src \'self\' https://fonts.gstatic.com https://a.example.com'],
     'connect-src' => ['connect-src', "connect-src 'self'", "connect-src 'self' https://a.example.com"],
     'frame-src' => ['frame-src', "connect-src 'self'; object-src", "connect-src 'self'; frame-src https://a.example.com; object-src"],
 ]);
 
 it('un\'origine ammessa entra dopo le parole fra apici e dopo le origini di tutti, nell\'ordine tutti, modulo, pagina, e una volta sola (sprint 16 · T1.4)', function () {
-    $conLeApi = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self' https://api.example.com https://api.example.com:8443; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+    $conLeApi = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.example.com https://api.example.com:8443; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
     expect(IntestazioniSicurezza::componi(['connect-src' => ['https://api.example.com']], ['connect-src' => ['https://api.example.com:8443']]))->toBe([$conLeApi, []])
         // Ripetuta nel modulo, fra modulo e pagina, e uguale a una di tutti: una volta sola, e non è uno scarto.
@@ -295,7 +314,7 @@ const NESSUNA_INTESTAZIONE = [
 ];
 
 /** La CSP di tutti con Turnstile sulla pagina: quella di un modulo senza aggiunte sue, su una pagina che chiede l'insieme. */
-const CSP_DI_TUTTI_CON_TURNSTILE = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const CSP_DI_TUTTI_CON_TURNSTILE = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
 /** Quella di zr-home con Turnstile e, in più, un'origine per le immagini. */
 const CSP_DI_HOME_CON_TURNSTILE_E_IMMAGINI = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' https://fonts.googleapis.com; img-src 'self' https://cdn.example.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";

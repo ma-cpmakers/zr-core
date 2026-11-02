@@ -234,7 +234,7 @@ it('il controllo trova un esadecimale, un rgba e il valore di un token scritti a
     ]);
 });
 
-it('i font arrivano solo da Google Fonts com\'è in bundle.css, nessuno stile è iniettato da JS, e la CSP del README li ammette (T3.3)', function () {
+it('l\'unico indirizzo di bundle.css è l\'`@import` dei font di Google, che i CSS del pacchetto sostituiscono coi loro (sprint 92); nessuno stile è iniettato da JS, e la CSP minima del README è l\'origine del modulo (T3.3)', function () {
     $bundle = File::get(__DIR__.'/../../resources/zeiras/bundle.css');
     preg_match('/^@import url\(\'(https:\/\/fonts\.googleapis\.com\/[^\']+)\'\);/', ltrim(cssSenzaCommenti($bundle)), $font);
     preg_match_all('/https?:\/\/[^\s"\')]+/', $bundle, $indirizzi);
@@ -249,5 +249,5 @@ it('i font arrivano solo da Google Fonts com\'è in bundle.css, nessuno stile è
         ->and($iniettati)->toBe([])
         ->and(File::get(__DIR__.'/../../package.json'))->not->toContain('@fontsource')
         ->and(File::get(__DIR__.'/../../README.md'))
-        ->toContain("default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com");
+        ->toContain("```\nContent-Security-Policy: default-src 'self'\n```");
 });

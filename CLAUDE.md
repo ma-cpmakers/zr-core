@@ -22,9 +22,10 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   system intero, e lo scrive in `window.Zeiras`, con `window.React`; quello per le app (`resources/js/app`, dalla `v1.15.0`)
   dà la cornice senza `Zeiras`, e nella build del frontend entra solo ciò che usa. Dalla `v2.0.0` le tre funzioni per le
   pagine che mostrano le notifiche hanno un ingresso loro, `resources/js/frasi`, e dalla `v3.0.0` anche la quarta,
-  `destinazioneDellaNotifica`. I font arrivano da Google
-  Fonts, come li carica `bundle.css`: chi installa zr-core apre la CSP a `style-src https://fonts.googleapis.com` e
-  `font-src https://fonts.gstatic.com`.
+  `destinazioneDellaNotifica`. I font, dalla `v3.15.0`,
+  arrivano dal pacchetto e non da Google Fonts (#2945): i woff2 e le licenze OFL in `resources/fonts/`, le `@font-face` in
+  `resources/css/font.css`, che `resources/css/bundle.css` e `zeiras.css` importano al posto dell'`@import` di Google; la CSP di
+  tutti ha `font-src 'self'`. Google resta nella CSP finché i moduli non sono passati: lo toglie la prossima maggiore (#2946).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.

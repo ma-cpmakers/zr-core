@@ -28,13 +28,21 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 "require": { "zeiras/zr-core": "^1.0" }
 ```
 
-**Il CSS**, in quest'ordine: prima `bundle.css` del design system, perché il suo `@import` dei font di Google dev'essere la
-prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
+**Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
+dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
 
 ```css
-@import '../../vendor/zeiras/zr-core/resources/zeiras/bundle.css';
+@import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
+
+**I font** (dalla `v3.15.0`) arrivano dal pacchetto, non da Google Fonts: così una visita a un'app di Zeiras non manda l'IP
+della persona a Google. `resources/css/bundle.css` è `bundle.css` del design system (`resources/zeiras/bundle.css`, la copia
+derivata, che resta com'è) con l'`@import` di Google sostituito da quello di `resources/css/font.css`: le `@font-face` di
+Bricolage Grotesque e Instrument Sans, con i cinque file woff2 di `resources/fonts/`, gli stessi che Google serviva, e le due
+licenze OFL accanto. La build del frontend copia i woff2 fra i suoi file, e il browser scarica solo quelli dei caratteri che la
+pagina usa. La CSP di tutti li ammette (`font-src 'self'`). Chi importa ancora `resources/zeiras/bundle.css` prende i font da
+Google: va su `resources/css/bundle.css` («Passare alla v3.15»).
 
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
@@ -76,7 +84,8 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
 È per chi prende quei due campi **solo** dai loro moduli, in pagine caricate a richiesta: il CSS del primo carico pesa circa
-0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»). Si importa al posto di `bundle.css`, nello stesso ordine:
+0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto. Si importa al posto di
+`bundle.css`, nello stesso ordine:
 
 ```css
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras.css';
@@ -248,12 +257,13 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 69,3 KB | 11,6 KB | 3,1 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 66,2 KB | 11,2 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 70,9 KB | 12,0 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 67,7 KB | 11,5 KB | 3,1 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
-CSS d'ingresso.
+CSS d'ingresso. Dalla `v3.15.0` il CSS d'ingresso porta le cinque `@font-face` dei font del pacchetto al posto dell'`@import`
+di Google (1,6 KB, 0,4 KB con gzip); i woff2 sono file a parte, e il browser ne scarica solo quelli che servono.
 
 **I tipi**: i sorgenti del pacchetto sono TypeScript, e il frontend li compila col proprio `tsconfig`, dalla cartella del
 pacchetto. Vogliono `target` ES2022 o più recente, con la sua libreria (dalla `v1.9.0`). Reggono `strict`, `noUnusedLocals` e
@@ -385,6 +395,22 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.14.0` | sotto i 1024 px, dove la barra laterale è un menu a cassetto, il cassetto aperto ha `role="dialog"`, e chiuso — o con la finestra allargata — torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); niente `aria-modal`, perché il pulsante che lo chiude sta fuori dal cassetto; il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`; con un `Dialog` o un `DetailPanel` del modulo aperto sopra, i dialoghi per ruolo sono due: un caso che ne cercava uno solo (`getByRole('dialog')`) va riletto | K390.10 e K390.11 di `uat-cornice.mjs` |
 | `v3.14.2` | un `Dialog` del design system che si apre dentro la cornice col fuoco fuori lo prende sul suo primo elemento (senza indicazione, la «×» Chiudi dell'intestazione), e chiuso, se il fuoco è rimasto sulla pagina, lo rende all'elemento che lo aveva (#2871); il fuoco già dentro il dialogo resta dov'è: lo ha portato il modulo, o `autoFocus` di React su un pulsante; un'anteprima (`inline`) non lo prende; il tetto del pezzo dei rimedi sale a 2.048 byte | niente; chi dà già il fuoco al dialogo da sé, alla sua apertura, può continuare a farlo, e il rimedio non lo sposta | un caso che dopo l'apertura di un `Dialog` si aspettava il fuoco fuori dal dialogo, o sul `body` dopo la chiusura, va riletto | G.1 di `uat-cornice.mjs` |
 | `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
+| `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS («Passare alla v3.15»); chi è su `css/zeiras.css` niente | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com` | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`; nel browser nessuna richiesta a Google |
+
+### Passare alla v3.15
+
+I font arrivano dal pacchetto («I font», sopra). Chi importa `resources/css/zeiras.css` non cambia niente: lo ha già. Chi
+importa `resources/zeiras/bundle.css` cambia una riga del suo CSS, nella sua prossima PR:
+
+```diff
+-@import '../../vendor/zeiras/zr-core/resources/zeiras/bundle.css';
++@import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
+```
+
+Senza quella riga la pagina resta com'era, coi font di Google. Che il passaggio è completo lo dice la build:
+`ls public/build/assets/*.woff2` ne elenca cinque, e `grep -rlE 'fonts\.(googleapis|gstatic)\.com' public/build` non trova
+niente. Un test del modulo che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`. Google resta ammesso
+dalla CSP finché tutti i moduli non sono passati: lo toglie la prossima versione maggiore.
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2506,7 +2532,7 @@ posto esce la più stretta.
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 
 ```
-default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
 ### Le sorgenti di un modulo
@@ -2595,7 +2621,7 @@ it('ogni risposta porta le intestazioni di sicurezza, coi valori scritti per int
         ->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
 
-    expect($risposta->headers->all('Content-Security-Policy'))->toBe(["default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"]);
+    expect($risposta->headers->all('Content-Security-Policy'))->toBe(["default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"]);
 });
 ```
 
@@ -2631,7 +2657,7 @@ bloccate.
 
 ## La CSP
 
-Gli stili della cornice arrivano da file e i font da Google Fonts, come li carica il design system: nessun `<style>`
+Gli stili della cornice arrivano da file, e dalla `v3.15.0` anche i font, dal pacchetto: nessun `<style>`
 aggiunto da JS e nessun attributo `style` nell'HTML. I pochi stili che i componenti mettono su un elemento passano da
 JS (CSSOM), che `style-src` non governa.
 
@@ -2642,11 +2668,13 @@ serve al modulo lo aggiunge in `config/zr-core.php`. `frame-ancestors`, `base-ur
 Chi non la registra scrive la CSP per conto suo, e per la cornice la apre almeno a questo:
 
 ```
-Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com
+Content-Security-Policy: default-src 'self'
 ```
 
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
-immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé.
+immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé. Fino alla `v3.14` il
+minimo apriva anche `style-src` a `https://fonts.googleapis.com` e `font-src` a `https://fonts.gstatic.com`, per i font di
+Google: servono ancora a chi importa `resources/zeiras/bundle.css` («Passare alla v3.15»).
 
 ## Gli host fidati
 
