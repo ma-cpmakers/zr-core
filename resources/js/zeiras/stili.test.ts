@@ -76,7 +76,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
     });
 });
 
-describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint 92 · T2, voce #2945)', () => {
+describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint 92 · T2, voce 2945)', () => {
     const generati = ['resources/css/zeiras.css', 'resources/css/bundle.css', ...NOMI.map((nome) => `resources/css/zeiras/${nome}.css`)];
 
     it('nessun CSS di resources/css nomina fonts.googleapis.com o fonts.gstatic.com (T2.1)', () => {

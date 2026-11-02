@@ -397,6 +397,14 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
 | `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS, e toglie dal layout i suoi collegamenti a Google Fonts («Passare alla v3.15»); chi è su `css/zeiras.css` solo i collegamenti, se li ha | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole l'`@import` di Google, o una build senza font, va riscritto («Passare alla v3.15») | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`, nemmeno nel layout; nel browser nessuna richiesta a Google |
 
+Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
+(`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
+1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
+Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
+da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
+viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
+
 ### Passare alla v3.15
 
 I font arrivano dal pacchetto («I font», sopra). Chi importa `resources/css/zeiras.css` non cambia niente: lo ha già. Chi
@@ -411,20 +419,12 @@ Senza quella riga la pagina resta com'era, coi font di Google. Nella stessa PR i
 collegamento a Google Fonts che ha scritto da sé — un `preconnect`, un `dns-prefetch`, il `preload` del CSS dei font —: aprono
 la connessione a Google anche se i font arrivano dal pacchetto. Che il passaggio è completo lo dicono la build e il codice:
 `ls public/build/assets/*.woff2` ne elenca cinque, e `grep -rlE 'fonts\.(googleapis|gstatic)\.com' public/build resources app`
-non trova niente; nel browser la riga R.F dello script UAT (qui sotto) guarda le richieste e i collegamenti del `<head>`.
+non trova niente; nel browser la riga R.F dello script UAT (sopra) guarda le richieste e i collegamenti del `<head>`.
 
 Che cosa cambia nei test del modulo, anche per chi è già su `zeiras.css`, che i font del pacchetto li prende col solo
 aggiornamento: un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole come
 prima regola del CSS l'`@import` di Google, o una build senza `@font-face` né file di font, va riscritto al contrario. Google
 resta ammesso dalla CSP finché tutti i moduli non sono passati: lo toglie la prossima versione maggiore.
-
-Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
-(`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
-1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
-e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
-da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
-viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
 
 ## La parte server
 

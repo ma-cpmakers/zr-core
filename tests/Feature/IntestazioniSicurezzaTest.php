@@ -726,8 +726,12 @@ it('con le sorgenti di un modulo vale lo stesso: la CSP che la risposta porta re
         return response('registrati')->header('Content-Security-Policy', CSP_DI_HOME);
     });
 
-    expect($this->get('/prova/csp')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI, CSP_DI_HOME])
-        ->and($this->get('/prova/csp-pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME, CSP_DI_HOME_CON_TURNSTILE]);
+    expect($this->get('/prova/csp-pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME, CSP_DI_HOME_CON_TURNSTILE]);
+
+    // Sprint 92: dalla v3.15.0 la CSP di zr-home è quella di tutti (`'self'` in `font-src` c'è già), e una CSP uguale a quella
+    // del modulo esce una volta sola; quella di tutti accanto alla sua si vede con un modulo che aggiunge qualcosa per sempre.
+    config(['zr-core.csp' => AGGIUNTE_DI_TURNSTILE]);
+    expect($this->get('/prova/csp')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_TUTTI, CSP_DI_TUTTI_CON_TURNSTILE]);
 });
 
 it('un file che Laravel serve da un disco esce con la sua CSP, quella con `sandbox`, e con quella del modulo accanto: un file caricato da una persona non gira nell\'origine del modulo (sprint 16 · review, R9 · T2.7)', function () {

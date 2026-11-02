@@ -3775,6 +3775,8 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
             // Sprint 75: e i CSS che `npm run componenti` divide da bundle.css, righe del bundle uguali.
             && $file !== 'resources/css/zeiras.css'
             && ! str_starts_with($file, 'resources/css/zeiras/')
+            // Sprint 92: e il bundle intero coi font del pacchetto, righe del bundle uguali.
+            && $file !== 'resources/css/bundle.css'
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 
