@@ -96,15 +96,17 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         expect(righe[0]).toBe("@import './font.css';");
     });
 
-    it('un bundle che chiede a Google altri font ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
+    it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
         const altro = bundleCss.replace('Instrument+Sans:wght@400..700', 'Instrument+Sans:wght@400..800');
         const dueVolte = `${bundleCss}\n@import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');\n`;
         const daGstatic = bundleCss.replace(/^.*\n/, "@font-face { font-family: 'X'; src: url(https://fonts.gstatic.com/s/x.woff2); }\n");
+        const conCrlf = bundleCss.replace(/\n/g, '\r\n');
+        const colCommento = `/* il design system */\n${bundleCss}`;
 
-        for (const css of [altro, dueVolte, daGstatic]) {
-            expect(() => coiFontDelPacchetto(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
-            expect(() => dividiIlCss(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
-            expect(() => bundleIntero(css)).toThrow('bundle.css chiede a Google font diversi da quelli del pacchetto');
+        for (const css of [altro, dueVolte, daGstatic, conCrlf, colCommento]) {
+            expect(() => coiFontDelPacchetto(css)).toThrow('bundle.css nomina Google Fonts in una forma che il pacchetto non sostituisce');
+            expect(() => dividiIlCss(css)).toThrow('bundle.css nomina Google Fonts in una forma che il pacchetto non sostituisce');
+            expect(() => bundleIntero(css)).toThrow('bundle.css nomina Google Fonts in una forma che il pacchetto non sostituisce');
         }
         const senza = bundleCss.replace(/^.*\n/, '');
         expect(coiFontDelPacchetto(senza)).toBe(`@import './font.css';\n${senza}`);

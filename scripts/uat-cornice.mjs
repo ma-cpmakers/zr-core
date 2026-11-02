@@ -945,10 +945,12 @@ async function fontDelPacchetto(page, diGoogle) {
             instrument: await caricate('400 16px "Instrument Sans"'),
             dallOrigine: woff2.filter((url) => url.origin === location.origin).length,
             altrove: woff2.filter((url) => url.origin !== location.origin).map((url) => url.origin),
+            // Un `preconnect` o un `dns-prefetch` non fa una richiesta che Playwright veda, ma apre la connessione: si cerca nel DOM.
+            collegamenti: [...document.querySelectorAll('link[href]')].map((link) => `${link.rel} ${link.href}`).filter((voce) => /fonts\.(googleapis|gstatic)\.com/.test(voce)),
         };
     });
-    const bene = font.bricolage > 0 && font.instrument > 0 && font.dallOrigine > 0 && font.altrove.length === 0 && diGoogle.length === 0;
-    scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}`);
+    const bene = font.bricolage > 0 && font.instrument > 0 && font.dallOrigine > 0 && font.altrove.length === 0 && diGoogle.length === 0 && font.collegamenti.length === 0;
+    scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta né collegamento a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}${font.collegamenti.length ? `; nel <head>: ${font.collegamenti.slice(0, 3).join(' | ')}` : ''}`);
 }
 
 async function uat(page, apri) {

@@ -217,7 +217,7 @@ export function coiFontDelPacchetto(css) {
     const righe = css.split('\n');
     const diGoogle = righe.flatMap((riga, indice) => (/fonts\.(googleapis|gstatic)\.com/.test(riga) ? [indice] : []));
     if (diGoogle.length === 0) return [FONT_DEL_PACCHETTO, ...righe].join('\n');
-    vuole(diGoogle.length === 1 && righe[diGoogle[0]] === IMPORT_DEI_FONT && righe.slice(0, diGoogle[0]).every((riga) => riga.trim() === ''), `bundle.css chiede a Google font diversi da quelli del pacchetto: «${righe[diGoogle.at(-1)].slice(0, 120)}»; resources/fonts e resources/css/font.css vanno riallineati`);
+    vuole(diGoogle.length === 1 && righe[diGoogle[0]] === IMPORT_DEI_FONT && righe.slice(0, diGoogle[0]).every((riga) => riga.trim() === ''), `bundle.css nomina Google Fonts in una forma che il pacchetto non sostituisce: «${righe[diGoogle.at(-1)].slice(0, 120)}»; se i font sono cambiati si riallineano resources/fonts e resources/css/font.css, se è cambiata solo la forma (un'altra riga, un commento prima, CRLF) lo script`);
     righe[diGoogle[0]] = FONT_DEL_PACCHETTO;
 
     return righe.join('\n');

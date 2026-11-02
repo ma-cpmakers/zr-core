@@ -395,7 +395,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.14.0` | sotto i 1024 px, dove la barra laterale è un menu a cassetto, il cassetto aperto ha `role="dialog"`, e chiuso — o con la finestra allargata — torna senza: un lettore di schermo sa che copre la pagina (riga 111, #2341); niente `aria-modal`, perché il pulsante che lo chiude sta fuori dal cassetto; il tetto del pezzo dei rimedi sale a 1.979 byte | niente | col cassetto aperto la barra laterale si trova per ruolo come `dialog`, non come `complementary`; con un `Dialog` o un `DetailPanel` del modulo aperto sopra, i dialoghi per ruolo sono due: un caso che ne cercava uno solo (`getByRole('dialog')`) va riletto | K390.10 e K390.11 di `uat-cornice.mjs` |
 | `v3.14.2` | un `Dialog` del design system che si apre dentro la cornice col fuoco fuori lo prende sul suo primo elemento (senza indicazione, la «×» Chiudi dell'intestazione), e chiuso, se il fuoco è rimasto sulla pagina, lo rende all'elemento che lo aveva (#2871); il fuoco già dentro il dialogo resta dov'è: lo ha portato il modulo, o `autoFocus` di React su un pulsante; un'anteprima (`inline`) non lo prende; il tetto del pezzo dei rimedi sale a 2.048 byte | niente; chi dà già il fuoco al dialogo da sé, alla sua apertura, può continuare a farlo, e il rimedio non lo sposta | un caso che dopo l'apertura di un `Dialog` si aspettava il fuoco fuori dal dialogo, o sul `body` dopo la chiusura, va riletto | G.1 di `uat-cornice.mjs` |
 | `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
-| `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS («Passare alla v3.15»); chi è su `css/zeiras.css` niente | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com` | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`; nel browser nessuna richiesta a Google |
+| `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS, e toglie dal layout i suoi collegamenti a Google Fonts («Passare alla v3.15»); chi è su `css/zeiras.css` solo i collegamenti, se li ha | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole l'`@import` di Google, o una build senza font, va riscritto («Passare alla v3.15») | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`, nemmeno nel layout; nel browser nessuna richiesta a Google |
 
 ### Passare alla v3.15
 
@@ -407,10 +407,16 @@ importa `resources/zeiras/bundle.css` cambia una riga del suo CSS, nella sua pro
 +@import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
 ```
 
-Senza quella riga la pagina resta com'era, coi font di Google. Che il passaggio è completo lo dice la build:
-`ls public/build/assets/*.woff2` ne elenca cinque, e `grep -rlE 'fonts\.(googleapis|gstatic)\.com' public/build` non trova
-niente. Un test del modulo che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`. Google resta ammesso
-dalla CSP finché tutti i moduli non sono passati: lo toglie la prossima versione maggiore.
+Senza quella riga la pagina resta com'era, coi font di Google. Nella stessa PR il modulo toglie dal suo layout ogni
+collegamento a Google Fonts che ha scritto da sé — un `preconnect`, un `dns-prefetch`, il `preload` del CSS dei font —: aprono
+la connessione a Google anche se i font arrivano dal pacchetto. Che il passaggio è completo lo dicono la build e il codice:
+`ls public/build/assets/*.woff2` ne elenca cinque, e `grep -rlE 'fonts\.(googleapis|gstatic)\.com' public/build resources app`
+non trova niente; nel browser la riga R.F dello script UAT (qui sotto) guarda le richieste e i collegamenti del `<head>`.
+
+Che cosa cambia nei test del modulo, anche per chi è già su `zeiras.css`, che i font del pacchetto li prende col solo
+aggiornamento: un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole come
+prima regola del CSS l'`@import` di Google, o una build senza `@font-face` né file di font, va riscritto al contrario. Google
+resta ammesso dalla CSP finché tutti i moduli non sono passati: lo toglie la prossima versione maggiore.
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
