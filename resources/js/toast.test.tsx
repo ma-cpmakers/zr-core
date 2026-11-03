@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import * as dallIngresso from './index';
 import * as dallIngressoDelleApp from './app';
 import { ToastDellaCornice, type ToastDellaCorniceProps } from './toast';
-import { Toast } from './zeiras/componenti';
+import { Dialog, Toast } from './zeiras/componenti';
 
 // Sprint 94 (voce #2910, Decisioni 19935 e 19940 di zr-pm-07): il `Toast` del design system già messo al suo posto, in basso
 // al centro su tutte le larghezze, sopra dialoghi, pannelli e cassetto. Il modulo non lo riposiziona col suo CSS.
+// Sprint 95 (voce #2951, Decisione 19956): con un `Dialog` aperto si rende dentro il dialogo, e il testo entra nella regione
+// `role="status"` 100 ms dopo la regione.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -16,6 +18,7 @@ let pagina: HTMLDivElement;
 let radice: Root;
 
 beforeEach(() => {
+    vi.useFakeTimers();
     // La pagina sta dentro un pannello che scorre: un antenato con `transform` sposterebbe un `position: fixed` reso lì dentro.
     pagina = document.createElement('div');
     pagina.style.transform = 'translateX(0)';
@@ -26,10 +29,12 @@ beforeEach(() => {
 afterEach(() => {
     act(() => radice.unmount());
     pagina.remove();
+    vi.useRealTimers();
 });
 
 const mostra = (props: ToastDellaCorniceProps): HTMLElement => {
     act(() => radice.render(<ToastDellaCornice {...props} />));
+    act(() => vi.advanceTimersByTime(100));
 
     return document.querySelector<HTMLElement>('.zr-toast')!;
 };
@@ -124,5 +129,81 @@ describe('esportato dai due ingressi, coi tipi del Toast (T1.4)', () => {
         expectTypeOf<ToastDellaCorniceProps>().toEqualTypeOf<Parameters<typeof Toast>[0]>();
         expectTypeOf<dallIngresso.ToastDellaCorniceProps>().toEqualTypeOf<ToastDellaCorniceProps>();
         expectTypeOf<dallIngressoDelleApp.ToastDellaCorniceProps>().toEqualTypeOf<ToastDellaCorniceProps>();
+    });
+});
+
+/** Una pagina con un `Dialog` (aperto o no, anteprima o no) e il Toast. */
+function ConDialogo({ aperto, anteprima = false, toast = true }: { aperto: boolean; anteprima?: boolean; toast?: boolean }) {
+    return (
+        <>
+            <Dialog open={aperto} inline={anteprima} title="Archivia" onClose={() => undefined}>
+                <button type="button">Conferma</button>
+            </Dialog>
+            {toast ? <ToastDellaCornice actionLabel="Annulla" onAction={() => undefined}>Scheda archiviata</ToastDellaCornice> : null}
+        </>
+    );
+}
+
+const doveSta = (): Element | null => document.querySelector('.zr-toast')?.parentElement?.parentElement ?? null;
+
+describe('con un Dialog aperto il Toast sta dentro il dialogo, dove arrivano il Tab e il lettore di schermo (sprint 95 · T1.1, T1.2)', () => {
+    it('dialogo aperto: il contenitore del Toast è nel `.zr-dialog`, con lo stesso stile', async () => {
+        await act(async () => radice.render(<ConDialogo aperto />));
+
+        expect(doveSta()).toBe(document.querySelector('.zr-scrim > .zr-dialog'));
+        expect(document.querySelector('.zr-toast')!.parentElement!.getAttribute('style')).toContain('z-index: var(--z-toast)');
+    });
+
+    it('un\'anteprima (`inline`) non lo prende: resta nel body', async () => {
+        await act(async () => radice.render(<ConDialogo aperto anteprima />));
+
+        expect(document.querySelector('.zr-scrim.is-inline')).not.toBeNull();
+        expect(doveSta()).toBe(document.body);
+    });
+
+    it('il dialogo si chiude col Toast mostrato: torna nel body e resta, col suo testo', async () => {
+        await act(async () => radice.render(<ConDialogo aperto />));
+        act(() => vi.advanceTimersByTime(100));
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        act(() => vi.advanceTimersByTime(100));
+
+        expect(document.querySelector('.zr-dialog')).toBeNull();
+        expect(doveSta()).toBe(document.body);
+        expect(document.querySelector('.zr-toast-text')?.textContent).toBe('Scheda archiviata');
+    });
+
+    it('un dialogo che si apre dopo il Toast lo prende', async () => {
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        expect(doveSta()).toBe(document.body);
+
+        await act(async () => radice.render(<ConDialogo aperto />));
+
+        expect(doveSta()).toBe(document.querySelector('.zr-dialog'));
+    });
+
+    it('senza il Toast nessun osservatore resta acceso: il dialogo che si apre non rende niente', async () => {
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        await act(async () => radice.render(<ConDialogo aperto={false} toast={false} />));
+        await act(async () => radice.render(<ConDialogo aperto toast={false} />));
+
+        expect(document.querySelector('.zr-toast')).toBeNull();
+    });
+});
+
+describe('il testo entra nella regione `role="status"` un passo dopo la regione, perché sia annunciato (sprint 95 · T1.4)', () => {
+    it('subito la regione c\'è, vuota e trasparente; a 100 ms il testo, e il Toast si vede', () => {
+        act(() => radice.render(<ToastDellaCornice actionLabel="Annulla">Scheda archiviata</ToastDellaCornice>));
+        const regione = document.querySelector<HTMLElement>('[role="status"].zr-toast')!;
+
+        expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('');
+        expect(regione.parentElement!.style.opacity).toBe('0');
+
+        act(() => vi.advanceTimersByTime(99));
+        expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('');
+
+        act(() => vi.advanceTimersByTime(1));
+        expect(document.querySelector('[role="status"].zr-toast')).toBe(regione);
+        expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('Scheda archiviata');
+        expect(regione.parentElement!.style.opacity).toBe('');
     });
 });
