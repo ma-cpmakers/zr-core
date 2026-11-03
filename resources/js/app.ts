@@ -12,3 +12,6 @@ export { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type LayoutDel
 // La cornice dello staff (dalla `v3.16.0`): per zr-superadmin, senza i dati della persona. In coda, perché i nomi di ciò che sta sopra
 // non cambino; un'app che non la usa non la porta nella build.
 export { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';
+// Il Toast della cornice (dalla `v3.17.0`): quello del design system già messo in basso al centro. In coda, come la cornice dello
+// staff; un'app che non lo usa non lo porta nella build.
+export { ToastDellaCornice, type ToastDellaCorniceProps } from './toast';
