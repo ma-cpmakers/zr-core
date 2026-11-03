@@ -65,7 +65,8 @@ describe('è reso nel body, fuori dalla pagina (T1.2)', () => {
     it('il contenitore è figlio del body, non della pagina che lo rende', () => {
         const contenitore = mostra({ children: 'Fatto' }).parentElement!;
 
-        expect(contenitore.parentElement).toBe(document.body);
+        // Il contenitore con lo stile sta nel nodo del portale, che sta nel body (sprint 95: il nodo si sposta, non si ricrea).
+        expect(contenitore.parentElement!.parentElement).toBe(document.body);
         expect(pagina.contains(contenitore)).toBe(false);
     });
 
@@ -144,7 +145,8 @@ function ConDialogo({ aperto, anteprima = false, toast = true }: { aperto: boole
     );
 }
 
-const doveSta = (): Element | null => document.querySelector('.zr-toast')?.parentElement?.parentElement ?? null;
+/** Dove sta il nodo del portale: il Toast, il contenitore con lo stile, il nodo, e sopra il dialogo o il body. */
+const doveSta = (): Element | null => document.querySelector('.zr-toast')?.parentElement?.parentElement?.parentElement ?? null;
 
 describe('con un Dialog aperto il Toast sta dentro il dialogo, dove arrivano il Tab e il lettore di schermo (sprint 95 · T1.1, T1.2)', () => {
     it('dialogo aperto: il contenitore del Toast è nel `.zr-dialog`, con lo stesso stile', async () => {
@@ -181,12 +183,51 @@ describe('con un Dialog aperto il Toast sta dentro il dialogo, dove arrivano il 
         expect(doveSta()).toBe(document.querySelector('.zr-dialog'));
     });
 
-    it('senza il Toast nessun osservatore resta acceso: il dialogo che si apre non rende niente', async () => {
-        await act(async () => radice.render(<ConDialogo aperto={false} />));
-        await act(async () => radice.render(<ConDialogo aperto={false} toast={false} />));
-        await act(async () => radice.render(<ConDialogo aperto toast={false} />));
+    it('smontato il Toast, l\'osservatore si spegne e il suo nodo esce dal documento', async () => {
+        const spento = vi.spyOn(MutationObserver.prototype, 'disconnect');
 
-        expect(document.querySelector('.zr-toast')).toBeNull();
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        const nodo = document.querySelector('.zr-toast')!.parentElement!.parentElement!;
+        await act(async () => radice.render(<ConDialogo aperto={false} toast={false} />));
+
+        expect(spento).toHaveBeenCalledTimes(1);
+        expect(nodo.isConnected).toBe(false);
+        spento.mockRestore();
+    });
+
+    it('spostato fra body e dialogo, «Annulla» è lo stesso elemento e tiene il fuoco (rilievo 1 della revisione)', async () => {
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        act(() => vi.advanceTimersByTime(100));
+        const annulla = document.querySelector<HTMLButtonElement>('.zr-toast-action')!;
+        annulla.focus();
+
+        await act(async () => radice.render(<ConDialogo aperto />));
+        expect(doveSta()).toBe(document.querySelector('.zr-dialog'));
+        expect(document.querySelector('.zr-toast-action')).toBe(annulla);
+        expect(document.activeElement).toBe(annulla);
+
+        await act(async () => radice.render(<ConDialogo aperto={false} />));
+        expect(doveSta()).toBe(document.body);
+        expect(annulla.isConnected).toBe(true);
+    });
+
+    it('un\'anteprima che diventa un dialogo aperto lo prende: l\'osservatore guarda anche le classi', async () => {
+        await act(async () => radice.render(<ConDialogo aperto anteprima />));
+        expect(doveSta()).toBe(document.body);
+
+        document.querySelector('.zr-scrim')!.classList.remove('is-inline');
+        await act(async () => undefined);
+
+        expect(doveSta()).toBe(document.querySelector('.zr-dialog'));
+    });
+
+    it('se dopo il Toast arriva altro nel dialogo (un piede coi pulsanti), il Toast torna in coda', async () => {
+        await act(async () => radice.render(<ConDialogo aperto />));
+        const dialogo = document.querySelector('.zr-dialog')!;
+        dialogo.append(document.createElement('footer'));
+        await act(async () => undefined);
+
+        expect(dialogo.lastElementChild!.querySelector('.zr-toast')).not.toBeNull();
     });
 });
 
@@ -197,6 +238,8 @@ describe('il testo entra nella regione `role="status"` un passo dopo la regione,
 
         expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('');
         expect(regione.parentElement!.style.opacity).toBe('0');
+        // Trasparente, e senza pulsanti: niente da premere che non si veda (rilievo 6 della revisione).
+        expect(regione.querySelectorAll('button')).toHaveLength(0);
 
         act(() => vi.advanceTimersByTime(99));
         expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('');
@@ -204,6 +247,7 @@ describe('il testo entra nella regione `role="status"` un passo dopo la regione,
         act(() => vi.advanceTimersByTime(1));
         expect(document.querySelector('[role="status"].zr-toast')).toBe(regione);
         expect(regione.querySelector('.zr-toast-text')?.textContent).toBe('Scheda archiviata');
+        expect(regione.querySelector('.zr-toast-action')?.textContent).toBe('Annulla');
         expect(regione.parentElement!.style.opacity).toBe('');
     });
 });

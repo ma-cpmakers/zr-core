@@ -5038,7 +5038,8 @@ it('il README non dice più che «Annulla» del Toast non si raggiunge da tastie
     $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
 
     expect($readme)->not->toContain('lì non si raggiunge da tastiera')
-        ->and($readme)->toContain('il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo');
+        ->and($readme)->toContain('il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo')
+        ->and($readme)->toContain('| `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo');
 });
 
 it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso esporta (sprint 25 · T2.5)', function () {

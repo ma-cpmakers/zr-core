@@ -22,27 +22,48 @@ export type ToastDellaCorniceProps = Parameters<typeof TipoDelToast>[0];
  * perché, da `left: 50%`, la larghezza disponibile sarebbe metà della finestra, e un testo lungo andrebbe a capo prima del
  * suo `max-width`. Il `body` si cerca dopo il montaggio: sul server (l'SSR di Inertia) non c'è, e il Toast arriva sul client.
  *
- * Con un `Dialog` aperto si rende dentro il dialogo: il dialogo è `aria-modal` e trattiene il Tab, e lì «Annulla» si raggiunge
- * e il lettore di schermo lo vede; fuori resterebbe dietro. Il `position: fixed` lo tiene in basso al centro anche lì (il
- * dialogo non ha `transform`). Un osservatore del documento, acceso finché il Toast c'è, lo sposta quando un dialogo si apre o
- * si chiude. Il testo entra nella regione `role="status"` del `Toast` 100 ms dopo la regione: un lettore di schermo annuncia
- * ciò che cambia in una regione che c'è già, non sempre una che arriva piena. Fino ad allora il Toast è trasparente.
+ * Con un `Dialog` aperto sta dentro il dialogo: il dialogo è `aria-modal` e trattiene il Tab, e lì «Annulla» si raggiunge e il
+ * lettore di schermo lo vede; fuori resterebbe dietro. Il `position: fixed` lo tiene in basso al centro anche lì, finché né il
+ * dialogo né chi lo contiene hanno un `transform`. Il portale va in un nodo suo, creato una volta e spostato con `append`: lo
+ * stesso «Annulla» passa dal `body` al dialogo e torna, col fuoco se lo aveva, e chi se lo ricorda (i rimedi, alla chiusura di
+ * un dialogo) non resta con un nodo staccato. Un osservatore del documento, acceso finché il Toast c'è, lo sposta quando un
+ * dialogo si apre, si chiude o smette di essere un'anteprima, e lo rimette in coda al dialogo se dopo di lui arriva altro (un
+ * piede coi pulsanti), perché il Tab lo trovi dopo l'ultima fermata.
+ *
+ * La regione `role="status"` del `Toast` entra vuota, e 100 ms dopo arrivano il testo e i pulsanti: un lettore di schermo
+ * annuncia ciò che cambia in una regione che c'è già, non sempre una che arriva piena. Fino ad allora il Toast è trasparente,
+ * e senza pulsanti non c'è niente da premere che non si veda. Il testo si annuncia così una volta, quando il Toast compare.
  */
 export function ToastDellaCornice(props: ToastDellaCorniceProps) {
-    const [dove, setDove] = useState<HTMLElement | null>(null);
+    const [nodo, setNodo] = useState<HTMLDivElement | null>(null);
     const [colTesto, setColTesto] = useState(false);
 
     useEffect(() => {
-        const segui = (): void => setDove(doveStare());
+        const suo = document.createElement('div');
+        const segui = (): void => {
+            const dove = doveStare();
+
+            if (suo.parentElement !== dove || suo.nextElementSibling) {
+                const fuoco = document.activeElement instanceof HTMLElement && suo.contains(document.activeElement) ? document.activeElement : null;
+
+                dove.append(suo);
+                fuoco?.focus();
+            }
+        };
         const osservatore = new MutationObserver(segui);
 
         segui();
-        osservatore.observe(document.body, { childList: true, subtree: true });
+        osservatore.observe(document.body, { childList: true, subtree: true, attributeFilter: ['class'] });
+        setNodo(suo);
         const tempo = setTimeout(() => setColTesto(true), 100);
 
-        return () => (osservatore.disconnect(), clearTimeout(tempo));
+        return () => {
+            osservatore.disconnect();
+            clearTimeout(tempo);
+            suo.remove();
+        };
     }, []);
-    if (!dove) {
+    if (!nodo) {
         return null;
     }
 
@@ -59,8 +80,8 @@ export function ToastDellaCornice(props: ToastDellaCorniceProps) {
                 maxWidth: 'calc(100vw - 2 * var(--space-4))',
             }}
         >
-            <Toast {...props}>{colTesto ? props.children : null}</Toast>
+            {colTesto ? <Toast {...props} /> : <Toast {...(props.tone === undefined ? {} : { tone: props.tone })}>{null}</Toast>}
         </div>,
-        dove,
+        nodo,
     );
 }

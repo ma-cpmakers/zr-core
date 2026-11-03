@@ -2481,8 +2481,10 @@ import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app'
 - **Con un `Dialog` aperto** (dalla `v3.17.1`) il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo:
   il dialogo è `aria-modal` e trattiene il Tab, e da lì il Tab arriva ad «Annulla» e il lettore di schermo legge il Toast.
   Quando il dialogo si chiude torna nel `body`, e un dialogo che si apre dopo lo prende. Un'anteprima (`inline`) non lo prende.
-- **Il testo** entra nella regione `role="status"` del Toast 100 ms dopo la regione, perché un lettore di schermo lo annunci:
-  per quei 100 ms il Toast è trasparente.
+  È lo stesso «Annulla» che si sposta, col fuoco se lo aveva, e resta in coda al dialogo anche se dopo arriva un piede coi
+  pulsanti. Dentro il dialogo vale ciò che sta sopra il dialogo: un antenato con `transform` sposta anche lui.
+- **Il testo e i pulsanti** entrano nella regione `role="status"` del Toast 100 ms dopo la regione, perché un lettore di
+  schermo lo annunci una volta, quando compare: per quei 100 ms il Toast è trasparente e non ha niente da premere.
 - **Sul server** (l'SSR di Inertia) non si rende: arriva sul client dopo il montaggio, perché il `body` c'è solo lì.
 - Un'app che non lo usa non lo porta nella build. La pagina di prova è `staff.html?toast=1` (con `&dialogo=1` sopra un
   `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4) e col Tab dal dialogo (TO.5).
