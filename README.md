@@ -41,8 +41,9 @@ della persona a Google. `resources/css/bundle.css` è `bundle.css` del design sy
 derivata, che resta com'è) con l'`@import` di Google sostituito da quello di `resources/css/font.css`: le `@font-face` di
 Bricolage Grotesque e Instrument Sans, con i cinque file woff2 di `resources/fonts/`, gli stessi che Google serviva, e le due
 licenze OFL accanto. La build del frontend copia i woff2 fra i suoi file, e il browser scarica solo quelli dei caratteri che la
-pagina usa. La CSP di tutti li ammette (`font-src 'self'`). Chi importa ancora `resources/zeiras/bundle.css` prende i font da
-Google: va su `resources/css/bundle.css` («Passare alla v3.15»).
+pagina usa. La CSP di tutti li ammette (`font-src 'self'`), e dalla `v4.0.0` non ammette più Google: chi importa ancora
+`resources/zeiras/bundle.css` resta senza i due font, perché il browser ferma l'`@import` di Google, e va su
+`resources/css/bundle.css` («Passare alla v3.15», «Passare alla v4»).
 
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
@@ -399,11 +400,12 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.16.0` | la cornice dello staff, `CorniceDelloStaff` (#2944): l'`AppShell` per il backoffice di Zeiras senza `Cornice::dati()`, coi testi suoi in `resources/lingue/staff/`; nessuna rotta, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice dello staff») | niente per chi monta la `Cornice`; il backoffice dello staff monta `CorniceDelloStaff` | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.1-S.3) |
 | `v3.17.0` | il Toast della cornice, `ToastDellaCornice` (#2910): il `Toast` del design system già in basso al centro, a 24 px dal fondo più il bordo sicuro del telefono, sopra dialoghi, pannelli e cassetto; l'app che non lo usa pesa come prima (vedi «Il Toast della cornice») | niente; chi mostra un `Toast` col suo CSS di posizione può passare a `ToastDellaCornice` e togliere quel CSS | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.1-TO.4) |
 | `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo: il Tab del dialogo arriva ad «Annulla» e il lettore di schermo lo legge; chiuso il dialogo torna nel `body` (#2951); il testo entra nella regione `role="status"` 100 ms dopo la regione, perché sia annunciato | niente | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.5) |
+| `v4.0.0` | la CSP di tutti senza Google Fonts: `style-src 'self'` e `font-src 'self'` (#2946); stringe, quindi maggiore («Passare alla v4») | `^4` nel `composer.json`, nella prossima PR; prima i font del pacchetto («Passare alla v3.15») | un caso che confronta la CSP intera la riscrive senza Google | `scripts/uat-cornice.mjs`: R.F e R.C ✅, in console nessun blocco della CSP |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
 1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso. A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso, i font dal pacchetto (R.F, dalla `v3.15.0`) e la CSP della pagina che non ferma niente (R.C, dalla `v4.0.0`: le pagine di prova la ricevono da `node scripts/servi-demo.mjs`, e senza CSP la riga è ➖). A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
 e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
 da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
 viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
@@ -426,8 +428,31 @@ non trova niente; nel browser la riga R.F dello script UAT (sopra) guarda le ric
 
 Che cosa cambia nei test del modulo, anche per chi è già su `zeiras.css`, che i font del pacchetto li prende col solo
 aggiornamento: un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole come
-prima regola del CSS l'`@import` di Google, o una build senza `@font-face` né file di font, va riscritto al contrario. Google
-resta ammesso dalla CSP finché tutti i moduli non sono passati: lo toglie la prossima versione maggiore.
+prima regola del CSS l'`@import` di Google, o una build senza `@font-face` né file di font, va riscritto al contrario. Nelle
+versioni 3 Google restava ammesso dalla CSP, finché tutti i moduli non fossero passati; dalla `v4.0.0` non più («Passare alla
+v4»).
+
+### Passare alla v4
+
+La `v4.0.0` cambia una cosa sola: la CSP di tutti non ammette più Google Fonts, cioè `https://fonts.googleapis.com` esce da
+`style-src` e `https://fonts.gstatic.com` da `font-src` (#2946). Stringe, e per questo è una versione maggiore. Nessuna prop,
+nessun file, nessun ingresso cambia, e il JS e il CSS pesano come prima. Il modulo passa a `^4` nella sua prossima PR:
+
+```diff
+-"zeiras/zr-core": "^3.15",
++"zeiras/zr-core": "^4.0",
+```
+
+Prima di passare il modulo è già sui font del pacchetto («Passare alla v3.15»): importa `resources/css/bundle.css` o
+`resources/css/zeiras.css`, e il suo layout non ha collegamenti a Google. Con la v4 una pagina che importa ancora
+`resources/zeiras/bundle.css` resta senza i due font del design system — il browser ferma l'`@import` di Google e lo scrive
+in console —, e lo stesso vale per un foglio di Google scritto nel layout. Un modulo che vuole Google per sé lo scrive nel
+suo `config/zr-core.php` («Le sorgenti di un modulo»): la classe non lo vieta, ma nessun modulo di Zeiras lo fa.
+
+Che cosa cambia nei test del modulo: un caso che confronta la CSP intera la riscrive senza le due origini di Google (com'è
+adesso sta in «Le intestazioni di sicurezza»); niente altro. Che cosa si controlla: nel browser, su una pagina del modulo
+con la cornice, `scripts/uat-cornice.mjs` dà ✅ alle righe R.F (i font dal pacchetto) e R.C (la CSP della pagina non ferma
+niente); in console nessun «violates the following Content Security Policy directive».
 
 ## La parte server
 

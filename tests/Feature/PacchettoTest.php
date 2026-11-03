@@ -5042,6 +5042,21 @@ it('il README non dice più che «Annulla» del Toast non si raggiunge da tastie
         ->and($readme)->toContain('| `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo');
 });
 
+it('il README dice come si passa alla v4: la CSP di tutti senza Google, `^4`, i font del pacchetto prima, il caso della CSP intera, R.F e R.C; e non dice più che Google resta nella CSP (sprint 97 · T3.1, T3.2)', function () {
+    $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
+    preg_match('/### Passare alla v4 (.*?)(?= ## | ### )/', $readme, $sezione);
+    $v4 = $sezione[1] ?? '';
+
+    expect($readme)->not->toContain('Google resta ammesso dalla CSP finché')
+        ->and($readme)->not->toContain('lo toglie la prossima versione maggiore')
+        ->and($v4)->toContain('la CSP di tutti non ammette più Google Fonts')
+        ->and($v4)->toContain('+"zeiras/zr-core": "^4.0",')
+        ->and($v4)->toContain('Prima di passare il modulo è già sui font del pacchetto («Passare alla v3.15»)')
+        ->and($v4)->toContain('un caso che confronta la CSP intera la riscrive senza le due origini di Google')
+        ->and($v4)->toContain('R.C (la CSP della pagina non ferma niente)')
+        ->and($readme)->toContain("| `v4.0.0` | la CSP di tutti senza Google Fonts: `style-src 'self'` e `font-src 'self'` (#2946)");
+});
+
 it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso esporta (sprint 25 · T2.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $importati = fn (string $testo): array => nomiFraLeGraffe('/^\s*import \{([^}]*)\} from \'[^\']*\/zr-core\/resources\/js\/app\';$/m', $testo);
