@@ -133,8 +133,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 94 aperto (`v3.17.0`): #2910, il Toast della
-   cornice in basso al centro. #2909 (la fascia di assistenza) esce nella minore dopo, quando zr-backoffice ha
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 95 aperto (`v3.17.1`): #2951, «Annulla» del
+   Toast da tastiera con un Dialog aperto; poi gli scostamenti dello sprint 85 (Decisione 19956). #2909 (la fascia di assistenza) esce nella minore dopo, quando zr-backoffice ha
    `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55; #2946
    (Google fuori dalla CSP) aspetta che tutti i moduli siano passati alla `v3.15.0`.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
