@@ -396,6 +396,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.14.2` | un `Dialog` del design system che si apre dentro la cornice col fuoco fuori lo prende sul suo primo elemento (senza indicazione, la «×» Chiudi dell'intestazione), e chiuso, se il fuoco è rimasto sulla pagina, lo rende all'elemento che lo aveva (#2871); il fuoco già dentro il dialogo resta dov'è: lo ha portato il modulo, o `autoFocus` di React su un pulsante; un'anteprima (`inline`) non lo prende; il tetto del pezzo dei rimedi sale a 2.048 byte | niente; chi dà già il fuoco al dialogo da sé, alla sua apertura, può continuare a farlo, e il rimedio non lo sposta | un caso che dopo l'apertura di un `Dialog` si aspettava il fuoco fuori dal dialogo, o sul `body` dopo la chiusura, va riletto | G.1 di `uat-cornice.mjs` |
 | `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
 | `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS, e toglie dal layout i suoi collegamenti a Google Fonts («Passare alla v3.15»); chi è su `css/zeiras.css` solo i collegamenti, se li ha | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole l'`@import` di Google, o una build senza font, va riscritto («Passare alla v3.15») | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`, nemmeno nel layout; nel browser nessuna richiesta a Google |
+| `v3.16.0` | la cornice dello staff, `CorniceDelloStaff` (#2944): l'`AppShell` per il backoffice di Zeiras senza `Cornice::dati()`, coi testi suoi in `resources/lingue/staff/`; nessuna rotta, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice dello staff») |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2407,6 +2408,48 @@ workspace dà `null`. E un frontend che mette la lingua
 con `Cornice::lingua()` a ogni richiesta legge comunque io.mostra prima del primo disegno, e anche nella richiesta
 rimandata, dove `Cornice::dopo()` usa quella lettura: io.mostra si legge due volte per visita. Dalla `v2.15.0` chi la chiama
 solo dove la richiesta chiede `subito` la legge una volta (vedi «Dalla `v2.15.0`», sopra).
+
+### La cornice dello staff
+
+Dalla `v3.16.0` il pacchetto ha una seconda cornice, `CorniceDelloStaff`, per chi lavora nel backoffice di Zeiras
+(zr-superadmin): il gettone dello staff apre solo i metodi `staff.*`, e `Cornice::dati()` non ha niente da dare. È l'`AppShell`
+del design system, riempita da ciò che dà il modulo; dal server non legge niente e non ha rotte. Si prende dai due ingressi:
+
+```tsx
+import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app';
+
+<CorniceDelloStaff
+    lingua="it"
+    persona={{ nome: staff.nome, email: staff.email }}
+    nav={[{ group: 'Backoffice', items: [{ id: 'utenti', label: 'Utenti', icon: 'users' }] }]}
+    active="utenti"
+    onNavigate={(id) => vaiA(id)}        // anche «settings», la Configurazione in fondo alla barra
+    menu={[{ icon: 'user', label: 'Il mio accesso', onClick: () => vaiA('accesso') }]}
+    cerca={(parola, segnale) => cercaUtentiEWorkspace(parola, segnale)}
+    naviga={(indirizzo) => router.visit(indirizzo)}
+    onLogout={esci}
+>
+    {pagina}
+</CorniceDelloStaff>
+```
+
+- **Chi è entrato**: `persona` nell'avatar e in cima al menu del profilo. Il menu del profilo è `menu`, una linea e «Esci dal
+  backoffice», che chiama `onLogout`: la sessione la chiude il modulo.
+- **La barra**: solo le voci di `nav` (coi gruppi, `active`, `onNavigate`), il percorso (`crumbs`, `onCrumb`), `actions` e `flush`
+  come nella `Cornice`. In cima «Backoffice di Zeiras» al posto del workspace; in fondo «Configurazione», che arriva a
+  `onNavigate` come `settings`, e il riquadro «Staff di Zeiras».
+- **La ricerca**: dal secondo carattere, 300 ms dopo l'ultimo tasto, la cornice chiama `cerca(parola, segnale)` e mostra il
+  caricamento; la funzione dà i risultati come li vuole l'`AppShell` (`ShellSearchResult`, con `href`), o rifiuta, e la ricerca
+  è in errore. Una parola nuova annulla il segnale di quella di prima, e la sua risposta non entra; dal tasto la ricerca è già
+  in caricamento, come nella `Cornice`. Un risultato si apre con `naviga` (di norma il browser va all'indirizzo). Senza
+  `cerca` il campo non cerca niente.
+- **Cosa non c'è**: il selettore di workspace, il menu Moduli, le notifiche, il registro. La campanella resta, senza numero e
+  col pannello vuoto, perché l'`AppShell` la disegna sempre (spegnerla è una richiesta al design system).
+- **I testi** dello staff stanno in `resources/lingue/staff/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
+  l'inglese), fuori dalle lingue della cornice: un'app che non monta questa cornice non li porta nella build. Il resto — «Salta
+  al contenuto», i rimedi di tastiera, i nomi della ricerca — è quello della `Cornice`.
+
+La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto).
 
 ## Il logo
 

@@ -184,4 +184,4 @@ it('le pagine di prova hanno nella testa le quattro righe della vista della favi
 
     expect($nellaPagina)->toBe(righeDi(Blade::render("@include('zr-core::favicon')")))
         ->and($nellaPagina)->toHaveCount(4);
-})->with(['index.html', 'layout.html', 'app.html']);
+})->with(['index.html', 'layout.html', 'app.html', 'staff.html']);
