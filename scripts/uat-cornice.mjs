@@ -87,9 +87,9 @@ const fuoriDallaPagina = (page) => page.url() !== pagina;
  */
 async function violazioni(page) {
     await page.evaluate(axe);
-    // Senza `preload`: axe chiederebbe con `fetch` i fogli di stile, anche quello dei font di Google, e la CSP della pagina (che apre
-    // a Google Fonts solo `style-src` e `font-src`, come dice il README) lo ferma con due errori in console che sono di axe, non
-    // della pagina, e farebbero rossa E.1. Senza, axe non usa i fogli caricati da sé: la regola che ne ha bisogno
+    // Senza `preload`: axe chiederebbe con `fetch` i fogli di stile da sé, e un foglio che la CSP della pagina non ammette (fino
+    // alla v3.17 quello dei font di Google, che la CSP apriva solo a `style-src` e `font-src`) darebbe errori in console che sono
+    // di axe, non della pagina, e farebbero rosse E.1 e R.C. Senza, axe non usa i fogli caricati da sé: la regola che ne ha bisogno
     // (`css-orientation-lock`) resta da guardare a parte.
     return page.evaluate(async () => {
         const esito = await window.axe.run(document, { resultTypes: ['violations'], preload: false });
@@ -1075,9 +1075,11 @@ async function uat(page, apri) {
     const csp = { politica: null, blocchi: [] };
     page.on('pageerror', (errore) => errori.push(String(errore)));
     page.on('console', (messaggio) => /Content Security Policy/.test(messaggio.text()) && csp.blocchi.push(messaggio.text().slice(0, 200)));
+    // La CSP è quella dell'ultima pagina aperta nel riquadro principale, anche quando non ne ha: una pagina d'ingresso con la CSP
+    // seguita da una pagina del modulo senza non deve dare ✅.
     page.on('response', (risposta) => {
         if (risposta.request().isNavigationRequest() && risposta.request().frame() === page.mainFrame()) {
-            csp.politica = risposta.headers()['content-security-policy'] ?? csp.politica;
+            csp.politica = risposta.headers()['content-security-policy'] ?? null;
         }
     });
     page.on('console', (messaggio) => messaggio.type() === 'error' && errori.push(messaggio.text()));

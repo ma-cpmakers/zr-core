@@ -446,8 +446,9 @@ nessun file, nessun ingresso cambia, e il JS e il CSS pesano come prima. Il modu
 Prima di passare il modulo è già sui font del pacchetto («Passare alla v3.15»): importa `resources/css/bundle.css` o
 `resources/css/zeiras.css`, e il suo layout non ha collegamenti a Google. Con la v4 una pagina che importa ancora
 `resources/zeiras/bundle.css` resta senza i due font del design system — il browser ferma l'`@import` di Google e lo scrive
-in console —, e lo stesso vale per un foglio di Google scritto nel layout. Un modulo che vuole Google per sé lo scrive nel
-suo `config/zr-core.php` («Le sorgenti di un modulo»): la classe non lo vieta, ma nessun modulo di Zeiras lo fa.
+in console —, e lo stesso vale per un foglio di Google scritto nel layout. Google non si rimette nel `config/zr-core.php` del
+modulo («Le sorgenti di un modulo»): la classe non lo vieta, ma manderebbe di nuovo l'IP di chi visita a Google, e come ogni
+sorgente nuova passerebbe da zr-pm e da una revisione di sicurezza.
 
 Che cosa cambia nei test del modulo: un caso che confronta la CSP intera la riscrive senza le due origini di Google (com'è
 adesso sta in «Le intestazioni di sicurezza»); niente altro. Che cosa si controlla: nel browser, su una pagina del modulo

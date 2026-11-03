@@ -5049,7 +5049,9 @@ it('il README dice come si passa alla v4: la CSP di tutti senza Google, `^4`, i 
 
     expect($readme)->not->toContain('Google resta ammesso dalla CSP finché')
         ->and($readme)->not->toContain('lo toglie la prossima versione maggiore')
-        ->and($v4)->toContain('la CSP di tutti non ammette più Google Fonts')
+        ->and($v4)->toContain('La `v4.0.0` cambia una cosa sola: la CSP di tutti non ammette più Google Fonts')
+        ->and($v4)->toContain('una pagina che importa ancora `resources/zeiras/bundle.css` resta senza i due font del design system')
+        ->and($v4)->toContain('Google non si rimette nel `config/zr-core.php` del modulo')
         ->and($v4)->toContain('+"zeiras/zr-core": "^4.0",')
         ->and($v4)->toContain('Prima di passare il modulo è già sui font del pacchetto («Passare alla v3.15»)')
         ->and($v4)->toContain('un caso che confronta la CSP intera la riscrive senza le due origini di Google')
