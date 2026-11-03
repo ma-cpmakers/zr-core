@@ -22,7 +22,8 @@ const FILE_A_PARTE = 'resources/js/zeiras/MentionField.js';
 const FILE_DI_ADDRESS = 'resources/js/zeiras/AddressField.js';
 // Dalla `v3.3.0` (sprint 75 · T1.1) divide anche bundle.css: il CSS senza gli stili dei due componenti, e quelli di ognuno.
 const FILE_DEL_CSS = 'resources/zeiras/bundle.css';
-const CSS_GENERATI = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css'];
+// Dalla `v3.15.0` (sprint 92 · T2) anche il bundle intero coi font del pacchetto.
+const CSS_GENERATI = ['resources/css/zeiras.css', 'resources/css/bundle.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css'];
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso}`, import.meta.url));
 const radice = mkdtempSync(join(tmpdir(), 'zr-core-componenti-'));
 const copia = join(radice, 'una copia #1 100% ?sì');
@@ -63,7 +64,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando(['--controlla']);
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^resources\/js\/zeiras\/componenti\.js: è quello che resources\/zeiras\/bundle\.js genera \(\d+ nomi esportati\)\nresources\/js\/zeiras\/MentionField\.js: è quello che resources\/zeiras\/bundle\.js genera \(MentionField\)\nresources\/js\/zeiras\/AddressField\.js: è quello che resources\/zeiras\/bundle\.js genera \(AddressField\)\nresources\/css\/zeiras\.css: è quello che resources\/zeiras\/bundle\.css genera \(senza gli stili di MentionField e di AddressField\)\nresources\/css\/zeiras\/MentionField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di MentionField\)\nresources\/css\/zeiras\/AddressField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di AddressField\)\n$/);
+        expect(esito.detto).toMatch(/^resources\/js\/zeiras\/componenti\.js: è quello che resources\/zeiras\/bundle\.js genera \(\d+ nomi esportati\)\nresources\/js\/zeiras\/MentionField\.js: è quello che resources\/zeiras\/bundle\.js genera \(MentionField\)\nresources\/js\/zeiras\/AddressField\.js: è quello che resources\/zeiras\/bundle\.js genera \(AddressField\)\nresources\/css\/zeiras\.css: è quello che resources\/zeiras\/bundle\.css genera \(senza gli stili di MentionField e di AddressField\)\nresources\/css\/bundle\.css: è quello che resources\/zeiras\/bundle\.css genera \(il bundle intero coi font del pacchetto\)\nresources\/css\/zeiras\/MentionField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di MentionField\)\nresources\/css\/zeiras\/AddressField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di AddressField\)\n$/);
     });
 
     it('`--controlla` col file ritoccato a mano: esce 1, dice che non è quello che il bundle genera, e non lo riscrive', () => {
@@ -87,7 +88,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando();
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^scritto resources\/js\/zeiras\/componenti\.js \(\d+ nomi esportati\)\nscritto resources\/js\/zeiras\/MentionField\.js \(MentionField\)\nscritto resources\/js\/zeiras\/AddressField\.js \(AddressField\)\nscritto resources\/css\/zeiras\.css \(senza gli stili di MentionField e di AddressField\)\nscritto resources\/css\/zeiras\/MentionField\.css \(gli stili di MentionField\)\nscritto resources\/css\/zeiras\/AddressField\.css \(gli stili di AddressField\)\n$/);
+        expect(esito.detto).toMatch(/^scritto resources\/js\/zeiras\/componenti\.js \(\d+ nomi esportati\)\nscritto resources\/js\/zeiras\/MentionField\.js \(MentionField\)\nscritto resources\/js\/zeiras\/AddressField\.js \(AddressField\)\nscritto resources\/css\/zeiras\.css \(senza gli stili di MentionField e di AddressField\)\nscritto resources\/css\/bundle\.css \(il bundle intero coi font del pacchetto\)\nscritto resources\/css\/zeiras\/MentionField\.css \(gli stili di MentionField\)\nscritto resources\/css\/zeiras\/AddressField\.css \(gli stili di AddressField\)\n$/);
     });
 
     it('`--controlla` col modulo di MentionField ritoccato a mano, o senza: esce 1, dice quale file non è quello che il bundle genera, e non scrive niente (sprint 71 · T1.3)', () => {

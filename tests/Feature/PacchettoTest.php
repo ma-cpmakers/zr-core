@@ -2346,10 +2346,10 @@ it('la guardia dello zip, su un albero finto: config/zr-core.php è fra ciò che
 // classe fra ciò che zr-core scrive. I valori stanno scritti qui per intero: sono quelli che un modulo ricopia nel suo test.
 
 /** La CSP di tutti, com'è nel README: nella sezione delle intestazioni, e nel test che il README dà da tenere a ogni modulo. */
-const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
-/** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. */
-const CSP_MINIMA_NEL_README = "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com";
+/** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. Dalla v3.15.0 i font arrivano dal pacchetto, e basta l'origine del modulo. */
+const CSP_MINIMA_NEL_README = "default-src 'self'";
 
 /** La politica più stretta, che dalla v1.8.0 esce al posto di una CSP della risposta che non si può mandare, com'è nel README. */
 const CSP_PIU_STRETTA_NEL_README = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox";
@@ -3775,6 +3775,8 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
             // Sprint 75: e i CSS che `npm run componenti` divide da bundle.css, righe del bundle uguali.
             && $file !== 'resources/css/zeiras.css'
             && ! str_starts_with($file, 'resources/css/zeiras/')
+            // Sprint 92: e il bundle intero coi font del pacchetto, righe del bundle uguali.
+            && $file !== 'resources/css/bundle.css'
             && volteCheNominaIlMenu('Prodotti', (string) file_get_contents("$radice/$file")) > 0,
     ));
 
@@ -4279,7 +4281,8 @@ it('il README dice, dove fa importare `bundle.css`, che il CSS del design system
     'per che cosa vale' => ['Vale per le proprietà che il componente dichiara e per una classe senza il modificatore che forza (`!`)'],
     'con Tailwind 3' => ['con Tailwind 3, che non usa i layer della cascata, decidono specificità e ordine'],
     'a chi si chiede' => ['In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all\'agente di zr-core'],
-    'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/zeiras/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
+    // Sprint 92 · T4 (voce #2945): dalla v3.15.0 il CSS del design system che il README fa importare è quello coi font del pacchetto.
+    'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/css/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
 ]);
 
 it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di forzare una proprietà (sprint 28 · T5.6)', function (string $vietata) {
@@ -5606,7 +5609,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
 
     // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
-    expect($css)->toBe(['resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
+    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
         ->and(substr_count($cornice, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)

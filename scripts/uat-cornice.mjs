@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * La UAT della cornice v3.6 in un modulo, dopo l'aggiornamento: axe a 1280 e a 390 px, la ricerca, il percorso, il «+», la
- * campanella e i menu della barra sopra il pannello di dettaglio, su una pagina vera del modulo. Non sta nello zip del
+ * campanella e i menu della barra sopra il pannello di dettaglio, e dalla v3.15 i font dal pacchetto, su una pagina vera del modulo. Non sta nello zip del
  * pacchetto: si prende dal repo al tag.
  *
  *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>]
@@ -933,10 +933,32 @@ async function attivaInVista(page) {
     await pausa(200);
 }
 
+// R.F (dalla `v3.15.0`, #2945): i due font del design system arrivano dal pacchetto, dall'origine della pagina, e nessuna richiesta
+// va a Google Fonts in tutta la UAT. `document.fonts.load` dà le `@font-face` caricate per quella famiglia e quel peso: una
+// famiglia senza `@font-face` darebbe un elenco vuoto, non un errore (e `document.fonts.check` direbbe sì anche lì).
+async function fontDelPacchetto(page, diGoogle) {
+    const font = await page.evaluate(async () => {
+        const caricate = async (descrizione) => (await document.fonts.load(descrizione)).filter((faccia) => faccia.status === 'loaded').length;
+        const woff2 = performance.getEntriesByType('resource').map((voce) => new URL(voce.name)).filter((url) => url.pathname.endsWith('.woff2'));
+        return {
+            bricolage: await caricate('600 16px "Bricolage Grotesque"'),
+            instrument: await caricate('400 16px "Instrument Sans"'),
+            dallOrigine: woff2.filter((url) => url.origin === location.origin).length,
+            altrove: woff2.filter((url) => url.origin !== location.origin).map((url) => url.origin),
+            // Un `preconnect` o un `dns-prefetch` non fa una richiesta che Playwright veda, ma apre la connessione: si cerca nel DOM.
+            collegamenti: [...document.querySelectorAll('link[href]')].map((link) => `${link.rel} ${link.href}`).filter((voce) => /fonts\.(googleapis|gstatic)\.com/.test(voce)),
+        };
+    });
+    const bene = font.bricolage > 0 && font.instrument > 0 && font.dallOrigine > 0 && font.altrove.length === 0 && diGoogle.length === 0 && font.collegamenti.length === 0;
+    scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta né collegamento a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}${font.collegamenti.length ? `; nel <head>: ${font.collegamenti.slice(0, 3).join(' | ')}` : ''}`);
+}
+
 async function uat(page, apri) {
     const errori = [];
+    const diGoogle = [];
     page.on('pageerror', (errore) => errori.push(String(errore)));
     page.on('console', (messaggio) => messaggio.type() === 'error' && errori.push(messaggio.text()));
+    page.on('request', (richiesta) => /^https?:\/\/fonts\.(googleapis|gstatic)\.com\//.test(richiesta.url()) && diGoogle.push(new URL(richiesta.url()).host));
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await apri(indirizzo);
@@ -996,6 +1018,7 @@ async function uat(page, apri) {
     await tornaAllaPagina();
     await campanella(page, false);
 
+    await fontDelPacchetto(page, diGoogle);
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
 }
 

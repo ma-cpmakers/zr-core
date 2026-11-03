@@ -152,6 +152,8 @@ interface Costruito {
     cssARichiesta: string[];
     /** I file CSS a richiesta, ognuno una volta: ciò che la pagina scarica, al più, oltre al CSS d'ingresso. */
     fogliARichiesta: string[];
+    /** I nomi dei file dei font nella build (dalla `v3.15.0` i woff2 del pacchetto: sprint 92 · T2.4). */
+    font: string[];
 }
 
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../${percorso}`, import.meta.url));
@@ -178,6 +180,7 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
         css: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map(cssDi).join('\n'),
         cssARichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map(cssDi).filter((css) => css !== ''),
         fogliARichiesta: [...new Set(pezzi.filter((pezzo) => pezzo.isDynamicEntry).flatMap(nomiDelCss))].filter((nome) => !dIngresso.has(nome)).map((nome) => fogli.get(nome) ?? ''),
+        font: uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.woff2')).map((uscita) => uscita.fileName).sort(),
     };
 }
 
@@ -429,9 +432,12 @@ describe('con zeiras.css gli stili di MentionField e AddressField arrivano col l
         expect(altri).toStrictEqual([]);
     });
 
-    it('il font di Google resta la prima regola del CSS d\'ingresso, in tutte e due', () => {
+    it('i font sono quelli del pacchetto, in tutte e due: le cinque `@font-face` nel CSS d\'ingresso, i cinque woff2 nella build, e nessun indirizzo di Google Fonts (sprint 92 · T2.4)', () => {
         for (const costruita of [iDueConIlBundle, iDueConZeirasCss]) {
-            expect(costruita.css.trimStart()).toMatch(/^@import (?:url\()?["']?https:\/\/fonts\.googleapis\.com\//);
+            expect(volte(costruita.css, '@font-face')).toBe(5);
+            expect(costruita.font).toHaveLength(5);
+            expect(costruita.font.every((nome) => /^assets\/(bricolage-grotesque|instrument-sans)-[a-z-]+-[\w-]+\.woff2$/.test(nome))).toBe(true);
+            expect([costruita.css, ...costruita.fogliARichiesta, costruita.js].join('\n')).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
         }
     });
 });

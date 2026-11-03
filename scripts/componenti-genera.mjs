@@ -204,6 +204,30 @@ const CLASSE = /\.(zr-[\w-]+)/g;
 const classiIn = (righe) => [...new Set([...righe.join('\n').matchAll(CLASSE)].map((trovata) => trovata[1]))];
 const GENERATO_DAL_CSS = (cheCosa) => `/* Generato da scripts/componenti.mjs: non si ritocca a mano. ${cheCosa} A un riallineamento si rigenera con \`npm run componenti\`. */`;
 
+// Dalla `v3.15.0` (sprint 92, voce #2945, Decisione 19881 di zr-pm): i due font del design system arrivano dal pacchetto
+// (resources/fonts, con le regole in resources/css/font.css) e non da Google Fonts, che riceverebbe l'IP di ogni visita. Nei CSS
+// generati la riga dell'`@import` di Google diventa quella di font.css, che sta nella stessa cartella. Il bundle che chiede a
+// Google altri font (un'altra famiglia, un altro peso, un secondo `@import`, un file da fonts.gstatic.com) ferma lo script:
+// resources/fonts e font.css vanno riallineati prima. Un bundle senza Google prende i font del pacchetto in testa.
+const IMPORT_DEI_FONT = "@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&display=swap');";
+const FONT_DEL_PACCHETTO = "@import './font.css';";
+
+/** Il CSS del bundle coi font del pacchetto: la riga dell'`@import` di Google sostituita da quella di font.css. */
+export function coiFontDelPacchetto(css) {
+    const righe = css.split('\n');
+    const diGoogle = righe.flatMap((riga, indice) => (/fonts\.(googleapis|gstatic)\.com/.test(riga) ? [indice] : []));
+    if (diGoogle.length === 0) return [FONT_DEL_PACCHETTO, ...righe].join('\n');
+    vuole(diGoogle.length === 1 && righe[diGoogle[0]] === IMPORT_DEI_FONT && righe.slice(0, diGoogle[0]).every((riga) => riga.trim() === ''), `bundle.css nomina Google Fonts in una forma che il pacchetto non sostituisce: «${righe[diGoogle.at(-1)].slice(0, 120)}»; se i font sono cambiati si riallineano resources/fonts e resources/css/font.css, se è cambiata solo la forma (un'altra riga, un commento prima, CRLF) lo script`);
+    righe[diGoogle[0]] = FONT_DEL_PACCHETTO;
+
+    return righe.join('\n');
+}
+
+/** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, e i font del pacchetto. */
+export function bundleIntero(css) {
+    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.'), coiFontDelPacchetto(css)].join('\n');
+}
+
 /**
  * Il bundle CSS diviso: `zeiras` (resources/css/zeiras.css) è il bundle senza gli stili dei componenti di `A_PARTE`, le altre
  * righe com'erano e nel loro ordine; `stili[nome]` (resources/css/zeiras/<Nome>.css) sono quelli di un componente; `proprie[nome]`
@@ -211,7 +235,7 @@ const GENERATO_DAL_CSS = (cheCosa) => `/* Generato da scripts/componenti.mjs: no
  * di un componente non ci sono, ci sono due volte o non hanno una classe loro, lancia un errore.
  */
 export function dividiIlCss(css) {
-    const righe = css.split('\n');
+    const righe = coiFontDelPacchetto(css).split('\n');
     const tolte = new Set();
     const blocchi = {};
     for (const nome of Object.keys(A_PARTE)) {
@@ -248,7 +272,7 @@ export function dividiIlCss(css) {
     const nomi = Object.keys(A_PARTE);
 
     return {
-        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo.`), ...resto].join('\n'),
+        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, e coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.`), ...resto].join('\n'),
         stili: Object.fromEntries(nomi.map((nome) => [nome, [GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/${nome}.js.`), ...blocchi[nome], ''].join('\n')])),
         proprie,
     };
