@@ -6,6 +6,7 @@ import * as dallIngressoDelleApp from './app';
 import { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';
 import { testi } from './lingue';
 import { registro } from './registro';
+import type { ShellSearchResult } from '../zeiras/index';
 import staffInglese from '../lingue/staff/en.json';
 import staffSpagnolo from '../lingue/staff/es.json';
 import staffItaliano from '../lingue/staff/it.json';
@@ -160,5 +161,120 @@ describe('la cornice dello staff', () => {
         expectTypeOf<dallIngresso.CorniceDelloStaffProps>().toEqualTypeOf<CorniceDelloStaffProps>();
         expectTypeOf<dallIngressoDelleApp.CorniceDelloStaffProps>().toEqualTypeOf<CorniceDelloStaffProps>();
         expectTypeOf<CorniceDelloStaffProps['onLogout']>().toEqualTypeOf<() => void>();
+    });
+});
+
+describe('la ricerca della cornice dello staff', () => {
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    /** Scrive una parola nel campo della ricerca, come una persona, e lascia passare i 300 ms dopo cui l'`AppShell` chiama `onSearch`. */
+    async function scrivi(parola: string): Promise<void> {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, parola);
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.advanceTimersByTimeAsync(300);
+        });
+    }
+
+    /** Una risposta di `cerca` che arriva, o fallisce, quando il test lo dice. */
+    function inAttesa() {
+        let arriva!: (risultati: ShellSearchResult[]) => void;
+        let fallisce!: (errore: unknown) => void;
+        const promessa = new Promise<ShellSearchResult[]>((risolvi, rifiuta) => {
+            arriva = risolvi;
+            fallisce = rifiuta;
+        });
+
+        return {
+            promessa,
+            arriva: async (risultati: ShellSearchResult[]) => act(async () => { arriva(risultati); await vi.advanceTimersByTimeAsync(0); }),
+            fallisce: async (errore: unknown) => act(async () => { fallisce(errore); await vi.advanceTimersByTimeAsync(0); }),
+        };
+    }
+
+    const titoli = () => tutti('.zr-search-panel [role="option"]').map((riga) => riga.querySelector('.zr-search-title')?.textContent);
+    const inCaricamento = () => uno('.zr-search-panel [role="status"] .zr-visually-hidden')?.textContent === testi('it').searchLoading;
+    const anna: ShellSearchResult = { id: 'u1', title: 'Anna Ricci', subtitle: 'anna@example.com', group: 'Persone', icon: 'user', container: true, href: '/utenti/u1' };
+    const clienti: ShellSearchResult = { id: 'w5', title: 'Clienti', subtitle: 'Acme', group: 'Workspace', icon: 'grid', container: true, href: '/workspace/w5' };
+
+    it('T2.1 dal secondo carattere chiama cerca con la parola e un segnale, mostra il caricamento, poi i risultati; un risultato si apre con naviga', async () => {
+        const risposta = inAttesa();
+        const cerca = vi.fn((_parola: string, _segnale: AbortSignal) => risposta.promessa);
+        const naviga = vi.fn();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} cerca={cerca} naviga={naviga} onLogout={esci} />);
+
+        await scrivi('a');
+        expect(cerca).not.toHaveBeenCalled();
+
+        await scrivi('an');
+        expect(cerca).toHaveBeenCalledTimes(1);
+        expect(cerca.mock.calls[0]![0]).toBe('an');
+        expect(cerca.mock.calls[0]![1]).toBeInstanceOf(AbortSignal);
+        expect(inCaricamento()).toBe(true);
+
+        await risposta.arriva([anna, clienti]);
+        expect(titoli()).toEqual(['Anna Ricci', 'Clienti']);
+
+        await clic(tutti('.zr-search-panel [role="option"]')[1]!);
+        expect(naviga).toHaveBeenCalledWith('/workspace/w5');
+    });
+
+    it('T2.2 una parola nuova annulla la richiesta di prima, e la sua risposta tardiva non entra', async () => {
+        const prima = inAttesa();
+        const seconda = inAttesa();
+        const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        await scrivi('an');
+        await scrivi('cli');
+        expect(cerca.mock.calls[0]![1].aborted).toBe(true);
+        expect(cerca.mock.calls[1]![1].aborted).toBe(false);
+
+        await seconda.arriva([clienti]);
+        await prima.arriva([anna]);
+        expect(titoli()).toEqual(['Clienti']);
+    });
+
+    it('T2.2 smontata la cornice, la richiesta in volo è annullata', async () => {
+        const risposta = inAttesa();
+        const cerca = vi.fn((_parola: string, _segnale: AbortSignal) => risposta.promessa);
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        await scrivi('an');
+        await act(async () => radice.render(<p>Altro</p>));
+        expect(cerca.mock.calls[0]![1].aborted).toBe(true);
+        await risposta.arriva([anna]);
+    });
+
+    it('T2.3 una cerca che rifiuta dà lo stato d\'errore; un annullo non cambia lo stato', async () => {
+        const prima = inAttesa();
+        const seconda = inAttesa();
+        const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        await scrivi('an');
+        await scrivi('cli');
+        // La prima, annullata, rifiuta: la seconda resta in caricamento.
+        await prima.fallisce(new DOMException('annullata', 'AbortError'));
+        expect(inCaricamento()).toBe(true);
+
+        await seconda.fallisce(new Error('429'));
+        expect(uno('.zr-search-panel')?.textContent).toContain(testi('it').searchError);
+    });
+
+    it('T2.3 senza cerca il campo non chiama niente e non resta in caricamento', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} onLogout={esci} />);
+
+        await scrivi('anna');
+        expect(inCaricamento()).toBe(false);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchError);
     });
 });

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import type { MenuItem, ShellCrumb } from '../zeiras/index';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
 import { fileDelleLingue, testi, type TestiDellaCornice } from './lingue';
 import { AppShell } from './zeiras/componenti';
@@ -53,11 +53,33 @@ export interface CorniceDelloStaffProps {
     menu?: MenuItem[] | undefined;
     /** «Esci»: la sessione la chiude il modulo. Obbligatorio: senza, «Esci» non farebbe niente. */
     onLogout: () => void;
+    /**
+     * La ricerca della barra: dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola e un segnale che si annulla quando
+     * la persona scrive un'altra parola o la cornice si smonta. Dà i risultati, o rifiuta (la ricerca è in errore). Senza, il
+     * campo non cerca niente.
+     */
+    cerca?: ((parola: string, segnale: AbortSignal) => Promise<ShellSearchResult[]>) | undefined;
+    /** Come si apre l'indirizzo di un risultato: di norma il browser ci va. */
+    naviga?: ((indirizzo: string) => void) | undefined;
     children?: ReactNode;
 }
 
-export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], onLogout, children, ...pagina }: CorniceDelloStaffProps) {
+export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], onLogout, cerca, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
     const t = testi(lingua);
+    // La ricerca: lo stato dell'`AppShell` e i risultati dell'ultima parola. Una parola nuova annulla quella di prima, e una
+    // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.
+    const [ricerca, setRicerca] = useState<{ stato: 'loading' | 'error' } | { stato: 'ready'; risultati: ShellSearchResult[] }>();
+    const inVolo = useRef<AbortController>(undefined);
+    useEffect(() => () => inVolo.current?.abort(), []);
+    const cercaParola = (parola: string) => {
+        inVolo.current?.abort();
+        const questa = (inVolo.current = new AbortController());
+        setRicerca({ stato: 'loading' });
+        cerca!(parola, questa.signal).then(
+            (risultati) => questa.signal.aborted || setRicerca({ stato: 'ready', risultati }),
+            () => questa.signal.aborted || setRicerca({ stato: 'error' }),
+        );
+    };
     const { area, logout, ...dello } = testiDelloStaff(lingua);
     const esci: MenuItem = { icon: 'arrow', label: logout, onClick: onLogout };
 
@@ -72,6 +94,10 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
             workspace={area}
             accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
             notifications={[]}
+            {...(cerca ? { onSearch: cercaParola } : {})}
+            searchState={ricerca?.stato ?? 'ready'}
+            searchResults={ricerca?.stato === 'ready' ? ricerca.risultati : []}
+            onSelectResult={(scelto) => scelto.href !== undefined && naviga(scelto.href)}
             labels={{ ...t, ...dello }}
         >
             {children}
