@@ -1,0 +1,11 @@
+{
+    "area": "Backoffice de Zeiras",
+    "settings": "Configuración",
+    "planTitle": "Equipo de Zeiras",
+    "planText": "Cada acción queda en el registro.",
+    "searchPlaceholder": "Buscar personas y workspaces…",
+    "searchHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres.",
+    "searchEmptyText": "Prueba con el correo completo o con el nombre de la empresa.",
+    "notificationsEmptyText": "En el backoffice no llegan notificaciones.",
+    "logout": "Cerrar sesión del backoffice"
+}
