@@ -133,12 +133,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 87 chiuso (`v3.14.0`); #2341, #2826, #2828 e
-   #2549 accettate il 31/10 con la UAT nella cornice di Bookings (zr-pm 9867a7d); #2722 accettata il 31/10 con la UAT sulle
-   pagine di prova (consegna 19208: in produzione nessun modulo dà il percorso alla cornice, zr-pm a12b0d0); le
-   correzioni di `uat-cornice.mjs` e la pagina «Percorso» sono in main con la PR #146 (sprint 88, senza tag: il pacchetto
-   non cambia); sprint 89 chiuso (`v3.14.1`): #2856, Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, accettata
-   il 01/11 (zr-pm 19344); sprint 90 chiuso (`v3.14.2`): #2871, il `Dialog` prende il fuoco e lo rende, accettata
-   il 01/11 (consegna 19427); il Backlog ha solo voci da Luciano: nessuno sprint finché non arriva qualcosa di nuovo (0369921).
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 93 chiuso (`v3.16.0`): #2944, la cornice dello
+   staff per zr-superadmin, in `test_umano`; #2945 (i font dal pacchetto, `v3.15.0`) in `test_umano`; #2946 (Google fuori
+   dalla CSP) aspetta che tutti i moduli siano passati alla `v3.15.0`; #2909 (la fascia di assistenza) esce nella minore
+   successiva, quando zr-backoffice ha `accessi.corrente.mostra` (Decisione 19904).
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
