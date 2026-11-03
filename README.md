@@ -2438,7 +2438,7 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
 - **La barra**: solo le voci di `nav` (coi gruppi, `active`, `onNavigate`), il percorso (`crumbs`, `onCrumb`), `actions` e `flush`
   come nella `Cornice`. In cima «Backoffice di Zeiras» al posto del workspace; in fondo «Configurazione», che arriva a
   `onNavigate` come `settings`, e il riquadro «Staff di Zeiras».
-- **La ricerca**: dal secondo carattere, 300 ms dopo l'ultimo tasto, la cornice chiama `cerca(parola, segnale)` e mostra il
+- **La ricerca dello staff**: dal secondo carattere, 300 ms dopo l'ultimo tasto, la cornice chiama `cerca(parola, segnale)` e mostra il
   caricamento; la funzione dà i risultati come li vuole l'`AppShell` (`ShellSearchResult`, con `href`), o rifiuta, e la ricerca
   è in errore. Una parola nuova annulla il segnale di quella di prima, e la sua risposta non entra; dal tasto la ricerca è già
   in caricamento, come nella `Cornice`. Un risultato si apre con `naviga` (di norma il browser va all'indirizzo). Senza

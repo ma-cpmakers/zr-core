@@ -4,6 +4,7 @@ import type { GruppoDiVoci } from './cornice';
 import { fileDelleLingue, testi, type TestiDellaCornice } from './lingue';
 import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
+import inglese from '../lingue/staff/en.json';
 
 // La cornice dello staff (dalla `v3.16.0`, voce #2944, Decisioni 19872 e 19904): l'`AppShell` del design system per chi lavora in
 // zr-superadmin, che non ha `Cornice::dati()` — il suo gettone apre solo i metodi `staff.*`. Ciò che la riempie lo dà il modulo:
@@ -27,7 +28,6 @@ function testiDelloStaff(lingua: string): TestiDelloStaff {
     // cornice se la porterebbe nell'ingresso.
     const { perCodice, fileDi } = fileDelleLingue(file);
     const scelti: Partial<TestiDelloStaff> = perCodice.get(fileDi(lingua)!) ?? {};
-    const inglese = perCodice.get('en')!;
 
     return Object.fromEntries(Object.entries(inglese).map(([chiave, testo]) => [chiave, scelti[chiave as keyof TestiDelloStaff]?.trim() ? scelti[chiave as keyof TestiDelloStaff] : testo])) as TestiDelloStaff;
 }

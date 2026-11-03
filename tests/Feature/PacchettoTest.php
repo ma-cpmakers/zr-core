@@ -5042,7 +5042,7 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
@@ -5607,17 +5607,19 @@ it('README e guida dicono a chi rifà i moduli nei casi che `frasiInMemoria` si 
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
+    // Dalla `v3.16.0` (voce #2944) il pulsante sta in un modulo suo, `salto.tsx`, che mettono la `Cornice` e la cornice dello staff.
+    $salto = (string) file_get_contents(__DIR__.'/../../resources/js/salto.tsx');
 
     // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
     // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
     expect($css)->toBe(['resources/css/bundle.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
-        ->and(substr_count($cornice, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
-        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{\(\) => fuocoAlContenuto\(contenitore\.current\)\}>\{testo\}<\/Button>/', $cornice))->toBe(1)
+        ->and(substr_count($salto, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
+        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{\(\) => fuocoAlContenuto\(contenitore\.current\)\}>\{testo\}<\/Button>/', $salto))->toBe(1)
         ->and(substr_count($cornice, '<SaltaAlContenuto testo={t.skipToContent} />'))->toBe(1)
         // Lettura della PR #61, R3: il `main` si cerca dal pulsante, non dal documento.
-        ->and(str_contains($cornice, "document.querySelector('main')"))->toBe(false);
+        ->and(str_contains($cornice.$salto, "document.querySelector('main')"))->toBe(false);
 });
 
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i
