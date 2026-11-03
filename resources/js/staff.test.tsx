@@ -228,6 +228,41 @@ describe('la ricerca della cornice dello staff', () => {
         expect(naviga).toHaveBeenCalledWith('/workspace/w5');
     });
 
+    it('T2.1 a ogni tasto con due caratteri o più la ricerca è subito in caricamento: sotto la parola nuova non restano i risultati di prima', async () => {
+        const prima = inAttesa();
+        const seconda = inAttesa();
+        const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+        await scrivi('an');
+        await prima.arriva([anna]);
+        expect(titoli()).toEqual(['Anna Ricci']);
+
+        // Il tasto, senza i 300 ms: l'`AppShell` non ha ancora chiamato la cornice.
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'cl');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        expect(titoli()).toEqual([]);
+        expect(inCaricamento()).toBe(true);
+        expect(campo.value).toBe('cl');
+
+        await act(() => vi.advanceTimersByTimeAsync(300));
+        await seconda.arriva([clienti]);
+        expect(titoli()).toEqual(['Clienti']);
+    });
+
+    it('T2.3 senza cerca, un tasto non mette il caricamento', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} onLogout={esci} />);
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'anna');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        expect(inCaricamento()).toBe(false);
+    });
+
     it('T2.2 una parola nuova annulla la richiesta di prima, e la sua risposta tardiva non entra', async () => {
         const prima = inAttesa();
         const seconda = inAttesa();

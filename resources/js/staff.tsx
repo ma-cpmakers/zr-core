@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
 import { fileDelleLingue, testi, type TestiDellaCornice } from './lingue';
@@ -71,7 +71,27 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.
     const [ricerca, setRicerca] = useState<{ stato: 'loading' | 'error' } | { stato: 'ready'; risultati: ShellSearchResult[] }>();
     const inVolo = useRef<AbortController>(undefined);
-    useEffect(() => () => inVolo.current?.abort(), []);
+    // A ogni tasto nel campo, con 2 caratteri o più, la ricerca è subito in caricamento, come nella `Cornice` (voce 2062): fino
+    // alla chiamata dell'`AppShell`, 300 ms dopo l'ultimo tasto, sotto la parola nuova resterebbero i risultati della vecchia. La
+    // richiesta della parola di prima si annulla. L'ascolto sta sulla finestra, dopo quello di React: sul campo, lo stato
+    // cambiato durante l'evento ridisegnerebbe l'`AppShell` col valore di prima, e in un browser vero il campo terrebbe un
+    // carattere solo (R.0 di `scripts/uat-cornice.mjs`). Un `input` che lascia nel campo il valore di prima non arriva
+    // all'`AppShell`, che non chiama la cornice: lì il tasto non cambia niente. Smontata, la cornice annulla la richiesta in volo.
+    const conCerca = useRef(cerca);
+    conCerca.current = cerca;
+    useLayoutEffect(() => {
+        let visto: string | undefined;
+        const alTasto = (e: Event) => {
+            const campo = e.target as HTMLInputElement;
+            if (conCerca.current && campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && campo.value.trim().length > 1) {
+                inVolo.current?.abort();
+                setRicerca({ stato: 'loading' });
+            }
+        };
+        addEventListener('input', alTasto);
+
+        return () => (inVolo.current?.abort(), removeEventListener('input', alTasto));
+    }, []);
     // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono i nomi.
     useLayoutEffect(() => {
         void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
