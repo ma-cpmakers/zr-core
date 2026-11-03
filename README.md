@@ -2619,7 +2619,7 @@ posto esce la più stretta.
 La CSP di tutti, quella di un modulo che non aggiunge niente:
 
 ```
-default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
 ### Le sorgenti di un modulo
@@ -2708,7 +2708,7 @@ it('ogni risposta porta le intestazioni di sicurezza, coi valori scritti per int
         ->assertHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
 
-    expect($risposta->headers->all('Content-Security-Policy'))->toBe(["default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"]);
+    expect($risposta->headers->all('Content-Security-Policy'))->toBe(["default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"]);
 });
 ```
 
@@ -2761,7 +2761,7 @@ Content-Security-Policy: default-src 'self'
 È il minimo per la cornice, non una policy completa: ci aggiunge ciò che serve a lui (le sue API in `connect-src`, le sue
 immagini in `img-src`), e `frame-ancestors`, `base-uri` e `form-action` in quel caso li mette da sé. Fino alla `v3.14` il
 minimo apriva anche `style-src` a `https://fonts.googleapis.com` e `font-src` a `https://fonts.gstatic.com`, per i font di
-Google: servono ancora a chi importa `resources/zeiras/bundle.css` («Passare alla v3.15»).
+Google: dalla `v4.0.0` non li apre più nemmeno la CSP di tutti («Passare alla v4»).
 
 ## Gli host fidati
 

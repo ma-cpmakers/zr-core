@@ -2346,7 +2346,7 @@ it('la guardia dello zip, su un albero finto: config/zr-core.php è fra ciò che
 // classe fra ciò che zr-core scrive. I valori stanno scritti qui per intero: sono quelli che un modulo ricopia nel suo test.
 
 /** La CSP di tutti, com'è nel README: nella sezione delle intestazioni, e nel test che il README dà da tenere a ogni modulo. */
-const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const CSP_DI_TUTTI_NEL_README = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
 /** Il minimo per la cornice, per chi non registra la classe: la riga che guarda anche TokenCssTest. Dalla v3.15.0 i font arrivano dal pacchetto, e basta l'origine del modulo. */
 const CSP_MINIMA_NEL_README = "default-src 'self'";
