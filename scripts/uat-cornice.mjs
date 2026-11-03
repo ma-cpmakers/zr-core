@@ -33,7 +33,8 @@ const opzione = (nome, altrimenti) => {
 };
 const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
-// axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S. Prima del tag zr-core la lancia su `staff.html --parola uat`.
+// axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
+// che la pagina dei moduli non ha: lì sono ➖). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
@@ -986,6 +987,55 @@ async function loStaff(page) {
     scrivi(uscito === 'esci' ? '✅' : '❌', 'S.3', '«Esci» dal menu del profilo chiama il modulo', uscito);
 }
 
+// TO (dalla v3.17.0, #2910): il Toast della cornice. Sulla pagina coi parametri `toast=1` (e a 1280 px `dialogo=1`, un Dialog
+// aperto), che `staff.html` capisce: TO.1 e TO.3 il centro del Toast al centro della finestra e il fondo a 24 px dal fondo, a 1280 e a
+// 390 px; TO.2 sopra il Dialog, TO.4 sopra il cassetto aperto: al centro del Toast il punto è del Toast. Una pagina senza Toast: ➖.
+async function toastAlSuoPosto(page, apri, larghezza) {
+    const dove = new URL(indirizzo);
+    dove.searchParams.set('toast', '1');
+    if (larghezza > 720) {
+        dove.searchParams.set('dialogo', '1');
+    }
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    const misura = () => page.evaluate(() => {
+        const toast = document.querySelector('.zr-toast');
+        if (!toast) {
+            return null;
+        }
+        const r = toast.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        return {
+            centro: Math.round(x - innerWidth / 2),
+            fondo: Math.round(innerHeight - r.bottom),
+            dentro: r.left >= 0 && r.right <= innerWidth,
+            sopra: document.elementFromPoint(x, y)?.closest('.zr-toast') === toast,
+            dialogo: document.querySelector('.zr-dialog') !== null,
+            cassetto: document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded') === 'true',
+        };
+    });
+    const posto = larghezza > 720 ? 'TO.1' : 'TO.3';
+    const sopraA = larghezza > 720 ? ['TO.2', 'il Dialog aperto', 'dialogo'] : ['TO.4', 'il cassetto aperto', 'cassetto'];
+    let m = await misura();
+    if (!m) {
+        scrivi('➖', posto, `a ${larghezza} px il Toast in basso al centro, a 24 px dal fondo (#2910)`, 'la pagina non mostra un Toast con ?toast=1');
+        scrivi('➖', sopraA[0], `a ${larghezza} px il Toast sta sopra ${sopraA[1]} (#2910)`, 'la pagina non mostra un Toast con ?toast=1');
+        return;
+    }
+    await page.screenshot({ path: join(cartella, `toast-${larghezza}.png`) });
+    scrivi(Math.abs(m.centro) <= 1 && Math.abs(m.fondo - 24) <= 1 && m.dentro ? '✅' : '❌', posto, `a ${larghezza} px il Toast in basso al centro, a 24 px dal fondo (#2910)`, `dal centro ${m.centro} px, dal fondo ${m.fondo} px, dentro la finestra: ${m.dentro}`);
+    if (larghezza <= 720) {
+        await page.focus('.zr-shell .zr-top-menu');
+        await page.keyboard.press('Enter');
+        await pausa(300);
+        m = await misura();
+        await page.screenshot({ path: join(cartella, `toast-${larghezza}-cassetto.png`) });
+    }
+    scrivi(m[sopraA[2]] && m.sopra ? '✅' : '❌', sopraA[0], `a ${larghezza} px il Toast sta sopra ${sopraA[1]} (#2910)`, `${sopraA[2]}: ${m[sopraA[2]]}, al centro del Toast il Toast: ${m.sopra}`);
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -1017,6 +1067,7 @@ async function uat(page, apri) {
         await inizioEFineNeiMenu(page);
         await tornaAllaPagina();
         await loStaff(page);
+        await toastAlSuoPosto(page, apri, 1280);
         return a390(page, apri, diGoogle, errori);
     }
     await fuoriDaiMenu(page);
@@ -1064,6 +1115,8 @@ async function a390(page, apri, diGoogle, errori) {
     if (!conLoStaff) {
         await tornaAllaPagina();
         await campanella(page, false);
+    } else {
+        await toastAlSuoPosto(page, apri, 390);
     }
 
     await fontDelPacchetto(page, diGoogle);

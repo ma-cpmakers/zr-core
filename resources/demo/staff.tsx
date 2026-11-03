@@ -1,9 +1,11 @@
 // staff.html: la cornice dello staff (dalla `v3.16.0`, voce #2944) presa dall'ingresso per le app, con una ricerca finta che
 // risponde dopo 200 ms su un elenco di persone e workspace «UAT». Ciò che la cornice chiede al modulo — un indirizzo da aprire,
-// l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»).
+// l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»). Con `?toast=1` mostra il Toast della cornice
+// (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CorniceDelloStaff } from '../js/app';
+import { CorniceDelloStaff, ToastDellaCornice } from '../js/app';
+import { Dialog } from '../js/zeiras/componenti';
 import type { ShellSearchResult } from '../zeiras/index';
 import '../css/zeiras.css';
 import '../css/zeiras-token.css';
@@ -38,7 +40,10 @@ function cerca(parola: string, segnale: AbortSignal): Promise<ShellSearchResult[
 const nav = [{ group: 'Backoffice', items: [{ id: 'panoramica', label: 'Panoramica', icon: 'grid' as const }, { id: 'utenti', label: 'Utenti', icon: 'users' as const }, { id: 'workspace', label: 'Workspace', icon: 'building' as const }] }];
 
 function Pagina() {
-    const lingua = new URLSearchParams(window.location.search).get('lingua') ?? 'it';
+    const scelti = new URLSearchParams(window.location.search);
+    const lingua = scelti.get('lingua') ?? 'it';
+    const [toast, setToast] = useState(scelti.get('toast') === '1');
+    const [dialogo, setDialogo] = useState(scelti.get('dialogo') === '1');
     const [attiva, setAttiva] = useState('panoramica');
     const [ultima, setUltima] = useState('');
 
@@ -56,6 +61,8 @@ function Pagina() {
         >
             <h1>UAT {attiva}</h1>
             <p id="uat-ultima">{ultima}</p>
+            <Dialog open={dialogo} title="UAT dialogo" onClose={() => setDialogo(false)}>UAT il Toast sta sopra</Dialog>
+            {toast ? <ToastDellaCornice actionLabel="Annulla" onAction={() => setUltima('annulla')} onClose={() => setToast(false)}>UAT fatto</ToastDellaCornice> : null}
         </CorniceDelloStaff>
     );
 }
