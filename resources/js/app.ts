@@ -9,3 +9,6 @@ export { tonoDelWorkspace } from './tono';
 export { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito, type GruppoDiVoci } from './cornice';
 export { nomeDellaVoce } from './lingue';
 export { LayoutDellaCornice, useCornice, type CorniceDellaPagina, type LayoutDellaCorniceProps } from './layout';
+// La cornice dello staff (dalla `v3.16.0`): per zr-superadmin, senza i dati della persona. In coda, perché i nomi di ciò che sta sopra
+// non cambino; un'app che non la usa non la porta nella build.
+export { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';

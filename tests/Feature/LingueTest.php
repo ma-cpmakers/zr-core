@@ -1324,6 +1324,15 @@ it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni l
         ->and(array_filter(array_map(fn (array $delCodice): array => array_values(array_intersect(chiaviDegliAvvisi(), array_keys($delCodice))), $testi)))->toBe([]);
 });
 
+it('i testi della cornice dello staff stanno in resources/lingue/staff, un file per ogni lingua dei testi con lo stesso nome e le stesse chiavi (revisione dello sprint 93, R5)', function () {
+    $staff = fileDelleLingue('staff/');
+    $chiavi = array_keys($staff['en'] ?? []);
+
+    expect(array_keys($staff))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
+        ->and($chiavi)->toContain('area', 'logout', 'searchHint', 'searchEmptyText')
+        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $staff))->toBe(array_fill_keys(array_keys($staff), $chiavi));
+});
+
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
@@ -1456,8 +1465,9 @@ it('il controllo vede il nome di un documento e una versione, in mezzo a una fra
 it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4)', function () {
     // Sprint 74 · T2.5 (voce 2549): un id del registro non è un testo, anche quando una lingua ha un testo uguale. Il nome da
     // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
-    // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/'))])))), idDeiProdotti()));
+    // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca. Revisione dello sprint 93
+    // (R1): e quelli della cornice dello staff, in resources/lingue/staff.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1466,7 +1476,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office')
         ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);

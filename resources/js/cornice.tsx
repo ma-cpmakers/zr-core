@@ -3,6 +3,7 @@ import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, S
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { SaltaAlContenuto } from './salto';
 import { tonoDelWorkspace } from './tono';
 import { Alert, AppShell, Button } from './zeiras/componenti';
 
@@ -363,56 +364,6 @@ function nonPiuRecentiDi(dati: DatiDellaCornice, saputo: Saputo | undefined): bo
  */
 function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean {
     return saputo.con === dati || (dati.workspace.slug === saputo.con.workspace.slug && segno(dati.aggiornati_il)! <= segno(saputo.con.aggiornati_il)!);
-}
-
-/**
- * Porta il fuoco al contenuto della pagina: il `main` dell'`AppShell`, che non ha un `id` e di suo non prende il fuoco. Si
- * trova dal pulsante — l'`AppShell` è accanto al suo contenitore —, non dal documento: un frontend può avere un `main` suo.
- * Gli si dà `tabindex="-1"` solo per il salto, e glielo si toglie quando il fuoco lo lascia: del `main` la cornice non
- * cambia altro, e un `tabindex` che ha già resta com'è. Il `blur` arriva anche quando è la finestra a perdere il fuoco, e lì
- * il `main` resta l'elemento attivo: l'attributo resta, o al ritorno il `main` non terrebbe più il fuoco.
- */
-function fuocoAlContenuto(dalSalto: HTMLElement | null): void {
-    const main = dalSalto?.parentElement?.querySelector<HTMLElement>(':scope > .zr-shell > main.zr-main');
-
-    if (!main) {
-        return;
-    }
-    if (!main.hasAttribute('tabindex')) {
-        const alBlur = (): void => {
-            if (main.ownerDocument.activeElement !== main) {
-                main.removeAttribute('tabindex');
-                main.removeEventListener('blur', alBlur);
-            }
-        };
-
-        main.setAttribute('tabindex', '-1');
-        main.addEventListener('blur', alBlur);
-    }
-    main.focus();
-}
-
-/**
- * «Salta al contenuto», prima di tutto ciò che è dell'`AppShell`: senza il fuoco ha la classe del design system che nasconde,
- * col fuoco sta in alto a sinistra sopra la cornice, coi soli token. Lo stato è suo: il fuoco che entra e che esce non rifà
- * la cornice. È provvisorio: si toglie quando l'`AppShell` porta il suo.
- */
-function SaltaAlContenuto({ testo }: { testo: string }) {
-    // Si vede solo mentre ha il fuoco.
-    const [colFuoco, setColFuoco] = useState(false);
-    const contenitore = useRef<HTMLDivElement>(null);
-
-    return (
-        <div
-            ref={contenitore}
-            className={colFuoco ? undefined : 'zr-visually-hidden'}
-            style={colFuoco ? { position: 'fixed', top: 'var(--space-2)', left: 'var(--space-2)', zIndex: 'var(--z-toast)' } : undefined}
-            onFocus={() => setColFuoco(true)}
-            onBlur={() => setColFuoco(false)}
-        >
-            <Button variant="secondary" size="sm" onClick={() => fuocoAlContenuto(contenitore.current)}>{testo}</Button>
-        </div>
-    );
 }
 
 /** Il pezzo dei testi degli avvisi: chi lo chiede di nuovo dopo un fallimento lo chiede come gli altri pezzi a richiesta. */

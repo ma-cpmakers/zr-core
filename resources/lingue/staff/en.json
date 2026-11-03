@@ -1,0 +1,11 @@
+{
+    "area": "Zeiras back office",
+    "settings": "Configuration",
+    "planTitle": "Zeiras staff",
+    "planText": "Every action goes into the log.",
+    "searchPlaceholder": "Search people and workspaces…",
+    "searchHint": "Search people and workspaces: type at least 2 characters.",
+    "searchEmptyText": "Try the full email address or the company name.",
+    "notificationsEmptyText": "No notifications arrive in the back office.",
+    "logout": "Log out of the back office"
+}

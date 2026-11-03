@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, e dalla v3.15 i font dal pacchetto, su una pagina vera del modulo. Non sta nello zip del
  * pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -32,6 +32,9 @@ const opzione = (nome, altrimenti) => {
     return posto >= 0 ? argomenti.splice(posto, 2)[1] : altrimenti;
 };
 const parola = opzione('--parola', 'pro');
+// --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
+// axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S. Prima del tag zr-core la lancia su `staff.html --parola uat`.
+const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -953,6 +956,36 @@ async function fontDelPacchetto(page, diGoogle) {
     scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta né collegamento a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}${font.collegamenti.length ? `; nel <head>: ${font.collegamenti.slice(0, 3).join(' | ')}` : ''}`);
 }
 
+// S (dalla v3.16.0, #2944): la cornice dello staff. S.1 nella barra solo le voci del modulo, senza selettore e senza menu Moduli;
+// S.2 un risultato della ricerca si apre con la `naviga` del modulo; S.3 «Esci» dal menu del profilo chiama il modulo. La pagina di
+// prova scrive in `#uat-ultima` ciò che il modulo ha ricevuto.
+async function loStaff(page) {
+    const barra = await page.evaluate(() => ({
+        titoli: [...document.querySelectorAll('.zr-shell .zr-nav .zr-nav-title')].map((titolo) => titolo.textContent),
+        selettore: document.querySelector('.zr-shell .zr-ws-switch') !== null,
+    }));
+    scrivi(!barra.selettore && !barra.titoli.includes('Moduli') && barra.titoli.length > 0 ? '✅' : '❌', 'S.1', 'nella barra solo le voci del modulo: nessun selettore, nessun menu Moduli', barra.titoli.join(', '));
+    const ultima = () => page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');
+    await page.click('.zr-shell .zr-top > .zr-search input');
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type(parola, { delay: 60 });
+    await pausa(900);
+    const primo = page.locator('.zr-shell .zr-search-panel [role="option"]').first();
+    if (await primo.count()) {
+        await primo.click();
+        await pausa(300);
+        const scritto = await ultima();
+        scrivi(scritto.startsWith('naviga /') ? '✅' : '❌', 'S.2', 'un risultato della ricerca si apre con la naviga del modulo', scritto);
+    } else {
+        scrivi('❌', 'S.2', 'un risultato della ricerca si apre con la naviga del modulo', `nessun risultato per «${parola}»`);
+    }
+    await page.click('.zr-shell .zr-avatar-btn');
+    await page.locator('.zr-profile-menu [role="menuitem"]').last().click();
+    await pausa(300);
+    const uscito = await ultima();
+    scrivi(uscito === 'esci' ? '✅' : '❌', 'S.3', '«Esci» dal menu del profilo chiama il modulo', uscito);
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -978,6 +1011,14 @@ async function uat(page, apri) {
     await tornaAllaPagina();
     await escNellaBarra(page, true);
     await tornaAllaPagina();
+    if (conLoStaff) {
+        await fuoriDaiMenu(page);
+        await tornaAllaPagina();
+        await inizioEFineNeiMenu(page);
+        await tornaAllaPagina();
+        await loStaff(page);
+        return a390(page, apri, diGoogle, errori);
+    }
     await fuoriDaiMenu(page);
     await tornaAllaPagina();
     await inizioEFineNeiMenu(page);
@@ -1003,6 +1044,11 @@ async function uat(page, apri) {
     await dialogoColMouse(page);
     await attendiDaUnDialogo(page);
 
+    await a390(page, apri, diGoogle, errori);
+}
+
+/** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font e la console. */
+async function a390(page, apri, diGoogle, errori) {
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
@@ -1015,8 +1061,10 @@ async function uat(page, apri) {
     await escNellaBarra(page, false);
     await tornaAllaPagina();
     await cassetto(page);
-    await tornaAllaPagina();
-    await campanella(page, false);
+    if (!conLoStaff) {
+        await tornaAllaPagina();
+        await campanella(page, false);
+    }
 
     await fontDelPacchetto(page, diGoogle);
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
