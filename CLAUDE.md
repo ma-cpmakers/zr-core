@@ -25,7 +25,7 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   `destinazioneDellaNotifica`. I font, dalla `v3.15.0`,
   arrivano dal pacchetto e non da Google Fonts (#2945): i woff2 e le licenze OFL in `resources/fonts/`, le `@font-face` in
   `resources/css/font.css`, che `resources/css/bundle.css` e `zeiras.css` importano al posto dell'`@import` di Google; la CSP di
-  tutti ha `font-src 'self'`. Google resta nella CSP finché i moduli non sono passati: lo toglie la prossima maggiore (#2946).
+  tutti ha `font-src 'self'`. Dalla `v4.0.0` Google è fuori dalla CSP di tutti (#2946, maggiore: stringe).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.
@@ -117,7 +117,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde, e prima del tag `scripts/uat-cornice.mjs` in un Chromium vero sulle pagine di
-prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con R.0 ✅ — il campo della ricerca tiene tutti i
+prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale con la CSP di tutti da `node scripts/servi-demo.mjs`, e dalla `v4.0.0` anche R.C ✅), con R.0 ✅ — il campo della ricerca tiene tutti i
 caratteri scritti: un difetto che vitest non vede (sprint 74, #2062; zr-pm 26/10); e, da solo, `node scripts/tipi-del-contratto.mjs`
 con esito 0: un tipo di evento nuovo del contratto ha un titolo o sta nell'elenco dei tipi che non arrivano alla campanella
 (dalla `v3.11.0`, #2820). Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo
@@ -133,9 +133,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 95 aperto (`v3.17.1`): #2951, «Annulla» del
-   Toast da tastiera con un Dialog aperto; poi gli scostamenti dello sprint 85 (Decisione 19956). #2909 (la fascia di assistenza) esce nella minore dopo, quando zr-backoffice ha
-   `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55; #2946
-   (Google fuori dalla CSP) aspetta che tutti i moduli siano passati alla `v3.15.0`.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 97 aperto (`v4.0.0`): #2946, Google fuori dalla CSP
+   di tutti (Decisione 19987). #2954 (CorniceDelloStaff senza «Configurazione») aspetta la riga 162 delle richieste al design
+   system; #2909 (la fascia di assistenza) esce quando zr-backoffice ha `accessi.corrente.mostra` (Decisioni 19904 e 19935);
+   #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
