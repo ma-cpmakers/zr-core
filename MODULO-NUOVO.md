@@ -97,8 +97,8 @@ Cinque cose non le scrivi tu e hanno un'attesa. Chiedile il primo giorno, e inta
 ]
 ```
 
-Poi `composer require "zeiras/zr-core:^1.10.1"`, o con l'ultima versione con tag al posto di quella (questa guida c'è
-dalla `v1.10.1`). zr-auth lo richiede zr-core, e Composer lo installa con lui. Poi i due `@import` del CSS nell'ordine
+Poi `composer require "zeiras/zr-core:^4.0"`, o con la maggiore dell'ultima versione con tag al posto di quella (questa
+guida c'è dalla `v1.10.1`). zr-auth lo richiede zr-core, e Composer lo installa con lui. Poi i due `@import` del CSS nell'ordine
 dato, gli import del JS e, nel tuo `tsconfig`, `target` ES2022 o più recente: README, «Come si installa in un frontend».
 Un modulo che nasce parte dall'ingresso per le app (dalla `v1.15.0`): la cornice da
 `vendor/zeiras/zr-core/resources/js/app.ts`, i componenti del design system per nome da

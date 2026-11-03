@@ -2957,11 +2957,15 @@ it('il README dice, in «La parte server», la forma dei dati con l\'id di ogni 
     'quando non c\'è (sprint 17 · review, N2)' => ['e allora nei dati il suo `id` non c\'è'],
 ]);
 
+it('il README non dice più che il colore di un workspace «non si sceglie»: dalla v3.6.0 il colore scelto viene prima della regola dell\'id (#2730)', function () {
+    expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'con una regola sola, e non si sceglie'))->toBe(false);
+});
+
 it('il README non dice più che l\'id lo danno «gli esempi di zr-auth»: zr-auth ha un backoffice finto, e gli esempi sono del contratto (sprint 17 · review, N1)', function () {
     expect(str_contains(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'gli esempi di zr-auth'))->toBe(false);
 });
 
-it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — dall\'id, non si sceglie, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5)', function (string $frase) {
+it('il README dice, nel punto del selettore di «La cornice», da dove viene il colore di un workspace — quello scelto, o dall\'id, lo stesso ovunque — e che nel tipo l\'id è facoltativo (sprint 17 · T4.5; il colore scelto dalla v3.6.0, #2730)', function (string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $selettore = 'Il selettore «Azienda › workspace»';
     // Il README col punto del selettore e quello della campanella scambiati di nome: la frase c'è, ma dove si legge della campanella.
@@ -2975,7 +2979,8 @@ it('il README dice, nel punto del selettore di «La cornice», da dove viene il 
 })->with([
     'ogni workspace ha il suo colore' => ['Ogni workspace ha il pallino del suo colore'],
     'lo decide zr-core dall\'id' => ['lo decide zr-core dall\'`id` del workspace, con una regola sola'],
-    'non si sceglie' => ['con una regola sola, e non si sceglie'],
+    // Dalla v3.6.0 (#2730) il colore scelto dal workspace viene prima della regola dell'id: il README non dice più «non si sceglie».
+    'prima il colore scelto (#2730)' => ['quello che il workspace ha scelto (`colore` nei dati, dalla `v3.6.0`); se non ne ha scelto uno, lo decide zr-core'],
     'lo stesso ovunque' => ['Lo stesso workspace ha lo stesso colore in ogni prodotto, per ogni persona e a ogni visita'],
     'nome, slug e posto non contano' => ['cambiargli nome, slug o posto nell\'elenco non glielo cambia'],
     'nel tipo l\'id è facoltativo' => ['Nel tipo `DatiDellaCornice` l\'`id` di un workspace è facoltativo'],

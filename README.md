@@ -25,7 +25,7 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 
 ```json
 "repositories": [{ "type": "vcs", "url": "<l'indirizzo GitHub di questo repo>" }],
-"require": { "zeiras/zr-core": "^1.0" }
+"require": { "zeiras/zr-core": "^4.0" }
 ```
 
 **Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
@@ -1156,7 +1156,8 @@ cornice === null ? pagina : (
   è una pagina di app.zeiras.com da ogni prodotto. Il dialogo è di zr-home, e se la persona può davvero lo decide il
   backoffice (`io.workspace.crea`): la cornice mostra solo la strada. Un frontend non deve fare niente per averlo. Senza
   `nuovo_workspace` nei dati, o con `false`, il pulsante non c'è. Ogni workspace ha il pallino del suo colore:
-  lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
+  quello che il workspace ha scelto (`colore` nei dati, dalla `v3.6.0`); se non ne ha scelto uno, lo decide zr-core
+  dall'`id` del workspace, con una regola sola. Lo stesso workspace ha lo stesso colore
   in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. I colori
   sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
   aiuta a riconoscere un workspace, non lo distingue da tutti gli altri. Nel tipo `DatiDellaCornice` l'`id` di un workspace

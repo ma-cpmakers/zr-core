@@ -1,6 +1,6 @@
 {
-    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026). Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
-    "versione": "400c8d51",
+    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
+    "versione": "6a67cc74",
     "tipi": [
         "com.zeiras.app.modificata",
         "com.zeiras.board.board.creata",
@@ -23,6 +23,9 @@
         "com.zeiras.board.vista.creata",
         "com.zeiras.board.vista.eliminata",
         "com.zeiras.board.vista.modificata",
+        "com.zeiras.bookings.apertura.creata",
+        "com.zeiras.bookings.apertura.eliminata",
+        "com.zeiras.bookings.apertura.modificata",
         "com.zeiras.bookings.blocco.creato",
         "com.zeiras.bookings.blocco.eliminato",
         "com.zeiras.bookings.blocco.modificato",
@@ -103,6 +106,9 @@
     "non_arrivano": {
         "com.zeiras.board.scheda.crm.creato": "CollegamentoCrm::notifica() è false: l'evento resta nel registro",
         "com.zeiras.board.scheda.crm.eliminato": "CollegamentoCrm::notifica() è false: l'evento resta nel registro",
+        "com.zeiras.bookings.apertura.creata": "zr-backoffice su 6a67cc74: Apertura::notifica() è false, l'evento resta nel registro",
+        "com.zeiras.bookings.apertura.eliminata": "zr-backoffice su 6a67cc74: Apertura::notifica() è false, l'evento resta nel registro",
+        "com.zeiras.bookings.apertura.modificata": "zr-backoffice su 6a67cc74: Apertura::notifica() è false, l'evento resta nel registro",
         "com.zeiras.bookings.blocco.creato": "Blocco::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.blocco.eliminato": "Blocco::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.blocco.modificato": "Blocco::notifica() è false: l'evento resta nel registro",
