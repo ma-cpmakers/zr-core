@@ -989,7 +989,8 @@ async function loStaff(page) {
 
 // TO (dalla v3.17.0, #2910): il Toast della cornice. Sulla pagina coi parametri `toast=1` (e a 1280 px `dialogo=1`, un Dialog
 // aperto), che `staff.html` capisce: TO.1 e TO.3 il centro del Toast al centro della finestra e il fondo a 24 px dal fondo, a 1280 e a
-// 390 px; TO.2 sopra il Dialog, TO.4 sopra il cassetto aperto: al centro del Toast il punto è del Toast. Una pagina senza Toast: ➖.
+// 390 px; TO.2 sopra il Dialog, TO.4 sopra il cassetto aperto: al centro del Toast il punto è del Toast; TO.5 (v3.17.1) Tab dal
+// dialogo ad «Annulla» e Invio. Una pagina senza Toast: ➖ (TO.5 non si scrive).
 async function toastAlSuoPosto(page, apri, larghezza) {
     const dove = new URL(indirizzo);
     dove.searchParams.set('toast', '1');
@@ -1034,6 +1035,27 @@ async function toastAlSuoPosto(page, apri, larghezza) {
         await page.screenshot({ path: join(cartella, `toast-${larghezza}-cassetto.png`) });
     }
     scrivi(m[sopraA[2]] && m.sopra ? '✅' : '❌', sopraA[0], `a ${larghezza} px il Toast sta sopra ${sopraA[1]} (#2910)`, `${sopraA[2]}: ${m[sopraA[2]]}, al centro del Toast il Toast: ${m.sopra}`);
+    if (larghezza > 720) {
+        // TO.5 (dalla v3.17.1, #2951): col dialogo aperto il Toast sta dentro il dialogo. Dall'ultima fermata del dialogo che non è
+        // del Toast, Tab va ad «Annulla», dentro l'`aria-modal`; Invio chiama il modulo (la pagina scrive «annulla»).
+        const ultima = await page.evaluate(() => {
+            const fermate = [...document.querySelectorAll('.zr-dialog :is(a[href], button, input, select, textarea, [tabindex])')]
+                .filter((e) => e.tabIndex >= 0 && !e.closest('.zr-toast') && e.checkVisibility());
+            fermate.at(-1)?.focus();
+            return fermate.length;
+        });
+        await pausa(200);
+        await page.keyboard.press('Tab');
+        await pausa(200);
+        const arrivato = await page.evaluate(() => {
+            const a = document.activeElement;
+            return { annulla: a?.matches('.zr-toast-action') ?? false, nelDialogo: a?.closest('[role="dialog"][aria-modal="true"]') !== null, testo: a?.getAttribute('aria-label') ?? a?.textContent ?? '' };
+        });
+        await page.keyboard.press('Enter');
+        await pausa(300);
+        const scritto = await page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');
+        scrivi(ultima > 0 && arrivato.annulla && arrivato.nelDialogo && scritto === 'annulla' ? '✅' : '❌', 'TO.5', 'col Dialog aperto, Tab dall\'ultima fermata del dialogo va ad «Annulla» del Toast, dentro il dialogo, e Invio lo preme (#2951)', `fermate ${ultima}, fuoco: ${arrivato.annulla ? '«Annulla»' : `«${arrivato.testo}»`}, nel dialogo: ${arrivato.nelDialogo}, la pagina: «${scritto}»`);
+    }
 }
 
 async function uat(page, apri) {
