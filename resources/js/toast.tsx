@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast } from './zeiras/componenti';
 import type { Toast as TipoDelToast } from '../zeiras/index';
@@ -10,9 +11,18 @@ export type ToastDellaCorniceProps = Parameters<typeof TipoDelToast>[0];
 
 /**
  * Si rende nel `body`, non dove lo mette la pagina: un antenato con `transform` — un pannello che scorre — sposterebbe un
- * `position: fixed`, e un contenitore con `overflow` lo taglierebbe. Lo stile sta sull'elemento, coi soli token.
+ * `position: fixed`, e un contenitore con `overflow` lo taglierebbe. Lo stile sta sull'elemento, coi soli token; `max-content`
+ * perché, da `left: 50%`, la larghezza disponibile sarebbe metà della finestra, e un testo lungo andrebbe a capo prima del
+ * suo `max-width`. Il `body` si cerca dopo il montaggio: sul server (l'SSR di Inertia) non c'è, e il Toast arriva sul client.
  */
 export function ToastDellaCornice(props: ToastDellaCorniceProps) {
+    const [montato, setMontato] = useState(false);
+
+    useEffect(() => setMontato(true), []);
+    if (!montato) {
+        return null;
+    }
+
     return createPortal(
         <div
             style={{
@@ -21,6 +31,7 @@ export function ToastDellaCornice(props: ToastDellaCorniceProps) {
                 transform: 'translateX(-50%)',
                 bottom: 'calc(var(--space-5) + env(safe-area-inset-bottom, 0px))',
                 zIndex: 'var(--z-toast)',
+                width: 'max-content',
                 maxWidth: 'calc(100vw - 2 * var(--space-4))',
             }}
         >

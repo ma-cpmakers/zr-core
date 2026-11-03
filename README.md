@@ -2477,6 +2477,9 @@ import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app'
   a sinistra», e la correzione è chiesta).
 - **La durata è del modulo**, come dice il README del Toast: 5 secondi, 10 se c'è un'azione; poi lo si smonta. Un Toast alla
   volta: zr-core non tiene una coda.
+- **Con un `Dialog` aperto** il Toast si vede sopra, ma il Tab resta nel dialogo e il dialogo è `aria-modal`: un «Annulla»
+  lì non si raggiunge da tastiera. Un'azione da annullare si conferma col Toast dopo che il dialogo si è chiuso.
+- **Sul server** (l'SSR di Inertia) non si rende: arriva sul client dopo il montaggio, perché il `body` c'è solo lì.
 - Un'app che non lo usa non lo porta nella build. La pagina di prova è `staff.html?toast=1` (con `&dialogo=1` sopra un
   `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4).
 

@@ -1,10 +1,11 @@
 import { act } from 'react';
+import { renderToString } from 'react-dom/server';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import * as dallIngresso from './index';
 import * as dallIngressoDelleApp from './app';
 import { ToastDellaCornice, type ToastDellaCorniceProps } from './toast';
-import type { Toast } from '../zeiras/index';
+import { Toast } from './zeiras/componenti';
 
 // Sprint 94 (voce #2910, Decisioni 19935 e 19940 di zr-pm-07): il `Toast` del design system già messo al suo posto, in basso
 // al centro su tutte le larghezze, sopra dialoghi, pannelli e cassetto. Il modulo non lo riposiziona col suo CSS.
@@ -43,6 +44,8 @@ describe('il Toast della cornice si mette da sé in basso al centro (sprint 94 �
         expect(stile).toContain('bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px))');
         expect(stile).toContain('z-index: var(--z-toast)');
         expect(stile).toContain('max-width: calc(100vw - 2 * var(--space-4))');
+        // Da `left: 50%` la larghezza disponibile è metà finestra: senza `max-content` un testo lungo va a capo a 280 px.
+        expect(stile).toContain('width: max-content');
     });
 
     it('nessun valore scritto a mano al posto di un token', () => {
@@ -61,6 +64,10 @@ describe('è reso nel body, fuori dalla pagina (T1.2)', () => {
         expect(pagina.contains(contenitore)).toBe(false);
     });
 
+    it('sul server (SSR) non cerca il body e non rende niente: arriva sul client', () => {
+        expect(renderToString(<ToastDellaCornice>Fatto</ToastDellaCornice>)).toBe('');
+    });
+
     it('smontato, nel body non resta niente', () => {
         mostra({ children: 'Fatto' });
         act(() => radice.render(<></>));
@@ -77,6 +84,16 @@ describe('dentro c\'è il Toast del design system com\'è (T1.3)', () => {
         expect(toast.className).toBe('zr-toast zr-toast-info');
         expect(toast.getAttribute('role')).toBe('status');
         expect(toast.querySelector('.zr-toast-text')?.textContent).toBe('Board creata');
+    });
+
+    it('è il Toast di componenti, non uno rifatto: lo stesso HTML del Toast del design system reso da solo', () => {
+        const props = { tone: 'warning' as const, actionLabel: 'Annulla', onAction: () => undefined, onClose: () => undefined, children: 'Scheda archiviata' };
+        const altrove = document.createElement('div');
+        const altraRadice = createRoot(altrove);
+
+        act(() => altraRadice.render(<Toast {...props} />));
+        expect(mostra(props).outerHTML).toBe(altrove.innerHTML);
+        act(() => altraRadice.unmount());
     });
 
     it('senza tono è quello di successo, come nel design system', () => {
@@ -105,5 +122,7 @@ describe('esportato dai due ingressi, coi tipi del Toast (T1.4)', () => {
 
     it('le props sono quelle del Toast', () => {
         expectTypeOf<ToastDellaCorniceProps>().toEqualTypeOf<Parameters<typeof Toast>[0]>();
+        expectTypeOf<dallIngresso.ToastDellaCorniceProps>().toEqualTypeOf<ToastDellaCorniceProps>();
+        expectTypeOf<dallIngressoDelleApp.ToastDellaCorniceProps>().toEqualTypeOf<ToastDellaCorniceProps>();
     });
 });
