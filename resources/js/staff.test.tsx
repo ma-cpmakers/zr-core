@@ -6,6 +6,7 @@ import * as dallIngressoDelleApp from './app';
 import { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';
 import { testi } from './lingue';
 import { registro } from './registro';
+import * as rimedi from './rimedi';
 import type { ShellSearchResult } from '../zeiras/index';
 import staffInglese from '../lingue/staff/en.json';
 import staffSpagnolo from '../lingue/staff/es.json';
@@ -276,5 +277,27 @@ describe('la ricerca della cornice dello staff', () => {
         await scrivi('anna');
         expect(inCaricamento()).toBe(false);
         expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchError);
+    });
+});
+
+describe('tastiera e salto della cornice dello staff', () => {
+    it('T3.1 «Salta al contenuto» sta prima della cornice e porta il fuoco al contenuto della pagina', async () => {
+        await mostra(<CorniceDelloStaff lingua="es" persona={staff} nav={nav} onLogout={esci}><p>La pagina</p></CorniceDelloStaff>);
+
+        const salto = contenitore.firstElementChild?.querySelector('button');
+        expect(salto?.textContent).toBe(testi('es').skipToContent);
+        expect(contenitore.firstElementChild?.nextElementSibling?.classList.contains('zr-shell')).toBe(true);
+
+        await clic(salto!);
+        expect(document.activeElement).toBe(uno('main.zr-main'));
+    });
+
+    it('T3.1 i rimedi di tastiera arrivano come per la Cornice: con la naviga dello staff e i nomi della sua lingua', async () => {
+        const via = vi.spyOn(rimedi, 'via');
+        const naviga = vi.fn();
+        await mostra(<CorniceDelloStaff lingua="en" persona={staff} nav={nav} naviga={naviga} onLogout={esci} />);
+        await act(() => vi.dynamicImportSettled());
+
+        expect(via).toHaveBeenCalledWith(naviga, testi('en').mainContent, testi('en').searchResults);
     });
 });

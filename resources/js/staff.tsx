@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
 import { fileDelleLingue, testi, type TestiDellaCornice } from './lingue';
+import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 
 // La cornice dello staff (dalla `v3.16.0`, voce #2944, Decisioni 19872 e 19904): l'`AppShell` del design system per chi lavora in
@@ -71,6 +72,10 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     const [ricerca, setRicerca] = useState<{ stato: 'loading' | 'error' } | { stato: 'ready'; risultati: ShellSearchResult[] }>();
     const inVolo = useRef<AbortController>(undefined);
     useEffect(() => () => inVolo.current?.abort(), []);
+    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono i nomi.
+    useLayoutEffect(() => {
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
+    }, [t.mainContent, t.searchResults]);
     const cercaParola = (parola: string) => {
         inVolo.current?.abort();
         const questa = (inVolo.current = new AbortController());
@@ -84,23 +89,26 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     const esci: MenuItem = { icon: 'arrow', label: logout, onClick: onLogout };
 
     return (
-        <AppShell
-            {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
-            // Con `null` nessuna voce: un id che nessuna voce ha.
-            {...(active === null ? { active: '-' + nav.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)).join('-') } : active === undefined ? {} : { active })}
-            nav={nav}
-            user={persona.nome}
-            email={persona.email}
-            workspace={area}
-            accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
-            notifications={[]}
-            {...(cerca ? { onSearch: cercaParola } : {})}
-            searchState={ricerca?.stato ?? 'ready'}
-            searchResults={ricerca?.stato === 'ready' ? ricerca.risultati : []}
-            onSelectResult={(scelto) => scelto.href !== undefined && naviga(scelto.href)}
-            labels={{ ...t, ...dello }}
-        >
-            {children}
-        </AppShell>
+        <>
+            <SaltaAlContenuto testo={t.skipToContent} />
+            <AppShell
+                {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
+                // Con `null` nessuna voce: un id che nessuna voce ha.
+                {...(active === null ? { active: '-' + nav.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)).join('-') } : active === undefined ? {} : { active })}
+                nav={nav}
+                user={persona.nome}
+                email={persona.email}
+                workspace={area}
+                accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
+                notifications={[]}
+                {...(cerca ? { onSearch: cercaParola } : {})}
+                searchState={ricerca?.stato ?? 'ready'}
+                searchResults={ricerca?.stato === 'ready' ? ricerca.risultati : []}
+                onSelectResult={(scelto) => scelto.href !== undefined && naviga(scelto.href)}
+                labels={{ ...t, ...dello }}
+            >
+                {children}
+            </AppShell>
+        </>
     );
 }
