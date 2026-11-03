@@ -5042,7 +5042,7 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'ToastDellaCornice'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
