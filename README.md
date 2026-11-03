@@ -25,7 +25,7 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 
 ```json
 "repositories": [{ "type": "vcs", "url": "<l'indirizzo GitHub di questo repo>" }],
-"require": { "zeiras/zr-core": "^1.0" }
+"require": { "zeiras/zr-core": "^4.0" }
 ```
 
 **Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
@@ -499,8 +499,9 @@ public function share(Request $request): array
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
-costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore. L'`id` c'è dalla
-`v1.7.0`. Il contratto di `/v1` lo dà sempre: nei test di un frontend un backoffice finto scritto a mano lo deve dare come
+costa una lettura in più. È dall'`id` che la cornice ricava il colore del workspace nel selettore, quando il workspace
+non ne ha scelto uno. L'`id` c'è dalla `v1.7.0`.
+Il contratto di `/v1` lo dà sempre: nei test di un frontend un backoffice finto scritto a mano lo deve dare come
 dà `nome` e `slug` (il `BackofficeFinto` di zr-auth e l'esempio di `io.workspace.elenca` nel contratto lo danno), perché
 una riga senza `id` fa fallire `Cornice::dati()`, se è di un'azienda dell'elenco (le altre restano fuori prima). Il
 workspace in cui la persona è entrata (`workspace`) resta `{nome, slug}`: il suo `id` è quello del workspace con lo stesso
@@ -1156,11 +1157,13 @@ cornice === null ? pagina : (
   è una pagina di app.zeiras.com da ogni prodotto. Il dialogo è di zr-home, e se la persona può davvero lo decide il
   backoffice (`io.workspace.crea`): la cornice mostra solo la strada. Un frontend non deve fare niente per averlo. Senza
   `nuovo_workspace` nei dati, o con `false`, il pulsante non c'è. Ogni workspace ha il pallino del suo colore:
-  lo decide zr-core dall'`id` del workspace, con una regola sola, e non si sceglie. Lo stesso workspace ha lo stesso colore
-  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia. I colori
-  sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
+  quello che il workspace ha scelto (`colore` nei dati, dalla `v3.6.0`); se non ne ha scelto uno, lo decide zr-core
+  dall'`id` del workspace, con una regola sola. Lo stesso workspace ha lo stesso colore
+  in ogni prodotto, per ogni persona e a ogni visita: cambiargli nome, slug o posto nell'elenco non glielo cambia, sceglierne
+  un altro sì. I colori sono pochi, i toni che il design system ammette per un workspace, quindi due workspace possono avere lo stesso: il colore
   aiuta a riconoscere un workspace, non lo distingue da tutti gli altri. Nel tipo `DatiDellaCornice` l'`id` di un workspace
-  è facoltativo: un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé.
+  è facoltativo: un workspace senza `id` e senza un colore scelto non ha un colore suo, e il suo pallino è quello che il
+  design system mette da sé.
 - **La campanella** mostra le non lette dei dati (`non_lette`), «99+» oltre 99, e mai meno delle non lette dell'ultimo
   elenco che il pannello ha caricato, finché i dati non sono stati letti dopo quell'elenco (una notifica può essere
   arrivata dopo che la parte server le ha contate). Dalla `v1.12.0` le non lette di un elenco contano solo se l'elenco è
