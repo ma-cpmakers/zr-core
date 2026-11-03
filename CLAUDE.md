@@ -133,9 +133,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 93 chiuso (`v3.16.0`): #2944, la cornice dello
-   staff per zr-superadmin, in `test_umano`; #2945 (i font dal pacchetto, `v3.15.0`) in `test_umano`; #2946 (Google fuori
-   dalla CSP) aspetta che tutti i moduli siano passati alla `v3.15.0`; #2909 (la fascia di assistenza) esce nella minore
-   successiva, quando zr-backoffice ha `accessi.corrente.mostra` (Decisione 19904).
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 94 aperto (`v3.17.0`): #2910, il Toast della
+   cornice in basso al centro. #2909 (la fascia di assistenza) esce nella minore dopo, quando zr-backoffice ha
+   `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55; #2946
+   (Google fuori dalla CSP) aspetta che tutti i moduli siano passati alla `v3.15.0`.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

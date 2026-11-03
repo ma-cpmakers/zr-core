@@ -397,6 +397,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.14.3` | un `Dialog` che entra senza nessun elemento che prenda il fuoco — un «Attendi» — lo prende su di sé (`tabindex="-1"`): se il dialogo che l'ha aperto si chiude mentre l'«Attendi» resta, il fuoco resta lì e non torna al pulsante dietro il velo, dove Invio lo premerebbe; chiuso, torna a chi lo aveva; il tetto del pezzo dei rimedi sale a 2.058 byte | niente: è la versione da installare al posto della `v3.14.2` | un caso che dopo l'apertura di un `Dialog` senza elementi si aspettava il fuoco fuori, o il dialogo senza `tabindex`, va riletto | G.2 di `uat-cornice.mjs` |
 | `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS, e toglie dal layout i suoi collegamenti a Google Fonts («Passare alla v3.15»); chi è su `css/zeiras.css` solo i collegamenti, se li ha | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole l'`@import` di Google, o una build senza font, va riscritto («Passare alla v3.15») | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`, nemmeno nel layout; nel browser nessuna richiesta a Google |
 | `v3.16.0` | la cornice dello staff, `CorniceDelloStaff` (#2944): l'`AppShell` per il backoffice di Zeiras senza `Cornice::dati()`, coi testi suoi in `resources/lingue/staff/`; nessuna rotta, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice dello staff») | niente per chi monta la `Cornice`; il backoffice dello staff monta `CorniceDelloStaff` | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.1-S.3) |
+| `v3.17.0` | il Toast della cornice, `ToastDellaCornice` (#2910): il `Toast` del design system già in basso al centro, a 24 px dal fondo più il bordo sicuro del telefono, sopra dialoghi, pannelli e cassetto; l'app che non lo usa pesa come prima (vedi «Il Toast della cornice») | niente; chi mostra un `Toast` col suo CSS di posizione può passare a `ToastDellaCornice` e togliere quel CSS | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.1-TO.4) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2453,6 +2454,31 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   al contenuto», i rimedi di tastiera, i nomi della ricerca — è quello della `Cornice`.
 
 La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto).
+
+### Il Toast della cornice
+
+Dalla `v3.17.0` il pacchetto dà `ToastDellaCornice`: il `Toast` del design system, con le sue props, già messo al suo posto.
+Sta in basso al centro su tutte le larghezze, a `--space-5` (24 px) dal fondo più il bordo sicuro del telefono, a `--z-toast`:
+sopra un `Dialog`, un pannello e il cassetto della barra. Si rende nel `body`, non dove lo mette la pagina, quindi un pannello
+che scorre (un antenato con `transform`) non lo sposta e un contenitore con `overflow` non lo taglia. Si prende dai due ingressi:
+
+```tsx
+import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app';
+
+{salvato ? (
+    <ToastDellaCornice actionLabel="Annulla" onAction={annulla} onClose={() => setSalvato(false)}>
+        Board creata
+    </ToastDellaCornice>
+) : null}
+```
+
+- **La posizione è della cornice**: il modulo non la riscrive col suo CSS. In basso al centro anche sul telefono, come nei
+  design di Superadmin, Board e CRM (decisione di zr-pm del 3/11; il README del Toast nel design system dice ancora «in basso
+  a sinistra», e la correzione è chiesta).
+- **La durata è del modulo**, come dice il README del Toast: 5 secondi, 10 se c'è un'azione; poi lo si smonta. Un Toast alla
+  volta: zr-core non tiene una coda.
+- Un'app che non lo usa non lo porta nella build. La pagina di prova è `staff.html?toast=1` (con `&dialogo=1` sopra un
+  `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4).
 
 ## Il logo
 
