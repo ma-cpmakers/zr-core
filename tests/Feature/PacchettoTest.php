@@ -2984,7 +2984,8 @@ it('il README dice, nel punto del selettore di «La cornice», da dove viene il 
     'lo stesso ovunque' => ['Lo stesso workspace ha lo stesso colore in ogni prodotto, per ogni persona e a ogni visita'],
     'nome, slug e posto non contano' => ['cambiargli nome, slug o posto nell\'elenco non glielo cambia'],
     'nel tipo l\'id è facoltativo' => ['Nel tipo `DatiDellaCornice` l\'`id` di un workspace è facoltativo'],
-    'senza id il pallino del design system' => ['un workspace senza `id` non ha un colore suo, e il suo pallino è quello che il design system mette da sé'],
+    // Review della PR #161: senza id, ma col colore scelto, il pallino è quello scelto (cornice.tsx, `colore ?? tonoDelWorkspace(id)`).
+    'senza id il pallino del design system' => ['un workspace senza `id` e senza un colore scelto non ha un colore suo, e il suo pallino è quello che il design system mette da sé'],
     // Review della PR #20, R8: «il suo colore» non vuol dire un colore diverso da quello di ogni altro.
     'i colori si ripetono (sprint 17 · review, R8)' => ['quindi due workspace possono avere lo stesso'],
     'a che cosa serve il colore (sprint 17 · review, R8)' => ['il colore aiuta a riconoscere un workspace, non lo distingue da tutti gli altri'],
