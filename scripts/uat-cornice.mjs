@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
  * La UAT della cornice v3.6 in un modulo, dopo l'aggiornamento: axe a 1280 e a 390 px, la ricerca, il percorso, il «+», la
- * campanella e i menu della barra sopra il pannello di dettaglio, e dalla v3.15 i font dal pacchetto, su una pagina vera del modulo. Non sta nello zip del
- * pacchetto: si prende dal repo al tag.
+ * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
+ * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
  *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
  * --cartella è dove vanno gli screenshot (di norma una cartella nuova in /tmp). Prima di un tag zr-core la lancia sulle
- * pagine di prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale), con
+ * pagine di prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale con la CSP di tutti: `node scripts/servi-demo.mjs`), con
  * `layout.html?schede=1&crm_attivo=1&prenotazioni=1 --parola uat`: lì nessuna riga resta ➖ tranne B.1, che vuole il percorso,
  * e si prova con `pagina=percorso` in più (lì restano ➖ M.2 e P.3: il «+» ha una voce sola).
  *
@@ -957,6 +957,17 @@ async function fontDelPacchetto(page, diGoogle) {
     scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta né collegamento a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}${font.collegamenti.length ? `; nel <head>: ${font.collegamenti.slice(0, 3).join(' | ')}` : ''}`);
 }
 
+// R.C (dalla `v4.0.0`, #2946): la CSP che la pagina riceve non ferma niente in tutta la UAT. Chromium scrive ogni blocco in
+// console («Loading the stylesheet '…' violates the following Content Security Policy directive: …»). Una pagina senza CSP
+// non prova niente: ➖, non ✅.
+function cspSenzaBlocchi(csp, blocchi) {
+    if (!csp) {
+        scrivi('➖', 'R.C', 'la CSP della pagina non ferma niente (#2946)', 'la pagina non ha una CSP: con le pagine di prova, `node scripts/servi-demo.mjs`');
+        return;
+    }
+    scrivi(blocchi.length ? '❌' : '✅', 'R.C', 'la CSP della pagina non ferma niente (#2946)', `${csp}${blocchi.length ? ` · fermati ${blocchi.length}: ${[...new Set(blocchi)].slice(0, 3).join(' | ')}` : ''}`);
+}
+
 // S (dalla v3.16.0, #2944): la cornice dello staff. S.1 nella barra solo le voci del modulo, senza selettore e senza menu Moduli;
 // S.2 un risultato della ricerca si apre con la `naviga` del modulo; S.3 «Esci» dal menu del profilo chiama il modulo. La pagina di
 // prova scrive in `#uat-ultima` ciò che il modulo ha ricevuto.
@@ -1061,7 +1072,14 @@ async function toastAlSuoPosto(page, apri, larghezza) {
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
+    const csp = { politica: null, blocchi: [] };
     page.on('pageerror', (errore) => errori.push(String(errore)));
+    page.on('console', (messaggio) => /Content Security Policy/.test(messaggio.text()) && csp.blocchi.push(messaggio.text().slice(0, 200)));
+    page.on('response', (risposta) => {
+        if (risposta.request().isNavigationRequest() && risposta.request().frame() === page.mainFrame()) {
+            csp.politica = risposta.headers()['content-security-policy'] ?? csp.politica;
+        }
+    });
     page.on('console', (messaggio) => messaggio.type() === 'error' && errori.push(messaggio.text()));
     page.on('request', (richiesta) => /^https?:\/\/fonts\.(googleapis|gstatic)\.com\//.test(richiesta.url()) && diGoogle.push(new URL(richiesta.url()).host));
 
@@ -1090,7 +1108,7 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await loStaff(page);
         await toastAlSuoPosto(page, apri, 1280);
-        return a390(page, apri, diGoogle, errori);
+        return a390(page, apri, diGoogle, errori, csp);
     }
     await fuoriDaiMenu(page);
     await tornaAllaPagina();
@@ -1117,11 +1135,11 @@ async function uat(page, apri) {
     await dialogoColMouse(page);
     await attendiDaUnDialogo(page);
 
-    await a390(page, apri, diGoogle, errori);
+    await a390(page, apri, diGoogle, errori, csp);
 }
 
-/** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font e la console. */
-async function a390(page, apri, diGoogle, errori) {
+/** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font, la CSP e la console. */
+async function a390(page, apri, diGoogle, errori, csp) {
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
@@ -1142,6 +1160,7 @@ async function a390(page, apri, diGoogle, errori) {
     }
 
     await fontDelPacchetto(page, diGoogle);
+    cspSenzaBlocchi(csp.politica, csp.blocchi);
     scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
 }
 
