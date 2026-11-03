@@ -267,6 +267,10 @@ async function ricerca(page, largo) {
             scrivi('➖', `${id}.7`, 'scelto un risultato il campo si svuota (riga 60)', 'ripreso il campo, nessuna riga da scegliere');
         } else {
             await riga.click();
+            // Il risultato può aprire la sua risorsa con una visita che arriva dopo (03/11/2026: il contatto del CRM, la cui scheda si
+            // apre e prende il fuoco quando la riga 8 ha già premuto Ctrl+K): si aspetta l'indirizzo nuovo, al più tre secondi, prima di
+            // dire dove siamo. `waitForLoadState` non serve: la pagina è già ferma e risponde subito.
+            await page.waitForURL((nuovo) => nuovo.href !== pagina, { timeout: 3000 }).catch(() => undefined);
             await pausa(300);
             const dopo = await page.evaluate(() => ({
                 valore: document.querySelector('.zr-shell .zr-top > .zr-search input')?.value,
