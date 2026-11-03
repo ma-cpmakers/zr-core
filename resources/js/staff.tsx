@@ -96,11 +96,17 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     useLayoutEffect(() => {
         void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
     }, [t.mainContent, t.searchResults]);
+    // La `cerca` è quella di adesso, non quella del tasto di 300 ms fa: se il modulo l'ha tolta non parte niente. Una `cerca` che
+    // lancia è una ricerca in errore, non un caricamento che non finisce.
     const cercaParola = (parola: string) => {
         inVolo.current?.abort();
         const questa = (inVolo.current = new AbortController());
+        const ora = conCerca.current;
+        if (!ora) {
+            return setRicerca(undefined);
+        }
         setRicerca({ stato: 'loading' });
-        cerca!(parola, questa.signal).then(
+        new Promise<ShellSearchResult[]>((risolvi) => risolvi(ora(parola, questa.signal))).then(
             (risultati) => questa.signal.aborted || setRicerca({ stato: 'ready', risultati }),
             () => questa.signal.aborted || setRicerca({ stato: 'error' }),
         );

@@ -56,7 +56,7 @@ async function clic(elemento: Element | null): Promise<void> {
     await act(async () => (elemento as HTMLElement).click());
 }
 
-const staff = { nome: 'Martina Bianchi', email: 'martina@zeiras.com' };
+const staff = { nome: 'Martina Bianchi', email: 'martina@example.com' };
 const nav = [{ group: 'Backoffice', items: [{ id: 'panoramica', label: 'Panoramica', icon: 'grid' as const }, { id: 'utenti', label: 'Utenti', icon: 'users' as const }] }];
 const esci = () => {};
 
@@ -312,6 +312,53 @@ describe('la ricerca della cornice dello staff', () => {
         await scrivi('anna');
         expect(inCaricamento()).toBe(false);
         expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchError);
+        // Senza `cerca` non c'è niente da trovare: il pannello lo dice, per la parola che c'è.
+        expect(uno('.zr-search-panel [role="status"] strong')?.textContent).toBe(`${testi('it').searchEmpty} «anna»`);
+    });
+
+    it('T2.3 una cerca che lancia invece di rifiutare dà lo stato d\'errore, non un caricamento che non finisce (revisione dello sprint 93, R2)', async () => {
+        const cerca = vi.fn((_parola: string, _segnale: AbortSignal): Promise<ShellSearchResult[]> => {
+            throw new Error('rotta');
+        });
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        await scrivi('an');
+        expect(cerca).toHaveBeenCalledTimes(1);
+        expect(inCaricamento()).toBe(false);
+        expect(uno('.zr-search-panel')?.textContent).toContain(testi('it').searchError);
+    });
+
+    it('T2.3 una cerca tolta dal modulo fra il tasto e la chiamata non parte, e la ricerca non resta in caricamento (revisione dello sprint 93, R3)', async () => {
+        const cerca = vi.fn((_parola: string, _segnale: AbortSignal) => Promise.resolve([anna]));
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo, 'an');
+            campo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        expect(inCaricamento()).toBe(true);
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} onLogout={esci} />);
+        await act(() => vi.advanceTimersByTimeAsync(300));
+        expect(cerca).not.toHaveBeenCalled();
+        expect(inCaricamento()).toBe(false);
+        expect(uno('.zr-search-panel')?.textContent).not.toContain(testi('it').searchError);
+    });
+
+    it.each([
+        ['it', staffItaliano],
+        ['es', staffSpagnolo],
+        ['en', staffInglese],
+    ])('T1.3 in %s l\'invito e il testo del vuoto della ricerca sono quelli dello staff (revisione dello sprint 93, R5)', async (lingua, dellaLingua) => {
+        await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} cerca={async () => []} onLogout={esci} />);
+
+        await scrivi('a');
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).toBe(dellaLingua.searchHint);
+
+        await scrivi('anna');
+        await act(() => vi.advanceTimersByTimeAsync(0));
+        expect(uno('.zr-search-panel [role="status"] span')?.textContent).toBe(dellaLingua.searchEmptyText);
     });
 });
 
