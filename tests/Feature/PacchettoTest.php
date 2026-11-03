@@ -5034,6 +5034,13 @@ it('l\'ingresso per le app esporta i nomi dell\'ingresso di sempre tranne Zeiras
         ->and(preg_match('/from \'\.\/zeiras\'/', ingressoJs('index.ts')))->toBe(1);
 });
 
+it('il README non dice più che «Annulla» del Toast non si raggiunge da tastiera: con un Dialog aperto il Toast sta dentro il dialogo (sprint 95 · T1.5)', function () {
+    $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
+
+    expect($readme)->not->toContain('lì non si raggiunge da tastiera')
+        ->and($readme)->toContain('il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo');
+});
+
 it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso esporta (sprint 25 · T2.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $importati = fn (string $testo): array => nomiFraLeGraffe('/^\s*import \{([^}]*)\} from \'[^\']*\/zr-core\/resources\/js\/app\';$/m', $testo);

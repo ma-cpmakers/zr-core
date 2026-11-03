@@ -398,6 +398,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.15.0` | i font del design system dal pacchetto, non da Google Fonts (#2945): `resources/css/bundle.css` (il bundle intero) e `resources/css/zeiras.css` importano `resources/css/font.css`, coi woff2 di `resources/fonts/`; la CSP di tutti ha `'self'` in `font-src` | chi importa `resources/zeiras/bundle.css` passa a `resources/css/bundle.css`, una riga del CSS, e toglie dal layout i suoi collegamenti a Google Fonts («Passare alla v3.15»); chi è su `css/zeiras.css` solo i collegamenti, se li ha | un caso che confronta la CSP intera ha `font-src 'self' https://fonts.gstatic.com`; un caso che vuole l'`@import` di Google, o una build senza font, va riscritto («Passare alla v3.15») | nella build del modulo cinque woff2 e nessun `fonts.googleapis.com` né `fonts.gstatic.com`, nemmeno nel layout; nel browser nessuna richiesta a Google |
 | `v3.16.0` | la cornice dello staff, `CorniceDelloStaff` (#2944): l'`AppShell` per il backoffice di Zeiras senza `Cornice::dati()`, coi testi suoi in `resources/lingue/staff/`; nessuna rotta, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice dello staff») | niente per chi monta la `Cornice`; il backoffice dello staff monta `CorniceDelloStaff` | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.1-S.3) |
 | `v3.17.0` | il Toast della cornice, `ToastDellaCornice` (#2910): il `Toast` del design system già in basso al centro, a 24 px dal fondo più il bordo sicuro del telefono, sopra dialoghi, pannelli e cassetto; l'app che non lo usa pesa come prima (vedi «Il Toast della cornice») | niente; chi mostra un `Toast` col suo CSS di posizione può passare a `ToastDellaCornice` e togliere quel CSS | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.1-TO.4) |
+| `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo: il Tab del dialogo arriva ad «Annulla» e il lettore di schermo lo legge; chiuso il dialogo torna nel `body` (#2951); il testo entra nella regione `role="status"` 100 ms dopo la regione, perché sia annunciato | niente | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.5) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2477,11 +2478,14 @@ import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app'
   a sinistra», e la correzione è chiesta).
 - **La durata è del modulo**, come dice il README del Toast: 5 secondi, 10 se c'è un'azione; poi lo si smonta. Un Toast alla
   volta: zr-core non tiene una coda.
-- **Con un `Dialog` aperto** il Toast si vede sopra, ma il Tab resta nel dialogo e il dialogo è `aria-modal`: un «Annulla»
-  lì non si raggiunge da tastiera. Un'azione da annullare si conferma col Toast dopo che il dialogo si è chiuso.
+- **Con un `Dialog` aperto** (dalla `v3.17.1`) il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo:
+  il dialogo è `aria-modal` e trattiene il Tab, e da lì il Tab arriva ad «Annulla» e il lettore di schermo legge il Toast.
+  Quando il dialogo si chiude torna nel `body`, e un dialogo che si apre dopo lo prende. Un'anteprima (`inline`) non lo prende.
+- **Il testo** entra nella regione `role="status"` del Toast 100 ms dopo la regione, perché un lettore di schermo lo annunci:
+  per quei 100 ms il Toast è trasparente.
 - **Sul server** (l'SSR di Inertia) non si rende: arriva sul client dopo il montaggio, perché il `body` c'è solo lì.
 - Un'app che non lo usa non lo porta nella build. La pagina di prova è `staff.html?toast=1` (con `&dialogo=1` sopra un
-  `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4).
+  `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4) e col Tab dal dialogo (TO.5).
 
 ## Il logo
 
