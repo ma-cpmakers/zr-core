@@ -139,6 +139,29 @@ describe('la cornice dello staff', () => {
         expect(vociDelProfilo()).toEqual([dellaLingua.logout]);
     });
 
+    // Sprint 105 (voce #2954): «Configurazione» è solo del Superadmin, e il modulo la toglie a chi non lo è.
+    it('con configurazione={false} «Configurazione» non c\'è, né nella barra né nel cassetto; il riquadro dello staff resta (sprint 105, T1.1)', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} configurazione={false} onLogout={esci} />);
+
+        expect(tutti('.zr-side-foot .zr-nav-item')).toEqual([]);
+        expect(tutti('.zr-side a, .zr-side button').map((voce) => voce.textContent)).not.toContain(staffItaliano.settings);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+
+        // Il cassetto, sotto i 1024 px, è la stessa barra aperta dal pulsante del menu.
+        await clic(uno(`.zr-top button[aria-label="${testi('it').openMenu}"]`));
+        expect(tutti('.zr-side-foot .zr-nav-item')).toEqual([]);
+        expect(tutti('.zr-side a, .zr-side button').map((voce) => voce.textContent)).not.toContain(staffItaliano.settings);
+    });
+
+    it.each([[undefined], [true]])('con configurazione=%s «Configurazione» c\'è, e il clic arriva a onNavigate come settings (sprint 105, T1.2)', async (configurazione) => {
+        const onNavigate = vi.fn();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} onNavigate={onNavigate} {...(configurazione === undefined ? {} : { configurazione })} onLogout={esci} />);
+
+        expect(tutti('.zr-side-foot .zr-nav-item').map((voce) => voce.textContent)).toEqual([staffItaliano.settings]);
+        await clic(uno('.zr-side-foot .zr-nav-item'));
+        expect(onNavigate).toHaveBeenCalledWith('settings');
+    });
+
     it('T1.3 i file dello staff hanno le stesse chiavi in ogni lingua, tutte piene, e nessuna è scritta nelle lingue della cornice', async () => {
         const chiavi = Object.keys(staffItaliano).sort();
         for (const file of [staffSpagnolo, staffInglese]) {
@@ -406,6 +429,122 @@ describe('la ricerca della cornice dello staff', () => {
 
     it('T1.2 il testo di quanti risultati sta nei tre file dello staff, col numero da mettere', () => {
         expect([staffItaliano.searchCount, staffSpagnolo.searchCount, staffInglese.searchCount]).toEqual(['Risultati: {n}', 'Resultados: {n}', 'Results: {n}']);
+    });
+
+    // Sprint 105 (voce #2965): ogni ricerca dello staff consuma il tetto orario del backoffice, e il modulo la vuole solo con Invio:
+    // `cercaAllInvio` passa `searchOn="submit"` all'`AppShell` del design system (riga 164 delle richieste).
+    /** Invio nel campo della ricerca. */
+    async function invio(): Promise<void> {
+        const campo = uno('.zr-search input') as HTMLInputElement;
+        await act(async () => {
+            campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+            await vi.advanceTimersByTimeAsync(0);
+        });
+    }
+
+    it('con cercaAllInvio la cerca non parte mentre si scrive, nemmeno dopo i 300 ms; con Invio parte una volta, con la parola e un segnale (sprint 105, T2.1)', async () => {
+        const risposta = inAttesa();
+        const cerca = vi.fn((_parola: string, _segnale: AbortSignal) => risposta.promessa);
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} cercaAllInvio onLogout={esci} />);
+
+        await scrivi('an');
+        await scrivi('anna@example.com');
+        await act(() => vi.advanceTimersByTimeAsync(2000));
+        expect(cerca).not.toHaveBeenCalled();
+        expect(inCaricamento()).toBe(false);
+
+        await invio();
+        expect(cerca).toHaveBeenCalledTimes(1);
+        expect(cerca.mock.calls[0]![0]).toBe('anna@example.com');
+        expect(cerca.mock.calls[0]![1]).toBeInstanceOf(AbortSignal);
+        expect(inCaricamento()).toBe(true);
+
+        await risposta.arriva([anna]);
+        expect(titoli()).toEqual(['Anna Ricci']);
+        expect(cerca).toHaveBeenCalledTimes(1);
+    });
+
+    it('con cercaAllInvio, con meno di 2 caratteri, Invio non chiama la cerca (sprint 105, T2.1)', async () => {
+        const cerca = vi.fn(async (_parola: string, _segnale: AbortSignal) => [anna]);
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} cercaAllInvio onLogout={esci} />);
+
+        await scrivi('a');
+        await invio();
+        expect(cerca).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['it', staffItaliano],
+        ['es', staffSpagnolo],
+        ['en', staffInglese],
+        ['de', staffInglese],
+    ])('con cercaAllInvio, in %s, l\'invito dice di premere Invio, e prima di Invio il pannello dice «Premi Invio per cercare» con la parola (sprint 105, T2.2)', async (lingua, dellaLingua) => {
+        await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} cerca={async () => [anna]} cercaAllInvio onLogout={esci} />);
+
+        await scrivi('a');
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).toBe(dellaLingua.searchSubmitHint);
+
+        await scrivi('anna');
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).toBe(`${dellaLingua.searchPressEnter} «anna»`);
+        expect(inCaricamento()).toBe(false);
+    });
+
+    it('con cercaAllInvio una parola cambiata dopo i risultati torna a «Premi Invio» senza chiamare la cerca né annullare la richiesta di prima; Invio su un risultato lo apre con naviga (sprint 105, T2.3)', async () => {
+        const cerca = vi.fn(async (_parola: string, _segnale: AbortSignal) => [anna, clienti]);
+        const naviga = vi.fn();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} cercaAllInvio naviga={naviga} onLogout={esci} />);
+        await scrivi('an');
+        await invio();
+        expect(titoli()).toEqual(['Anna Ricci', 'Clienti']);
+
+        await scrivi('cl');
+        expect(cerca).toHaveBeenCalledTimes(1);
+        expect(cerca.mock.calls[0]![1].aborted).toBe(false);
+        expect(inCaricamento()).toBe(false);
+        expect(uno('.zr-search-panel .zr-search-note')?.textContent).toBe(`${staffItaliano.searchPressEnter} «cl»`);
+
+        // Tornata la parola cercata, i suoi risultati sono ancora lì, e Invio apre il primo.
+        await scrivi('an');
+        expect(titoli()).toEqual(['Anna Ricci', 'Clienti']);
+        await invio();
+        expect(naviga).toHaveBeenCalledWith('/utenti/u1');
+        expect(cerca).toHaveBeenCalledTimes(1);
+    });
+
+    it('con cercaAllInvio la zona di quanti risultati non dice il numero di una parola che non è più nel campo (revisione dello sprint 105, R1)', async () => {
+        const risposta = inAttesa();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={() => risposta.promessa} cercaAllInvio onLogout={esci} />);
+        await scrivi('an');
+        await invio();
+
+        // Mentre «an» carica si scrive «anc»: la risposta di «an», che non si annulla, non va al lettore di schermo.
+        await scrivi('anc');
+        await risposta.arriva([anna, clienti]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['']);
+
+        // Con la parola cercata nel campo e Invio di nuovo, il numero si dice.
+        const seconda = inAttesa();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={() => seconda.promessa} cercaAllInvio onLogout={esci} />);
+        await invio();
+        await seconda.arriva([anna]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['Risultati: 1']);
+    });
+
+    it.each([[undefined], [false]])('con cercaAllInvio=%s la ricerca parte da sola dal secondo carattere, come prima (sprint 105, T2.4)', async (cercaAllInvio) => {
+        const cerca = vi.fn(async (_parola: string, _segnale: AbortSignal) => [anna]);
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} {...(cercaAllInvio === undefined ? {} : { cercaAllInvio })} onLogout={esci} />);
+
+        await scrivi('an');
+        expect(cerca).toHaveBeenCalledTimes(1);
+        expect(cerca.mock.calls[0]![0]).toBe('an');
+    });
+
+    it('i testi della ricerca all\'invio stanno nei tre file dello staff, non nelle lingue della cornice (sprint 105, T2.2; Decisione 20570)', () => {
+        expect([staffItaliano.searchPressEnter, staffSpagnolo.searchPressEnter, staffInglese.searchPressEnter]).toEqual(['Premi Invio per cercare', 'Pulsa Intro para buscar', 'Press Enter to search']);
+        for (const lingua of ['it', 'es', 'en']) {
+            expect(Object.keys(testi(lingua))).not.toContain('searchSubmitHint');
+            expect(Object.keys(testi(lingua))).not.toContain('searchPressEnter');
+        }
     });
 });
 

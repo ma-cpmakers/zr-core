@@ -1,7 +1,9 @@
 // staff.html: la cornice dello staff (dalla `v3.16.0`, voce #2944) presa dall'ingresso per le app, con una ricerca finta che
 // risponde dopo 200 ms su un elenco di persone e workspace «UAT». Ciò che la cornice chiede al modulo — un indirizzo da aprire,
 // l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»). Con `?toast=1` mostra il Toast della cornice
-// (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui.
+// (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui. Con `?configurazione=0` la barra è quella
+// di chi non è Superadmin, senza «Configurazione» (dalla `v4.3.0`, voce #2954), e con `?invio=1` la ricerca parte solo con Invio
+// (voce #2965). Quante volte il modulo ha cercato lo dice `data-cerche` sul `body`.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CorniceDelloStaff, ToastDellaCornice } from '../js/app';
@@ -31,6 +33,7 @@ const workspace = ['Marketing', 'Vendite', 'Ricerca', 'Clienti', 'Assistenza', '
 
 /** La ricerca del modulo, finta: 200 ms, poi ciò che contiene la parola; annullata, rifiuta. */
 function cerca(parola: string, segnale: AbortSignal): Promise<ShellSearchResult[]> {
+    document.body.dataset['cerche'] = `${Number(document.body.dataset['cerche'] ?? 0) + 1}`;
     return new Promise((risolvi, rifiuta) => {
         const tempo = setTimeout(() => risolvi([...persone, ...workspace].filter((uno) => `${uno.title} ${uno.subtitle}`.toLowerCase().includes(parola.toLowerCase()))), 200);
         segnale.addEventListener('abort', () => (clearTimeout(tempo), rifiuta(segnale.reason)));
@@ -54,8 +57,10 @@ function Pagina() {
             nav={nav}
             active={attiva}
             onNavigate={(id) => (setAttiva(id), setUltima(`voce ${id}`))}
+            configurazione={scelti.get('configurazione') !== '0'}
             menu={[{ icon: 'user', label: 'UAT il mio accesso', onClick: () => setUltima('voce del modulo') }]}
             cerca={cerca}
+            cercaAllInvio={scelti.get('invio') === '1'}
             naviga={(indirizzo) => (console.info('UAT naviga', indirizzo), setUltima(`naviga ${indirizzo}`))}
             onLogout={() => (console.info('UAT esci'), setUltima('esci'))}
         >
