@@ -37,8 +37,10 @@ const segno = colSegno(window.location.search);
 // parità dei segni, che dalla `v2.11.0` dà la cornice a chi arriva, si vede in un browser.
 fermaIlSegno(scelti.get('segno') === 'fermo');
 
+// Dalla `v4.4.0` con `?lingua=es` la persona parla spagnolo: servita da `scripts/servi-demo.mjs`, la pagina ha anche `<html lang>`
+// e i precarichi della riga del Blade, come in un modulo (uat-cornice, R.L).
 const marketing: DatiDellaCornice = {
-    lingua: 'it',
+    lingua: scelti.get('lingua') ?? 'it',
     persona: { nome: 'UAT Ada Lovelace', email: 'uat-zr-core@example.com' },
     workspace: { nome: 'UAT Marketing', slug: 'uat-marketing' },
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },

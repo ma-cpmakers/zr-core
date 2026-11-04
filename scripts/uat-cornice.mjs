@@ -18,6 +18,10 @@
  * (Playwright dal progetto in cui si lancia). axe-core: con AXE (il percorso di `axe.min.js`), o `axe-core` dal progetto in
  * cui si lancia, o da cdnjs.
  *
+ * Dalla v4.4.0 le righe R.L guardano la lingua della cornice dalla prima pagina aperta (con un Chromium suo, a cache vuota):
+ * la lingua di `<html lang>`; sulle pagine di prova `?lingua=es` (e `&precarico=0` per la pagina senza la riga nel Blade).
+ * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano e in spagnolo.
+ *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
 import { createHash } from 'node:crypto';
@@ -25,6 +29,7 @@ import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const argomenti = process.argv.slice(2);
 const opzione = (nome, altrimenti) => {
@@ -992,6 +997,105 @@ async function fontDelPacchetto(page, diGoogle) {
     scrivi(bene ? '✅' : '❌', 'R.F', 'i font dal pacchetto: Bricolage Grotesque e Instrument Sans caricati dall\'origine della pagina, nessuna richiesta né collegamento a Google Fonts (#2945)', `Bricolage ${font.bricolage}, Instrument ${font.instrument}, woff2 dall'origine ${font.dallOrigine}${font.altrove.length ? `, altrove ${[...new Set(font.altrove)].join(' ')}` : ''}${diGoogle.length ? `; a Google: ${[...new Set(diGoogle)].slice(0, 3).join(' ')}` : ''}${font.collegamenti.length ? `; nel <head>: ${font.collegamenti.slice(0, 3).join(' | ')}` : ''}`);
 }
 
+// R.L (dalla `v4.4.0`, #3015): nel JS d'ingresso c'è solo l'italiano, e le altre lingue la cornice le chiede con `fetch`. Dalla
+// prima riga del documento si tiene ogni testo che la cornice mette a schermo, e le richieste dei file delle lingue
+// (`assets/<codice>-<impronta>.json`). R.L.1 la cornice è nella lingua della pagina in ogni testo dall'apertura (in italiano già
+// al primo disegno, senza richieste di lingue), e dice quanto ha atteso; R.L.2 i precarichi della riga del Blade: quelli della
+// lingua della pagina e dell'inglese, nessuno in italiano, e ognuno preso dalla richiesta della cornice (senza il «preloaded but
+// not used» di Chromium); R.L.3 con le lingue che non arrivano la cornice si disegna in italiano. I testi «di una lingua sola»
+// sono quelli lunghi, con uno spazio, che le altre due lingue non hanno: dai file del repo accanto allo script (con `--staff`
+// anche quelli dello staff, che la sua cornice ha nel JS d'ingresso in tutte e tre le lingue).
+const UN_FILE_DI_LINGUA = /\/(en|es)-[\w-]{8,}\.json(?:\?|$)/;
+function testiDiUnaLinguaSola() {
+    try {
+        const di = (percorso) => Object.values(JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/${percorso}.json`, import.meta.url)), 'utf8')));
+        const lingue = Object.fromEntries(['it', 'en', 'es'].map((codice) => [codice, [...di(codice), ...(conLoStaff ? di(`staff/${codice}`) : [])]]));
+        return Object.fromEntries(Object.entries(lingue).map(([codice, testi]) => [codice, testi.filter((testo) => typeof testo === 'string' && testo.length > 10 && testo.includes(' ') && Object.entries(lingue).every(([altra, suoi]) => altra === codice || !suoi.includes(testo)))]));
+    } catch {
+        return null;
+    }
+}
+
+/** Prima di aprire la pagina: il registro dei testi della cornice dalla prima riga del documento, per 10 secondi. */
+async function registraLaLingua(page) {
+    const richieste = [];
+    const avvisi = [];
+    page.on('request', (richiesta) => UN_FILE_DI_LINGUA.test(richiesta.url()) && richieste.push({ url: richiesta.url(), il: Date.now() }));
+    page.on('console', (messaggio) => /preloaded using link preload but not used/.test(messaggio.text()) && avvisi.push(messaggio.text().slice(0, 200)));
+    await page.addInitScript(() => {
+        const registro = { testi: [], primo: null };
+        window.__uatLingua = registro;
+        const guarda = () => {
+            const testo = document.querySelector('.zr-shell')?.textContent?.trim() ?? '';
+            if (testo === '') return;
+            registro.primo ??= Math.round(performance.now());
+            if (registro.testi.at(-1) !== testo) registro.testi.push(testo);
+        };
+        const osservatore = new MutationObserver(guarda);
+        osservatore.observe(document, { subtree: true, childList: true, characterData: true });
+        setTimeout(() => osservatore.disconnect(), 10000);
+    });
+    return { richieste, avvisi, aperta: Date.now() };
+}
+
+async function laLingua(page, registrata) {
+    const soli = testiDiUnaLinguaSola();
+    const lingua = await page.evaluate(() => document.documentElement.lang);
+    const codice = (lingua || 'it').toLowerCase().replace(/_/g, '-');
+    const sua = [codice, codice.split('-')[0]].find((scelto) => ['it', 'en', 'es'].includes(scelto)) ?? 'en';
+    const { testi, primo } = await page.evaluate(() => window.__uatLingua ?? { testi: [], primo: null });
+    const precarichi = await page.evaluate(() => [...document.querySelectorAll('link[rel=preload][as=fetch]')].map((link) => `${link.href}${link.crossOrigin === null ? ' senza crossorigin' : ''}`));
+    const dellaPrima = registrata.richieste.filter((richiesta) => richiesta.il < registrata.aperta + (primo ?? 0) + 2000);
+    const nomi = (elenco) => [...new Set(elenco.map((uno) => new URL(uno.url ?? uno).pathname.split('/').pop()))].join(' ');
+    if (!soli) {
+        scrivi('➖', 'R.L.1', 'la cornice nella lingua della pagina dall\'apertura (#3015)', 'i file delle lingue non sono accanto allo script: si lancia dal repo di zr-core al tag');
+    } else {
+        const altrove = testi.flatMap((testo) => Object.entries(soli).filter(([altra]) => altra !== sua).flatMap(([altra, suoi]) => suoi.filter((uno) => testo.includes(uno)).map((uno) => `${altra}: «${uno}»`)));
+        const nellaSua = testi.length > 0 && soli[sua].some((uno) => testi[0].includes(uno));
+        const senzaRichieste = sua !== 'it' || dellaPrima.length === 0;
+        scrivi(altrove.length === 0 && nellaSua && senzaRichieste ? '✅' : '❌', 'R.L.1', `la cornice in ${lingua || '(nessuna lingua)'} dall'apertura, in ogni testo: ${sua === 'it' ? 'al primo disegno, senza richieste di lingue' : 'dopo l\'attesa della sua lingua'} (#3015)`, `primo testo a ${primo ?? '—'} ms dall'apertura, ${testi.length} stati dei testi; lingue chieste: ${nomi(dellaPrima) || 'nessuna'}${altrove.length ? ` · in un'altra lingua: ${[...new Set(altrove)].slice(0, 3).join(' | ')}` : ''}${nellaSua ? '' : ' · il primo stato non è nella sua lingua'}`);
+    }
+    const attesi = sua === 'it' ? 0 : sua === 'en' ? 1 : 2;
+    if (sua !== 'it' && precarichi.length === 0) {
+        scrivi('➖', 'R.L.2', 'i precarichi della lingua nella testa della pagina (#3015)', 'la pagina non ne ha: manca la riga `Cornice::precaricoDellaLingua()` nel Blade, e la cornice aspetta un giro di rete in più');
+    } else {
+        const bene = precarichi.length === attesi && precarichi.every((uno) => !uno.endsWith('senza crossorigin')) && registrata.avvisi.length === 0;
+        scrivi(bene ? '✅' : '❌', 'R.L.2', `i precarichi della lingua nella testa della pagina: ${attesi} in ${lingua || 'italiano'}, ognuno preso dalla cornice (#3015)`, `${precarichi.map((uno) => uno.split('/').pop()).join(' ') || 'nessuno'}${registrata.avvisi.length ? ` · non usati: ${registrata.avvisi.join(' | ')}` : ''}`);
+    }
+}
+
+/** Mentre R.L.3 ferma i file delle lingue: i loro «Failed to load resource» in console sono della prova, non errori (E.1). */
+let lingueFermate = false;
+
+/** R.L.3: la pagina riaperta con i file delle lingue fermati: la cornice si disegna in italiano invece di restare vuota. */
+async function lingueCheNonArrivano(page, apri) {
+    const soli = testiDiUnaLinguaSola();
+    const lingua = await page.evaluate(() => document.documentElement.lang);
+    if (!soli || /^it(?:[-_]|$)/i.test(lingua || 'it')) {
+        scrivi('➖', 'R.L.3', 'con le lingue che non arrivano la cornice in italiano (#3015)', soli ? 'la pagina è in italiano' : 'i file delle lingue non sono accanto allo script');
+        return;
+    }
+    const ferma = (rotta) => rotta.abort();
+    await page.route(UN_FILE_DI_LINGUA, ferma);
+    lingueFermate = true;
+    try {
+        await apri(indirizzo);
+        await page.waitForSelector('.zr-shell', { timeout: 15000 });
+        await pausa(800);
+        const testo = await page.evaluate(() => document.querySelector('.zr-shell')?.textContent?.trim() ?? '');
+        const italiani = soli.it.filter((uno) => testo.includes(uno)).length;
+        const inglesi = soli.en.filter((uno) => testo.includes(uno));
+        // Con lo staff i testi suoi sono già nella lingua della pagina: di quelli della cornice ne restano in vista pochi.
+        scrivi(testo !== '' && inglesi.length === 0 && (italiani > 0 || conLoStaff) ? '✅' : '❌', 'R.L.3', 'con le lingue che non arrivano la cornice si disegna in italiano, non resta vuota (#3015)', `${italiani} testi italiani nella cornice con i file delle lingue fermati${inglesi.length ? ` · in inglese: ${inglesi.slice(0, 3).join(' | ')}` : ''}`);
+    } finally {
+        await page.unroute(UN_FILE_DI_LINGUA, ferma);
+        await apri(indirizzo);
+        await page.waitForSelector('.zr-shell', { timeout: 15000 });
+        await pausa(800);
+        lingueFermate = false;
+    }
+}
+
 // R.C (dalla `v4.0.0`, #2946): la CSP che la pagina riceve non ferma niente in tutta la UAT. Chromium scrive ogni blocco in
 // console («Loading the stylesheet '…' violates the following Content Security Policy directive: …»). Una pagina senza CSP
 // non prova niente: ➖, non ✅.
@@ -1170,13 +1274,16 @@ async function uat(page, apri) {
             csp.politica = risposta.headers()['content-security-policy'] ?? null;
         }
     });
-    page.on('console', (messaggio) => messaggio.type() === 'error' && errori.push(messaggio.text()));
+    page.on('console', (messaggio) => messaggio.type() === 'error' && !(lingueFermate && /net::ERR_FAILED/.test(messaggio.text())) && errori.push(messaggio.text()));
     page.on('request', (richiesta) => /^https?:\/\/fonts\.(googleapis|gstatic)\.com\//.test(richiesta.url()) && diGoogle.push(new URL(richiesta.url()).host));
 
     await page.setViewportSize({ width: 1280, height: 800 });
+    const registrata = await registraLaLingua(page);
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
     await pausa(800);
+    await laLingua(page, registrata);
+    await lingueCheNonArrivano(page, apri);
     pagina = page.url();
     tornaAllaPagina = async () => {
         if (fuoriDallaPagina(page)) {
