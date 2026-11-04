@@ -3,6 +3,8 @@
     "settings": "Configuración",
     "planTitle": "Equipo de Zeiras",
     "planText": "Cada acción queda en el registro.",
+    "planRole": "{ruolo} · 2FA",
+    "planUntil": "Sesión activa como máximo hasta las {ora}. Cada acción queda en el registro.",
     "searchPlaceholder": "Buscar personas y workspaces…",
     "searchHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres.",
     "searchSubmitHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres y pulsa Intro.",

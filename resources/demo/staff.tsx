@@ -3,7 +3,8 @@
 // l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»). Con `?toast=1` mostra il Toast della cornice
 // (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui. Con `?configurazione=0` la barra è quella
 // di chi non è Superadmin, senza «Configurazione» (dalla `v4.3.0`, voce #2954), e con `?invio=1` la ricerca parte solo con Invio
-// (voce #2965). Quante volte il modulo ha cercato lo dice `data-cerche` sul `body`.
+// (voce #2965). Con `?ruolo=…&fino=<data ISO>` il riquadro in fondo alla barra dice il ruolo e la fine della sessione (dalla `v4.5.0`,
+// voce #2989). Quante volte il modulo ha cercato lo dice `data-cerche` sul `body`.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CorniceDelloStaff, ToastDellaCornice } from '../js/app';
@@ -58,6 +59,8 @@ function Pagina() {
             active={attiva}
             onNavigate={(id) => (setAttiva(id), setUltima(`voce ${id}`))}
             configurazione={scelti.get('configurazione') !== '0'}
+            ruolo={scelti.get('ruolo') ?? undefined}
+            sessioneFinoA={scelti.get('fino') ?? undefined}
             menu={[{ icon: 'user', label: 'UAT il mio accesso', onClick: () => setUltima('voce del modulo') }]}
             cerca={cerca}
             cercaAllInvio={scelti.get('invio') === '1'}
