@@ -22,7 +22,7 @@ use Zeiras\Core\Http\StessaPersona;
 // tengono più a lungo prima della rotta ci arriva a blocco scaduto. Solo loro, e mai il gruppo: col blocco sulle GET due
 // richieste della stessa persona si metterebbero in fila.
 // Dalla v2.6.0 ogni rotta del gruppo confronta la persona che la richiesta dice con quella della sessione, prima di ogni
-// controllo suo (StessaPersona): una rotta nuova sta qui dentro, e la regola ce l'ha. Dalla v2.12.0 la regola viene prima
+// controllo suo (StessaPersona): una rotta nuova sta qui dentro, e la regola ce l'ha (tranne la foto, sotto). Dalla v2.12.0 la regola viene prima
 // anche di ConWorkspace: senza workspace una scheda di un'altra persona riceve il 409, e il 403 non dice chi è nella sessione.
 // Dalla v2.19.0 il gruppo esce da SoloDallaPersona di zr-auth (dalla 0.12.41, acceso da `zr-auth.persona.controllo`), che
 // vuole l'impronta della persona in `X-Zr-Persona`: la cornice dice la persona in `Persona` (dalla v2.20.0 anche l'impronta in

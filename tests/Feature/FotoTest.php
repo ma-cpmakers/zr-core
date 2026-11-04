@@ -21,6 +21,15 @@ use Zeiras\Core\Http\StessaPersona;
 /** Il workspace in cui entra la sessione dei test. */
 const WORKSPACE_DELLA_FOTO = ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'];
 
+/**
+ * L'indirizzo della foto di una persona, come lo danno i dati: `v` il momento della foto, `p` di chi è, rifatto qui da sé (un HMAC
+ * dell'id con la chiave dell'app, 16 cifre esadecimali), così un caso prova che è quello e non l'id o l'impronta.
+ */
+function indirizzoDellaFoto(string $v = '2026-11-04T09%3A30%3A00.000000Z', string $id = 'uat-ada'): string
+{
+    return '/cornice/foto?v='.$v.'&p='.substr(hash_hmac('sha256', 'zr-core.foto|'.$id, (string) config('app.key')), 0, 16);
+}
+
 /** I byte della foto: un segno, che deve arrivare al browser com'è. */
 const BYTE_DELLA_FOTO = "RIFF\x24\x00\x00\x00WEBPVP8 segno-della-foto\x00\xff";
 
@@ -38,7 +47,7 @@ function chiediLaFoto(array $intestazioni = []): TestResponse
 {
     test()->withoutHeader('Persona')->withoutHeader(Persona::INTESTAZIONE);
 
-    return test()->get('cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z', $intestazioni);
+    return test()->get(indirizzoDellaFoto(), $intestazioni);
 }
 
 it('GET /cornice/foto rende la foto di io.foto.file.mostra com\'è, letta col gettone della persona: i byte, il tipo, l\'ETag, una cache privata di cinque minuti, nosniff e solo per la stessa origine (sprint 99 · T1.1)', function () {
@@ -93,7 +102,16 @@ it('un If-None-Match che non è un entity-tag non va al backoffice: la foto arri
     'due entity-tag' => ['"3f2a9c", "b1"'],
     'l\'asterisco' => ['*'],
     'una virgoletta dentro' => ['"3f"2a"'],
+    'byte fuori da ASCII, che zr-auth non manda' => ["\"caf\xC3\xA9\""],
 ]);
+
+it('un entity-tag debole va al backoffice com\'è (sprint 99 · T1.2)', function () {
+    sessioneAMano(WORKSPACE_DELLA_FOTO);
+    Http::fake(['*' => Http::response('', 304, ['ETag' => 'W/"3f2a9c"'])]);
+
+    chiediLaFoto(['If-None-Match' => 'W/"3f2a9c"'])->assertStatus(304);
+    expect(Http::recorded()->first()[0]->header('If-None-Match'))->toBe(['W/"3f2a9c"']);
+});
 
 it('senza foto (404 `foto_assente`) la rotta risponde 404 senza corpo e senza cache, e niente del problema del backoffice esce (sprint 99 · T1.3)', function () {
     sessioneAMano(WORKSPACE_DELLA_FOTO);
@@ -114,11 +132,39 @@ it('a ogni altro 4xx del backoffice la rotta risponde con lo stesso stato, senza
 
     $risposta->assertStatus($stato);
     expect($risposta->getContent())->toBe('')
-        ->and($risposta->headers->hasCacheControlDirective('no-store'))->toBe(true);
+        ->and($risposta->headers->hasCacheControlDirective('no-store'))->toBe(true)
+        // Davanti al 429 i secondi del backoffice, come la ricerca della cornice.
+        ->and($risposta->headers->get('Retry-After'))->toBe($stato === 429 ? '30' : null);
 })->with([
     'i documenti da accettare' => [403, 'accettazione_richiesta'],
     'troppe richieste' => [429, 'troppe_richieste'],
 ]);
+
+it('un indirizzo che non è della persona della sessione — il `p` di un\'altra, o senza `p` — risponde 404 senza corpo e senza cache, e il backoffice non si chiama (sprint 99 · T1.5, SEC1 della revisione di sicurezza)', function (string $indirizzo) {
+    sessioneAMano(WORKSPACE_DELLA_FOTO);
+    Http::fake(['*' => fotoDelBackoffice()]);
+    test()->withoutHeader('Persona')->withoutHeader(Persona::INTESTAZIONE);
+
+    $risposta = test()->get($indirizzo === 'di Bea' ? indirizzoDellaFoto(id: 'uat-bea') : $indirizzo);
+
+    $risposta->assertNotFound();
+    expect($risposta->getContent())->toBe('')
+        ->and($risposta->headers->hasCacheControlDirective('no-store'))->toBe(true);
+    Http::assertNothingSent();
+})->with([
+    'il p di un\'altra persona' => ['di Bea'],
+    'senza p' => ['/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z'],
+    'un p vuoto' => ['/cornice/foto?p='],
+]);
+
+it('la foto non diventa la pagina di prima della sessione: un `back()` non porta lì (SEC4 della revisione di sicurezza)', function () {
+    sessioneAMano(WORKSPACE_DELLA_FOTO);
+    Http::fake(['*' => fotoDelBackoffice()]);
+
+    chiediLaFoto()->assertOk();
+
+    expect((string) session()->previousUrl())->not->toContain('cornice/foto');
+});
 
 it('senza sessione risponde la guardia di zr-auth, prima della rotta: verso l\'ingresso a un `<img>`, 401 a chi chiede JSON; la foto non esce e il backoffice non si chiama (sprint 99 · T1.4)', function () {
     Http::fake(['*' => fotoDelBackoffice()]);
@@ -167,9 +213,8 @@ it('fra le rotte della cornice la foto è la sola fuori da StessaPersona e da Co
 // browser. Viene dalla stessa lettura di io.mostra delle non lette, e c'è solo se la persona ha una foto e i dati non sono
 // ridotti: senza, la chiave non c'è, e i dati restano quelli di prima.
 
-/** Il momento della foto che io.mostra dà nei casi, e l'indirizzo che ne fanno i dati. */
+/** Il momento della foto che io.mostra dà nei casi. */
 const FOTO_AGGIORNATA_IL = '2026-11-04T09:30:00.000000Z';
-const INDIRIZZO_DELLA_FOTO = '/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z';
 
 /** io.mostra di Ada con tre non lette e `foto_aggiornata_il` com'è dato; `$senza` la toglie. */
 function ioMostraConFoto(mixed $foto, bool $senza = false): array
@@ -183,24 +228,24 @@ function ioMostraConFoto(mixed $foto, bool $senza = false): array
 }
 
 /** La persona dei dati di Ada, con la foto. */
-function adaConLaFoto(string $indirizzo = INDIRIZZO_DELLA_FOTO): array
+function adaConLaFoto(?string $indirizzo = null): array
 {
-    return ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada'), 'foto' => $indirizzo];
+    return ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada'), 'foto' => $indirizzo ?? indirizzoDellaFoto()];
 }
 
-it('Cornice::dati() e dopo() danno in `persona.foto` la rotta della foto col `?v=` di `foto_aggiornata_il`, dalla stessa lettura di io.mostra; un altro momento è un altro indirizzo (sprint 99 · T2.1)', function (string $quale, string $il, string $indirizzo) {
+it('Cornice::dati() e dopo() danno in `persona.foto` la rotta della foto col `?v=` di `foto_aggiornata_il`, dalla stessa lettura di io.mostra; un altro momento è un altro indirizzo (sprint 99 · T2.1)', function (string $quale, string $il, string $v) {
     Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto($il)]);
 
     $dati = $quale === 'dati' ? Cornice::dati() : Cornice::dopo();
 
-    expect($dati['persona'] ?? null)->toBe(adaConLaFoto($indirizzo))
+    expect($dati['persona'] ?? null)->toBe(adaConLaFoto(indirizzoDellaFoto($v)))
         ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
 })->with([
-    'dati()' => ['dati', FOTO_AGGIORNATA_IL, INDIRIZZO_DELLA_FOTO],
-    'dopo()' => ['dopo', FOTO_AGGIORNATA_IL, INDIRIZZO_DELLA_FOTO],
-    'un altro momento' => ['dati', '2026-11-04T09:45:00.000000Z', '/cornice/foto?v=2026-11-04T09%3A45%3A00.000000Z'],
+    'dati()' => ['dati', FOTO_AGGIORNATA_IL, '2026-11-04T09%3A30%3A00.000000Z'],
+    'dopo()' => ['dopo', FOTO_AGGIORNATA_IL, '2026-11-04T09%3A30%3A00.000000Z'],
+    'un altro momento' => ['dati', '2026-11-04T09:45:00.000000Z', '2026-11-04T09%3A45%3A00.000000Z'],
 ]);
 
 it('con la foto il resto dei dati è quello di prima (sprint 99 · T2.1)', function () {
@@ -223,7 +268,18 @@ it('senza una foto che si legge — `foto_aggiornata_il` null, che manca, vuoto 
     'vuoto' => ['', false],
     'un numero' => [1793792000, false],
     'una lista' => [[FOTO_AGGIORNATA_IL], false],
+    'troppo lungo' => [str_repeat('9', 65), false],
 ]);
+
+it('una foto che io.mostra dà per un\'altra persona non entra nei dati (sprint 99 · T2.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    $io = ioMostraConFoto(FOTO_AGGIORNATA_IL);
+    $io['data']['utente']['id'] = 'uat-bea';
+    backofficeDiChiHaAccettato(['/v1/io' => $io]);
+
+    expect(Cornice::dati()['persona'] ?? null)->not->toHaveKey('foto');
+});
 
 it('la richiesta rimandata dà la foto della lettura della pagina, senza rileggere io.mostra (sprint 99 · T2.2)', function () {
     Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
@@ -235,6 +291,22 @@ it('la richiesta rimandata dà la foto della lettura della pagina, senza rilegge
     Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:02.000000', 'UTC'));
 
     expect(Cornice::dopo()['persona'] ?? null)->toBe(adaConLaFoto())
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
+});
+
+it('una lettura tenuta per la richiesta rimandata da una versione di prima, senza `foto`, vale ancora: `dopo()` non rilegge io.mostra e dà i dati senza foto (sprint 99 · T2.2, rilievo R3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL)]);
+
+    Cornice::lingua();
+    $tenuta = session('zr-core.io-mostra-rimandata');
+    unset($tenuta['foto']);
+    session()->put('zr-core.io-mostra-rimandata', $tenuta);
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:02.000000', 'UTC'));
+
+    expect(Cornice::dopo()['persona'] ?? null)->not->toHaveKey('foto')
         ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
 });
 

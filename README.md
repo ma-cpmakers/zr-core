@@ -500,7 +500,7 @@ public function share(Request $request): array
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
 
 Dalla `v4.1.0` la persona porta `foto` se ne ha una: l'indirizzo della rotta della foto, `/cornice/foto` col `?v=` di
-`utente.foto_aggiornata_il` di `io.mostra` (codificato), letto nella stessa lettura delle non lette; il `?v=` cambia a ogni
+`utente.foto_aggiornata_il` di `io.mostra` (codificato) e `p`, di chi è, letto nella stessa lettura delle non lette; il `?v=` cambia a ogni
 sostituzione, e la foto nuova non resta nella cache del browser. Senza foto, e nei dati ridotti, la chiave non c'è: i dati
 sono quelli di prima. `Cornice::subito()` non la porta (non legge il backoffice), e nemmeno la cornice ridotta. La cornice
 oggi non la mostra: aspetta l'`Avatar` con l'immagine nel design system (vedi «Le rotte della cornice»).
@@ -718,16 +718,21 @@ guardia.
 
 Dalla `v4.1.0` c'è una quinta rotta, `GET /cornice/foto`: la foto della persona della sessione, letta da
 `io.foto.file.mostra` col gettone della persona, per l'`<img>` del suo avatar. L'indirizzo lo danno i dati della cornice
-(`persona.foto`, vedi «La parte server»), col `?v=` che cambia quando cambia la foto. Risponde `200` coi byte, il tipo
+(`persona.foto`, vedi «La parte server»), col `?v=` che cambia quando cambia la foto e `p`, di chi è (un HMAC dell'id
+della persona con la chiave dell'app: né l'id né l'impronta). Un `p` che non è della persona della sessione, o che manca,
+risponde `404` senza chiamare il backoffice: una scheda rimasta ferma di un'altra persona non mette la foto di chi è entrato
+nella cache del browser sotto il suo indirizzo. Altrimenti risponde `200` coi byte, il tipo
 (`image/webp`) e l'`ETag` del backoffice, `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff` e
 `Cross-Origin-Resource-Policy: same-origin`; a un `If-None-Match` uguale all'`ETag`, `304` senza corpo. Senza foto risponde
-`404`, e a ogni altro 4xx del backoffice lo stesso stato, sempre senza corpo e con `Cache-Control: no-store`. Senza sessione
+`404`, e a ogni altro 4xx del backoffice lo stesso stato (il `429` col `Retry-After` del backoffice), sempre senza corpo e con
+`Cache-Control: no-store`. Senza sessione
 risponde la guardia di zr-auth, come a ogni GET del gruppo `web`. Un `<img>` non manda le intestazioni della persona: la foto
 sta fuori da `StessaPersona` e da `ConWorkspace`, e le regole sulla persona e sul workspace che seguono, scritte per le
 quattro rotte, non valgono per lei; risponde solo alla persona della sessione, con la sua foto, anche senza un workspace.
 Oggi la cornice non la mostra: l'`Avatar` del design system ha solo le iniziali, e la foto entra quando il design system gli
-dà un'immagine, con una versione minore di zr-core. Una pagina del frontend che mostra la foto della persona può usare la
-stessa rotta.
+dà un'immagine, con una versione minore di zr-core. Una pagina del frontend che mostra la foto della persona usa la stessa
+rotta con l'indirizzo che dà `persona.foto`, mai `/cornice/foto` da solo, che senza `p` risponde `404`. La richiesta della
+foto non diventa la pagina di prima della sessione (`url()->previous()`).
 
 Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro. La richiesta può dire di
 chi è la pagina che chiede — nell'intestazione `Persona`, l'email passata da `encodeURIComponent`, o in `persona` nel corpo

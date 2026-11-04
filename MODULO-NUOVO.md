@@ -339,8 +339,7 @@ risponde 409 `persona_diversa` a quella di un'altra persona, anche senza un work
 chi è entrato: niente email. Dalla `v2.23.0` una scheda con l'email di prima ma la stessa impronta non è un'altra persona: la sua richiesta passa e la scheda non si ricarica (README, «La parte server»). Per la cornice tu non scrivi niente: la regola la registra
 zr-core (README, «Le rotte della cornice»). Se una tua pagina chiama da sé una di quelle rotte, mandi anche tu `Persona`,
 come lì è scritto: dalla `v2.13.0` a una richiesta che non la dice la rotta risponde 422 `persona_mancante`, senza leggere
-né segnare niente. La foto della persona (`GET /cornice/foto`, dalla `v4.1.0`) no: la chiede un `<img>`, che `Persona` non la
-manda, e anche una tua pagina la mostra così (README, «Le rotte della cornice»). Così un JS di prima della `v2.6.0` rimasto in una scheda non segna più a chi è entrato: mostra un errore,
+né segnare niente. Così un JS di prima della `v2.6.0` rimasto in una scheda non segna più a chi è entrato: mostra un errore,
 o si ricarica. Resta fuori una cosa, detta nello stesso punto: i dati della cornice senza l'email. Una scheda ferma mostra ciò che aveva finché da
 lì non parte una richiesta. Il contenuto della tua pagina, con Indietro, resta sempre quello di
 allora: all'uscita togli la cronologia, con `Inertia::clearHistory()` e la cronologia cifrata
@@ -366,6 +365,10 @@ nella tua parte server: `Cornice::ridotta()` lo dà nella stessa forma, col segn
 richiesta (senza una lettura, il primo istante che la forma dei segni può dire), senza chiamare il backoffice e senza
 righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica
 (README, «La cornice in due dati»).
+
+Fra le rotte della cornice fa eccezione la foto della persona (`GET /cornice/foto`, dalla `v4.1.0`): la chiede un `<img>`,
+che non manda l'intestazione `Persona` che le altre vogliono. Una tua pagina la mostra con l'indirizzo che dà `persona.foto`
+(README, «Le rotte della cornice»).
 
 Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
 che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca

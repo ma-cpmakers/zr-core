@@ -30,7 +30,7 @@ function rotteDellaCorniceDalRouter(): array
         ->filter(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
         // La foto (dalla `v4.1.0`, sprint 99 · T1.5) la chiede un `<img>`, senza intestazioni: sta fuori da StessaPersona, ed è la
         // sola (FotoTest lo prova nei due versi).
-        ->reject(fn ($rotta) => $rotta->uri() === 'cornice/foto')
+        ->reject(fn ($rotta) => $rotta->uri() === 'cornice/foto' && in_array('GET', $rotta->methods(), true))
         ->map(fn ($rotta) => [array_values(array_diff($rotta->methods(), ['HEAD']))[0], (string) preg_replace('/\{[^}]+\}/', 'uat-n3', $rotta->uri())])
         ->values()->all();
 }

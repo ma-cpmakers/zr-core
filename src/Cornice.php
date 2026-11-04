@@ -9,6 +9,7 @@ use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
 use Zeiras\Auth\Persona;
 use Zeiras\Auth\Sessione;
+use Zeiras\Core\Http\FotoDellaCornice;
 
 /**
  * I dati della cornice per la pagina del frontend: chi è la persona, la sua lingua, il workspace in cui è entrata, lo stato
@@ -136,7 +137,7 @@ final class Cornice
 
         return [
             'lingua' => $utente['lingua'],
-            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($lettura['foto']))],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($lettura['foto'], $lettura['di'][0]))],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             ...($letti === null ? [] : self::moduli($workspace['slug'])),
@@ -478,8 +479,9 @@ final class Cornice
         $id = Sessione::utente()['id'] ?? null;
 
         if (is_string($id) && is_array($tenuta) && ($tenuta['di'] ?? null) === [$id, Sessione::workspace()] && is_string($tenuta['segno'] ?? null) && is_int($tenuta['esito'] ?? null) && is_string($tenuta['il'] ?? null)
-            && array_key_exists('foto', $tenuta) && ($tenuta['foto'] === null || is_string($tenuta['foto']))) {
-            return $tenuta;
+            && (($tenuta['foto'] ?? null) === null || is_string($tenuta['foto']))) {
+            // Una lettura tenuta da una versione di prima della `v4.1.0` non ha `foto`: vale senza foto.
+            return [...$tenuta, 'foto' => $tenuta['foto'] ?? null];
         }
 
         session()->forget(self::RIMANDATA);
@@ -691,13 +693,16 @@ final class Cornice
 
     /**
      * La foto nella persona dei dati (dalla `v4.1.0`): `foto`, l'indirizzo della rotta della foto (FotoDellaCornice) col `?v=` del
-     * momento della foto, che cambia a ogni sostituzione e la tiene fuori dalla cache del browser; senza foto, niente.
+     * momento della foto, che cambia a ogni sostituzione e la tiene fuori dalla cache del browser, e `p`, di chi è
+     * (`FotoDellaCornice::diChi()`); senza foto, niente.
      *
      * @return array{foto?: string}
      */
-    private static function foto(?string $aggiornataIl): array
+    private static function foto(?string $aggiornataIl, mixed $id): array
     {
-        return $aggiornataIl === null ? [] : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl)];
+        return $aggiornataIl === null || ! is_string($id) || $id === ''
+            ? []
+            : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl).'&p='.FotoDellaCornice::diChi($id)];
     }
 
     /**

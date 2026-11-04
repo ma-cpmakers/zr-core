@@ -37,7 +37,8 @@ export interface DatiDellaCornice {
         /** L'impronta di zr-auth della persona (dalla `v2.20.0`): la cornice la manda in `X-Zr-Persona`. Mai a schermo. */
         impronta?: string | null;
         /**
-         * L'indirizzo della foto della persona (dalla `v4.1.0`): la rotta `/cornice/foto` col `?v=` del momento della foto. C'è solo
+         * L'indirizzo della foto della persona (dalla `v4.1.0`): la rotta `/cornice/foto` col `?v=` del momento della foto e `p`, di
+         * chi è. C'è solo
          * se la persona ne ha una. La cornice non la mostra ancora: l'`Avatar` del design system ha solo le iniziali.
          */
         foto?: string | undefined;
