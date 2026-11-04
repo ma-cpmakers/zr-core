@@ -130,7 +130,9 @@ function valoriAMano(iterable $file): array
 
     $problemi = [];
     foreach ($file as $sorgente) {
-        $testo = senzaCommenti($sorgente->getContents());
+        // Sprint 104: il contorno del fuoco del design system (`outline: 2px solid var(--focus)`, come in bundle.css) non è un token, e
+        // il suo 2px non è il raggio `radius-2xs` arrivato con la richiesta 139.
+        $testo = (string) preg_replace('/outline:\s*2px solid var\(--focus\)/', '', senzaCommenti($sorgente->getContents()));
         if (preg_match($colore, $testo, $trovato) === 1) {
             $problemi[] = "{$sorgente->getRelativePathname()}: «{$trovato[0]}»";
         }
@@ -242,11 +244,15 @@ it('il controllo trova un esadecimale, un rgba e il valore di un token scritti a
     File::put("$cartella/b.css", ".x { color: rgba(0, 0, 0, 0.5); }\n");
     File::put("$cartella/c.tsx", "export const stile = { width: '$larghezza' };\n");
     File::put("$cartella/d.ts", "// la voce #1254 e https://fonts.googleapis.com\nexport const larghezza = 'var(--sidebar-width)';\n");
+    // Sprint 104: il contorno del fuoco del design system passa, lo stesso 2px come raggio no.
+    File::put("$cartella/e.ts", "export const fuoco = 'outline:2px solid var(--focus)';\n");
+    File::put("$cartella/f.ts", "export const angolo = 'border-radius:2px';\n");
 
     expect(valoriAMano(File::allFiles($cartella)))->toEqualCanonicalizing([
         'a.ts: «#0e5e4e»',
         'b.css: «rgba(»',
         "c.tsx: «{$larghezza}» scritto a mano",
+        'f.ts: «2px» scritto a mano',
     ]);
 });
 
