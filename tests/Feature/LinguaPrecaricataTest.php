@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
 use Zeiras\Core\Cornice;
 
-// Sprint 106 · T3 (voce #3015). Dalla `v4.4.0` nel JS d'ingresso c'è solo l'italiano: inglese e spagnolo sono file `.json` della
+// Sprint 106 · T3 (il nome del file sta prima di `PacchettoTest.php`: dopo di lui Pest deve girare `RegistroTest.php`) (voce #3015). Dalla `v4.4.0` nel JS d'ingresso c'è solo l'italiano: inglese e spagnolo sono file `.json` della
 // build che la cornice chiede con `fetch`. Il server del modulo, che sa la lingua della sessione, mette nella testa della pagina
 // il precarico di quei file (`Cornice::precaricoDellaLingua()`), così la richiesta parte prima che l'ingresso sia eseguito. Il
 // file si trova nel manifest del modulo con la chiave che gli dà Vite: il percorso del file, risolti i link simbolici, relativo
