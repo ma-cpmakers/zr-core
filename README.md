@@ -734,7 +734,7 @@ risponde la guardia di zr-auth, come a ogni GET del gruppo `web`. Un `<img>` non
 sta fuori da `StessaPersona` e da `ConWorkspace`, e le regole sulla persona e sul workspace che seguono, scritte per le
 quattro rotte, non valgono per lei; risponde solo alla persona della sessione, con la sua foto, anche senza un workspace.
 Dalla `v4.2.0` la cornice la mostra: l'`Avatar` del design system (`src`, e `userPhoto` dell'`AppShell`) la mette nell'avatar
-della barra e in cima al menu del profilo, con un testo alternativo vuoto perché il nome sta accanto; senza foto, o se non si
+della barra e in cima al menu del profilo, con un testo alternativo vuoto perché il nome lo dice l'avatar stesso (`role="img"` e `aria-label`); senza foto, o se non si
 carica, restano le iniziali. Una pagina del frontend che mostra la foto della persona usa la stessa
 rotta con l'indirizzo che dà `persona.foto`, mai `/cornice/foto` da solo, che senza `p` risponde `404`. `p` non è
 un'identità: è lo stesso per la persona in tutto il frontend, e cambia con `APP_KEY` (le schede aperte ricevono il `404` fino

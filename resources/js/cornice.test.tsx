@@ -1729,8 +1729,8 @@ describe('il pannello delle notifiche', () => {
         expect(nellaBarra.map((immagine) => [immagine.getAttribute('src'), immagine.getAttribute('alt')])).toStrictEqual([[foto, '']]);
         await clic(uno('.zr-avatar-btn'));
 
-        expect([...document.querySelectorAll<HTMLImageElement>('.zr-profile-head .zr-avatar-img')].map((immagine) => immagine.getAttribute('src')))
-            .toStrictEqual([foto]);
+        expect([...document.querySelectorAll<HTMLImageElement>('.zr-profile-head .zr-avatar-img')].map((immagine) => [immagine.getAttribute('src'), immagine.getAttribute('alt')]))
+            .toStrictEqual([[foto, '']]);
     });
 
     // Sprint 104 · T1.3: l'invito e il «Premi Invio» della ricerca all'invio (riga 164) non stanno nelle lingue della cornice, che

@@ -185,6 +185,20 @@ it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni 
         ->and($capoverso[0])->toContain('@theme inline reference', 'npm run token');
 });
 
+// Sprint 104 (revisione, R3): ogni gruppo di tokens.json con un elenco di token arriva in zeiras-token.css. Il generatore e l'oracolo
+// li nominano a mano: un gruppo nuovo che bundle.css non usa ancora resterebbe fuori senza che il caso T3.1 lo veda (così `border`).
+it('ogni gruppo di tokens.json con un elenco di token è letto da scripts/token-css.mjs, e ogni suo token è una variabile di zeiras-token.css (sprint 104)', function () {
+    $token = json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR);
+    $gruppi = array_keys(array_filter($token, fn (mixed $gruppo) => is_array($gruppo) && isset($gruppo['tokens'])));
+    preg_match_all('/\btoken\.([a-zA-Z]+)\b/', File::get(__DIR__.'/../../scripts/token-css.mjs'), $letti);
+    $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
+    $nomi = array_merge(...array_map(fn (string $gruppo) => array_map(fn (array $voce) => "--{$voce['name']}", $token[$gruppo]['tokens']), $gruppi));
+
+    expect($gruppi)->toContain('color', 'border')
+        ->and(array_values(array_diff($gruppi, $letti[1])))->toBe([])
+        ->and(array_values(array_diff($nomi, array_keys($css))))->toBe([]);
+});
+
 it('il controllo trova la variabile che manca, quella definita due volte e quella col valore scuro (T3.1)', function () {
     $token = valoriDeiToken();
     $colori = collect(json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR)['color']['tokens']);
