@@ -139,6 +139,29 @@ describe('la cornice dello staff', () => {
         expect(vociDelProfilo()).toEqual([dellaLingua.logout]);
     });
 
+    // Sprint 105 (voce #2954): «Configurazione» è solo del Superadmin, e il modulo la toglie a chi non lo è.
+    it('con configurazione={false} «Configurazione» non c\'è, né nella barra né nel cassetto; il riquadro dello staff resta (sprint 105, T1.1)', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} configurazione={false} onLogout={esci} />);
+
+        expect(tutti('.zr-side-foot .zr-nav-item')).toEqual([]);
+        expect(tutti('.zr-side a, .zr-side button').map((voce) => voce.textContent)).not.toContain(staffItaliano.settings);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+
+        // Il cassetto, sotto i 1024 px, è la stessa barra aperta dal pulsante del menu.
+        await clic(uno(`.zr-top button[aria-label="${testi('it').openMenu}"]`));
+        expect(tutti('.zr-side-foot .zr-nav-item')).toEqual([]);
+        expect(tutti('.zr-side a, .zr-side button').map((voce) => voce.textContent)).not.toContain(staffItaliano.settings);
+    });
+
+    it.each([[undefined], [true]])('con configurazione=%s «Configurazione» c\'è, e il clic arriva a onNavigate come settings (sprint 105, T1.2)', async (configurazione) => {
+        const onNavigate = vi.fn();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} onNavigate={onNavigate} {...(configurazione === undefined ? {} : { configurazione })} onLogout={esci} />);
+
+        expect(tutti('.zr-side-foot .zr-nav-item').map((voce) => voce.textContent)).toEqual([staffItaliano.settings]);
+        await clic(uno('.zr-side-foot .zr-nav-item'));
+        expect(onNavigate).toHaveBeenCalledWith('settings');
+    });
+
     it('T1.3 i file dello staff hanno le stesse chiavi in ogni lingua, tutte piene, e nessuna è scritta nelle lingue della cornice', async () => {
         const chiavi = Object.keys(staffItaliano).sort();
         for (const file of [staffSpagnolo, staffInglese]) {

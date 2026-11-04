@@ -45,6 +45,11 @@ export interface CorniceDelloStaffProps {
     active?: string | null | undefined;
     /** Il clic su una voce della barra; «Configurazione», in fondo alla barra, arriva come `settings`. */
     onNavigate?: ((id: string) => void) | undefined;
+    /**
+     * «Configurazione» in fondo alla barra (dalla `v4.3.0`, voce #2954): c'è di norma; con `false` non c'è, né nella barra né nel
+     * cassetto, per chi non è Superadmin.
+     */
+    configurazione?: boolean | undefined;
     /** Il percorso: l'ultima voce è la pagina. */
     crumbs?: ShellCrumb[] | undefined;
     onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
@@ -67,7 +72,7 @@ export interface CorniceDelloStaffProps {
     children?: ReactNode;
 }
 
-export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], onLogout, cerca, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
+export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
     const t = testi(lingua);
     // La ricerca: lo stato dell'`AppShell` e i risultati dell'ultima parola. Una parola nuova annulla quella di prima, e una
     // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.
@@ -144,6 +149,7 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
                 user={persona.nome}
                 email={persona.email}
                 workspace={area}
+                settings={configurazione}
                 accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
                 notifications={[]}
                 {...(cerca ? { onSearch: cercaParola } : {})}

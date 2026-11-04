@@ -1,7 +1,8 @@
 // staff.html: la cornice dello staff (dalla `v3.16.0`, voce #2944) presa dall'ingresso per le app, con una ricerca finta che
 // risponde dopo 200 ms su un elenco di persone e workspace «UAT». Ciò che la cornice chiede al modulo — un indirizzo da aprire,
 // l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»). Con `?toast=1` mostra il Toast della cornice
-// (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui.
+// (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui. Con `?configurazione=0` la barra è quella
+// di chi non è Superadmin, senza «Configurazione» (dalla `v4.3.0`, voce #2954).
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CorniceDelloStaff, ToastDellaCornice } from '../js/app';
@@ -54,6 +55,7 @@ function Pagina() {
             nav={nav}
             active={attiva}
             onNavigate={(id) => (setAttiva(id), setUltima(`voce ${id}`))}
+            configurazione={scelti.get('configurazione') !== '0'}
             menu={[{ icon: 'user', label: 'UAT il mio accesso', onClick: () => setUltima('voce del modulo') }]}
             cerca={cerca}
             naviga={(indirizzo) => (console.info('UAT naviga', indirizzo), setUltima(`naviga ${indirizzo}`))}
