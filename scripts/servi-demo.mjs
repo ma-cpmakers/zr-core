@@ -8,6 +8,11 @@
  *
  * La CSP è la costante `IntestazioniSicurezza::CSP`, letta dal sorgente PHP del repo (`--csp` la sostituisce, per provare
  * la riga nei due versi; `--senza-csp` non la manda).
+ *
+ * Dalla `v4.4.0` una pagina chiesta con `?lingua=<lingua>` arriva come la manda un modulo con la riga
+ * `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}` nel Blade: `<html lang>` è quella lingua, e prima del JS d'ingresso ci
+ * sono i precarichi dei file della sua lingua e dell'inglese, presi dal manifest della build con la stessa regola (in
+ * italiano nessuno). Con `&precarico=0` la pagina ha la lingua e non i precarichi: è il modulo senza la riga.
  */
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -32,6 +37,21 @@ if (csp === undefined) {
     process.exit(1);
 }
 
+const manifest = existsSync(join(cartella, '.vite/manifest.json')) ? JSON.parse(readFileSync(join(cartella, '.vite/manifest.json'), 'utf8')) : {};
+const FORMA_DI_UNA_LINGUA = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*$/;
+
+/** La pagina com'è nel modulo per chi parla `lingua`: la regola di `Cornice::precaricoDellaLingua()`, coi file di `resources/lingue`. */
+function nellaLingua(pagina, lingua, conIlPrecarico) {
+    const codice = lingua.toLowerCase().replace(/_/g, '-');
+    const sua = [codice, codice.split('-')[0]].find((scelto) => ['it', 'en', 'es'].includes(scelto));
+    const precarichi = !conIlPrecarico || sua === 'it' ? [] : [...new Set([sua, 'en'].filter(Boolean))]
+        .map((scelto) => manifest[`../lingue/${scelto}.json`]?.file)
+        .filter(Boolean)
+        .map((file) => `<link rel="preload" as="fetch" href="./${file}" crossorigin>`);
+
+    return pagina.replace(/<html lang="[^"]*">/, `<html lang="${lingua}">`).replace(/(\s*)<script type="module"/, `${precarichi.map((riga) => `$1${riga}`).join('')}$1<script type="module"`);
+}
+
 if (!existsSync(join(cartella, 'index.html'))) {
     console.error('manca dist/demo: prima `npm run demo`');
     process.exit(1);
@@ -41,8 +61,10 @@ const tipi = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 
 createServer((richiesta, risposta) => {
     let percorso;
+    let domanda;
     try {
-        percorso = decodeURIComponent(new URL(richiesta.url, 'http://localhost').pathname);
+        ({ pathname: percorso, searchParams: domanda } = new URL(richiesta.url, 'http://localhost'));
+        percorso = decodeURIComponent(percorso);
     } catch {
         risposta.writeHead(400).end();
         return;
@@ -60,5 +82,10 @@ createServer((richiesta, risposta) => {
         return;
     }
     risposta.writeHead(200, { 'Content-Type': tipi[extname(file)] ?? 'application/octet-stream', ...(csp ? { 'Content-Security-Policy': csp } : {}) });
+    const lingua = domanda.get('lingua');
+    if (extname(file) === '.html' && lingua && FORMA_DI_UNA_LINGUA.test(lingua)) {
+        risposta.end(nellaLingua(readFileSync(file, 'utf8'), lingua, domanda.get('precarico') !== '0'));
+        return;
+    }
     createReadStream(file).on('error', () => risposta.destroy()).pipe(risposta);
 }).listen(porta, '127.0.0.1', () => console.log(`dist/demo su http://127.0.0.1:${porta}/ · CSP: ${csp ?? 'nessuna'}`));

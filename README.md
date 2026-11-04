@@ -170,9 +170,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,0 KB | 17,1 KB | 63,5 KB | 13,7 KB |
-| la cornice e due componenti per nome | 53,3 KB | 18,3 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 127,8 KB | 41,2 KB | 63,5 KB | 13,7 KB |
+| solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
+| la cornice e due componenti per nome | 49,9 KB | 17,6 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,5 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -199,7 +199,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.573 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 16.880 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -223,7 +223,9 @@ i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di 
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Dalla `v4.2.0` è salito di 360 byte, alla
 misura più 20: il design system nuovo, col codice dell'`AppShell` per la ricerca all'invio, `settings={false}` e la foto
 nell'avatar (352 byte), e la foto della persona nella cornice (8); un'eccezione di zr-pm senza contropartita (Decisione
-20570). Hanno
+20570). Dalla `v4.4.0` è sceso di 693 byte, alla misura più 20: nel JS d'ingresso c'è solo l'italiano, e inglese e spagnolo
+sono file a richiesta (Decisione 20618 di zr-pm; «Il precarico della lingua», in fondo), con un tetto ciascuno, la misura
+più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -406,11 +408,12 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.0.0` | la CSP di tutti senza Google Fonts: `style-src 'self'` e `font-src 'self'` (#2946); stringe, quindi maggiore («Passare alla v4») | `^4` nel `composer.json`, nella prossima PR; prima i font del pacchetto («Passare alla v3.15») | un caso che confronta la CSP intera la riscrive senza Google | `scripts/uat-cornice.mjs`: R.F e R.C ✅, in console nessun blocco della CSP |
 | `v4.2.0` | il design system `ds-1793813518-fdc2`: token nuovi (`label` 13/18, quattro spazi, quattro raggi, `--border-strong`), `SectionCard`, `Avatar` `src`, `AppShell` `settings`, `userPhoto` e `searchOn`, `DetailPanel` `modal` e `returnFocus`, `Switch` `aria-disabled`, `LineChart` `step`; la foto della persona nella cornice (#3014) |
 | `v4.3.0` | la cornice dello staff ha due prop nuove, facoltative: `configurazione={false}` toglie «Configurazione» dalla barra e dal cassetto (#2954), e `cercaAllInvio` fa partire la ricerca solo con Invio (#2965), coi due testi nelle lingue dello staff; senza, tutto come prima, e l'app che prende la `Cornice` pesa come prima | niente per chi monta la `Cornice`; il backoffice dello staff passa le due prop | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.4-S.5) |
+| `v4.4.0` | nel JS d'ingresso delle lingue della cornice c'è solo l'italiano, e inglese e spagnolo sono file a richiesta (#3015): l'app che prende solo la cornice pesa 0,7 KB in meno con gzip. La cornice di chi ha un'altra lingua si disegna quando la sua lingua è arrivata, mai in un'altra; `Cornice::precaricoDellaLingua()` mette nella testa della pagina il precarico dei suoi file («Il precarico della lingua») | una riga nel Blade della pagina, prima di `@vite`: `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}`. Senza, la cornice di chi non parla italiano aspetta un giro di rete in più, ed è vuota finché la lingua non arriva: mai in un'altra lingua | un caso che rende la cornice in inglese o in spagnolo vuole le lingue in memoria: `beforeAll(() => frasiInMemoria())` le dà, insieme alle frasi; senza, la cornice resta vuota finché la lingua non arriva, e se non arriva si disegna in italiano | nella testa di una pagina in spagnolo i due `<link rel="preload" as="fetch">`, di spagnolo e inglese, e nessuno in italiano; in spagnolo nessun testo della cornice in un'altra lingua dall'apertura |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
 1280 e a 390 px, la ricerca (il campo che tiene tutti i caratteri scritti, il caricamento, il pannello nel giro del Tab,
-Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso, i font dal pacchetto (R.F, dalla `v3.15.0`) e la CSP della pagina che non ferma niente (R.C, dalla `v4.0.0`: le pagine di prova la ricevono da `node scripts/servi-demo.mjs`, e senza CSP la riga è ➖). A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
+Esc, quanti risultati, l'opzione attiva in vista), il «+», il selettore dei workspace (Home, Fine, il Tab che esce), la campanella (anche le linguette con le frecce), i menu della barra sopra il pannello di dettaglio, il percorso, i font dal pacchetto (R.F, dalla `v3.15.0`) e la CSP della pagina che non ferma niente (R.C, dalla `v4.0.0`: le pagine di prova la ricevono da `node scripts/servi-demo.mjs`, e senza CSP la riga è ➖) e, dalla `v4.4.0`, la lingua della cornice dalla prima riga della pagina (R.L: nella lingua della pagina in ogni testo, i precarichi della riga del Blade, e l'italiano se la lingua non arriva; le pagine di prova in spagnolo con `?lingua=es`). A 1280 px batte sei parole: `--parola`, che deve trovare qualcosa nel workspace,
 e parole che non trovano niente, così il caricamento si prova dopo una parola con risultati e dopo una senza, sia riscritta
 da capo sia allungata di qualche lettera; una parola finita in errore (il freno del backoffice) dà ➖ e si rilancia. axe
 viene dal progetto, da `AXE` o da cdnjs, e quello di cdnjs gira solo se l'impronta è quella che cdnjs dichiara.
@@ -2975,3 +2978,39 @@ frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli ind
 - **Un resolver del frontend** registrato nel `boot()` del suo `AppServiceProvider` parte dopo quello del pacchetto, e
   vince: chi ne ha uno uguale lo toglie quando installa la `v1.18.0`. Nel `register()` no: lì quello del pacchetto lo
   sovrascrive.
+
+### Il precarico della lingua
+
+Dalla `v4.4.0` nel JS d'ingresso c'è una lingua sola della cornice, l'italiano, la lingua di quasi tutte le persone di
+Zeiras (Decisione 20618 di zr-pm). L'inglese e lo spagnolo sono file della build, `.json` con l'impronta nel nome, che la
+cornice chiede con `fetch`: la lingua della persona e l'inglese, da cui prende i testi che a quella mancano. Una lingua che
+zr-core non ha (`pt-BR`) ha i testi dell'inglese. La richiesta parte quando il JS d'ingresso è eseguito, dalla lingua del
+documento (`<html lang>`), e la cornice la chiede da sé se la lingua dei dati è un'altra. Finché la lingua non è arrivata la
+cornice non si disegna: è vuota un attimo, mai in un'altra lingua. Se la lingua non arriva si disegna in italiano. A un
+cambio di lingua resta in quella di prima finché la nuova non è arrivata. Anche `testi` e `nomeDellaVoce`, per chi li usa
+fuori dalla cornice, danno l'italiano finché la lingua non è arrivata; con la lingua che non arriva i testi della cornice
+sono in italiano, mentre date, frasi delle notifiche e ricerca restano nella lingua della persona.
+
+Il server del modulo sa la lingua della pagina prima del browser: una riga nella testa del Blade, prima di `@vite`, mette il
+precarico dei file di quella lingua, così il browser comincia a scaricarli insieme al JS d'ingresso.
+
+```blade
+{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}
+@vite('resources/js/app.tsx')
+```
+
+- **Che cosa scrive**: in spagnolo due righe, `<link rel="preload" as="fetch" href="/build/assets/es-….json" crossorigin>` e
+  quella dell'inglese; in inglese o in una lingua che zr-core non ha, quella dell'inglese; in italiano niente. Sempre
+  `as="fetch"` e `crossorigin`, la forma della richiesta di `fetch`: con un'altra il browser scaricherebbe il file due
+  volte. La lingua è quella dell'app (`App::getLocale()`): la riga va dopo il middleware che la mette («La parte server»).
+  Una lingua che non ha la forma di una lingua non precarica niente.
+- **Dove trova i file**: nel manifest della build del modulo, con la chiave che Vite dà ai file del pacchetto (il percorso
+  vero, relativo alla radice del frontend: va anche col pacchetto installato in symlink). Senza manifest, con Vite in
+  sviluppo (`npm run dev`), o con un file che il manifest non ha, quella riga manca e la pagina va: la cornice chiede la sua
+  lingua da sé, un giro di rete dopo. La radice è quella del frontend (`base_path()`), che dev'essere anche la `root` di
+  Vite: con un'altra, o con il pacchetto in symlink nella build e copiato in produzione, le chiavi non combaciano e il
+  precarico manca, senza errori.
+- **Senza la riga**: tutto funziona, e la cornice di chi non parla italiano aspetta un giro di rete in più. Chi parla
+  italiano non aspetta niente, con o senza.
+- **Nei test del modulo**: `beforeAll(() => frasiInMemoria())` (vedi «Le notifiche») mette in memoria anche le lingue, e la
+  cornice in inglese o in spagnolo si disegna al primo render.

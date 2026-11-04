@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
-import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { SaltaAlContenuto } from './salto';
@@ -429,7 +429,18 @@ export function Cornice(props: CorniceProps) {
     // risultati e la sua parola, i pannelli aperti) è della persona che lo ha visto. Se la sessione passa a un'altra sullo stesso
     // workspace — da un'altra scheda, o uscendo ed entrando — la cornice si rifà, e la pagina con lei: niente di chi c'era prima
     // resta sotto il nome nuovo, nemmeno per un disegno. Sta qui e non nel layout: vale anche per chi monta `Cornice` da sé.
-    return <DiUnaPersona key={lui(chi)} {...props} dati={dati} chi={chi} />;
+    return <NellaSuaLingua key={lui(chi)} {...props} dati={dati} chi={chi} />;
+}
+
+/**
+ * La cornice di una persona nella sua lingua (dalla `v4.4.0`): finché la lingua non è pronta non si disegna, e con lei la pagina
+ * dentro; a un cambio di lingua resta in quella di prima finché la nuova non è pronta, e la pagina non si smonta
+ * (`useLinguaPronta`). L'italiano è sempre pronto: sta nel JS d'ingresso.
+ */
+function NellaSuaLingua(props: CorniceProps & { dati: DatiDellaCornice; chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
+    const lingua = useLinguaPronta(props.chi.lingua);
+
+    return lingua === undefined ? null : <DiUnaPersona {...props} chi={lingua === props.chi.lingua ? props.chi : { ...props.chi, lingua }} />;
 }
 
 /**

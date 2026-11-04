@@ -42,6 +42,8 @@ export default defineConfig({
     build: {
         outDir: '../../dist/demo',
         emptyOutDir: true,
+        // Il manifest, come quello di un modulo: `scripts/servi-demo.mjs` ci trova i file delle lingue da precaricare (dalla `v4.4.0`).
+        manifest: true,
         rolldownOptions: {
             input: ['index.html', 'app.html', 'layout.html', 'staff.html'].filter(solaLApp).map((pagina) => delRepo(`resources/demo/${pagina}`)),
             output: process.env.ZR_PEZZI_ALTROVE

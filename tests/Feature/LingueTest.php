@@ -896,7 +896,8 @@ function testiScrittiNelCodice(string $codice, array $testiDelleLingue): array
 
 /**
  * Le lingue elencate a mano nel codice: una stringa uguale al codice di una lingua, o il file di una lingua importato da solo.
- * L'inglese no: è il ripiego di tutte, e si importa apposta.
+ * L'inglese e l'italiano no: l'inglese è il ripiego di tutte, l'italiano la lingua del JS d'ingresso (dalla `v4.4.0`, Decisione
+ * 20618 di zr-pm), e si nominano apposta.
  *
  * @param  list<string>  $codici
  * @return list<string>
@@ -906,7 +907,7 @@ function lingueElencateNelCodice(string $codice, array $codici): array
     $elencate = [];
     foreach (testiDelCodice($codice) as ['testo' => $testo, 'fraDueTag' => $fraDueTag]) {
         $file = preg_match('~lingue/([\w-]+)\.json$~', $testo, $lingua) === 1 ? $lingua[1] : null;
-        if (! $fraDueTag && (in_array($testo, $codici, true) || ($file !== 'en' && in_array($file, $codici, true)))) {
+        if (! $fraDueTag && (in_array($testo, $codici, true) || (! in_array($file, ['en', 'it'], true) && in_array($file, $codici, true)))) {
             $elencate[] = $testo;
         }
     }
@@ -1520,6 +1521,7 @@ it('il controllo trova i testi e le lingue scritti nel codice, non quelli citati
     $codice = <<<'TS'
         // la voce «Prodotti» e 'Esci' in un commento non si vedono
         import italiano from '../lingue/it.json';
+        import spagnolo from '../lingue/es.json';
         import inglese from '../lingue/en.json';
         const file = import.meta.glob('../lingue/*.json');
         const gruppo = 'Prodotti';
@@ -1535,7 +1537,7 @@ it('il controllo trova i testi e le lingue scritti nel codice, non quelli citati
 
     expect(testiScrittiNelCodice($codice, ['Prodotti', 'Dashboard', 'Esci']))
         ->toBe(['Prodotti', 'Dashboard', 'Esci', 'Benvenuto'])
-        ->and(lingueElencateNelCodice($codice, ['it', 'es', 'en']))->toBe(['../lingue/it.json', 'it', 'es']);
+        ->and(lingueElencateNelCodice($codice, ['it', 'es', 'en']))->toBe(['../lingue/es.json', 'it', 'es']);
 });
 
 /**

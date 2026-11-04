@@ -2,7 +2,11 @@
 
 namespace Zeiras\Core;
 
+use Illuminate\Foundation\ViteException;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\HtmlString;
 use Throwable;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
@@ -60,6 +64,11 @@ final class Cornice
 
     /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
     private const SECONDI_DELLA_RIMANDATA = 10;
+
+    /** La lingua che sta nel JS d'ingresso della cornice e quella del ripiego, dai nomi dei file di resources/lingue (dalla `v4.4.0`). */
+    private const LINGUA_DELL_INGRESSO = 'it';
+
+    private const LINGUA_DEL_RIPIEGO = 'en';
 
     /** La forma di una lingua: due o tre lettere, poi parti di lettere e cifre unite da `-` o `_` (`it`, `pt-BR`, `zh-Hans-CN`). */
     private const FORMA_DI_UNA_LINGUA = '/\A[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*\z/';
@@ -404,6 +413,66 @@ final class Cornice
         $puo = $sua !== null && array_filter($righe, fn (array $riga) => $riga[1] === $sua && $riga[2]) !== [];
 
         return $puo ? self::inHome($slug, '/nuovo-workspace') : null;
+    }
+
+    /**
+     * Il precarico dei testi della cornice nella lingua della pagina (dalla `v4.4.0`), da mettere nella testa del documento
+     * prima di `@vite`: `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}`. Nel JS d'ingresso c'è solo l'italiano; le altre
+     * lingue sono file `.json` della build che la cornice chiede con `fetch` (resources/js/lingue.ts), il suo e quello inglese,
+     * da cui prende i testi che le mancano. Qui escono come `preload; as=fetch; crossorigin`, la forma della richiesta di
+     * `fetch`: senza `crossorigin` il browser scaricherebbe il file due volte. In italiano niente.
+     *
+     * La lingua è quella dell'app (`App::getLocale()`), che il modulo mette dalla sessione. Il file si cerca nel manifest del
+     * frontend con la chiave di Vite: il suo percorso, risolti i link simbolici, relativo alla radice del frontend. Senza
+     * manifest, con Vite in sviluppo, o con un file che il manifest non ha, quel precarico manca e la pagina va: la cornice lo
+     * chiede da sé, un giro di rete dopo. Una lingua che non ha la forma di una lingua non precarica niente.
+     */
+    public static function precaricoDellaLingua(): HtmlString
+    {
+        $lingua = (string) App::getLocale();
+
+        if (preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) !== 1 || Vite::isRunningHot()) {
+            return new HtmlString('');
+        }
+
+        // Il file della lingua com'è nei nomi (`es_MX` → `es-mx`), o della sua lingua base; sempre l'inglese, il ripiego.
+        $file = [];
+        foreach (glob(__DIR__.'/../resources/lingue/*.json') ?: [] as $percorso) {
+            $file[strtolower(basename($percorso, '.json'))] = $percorso;
+        }
+        $codice = strtolower(str_replace('_', '-', $lingua));
+        $sua = array_values(array_filter([$codice, explode('-', $codice)[0]], fn (string $scelto) => isset($file[$scelto])))[0] ?? null;
+
+        if ($sua === self::LINGUA_DELL_INGRESSO) {
+            return new HtmlString('');
+        }
+
+        $righe = [];
+        foreach (array_unique(array_filter([$sua, self::LINGUA_DEL_RIPIEGO])) as $scelto) {
+            if (! isset($file[$scelto])) {
+                continue;
+            }
+            try {
+                $righe[] = '<link rel="preload" as="fetch" href="'.e(Vite::asset(self::percorsoPerVite($file[$scelto]))).'" crossorigin>';
+            } catch (ViteException) {
+                // Il manifest non c'è, o non ha il file: il precarico manca.
+            }
+        }
+
+        return new HtmlString(implode("\n", $righe));
+    }
+
+    /** Il percorso di un file come lo scrive Vite nelle chiavi del manifest: relativo alla radice del frontend, senza link simbolici. */
+    private static function percorsoPerVite(string $percorso): string
+    {
+        $da = explode('/', trim((string) realpath(base_path()), '/'));
+        $a = explode('/', trim((string) realpath($percorso), '/'));
+        $comuni = 0;
+        while (isset($da[$comuni], $a[$comuni]) && $da[$comuni] === $a[$comuni]) {
+            $comuni++;
+        }
+
+        return implode('/', [...array_fill(0, count($da) - $comuni, '..'), ...array_slice($a, $comuni)]);
     }
 
     /**

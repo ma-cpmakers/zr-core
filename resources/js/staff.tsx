@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
-import { fileDelleLingue, testi, type TestiDellaCornice } from './lingue';
+import { fileDelleLingue, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/staff/en.json';
@@ -80,7 +80,17 @@ export interface CorniceDelloStaffProps {
     children?: ReactNode;
 }
 
-export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, cercaAllInvio = false, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
+/**
+ * La cornice dello staff nella sua lingua (dalla `v4.4.0`), come quella dei moduli: finché la lingua non è pronta non si disegna,
+ * e con lei la pagina dentro; a un cambio di lingua resta in quella di prima finché la nuova non è pronta (`useLinguaPronta`).
+ */
+export function CorniceDelloStaff(props: CorniceDelloStaffProps) {
+    const lingua = useLinguaPronta(props.lingua);
+
+    return lingua === undefined ? null : <NellaSuaLingua {...props} lingua={lingua} />;
+}
+
+function NellaSuaLingua({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, cercaAllInvio = false, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
     const t = testi(lingua);
     // La ricerca: lo stato dell'`AppShell` e i risultati dell'ultima parola. Una parola nuova annulla quella di prima, e una
     // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.

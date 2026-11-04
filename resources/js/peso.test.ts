@@ -8,6 +8,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import avvisiInglesi from '../lingue/avvisi/en.json';
 import avvisiSpagnoli from '../lingue/avvisi/es.json';
 import avvisiItaliani from '../lingue/avvisi/it.json';
+import inglese from '../lingue/en.json';
+import spagnolo from '../lingue/es.json';
+import italiano from '../lingue/it.json';
 import generato from './zeiras/componenti.js?raw';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
@@ -118,8 +121,14 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * v4.2.0: 17.573, 360 in più (Decisione 20570 di zr-pm, la misura + 20, senza contropartita): il design system
  * ds-1793813518-fdc2, col codice dell'`AppShell` per la ricerca all'invio, `settings={false}` e la foto nell'avatar (+352), e la
  * foto della persona nella cornice (+8); i due testi della ricerca all'invio non stanno nelle lingue della cornice (17.553 misurati).
+ *
+ * v4.4.0: 16.880, 693 in meno (Decisione 20618 di zr-pm, la misura + 20): nel JS d'ingresso c'è solo l'italiano, e inglese e
+ * spagnolo sono file a richiesta, ognuno col suo tetto (`TETTI_DELLE_LINGUE`); la cornice che li chiede, li aspetta e li prende
+ * dal precarico del server ne ha ripreso una parte (16.860 misurati, con la lingua che arriva prima del montaggio e quella richiesta dopo un errore).
  */
-const TETTO_DELL_INGRESSO = 17_573;
+const TETTO_DELL_INGRESSO = 16_880;
+/** I tetti dei file delle lingue a richiesta, con gzip (dalla `v4.4.0`, la misura + 20): 928 e 1.051 byte misurati. */
+const TETTI_DELLE_LINGUE = { en: 948, es: 1_071 };
 /**
  * Ciò che nel codice costruito c'è solo dove si compone la riga di una notifica: il posto del nome della cosa in una frase.
  * Le frasi lo hanno anche loro, ma sono file `.json`, non pezzi di codice.
@@ -149,6 +158,8 @@ interface Costruito {
     pezzi: string[];
     /** I nomi dei file delle frasi nella build. */
     fileDelleFrasi: string[];
+    /** I file delle lingue della cornice a richiesta (dalla `v4.4.0`: tutte tranne l'italiano), per nome nella build: il testo di ognuno. */
+    lingue: Record<string, string>;
     esporta: string[];
     /** Il CSS d'ingresso: quello dei pezzi che la pagina scarica subito (sprint 75 · T2). */
     css: string;
@@ -169,7 +180,11 @@ const scritture = (js: string, globale: string) => [...js.matchAll(new RegExp(`w
 function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const uscite = (Array.isArray(esito) ? esito : [esito]).flatMap((uscita) => ('output' in uscita ? uscita.output : []));
     const pezzi = uscite.filter((uscita) => uscita.type === 'chunk');
-    const frasi = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
+    const json = uscite.filter((uscita) => uscita.type === 'asset').filter((uscita) => uscita.fileName.endsWith('.json'));
+    // Le frasi delle notifiche e le lingue della cornice hanno gli stessi nomi di file (`es.json`): le dice la cartella da cui vengono.
+    const diLingue = (uscita: (typeof json)[number]) => uscita.type === 'asset' && uscita.originalFileNames.some((nome) => /resources\/lingue\/[\w-]+\.json$/.test(nome));
+    const frasi = json.filter((uscita) => !diLingue(uscita));
+    const testoDi = (uscita: (typeof json)[number]) => (uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : uscita.type === 'asset' ? Buffer.from(uscita.source).toString() : '');
     const fogli = new Map(uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.css')).map((uscita) => [uscita.fileName, uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : '']));
     const nomiDelCss = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])];
     const cssDi = (pezzo: (typeof pezzi)[number]) => nomiDelCss(pezzo).map((nome) => fogli.get(nome) ?? '').join('\n');
@@ -177,9 +192,10 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
 
     return {
         js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
-        aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map((uscita) => (typeof uscita.source === 'string' ? uscita.source : Buffer.from(uscita.source).toString()))],
+        aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map(testoDi)],
         pezzi: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
         fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
+        lingue: Object.fromEntries(json.filter(diLingue).map((uscita) => [uscita.fileName, testoDi(uscita)])),
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
         css: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map(cssDi).join('\n'),
         cssARichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map(cssDi).filter((css) => css !== ''),
@@ -562,9 +578,19 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
     // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
     // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 17.573 byte: il tetto della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 16.880 byte: il tetto della v4.4.0 (−693, la misura più 20, inglese e spagnolo fuori dall\'ingresso: Decisione 20618), e prima quello della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(17_573);
+        expect(TETTO_DELL_INGRESSO).toBe(16_880);
+    });
+
+    // Sprint 106 · T4.1 (voce 3015): i file delle lingue a richiesta hanno un tetto ciascuno, la misura più 20.
+    it('inglese e spagnolo, i file delle lingue a richiesta, pesano con gzip al più 948 e 1.071 byte: la misura della v4.4.0 più 20 (sprint 106 · T4.1)', () => {
+        const pesi = Object.fromEntries(Object.entries(soloCornice.lingue).map(([nome, testo]) => [nome.replace(/^assets\/|-[\w-]{8,}\.json$/g, ''), gzip(testo)]));
+
+        expect(Object.keys(pesi).sort()).toStrictEqual(['en', 'es']);
+        expect(pesi.en).toBeLessThanOrEqual(TETTI_DELLE_LINGUE.en);
+        expect(pesi.es).toBeLessThanOrEqual(TETTI_DELLE_LINGUE.es);
+        expect(TETTI_DELLE_LINGUE).toStrictEqual({ en: 948, es: 1_071 });
     });
 
     // Sprint 70 · T1.1 (voce #2429): le righe delle destinazioni stanno solo nel pezzo della campanella, che le legge quando un
@@ -586,12 +612,12 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 17.573 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 16.880 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 17.573 byte, di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730; sprint 106 · T4.1)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
         expect(volte(testo, '17.478')).toBe(file === 'README.md' ? 1 : 0);
-        expect([volte(testo, '17.573 byte') > 0, volte(testo, '17.213 byte'), volte(testo, '17.336 byte'), volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '16.880 byte') > 0, volte(testo, '17.573 byte'), volte(testo, '17.213 byte'), volte(testo, '17.336 byte'), volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
@@ -734,6 +760,36 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     it('`resources/js/frasi` esporta le funzioni per le pagine, e solo quelle (dalla v3.0.0 quattro, con `destinazioneDellaNotifica`), con le frasi di ogni lingua (sprint 33 · T1.1; sprint 70 · T1.3)', () => {
         expect(ingressoDelleFrasi.esporta).toStrictEqual(PER_LE_PAGINE);
         expect(Object.values(FRASI).filter((frase) => !ingressoDelleFrasi.js.includes(frase))).toStrictEqual([]);
+    });
+});
+
+// Sprint 106 · T1.1 (voce 3015, Decisione 20618 di zr-pm): nel JS d'ingresso resta l'italiano; inglese e spagnolo sono file a
+// richiesta, uno per lingua, che la cornice chiede con `fetch` e il server del modulo precarica.
+describe('nel JS d\'ingresso le lingue della cornice sono il solo italiano: inglese e spagnolo sono file a richiesta, uno per lingua (sprint 106 · T1.1)', () => {
+    /** I testi che solo quella lingua ha, fra quelli di più di dieci caratteri: con spazi, così non sono nomi. */
+    const soloDi = (dellaLingua: Record<string, string>, ...altre: Record<string, string>[]) =>
+        Object.values(dellaLingua).filter((testo) => testo.length > 10 && testo.includes(' ') && altre.every((altra) => !Object.values(altra).includes(testo)));
+    const soloItaliani = soloDi(italiano, inglese, spagnolo);
+    const soloInglesi = soloDi(inglese, italiano, spagnolo);
+    const soloSpagnoli = soloDi(spagnolo, italiano, inglese);
+    const app = [
+        ['solo la cornice, dall\'ingresso per le app', () => soloCornice],
+        ['la cornice e due componenti per nome', () => perNome],
+        ['la stessa cornice, dall\'ingresso di sempre', () => diSempre],
+    ] as const;
+
+    it.each(app)('«%s»: l\'ingresso ha i testi dell\'italiano e nessuno dell\'inglese o dello spagnolo', (_nome, costruita) => {
+        expect(soloItaliani.length).toBeGreaterThan(20);
+        expect(soloItaliani.filter((testo) => !costruita().js.includes(JSON.stringify(testo).slice(1, -1)))).toStrictEqual([]);
+        expect([...soloInglesi, ...soloSpagnoli].filter((testo) => costruita().js.includes(JSON.stringify(testo).slice(1, -1)))).toStrictEqual([]);
+    });
+
+    it.each(app)('«%s»: inglese e spagnolo sono due file `.json` con l\'impronta nel nome, ognuno con la sua lingua sola', (_nome, costruita) => {
+        const lingue = costruita().lingue;
+        const diChi = (testo: string) => [soloInglesi.some((uno) => testo.includes(uno)) && 'en', soloSpagnoli.some((uno) => testo.includes(uno)) && 'es', soloItaliani.some((uno) => testo.includes(uno)) && 'it'].filter(Boolean);
+
+        expect(Object.keys(lingue).map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json')).sort()).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json']);
+        expect(Object.entries(lingue).map(([nome, testo]) => [nome.slice(7, 9), diChi(testo)])).toEqual(expect.arrayContaining([['en', ['en']], ['es', ['es']]]));
     });
 });
 
