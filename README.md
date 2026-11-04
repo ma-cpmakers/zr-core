@@ -409,6 +409,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.2.0` | il design system `ds-1793813518-fdc2`: token nuovi (`label` 13/18, quattro spazi, quattro raggi, `--border-strong`), `SectionCard`, `Avatar` `src`, `AppShell` `settings`, `userPhoto` e `searchOn`, `DetailPanel` `modal` e `returnFocus`, `Switch` `aria-disabled`, `LineChart` `step`; la foto della persona nella cornice (#3014) |
 | `v4.3.0` | la cornice dello staff ha due prop nuove, facoltative: `configurazione={false}` toglie «Configurazione» dalla barra e dal cassetto (#2954), e `cercaAllInvio` fa partire la ricerca solo con Invio (#2965), coi due testi nelle lingue dello staff; senza, tutto come prima, e l'app che prende la `Cornice` pesa come prima | niente per chi monta la `Cornice`; il backoffice dello staff passa le due prop | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.4-S.5) |
 | `v4.4.0` | nel JS d'ingresso delle lingue della cornice c'è solo l'italiano, e inglese e spagnolo sono file a richiesta (#3015): l'app che prende solo la cornice pesa 0,7 KB in meno con gzip. La cornice di chi ha un'altra lingua si disegna quando la sua lingua è arrivata, mai in un'altra; `Cornice::precaricoDellaLingua()` mette nella testa della pagina il precarico dei suoi file («Il precarico della lingua») | una riga nel Blade della pagina, prima di `@vite`: `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}`. Senza, la cornice di chi non parla italiano aspetta un giro di rete in più, ed è vuota finché la lingua non arriva: mai in un'altra lingua | un caso che rende la cornice in inglese o in spagnolo vuole le lingue in memoria: `beforeAll(() => frasiInMemoria())` le dà, insieme alle frasi; senza, la cornice resta vuota finché la lingua non arriva, e se non arriva si disegna in italiano | nella testa di una pagina in spagnolo i due `<link rel="preload" as="fetch">`, di spagnolo e inglese, e nessuno in italiano; in spagnolo nessun testo della cornice in un'altra lingua dall'apertura |
+| `v4.5.0` | la cornice dello staff ha due prop nuove, facoltative (#2989): `ruolo` (già tradotto dal modulo) e `sessioneFinoA` (una data ISO) mettono nel riquadro in fondo alla barra «Superadmin · 2FA» e «Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.»; senza, il riquadro resta com'era | niente: le due prop si passano quando il modulo le ha | niente | S.6 su `staff.html` (`ruolo` e `fino`), a 1280 e a 390 px |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2499,6 +2500,8 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
     cerca={(parola, segnale) => cercaUtentiEWorkspace(parola, segnale)}
     cercaAllInvio                         // dalla v4.3.0: la ricerca parte solo con Invio
     configurazione={staff.superadmin}     // dalla v4.3.0: con false niente «Configurazione»
+    ruolo={staff.ruolo}                   // dalla v4.5.0: già tradotto, «Superadmin»
+    sessioneFinoA={staff.scadeIl}         // dalla v4.5.0: quando finisce al più la sessione, ISO
     naviga={(indirizzo) => router.visit(indirizzo)}
     onLogout={esci}
 >
@@ -2533,13 +2536,21 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   sui risultati apre quello evidenziato. Senza la prop la ricerca è quella di sopra.
 - **Cosa non c'è**: il selettore di workspace, il menu Moduli, le notifiche, il registro. La campanella resta, senza numero e
   col pannello vuoto, perché l'`AppShell` la disegna sempre (spegnerla è la richiesta 64 al design system).
+- **Il riquadro in fondo alla barra** (dalla `v4.5.0`, #2989): con `ruolo` il titolo è il ruolo con «· 2FA» («Superadmin · 2FA»),
+  e con `sessioneFinoA` (una data ISO: `scade_il` del gettone dello staff) il testo dice l'ora della fine, nel fuso del browser e
+  nella forma della lingua dei testi: «Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.». La data porta il suo fuso
+  (`Z` o `+01:00`): senza, il browser la legge come ora locale. «Al più tardi», e non «attiva
+  fino alle» come nel prototipo superadmin, perché 30 minuti d'inattività chiudono la sessione prima (Decisione 20721 di zr-pm). Il
+  ruolo lo traduce il modulo; senza le due prop, o con una data che non si legge, il riquadro dice «Staff di Zeiras» e «Ogni azione
+  va nel registro.», come prima.
 - **I testi** dello staff stanno in `resources/lingue/staff/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
   l'inglese), fuori dalle lingue della cornice: un'app che non monta questa cornice non li porta nella build. Il resto — «Salta
   al contenuto», i rimedi di tastiera, i nomi della ricerca — è quello della `Cornice`.
 
 La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto;
 dalla `v4.1.1` anche N.1-N.2, Q.1 e D.1-D.2: le linguette del pannello vuoto, quanti risultati, i menu sopra il dettaglio;
-dalla `v4.3.0` S.4, su `staff.html?configurazione=0`, e S.5, su `staff.html?invio=1`).
+dalla `v4.3.0` S.4, su `staff.html?configurazione=0`, e S.5, su `staff.html?invio=1`; dalla `v4.5.0` S.6, su
+`staff.html?ruolo=…&fino=…`, il ruolo e la fine della sessione a 1280 e a 390 px).
 
 ### Il Toast della cornice
 

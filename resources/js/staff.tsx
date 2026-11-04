@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
-import { fileDelleLingue, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
+import { fileDelleLingue, linguaDeiTesti, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/staff/en.json';
@@ -25,6 +25,9 @@ type TestiDelloStaff = Pick<TestiDellaCornice, 'settings' | 'planTitle' | 'planT
     /** La ricerca all'invio (voce #2965): l'invito, e ciò che dice il pannello prima di Invio. Fuori dalle lingue della cornice (Decisione 20570). */
     searchSubmitHint: string;
     searchPressEnter: string;
+    /** Il titolo del riquadro in fondo alla barra col ruolo dello staff (`{ruolo}`), e il testo con la fine della sessione (`{ora}`): voce #2989. */
+    planRole: string;
+    planUntil: string;
 };
 
 /** I testi dello staff in una lingua: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in inglese. */
@@ -42,6 +45,16 @@ export interface CorniceDelloStaffProps {
     lingua: string;
     /** Chi è entrato: nell'avatar e in cima al menu del profilo. */
     persona: { nome: string; email: string };
+    /**
+     * Il ruolo dello staff, già nella sua lingua (dalla `v4.5.0`, voce #2989): il titolo del riquadro in fondo alla barra, con
+     * «· 2FA». Senza, il riquadro dice «Staff di Zeiras».
+     */
+    ruolo?: string | undefined;
+    /**
+     * Quando finisce al più la sessione (dalla `v4.5.0`, voce #2989), una data ISO (`scade_il` del gettone dello staff): il riquadro
+     * dice l'ora, nel fuso del browser. «Al più tardi», perché 30 minuti d'inattività la chiudono prima (Decisione 20721).
+     */
+    sessioneFinoA?: string | undefined;
     /** Le voci della barra, coi loro gruppi. */
     nav?: GruppoDiVoci[] | undefined;
     /** L'id della voce attiva; con `null` nessuna. */
@@ -90,7 +103,7 @@ export function CorniceDelloStaff(props: CorniceDelloStaffProps) {
     return lingua === undefined ? null : <NellaSuaLingua {...props} lingua={lingua} />;
 }
 
-function NellaSuaLingua({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, cercaAllInvio = false, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
+function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], active, menu = [], configurazione = true, onLogout, cerca, cercaAllInvio = false, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
     const t = testi(lingua);
     // La ricerca: lo stato dell'`AppShell` e i risultati dell'ultima parola. Una parola nuova annulla quella di prima, e una
     // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.
@@ -152,7 +165,17 @@ function NellaSuaLingua({ lingua, persona, nav = [], active, menu = [], configur
             () => questa.signal.aborted || setRicerca({ stato: 'error' }),
         );
     };
-    const { area, logout, searchCount, ...dello } = testiDelloStaff(lingua);
+    const { area, logout, searchCount, planRole, planUntil, ...dello } = testiDelloStaff(lingua);
+    // Il riquadro in fondo alla barra: il ruolo e l'ora della fine, quando il modulo li dà e si leggono; altrimenti i testi di prima.
+    const fine = new Date(sessioneFinoA ?? '');
+    if (ruolo?.trim()) {
+        dello.planTitle = planRole.replace('{ruolo}', () => ruolo.trim());
+    }
+    if (sessioneFinoA && !isNaN(+fine)) {
+        // L'ora nella lingua dei testi, come le date della campanella: un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
+        const ora = new Intl.DateTimeFormat(linguaDeiTesti(lingua), { hour: '2-digit', minute: '2-digit' }).format(fine);
+        dello.planText = planUntil.replace('{ora}', () => ora);
+    }
     const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';
     // Con la ricerca all'invio la risposta di una parola che nel campo non c'è più (la persona ha scritto mentre caricava) si vede
     // solo tornando a quella parola: il lettore di schermo non ne dice il numero (revisione dello sprint 105, R1).

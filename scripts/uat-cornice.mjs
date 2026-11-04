@@ -40,7 +40,7 @@ const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
 // axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
 // che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
-// S.5 (`invio=1`). Prima del tag zr-core la lancia su `staff.html --parola uat`.
+// S.5 (`invio=1`), e dalla v4.5.0 S.6 (`ruolo` e `fino`). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
@@ -1161,6 +1161,42 @@ async function senzaConfigurazione(page, apri, larghezza) {
     scrivi(barra.voci === 0 && barra.riquadro && (larghezza > 720 || barra.cassetto) ? '✅' : '❌', 'S.4', `a ${larghezza} px, con configurazione=0, nessuna «Configurazione»${dove390} (#2954)`, `voci in fondo alla barra: ${barra.voci}, riquadro dello staff: ${barra.riquadro}${larghezza <= 720 ? `, cassetto aperto: ${barra.cassetto}` : ''}`);
 }
 
+// S.6 (dalla v4.5.0, #2989): il riquadro in fondo alla barra dello staff dice il ruolo con «· 2FA» e l'ora in cui la sessione finisce
+// al più tardi, nel fuso e nella forma della lingua della pagina. `staff.html` li prende dai parametri `ruolo` e `fino` (una data ISO,
+// qui fra due ore); a 390 px il riquadro si legge nel cassetto aperto. Una pagina che non capisce i parametri (un modulo vero): ➖.
+async function ruoloEFine(page, apri, larghezza) {
+    const dove = new URL(indirizzo);
+    const fino = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+    dove.searchParams.set('ruolo', 'UAT Superadmin');
+    dove.searchParams.set('fino', fino);
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    if (larghezza <= 720) {
+        await page.click('.zr-shell .zr-top-menu');
+        await pausa(300);
+    }
+    const riquadro = await page.evaluate((fino) => {
+        const qui = document.querySelector('.zr-shell .zr-side-foot .zr-plan');
+        return {
+            visibile: qui?.checkVisibility() ?? false,
+            titolo: qui?.querySelector('strong')?.textContent ?? '',
+            testo: qui?.querySelector('span')?.textContent ?? '',
+            // La lingua della pagina di prova è nel parametro `lingua` (staff.html non cambia `<html lang>`); altrimenti quella del documento.
+            ora: new Intl.DateTimeFormat(new URLSearchParams(location.search).get('lingua') || document.documentElement.lang || 'it', { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            prova: location.pathname.endsWith('/staff.html'),
+        };
+    }, fino);
+    await page.screenshot({ path: join(cartella, `ruolo-e-fine-${larghezza}.png`) });
+    const dove390 = larghezza <= 720 ? ' nel cassetto aperto' : ' nella barra';
+    // Su staff.html i parametri ci sono sempre: un titolo senza il ruolo lì è il difetto (❌), non una pagina che non li capisce.
+    if (!riquadro.prova && !riquadro.titolo.startsWith('UAT Superadmin')) {
+        return scrivi('➖', 'S.6', `a ${larghezza} px, il ruolo e la fine della sessione${dove390} (#2989)`, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
+    }
+    const bene = riquadro.visibile && riquadro.titolo === 'UAT Superadmin · 2FA' && riquadro.testo.includes(riquadro.ora) && !/undefined|Invalid Date|NaN/.test(riquadro.testo);
+    scrivi(bene ? '✅' : '❌', 'S.6', `a ${larghezza} px, il ruolo con «· 2FA» e l'ora della fine della sessione${dove390} (#2989)`, `«${riquadro.titolo}» · «${riquadro.testo}» · ora attesa ${riquadro.ora}`);
+}
+
 // S.5 (dalla v4.3.0, #2965): con `cercaAllInvio` la ricerca dello staff parte solo con Invio. Su `staff.html?invio=1` si scrive la
 // parola: dopo 900 ms nessun risultato, il pannello dice la parola da cercare con Invio e il modulo non ha cercato (`data-cerche` del
 // `body`, che la pagina conta); con Invio i risultati, una ricerca sola; Invio sul primo lo apre con la `naviga` del modulo.
@@ -1314,6 +1350,7 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await loStaff(page);
         await senzaConfigurazione(page, apri, 1280);
+        await ruoloEFine(page, apri, 1280);
         await ricercaAllInvio(page, apri);
         await toastAlSuoPosto(page, apri, 1280);
         return a390(page, apri, diGoogle, errori, csp);
@@ -1365,6 +1402,7 @@ async function a390(page, apri, diGoogle, errori, csp) {
         await campanella(page, false);
     } else {
         await senzaConfigurazione(page, apri, 390);
+        await ruoloEFine(page, apri, 390);
         await toastAlSuoPosto(page, apri, 390);
     }
 

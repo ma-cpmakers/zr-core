@@ -569,3 +569,65 @@ describe('tastiera e salto della cornice dello staff', () => {
         expect(via).toHaveBeenCalledWith(naviga, testi('en').mainContent, testi('en').searchResults);
     });
 });
+
+// Sprint 107 (voce #2989, Decisione 20721 di zr-pm-07): in fondo alla barra il riquadro dice il ruolo dello staff e fin quando
+// dura al più la sessione, come la barra del prototipo superadmin; «al più tardi», perché 30 minuti d'inattività la chiudono prima.
+describe('il ruolo e la fine della sessione nel riquadro della barra (sprint 107)', () => {
+    const fuso = process.env.TZ;
+    beforeEach(() => {
+        process.env.TZ = 'Europe/Rome';
+    });
+    afterEach(() => {
+        if (fuso === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = fuso;
+        }
+    });
+
+    it('T1.1 con un ruolo il titolo è il ruolo con «· 2FA»; senza, o vuoto, è quello di prima', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} ruolo="Superadmin" onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe('Superadmin · 2FA');
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} ruolo=" " onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+    });
+
+    it('T1.2 con la fine della sessione il testo dice l\'ora locale, non quella UTC della stringa', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan span')?.textContent).toBe('Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.');
+    });
+
+    it.each(['', 'domani', 'undefined'])('T1.3 senza una fine che si legge («%s») il testo è quello di prima, mai rotto', async (fine) => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA={fine} onLogout={esci} />);
+        expect(uno('.zr-plan span')?.textContent).toBe(staffItaliano.planText);
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA={undefined} onLogout={esci} />);
+        expect(uno('.zr-plan')?.textContent).not.toMatch(/undefined|Invalid Date|NaN/);
+        expect(uno('.zr-plan span')?.textContent).toBe(staffItaliano.planText);
+    });
+
+    it.each([
+        ['es', 'Supervisor · 2FA', 'Sesión activa como máximo hasta las 18:30. Cada acción queda en el registro.'],
+        // L'ora nella forma della lingua, come le date della campanella: in inglese a 12 ore.
+        ['en', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
+        // In una lingua che zr-core non ha anche l'ora è nella forma dell'inglese, la lingua dei testi, come le date della campanella.
+        ['de', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
+    ])('T1.4 in %s le due frasi della lingua, e in una lingua che zr-core non ha l\'inglese', async (lingua, titolo, testo) => {
+        await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} nav={nav} ruolo={titolo.split(' · ')[0]} sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan strong')?.textContent).toBe(titolo);
+        expect(uno('.zr-plan span')?.textContent).toBe(testo);
+    });
+
+    it('una lingua che Intl rifiuta (it_IT) non rompe la pagina, e un ruolo con «$&» si mostra com\'è (revisione dello sprint 107, R1 e R8)', async () => {
+        await mostra(<CorniceDelloStaff lingua="it_IT" persona={staff} nav={nav} ruolo="Ruolo $& $'" sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan strong')?.textContent).toBe("Ruolo $& $' · 2FA");
+        expect(uno('.zr-plan span')?.textContent).toBe('Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.');
+    });
+});

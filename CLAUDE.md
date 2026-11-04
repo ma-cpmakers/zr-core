@@ -134,8 +134,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 106 (`v4.4.0`): #3015, l'italiano nel JS d'ingresso e
-   inglese e spagnolo a richiesta, col precarico dal Blade (Decisione 20618). #2909 (la fascia di assistenza) esce quando
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 107 (`v4.5.0`): #2989, il ruolo e la fine della sessione nel riquadro della cornice dello staff (Decisione 20721); i due lotti
+   del design system aspettano il sì di Luciano sul ramo `lotto-0511`. #2909 (la fascia di assistenza) esce quando
    zr-backoffice ha `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
