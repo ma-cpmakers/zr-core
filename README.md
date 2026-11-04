@@ -405,6 +405,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo: il Tab del dialogo arriva ad «Annulla» e il lettore di schermo lo legge; chiuso il dialogo torna nel `body` (#2951); il testo entra nella regione `role="status"` 100 ms dopo la regione, perché sia annunciato | niente | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.5) |
 | `v4.0.0` | la CSP di tutti senza Google Fonts: `style-src 'self'` e `font-src 'self'` (#2946); stringe, quindi maggiore («Passare alla v4») | `^4` nel `composer.json`, nella prossima PR; prima i font del pacchetto («Passare alla v3.15») | un caso che confronta la CSP intera la riscrive senza Google | `scripts/uat-cornice.mjs`: R.F e R.C ✅, in console nessun blocco della CSP |
 | `v4.2.0` | il design system `ds-1793813518-fdc2`: token nuovi (`label` 13/18, quattro spazi, quattro raggi, `--border-strong`), `SectionCard`, `Avatar` `src`, `AppShell` `settings`, `userPhoto` e `searchOn`, `DetailPanel` `modal` e `returnFocus`, `Switch` `aria-disabled`, `LineChart` `step`; la foto della persona nella cornice (#3014) |
+| `v4.3.0` | la cornice dello staff ha due prop nuove, facoltative: `configurazione={false}` toglie «Configurazione» dalla barra e dal cassetto (#2954), e `cercaAllInvio` fa partire la ricerca solo con Invio (#2965), coi due testi nelle lingue dello staff; senza, tutto come prima, e l'app che prende la `Cornice` pesa come prima | niente per chi monta la `Cornice`; il backoffice dello staff passa le due prop | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (S.4-S.5) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2493,6 +2494,8 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
     onNavigate={(id) => vaiA(id)}        // anche «settings», la Configurazione in fondo alla barra
     menu={[{ icon: 'user', label: 'Il mio accesso', onClick: () => vaiA('accesso') }]}
     cerca={(parola, segnale) => cercaUtentiEWorkspace(parola, segnale)}
+    cercaAllInvio                         // dalla v4.3.0: la ricerca parte solo con Invio
+    configurazione={staff.superadmin}     // dalla v4.3.0: con false niente «Configurazione»
     naviga={(indirizzo) => router.visit(indirizzo)}
     onLogout={esci}
 >
@@ -2504,7 +2507,9 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   backoffice», che chiama `onLogout`: la sessione la chiude il modulo.
 - **La barra**: solo le voci di `nav` (coi gruppi, `active`, `onNavigate`), il percorso (`crumbs`, `onCrumb`), `actions` e `flush`
   come nella `Cornice`; con `active={null}` nessuna voce è attiva. In cima «Backoffice di Zeiras» al posto del workspace; in
-  fondo «Configurazione», che arriva a `onNavigate` come `settings`, e il riquadro «Staff di Zeiras». Una voce di `nav` con
+  fondo «Configurazione», che arriva a `onNavigate` come `settings`, e il riquadro «Staff di Zeiras». Dalla `v4.3.0` (#2954) con
+  `configurazione={false}` «Configurazione» non c'è, né nella barra né nel cassetto: per chi non è Superadmin; senza la prop
+  c'è, come prima. Una voce di `nav` con
   `href` della stessa origine, al clic, va anche a `naviga`: o `href` o `onNavigate` per quella voce, non
   tutti e due, o si naviga due volte.
 - **La ricerca dello staff**: dal secondo carattere, 300 ms dopo l'ultimo tasto, la cornice chiama `cerca(parola, segnale)` e mostra il
@@ -2516,6 +2521,12 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   quanti risultati mostra il pannello, «Risultati: 12» nella lingua dello staff: un paragrafo in fondo al documento
   (`role="status"`, classe `zr-visually-hidden`) che c'è da quando la cornice è montata, si svuota a ogni ricerca che parte e
   se ne va con la cornice.
+- **La ricerca all'invio**: dalla `v4.3.0` (#2965), con `cercaAllInvio` la cornice passa `searchOn="submit"` all'`AppShell`, e
+  `cerca` parte solo quando la persona preme Invio con 2 caratteri o più, una volta, mai da sola mentre scrive: ogni ricerca dello
+  staff pesa sul tetto orario del backoffice. Prima di Invio il pannello dice «Premi Invio per cercare «parola»», e l'invito
+  dice di premere Invio, coi testi dello staff. Una parola cambiata dopo i risultati torna a «Premi Invio» senza chiamare `cerca`
+  e senza annullare la ricerca di prima; Invio sui risultati apre quello evidenziato. Senza la prop la ricerca è quella di
+  sopra.
 - **Cosa non c'è**: il selettore di workspace, il menu Moduli, le notifiche, il registro. La campanella resta, senza numero e
   col pannello vuoto, perché l'`AppShell` la disegna sempre (spegnerla è la richiesta 64 al design system).
 - **I testi** dello staff stanno in `resources/lingue/staff/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
@@ -2523,7 +2534,8 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   al contenuto», i rimedi di tastiera, i nomi della ricerca — è quello della `Cornice`.
 
 La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto;
-dalla `v4.1.1` anche N.1-N.2, Q.1 e D.1-D.2: le linguette del pannello vuoto, quanti risultati, i menu sopra il dettaglio).
+dalla `v4.1.1` anche N.1-N.2, Q.1 e D.1-D.2: le linguette del pannello vuoto, quanti risultati, i menu sopra il dettaglio;
+dalla `v4.3.0` S.4, su `staff.html?configurazione=0`, e S.5, su `staff.html?invio=1`).
 
 ### Il Toast della cornice
 
