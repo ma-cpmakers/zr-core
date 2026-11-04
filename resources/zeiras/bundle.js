@@ -1634,7 +1634,7 @@
 
   function ChartCard(p) {
     return h('section', { className: cx('zr-panel', p.className) },
-      h('header', { className: 'zr-panel-head' }, h('div', null, h('h2', null, p.title), p.subtitle ? h('p', null, p.subtitle) : null), p.actions ? h('div', { className: 'zr-panel-actions' }, p.actions) : null),
+      h('header', { className: 'zr-panel-head' }, h('div', null, h(p.headingLevel === 3 ? 'h3' : p.headingLevel === 4 ? 'h4' : 'h2', null, p.title), p.subtitle ? h('p', null, p.subtitle) : null), p.actions ? h('div', { className: 'zr-panel-actions' }, p.actions) : null),
       h('div', { className: 'zr-panel-body' }, p.children));
   }
 

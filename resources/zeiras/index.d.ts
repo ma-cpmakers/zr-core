@@ -186,7 +186,8 @@ export declare function Sparkline(props: { data: number[]; width?: number; heigh
 export declare function StatCard(props: { label: string; value: string; icon?: IconName; delta?: number; deltaLabel?: string; trend?: number[]; invert?: boolean }): React.ReactElement;
 /** Riquadro di sezione di una pagina: titolo (heading-2) e azioni a destra, contenuto qualsiasi; 'standalone' per un riquadro da solo, come il modulo d'ingresso */
 export declare function SectionCard(props: { title?: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; footer?: React.ReactNode; children?: React.ReactNode; variant?: 'section' | 'standalone'; headingLevel?: 2 | 3; id?: string; className?: string; 'aria-label'?: string }): React.ReactElement;
-export declare function ChartCard(props: { title: string; subtitle?: string; actions?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
+export declare function ChartCard(props: { title: string; subtitle?: string; actions?: React.ReactNode; children?: React.ReactNode;
+  /** Il livello del titolo (richiesta 180): 3 o 4 dentro una sezione che ha già il suo h2; l'aspetto non cambia */ headingLevel?: 2 | 3 | 4 }): React.ReactElement;
 export declare function StatusLabel(props: { status: string; tone?: Tone }): React.ReactElement;
 export declare function RecordHeader(props: { name: string; status?: string; /** Il tono dello stato, come tone di StatusLabel nelle liste */ statusTone?: Tone; subtitle?: string; meta?: { icon: IconName; text: string; href?: string }[]; actions?: React.ReactNode }): React.ReactElement;
 export interface Activity { type: 'email' | 'call' | 'note' | 'deal' | 'task' | 'automation'; title: string; time: string; text?: string; by?: string }
