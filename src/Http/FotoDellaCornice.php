@@ -20,7 +20,8 @@ use Zeiras\Auth\Sessione;
  * persona della sessione, con la sua foto. Senza sessione risponde la guardia di zr-auth, prima della rotta, come a ogni GET
  * del gruppo `web`. `Cross-Origin-Resource-Policy: same-origin` la tiene fuori dalle pagine di altri siti. Di un errore dice
  * solo lo stato, senza corpo e senza cache: senza foto il 404 `foto_assente` del backoffice è un 404, e un altro 4xx (il 403
- * `accettazione_richiesta`, il 429 col suo `Retry-After`) è lo stesso stato. Un 5xx, o un backoffice che non risponde, passano come da ogni rotta.
+ * `accettazione_richiesta`, il 429 col suo `Retry-After`) è lo stesso stato. Un 5xx, o un backoffice che non risponde, passano all'handler del frontend come a una richiesta JSON (la
+ * richiesta è segnata come del JS, sotto).
  */
 final class FotoDellaCornice
 {
@@ -33,22 +34,29 @@ final class FotoDellaCornice
     /**
      * Di chi è un indirizzo della foto (`p`, dalla revisione di sicurezza della PR #162, SEC1): un HMAC dell'id della persona con la
      * chiave dell'app, né l'id né l'impronta di zr-auth. Una scheda rimasta ferma di un'altra persona chiede la foto col suo `p`, e
-     * la cache del browser non tiene la foto di chi è nella sessione sotto l'indirizzo di un altro.
+     * la cache del browser non tiene la foto di chi è nella sessione sotto l'indirizzo di un altro. Non è un'identità: è lo
+     * stesso per la persona in tutto il frontend, e nei log di accesso non porta all'id senza la chiave. null senza una chiave
+     * dell'app (con una chiave vuota si rifarebbe dall'id): allora niente foto. Cambiare `APP_KEY` cambia `p`, e le schede
+     * aperte ricevono il 404 fino al ricaricamento.
      */
-    public static function diChi(string $id): string
+    public static function diChi(string $id): ?string
     {
-        return substr(hash_hmac('sha256', 'zr-core.foto|'.$id, (string) config('app.key')), 0, 16);
+        $chiave = config('app.key');
+
+        return is_string($chiave) && $chiave !== '' ? substr(hash_hmac('sha256', 'zr-core.foto|'.$id, $chiave), 0, 16) : null;
     }
 
     public function mostra(Request $richiesta): Response
     {
         // Come una richiesta del JS: StartSession non la ricorda come pagina di prima (`_previous.url`), e un `back()` non
-        // porta alla foto (SEC4).
+        // porta alla foto (SEC4). Per questo un errore che da qui passa all'handler del frontend (un 5xx, il gettone rifiutato)
+        // esce come a una richiesta JSON. Senza sessione la guardia risponde prima, e lì il ritorno lo ricorda zr-auth.
         $richiesta->headers->set('X-Requested-With', 'XMLHttpRequest');
 
         $id = Sessione::utente()['id'] ?? null;
         $p = $richiesta->query('p');
-        if (! is_string($id) || $id === '' || ! is_string($p) || ! hash_equals(self::diChi($id), $p)) {
+        $suo = is_string($id) && $id !== '' ? self::diChi($id) : null;
+        if ($suo === null || ! is_string($p) || ! hash_equals($suo, $p)) {
             return self::senza(Response::HTTP_NOT_FOUND);
         }
 

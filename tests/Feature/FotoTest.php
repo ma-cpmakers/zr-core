@@ -11,6 +11,7 @@ use Zeiras\Auth\Http\Middleware\SoloDallaPersona;
 use Zeiras\Auth\Persona;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\ConWorkspace;
+use Zeiras\Core\Http\FotoDellaCornice;
 use Zeiras\Core\Http\StessaPersona;
 
 // Sprint 99 · T1 (voce #2982): la foto della persona, dall'host del frontend. La rotta GET /cornice/foto la legge da
@@ -156,6 +157,16 @@ it('un indirizzo che non è della persona della sessione — il `p` di un\'altra
     'senza p' => ['/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z'],
     'un p vuoto' => ['/cornice/foto?p='],
 ]);
+
+it('senza una chiave dell\'app non c\'è `p` e i dati non hanno la foto: un `p` rifatto dall\'id con una chiave vuota non esiste (rilievo R11; una richiesta HTTP senza chiave Laravel la ferma prima, MissingAppKeyException)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL)]);
+    config(['app.key' => '']);
+
+    expect(Cornice::dati()['persona'] ?? null)->not->toHaveKey('foto')
+        ->and(FotoDellaCornice::diChi('uat-ada'))->toBeNull();
+});
 
 it('la foto non diventa la pagina di prima della sessione: un `back()` non porta lì (SEC4 della revisione di sicurezza)', function () {
     sessioneAMano(WORKSPACE_DELLA_FOTO);

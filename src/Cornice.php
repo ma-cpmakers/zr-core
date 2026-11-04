@@ -700,9 +700,9 @@ final class Cornice
      */
     private static function foto(?string $aggiornataIl, mixed $id): array
     {
-        return $aggiornataIl === null || ! is_string($id) || $id === ''
-            ? []
-            : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl).'&p='.FotoDellaCornice::diChi($id)];
+        $p = is_string($id) && $id !== '' ? FotoDellaCornice::diChi($id) : null;
+
+        return $aggiornataIl === null || $p === null ? [] : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl).'&p='.$p];
     }
 
     /**

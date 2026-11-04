@@ -731,8 +731,13 @@ sta fuori da `StessaPersona` e da `ConWorkspace`, e le regole sulla persona e su
 quattro rotte, non valgono per lei; risponde solo alla persona della sessione, con la sua foto, anche senza un workspace.
 Oggi la cornice non la mostra: l'`Avatar` del design system ha solo le iniziali, e la foto entra quando il design system gli
 dà un'immagine, con una versione minore di zr-core. Una pagina del frontend che mostra la foto della persona usa la stessa
-rotta con l'indirizzo che dà `persona.foto`, mai `/cornice/foto` da solo, che senza `p` risponde `404`. La richiesta della
-foto non diventa la pagina di prima della sessione (`url()->previous()`).
+rotta con l'indirizzo che dà `persona.foto`, mai `/cornice/foto` da solo, che senza `p` risponde `404`. `p` non è
+un'identità: è lo stesso per la persona in tutto il frontend, e cambia con `APP_KEY` (le schede aperte ricevono il `404` fino
+al ricaricamento); senza una chiave dell'app non c'è, e nemmeno la foto. La richiesta della foto non diventa la pagina di
+prima della sessione (`url()->previous()`): la rotta la tratta come una richiesta del JS, e per questo un errore che passa
+all'handler del frontend (un 5xx, il gettone rifiutato dal backoffice) esce come a una richiesta JSON. Con la sessione già
+scaduta risponde prima la guardia di zr-auth, che ricorda la foto come pagina dove tornare dopo l'accesso: il rimedio è in
+zr-auth.
 
 Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro. La richiesta può dire di
 chi è la pagina che chiede — nell'intestazione `Persona`, l'email passata da `encodeURIComponent`, o in `persona` nel corpo
