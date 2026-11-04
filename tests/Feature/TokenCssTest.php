@@ -123,9 +123,11 @@ function variabiliDiBundleCss(): array
 function valoriAMano(iterable $file): array
 {
     $colore = '/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i';
-    // I colori e le ombre li trova già la regola dei colori: qui restano misure e famiglie.
+    // I colori e le ombre li trova già la regola dei colori: qui restano misure e famiglie. Un valore che due token hanno
+    // (`2px`: `radius-2xs` e, dal secondo lotto del 05/11, `border-ring`) scritto a mano è un problema solo.
     $valori = collect(valoriDeiToken())
         ->reject(fn (string $valore) => str_starts_with($valore, 'var(') || is_numeric($valore) || preg_match($colore, $valore) === 1)
+        ->unique()
         ->values();
 
     $problemi = [];
