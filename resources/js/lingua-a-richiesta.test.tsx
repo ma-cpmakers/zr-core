@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
+import staffInglese from '../lingue/staff/en.json';
+import staffSpagnolo from '../lingue/staff/es.json';
+import staffItaliano from '../lingue/staff/it.json';
 import type { DatiDellaCornice } from './index';
 
 // Sprint 106 · T2 (voce 3015, Decisione 20618 di zr-pm). Nel JS d'ingresso c'è solo l'italiano: inglese e spagnolo arrivano a
@@ -245,5 +248,60 @@ describe('la lingua che arriva fra il disegno e l\'effetto (sprint 106 · T4.2)'
         expect(contenitore.querySelector('#pagina')).not.toBeNull();
         expect(visibile()).toContain(spagnolo.skipToContent);
         expect(inUnAltraLingua(soloItaliani, soloInglesi)).toStrictEqual([]);
+    });
+});
+
+// Sprint 108 · T1 (voce #3031, la UAT dello sprint 107: R.L.3 ❌ su staff.html?lingua=en). I testi dello staff sono nel JS
+// d'ingresso in tutte e tre le lingue: se il file della lingua della cornice non arriva, la cornice ripiega sull'italiano, e
+// con lei anche i testi dello staff e l'ora del riquadro. Prima restavano nella lingua chiesta: una cornice in due lingue.
+describe('la cornice dello staff con la lingua che non arriva (sprint 108 · T1)', () => {
+    const fuso = process.env.TZ;
+    beforeEach(() => {
+        process.env.TZ = 'Europe/Rome';
+    });
+    afterEach(() => {
+        if (fuso === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = fuso;
+        }
+    });
+    const staff = { nome: 'Ada Lovelace', email: 'ada@example.com' };
+    // Oggi alle 18:30 di Roma: la fine nello stesso giorno, quale che sia il giorno in cui il caso gira.
+    const oggiAlle1830 = () => {
+        const fine = new Date();
+        fine.setHours(18, 30, 0, 0);
+        return fine.toISOString();
+    };
+    const soloStaffInglesi = soloDi(staffInglese, staffItaliano, staffSpagnolo);
+    const soloStaffItaliani = soloDi(staffItaliano, staffInglese, staffSpagnolo);
+
+    it.each(['en', 'es'])('T1.1 in %s, se la lingua non arriva, anche i testi dello staff sono in italiano: nessuno resta nella lingua chiesta', async (lingua) => {
+        const { CorniceDelloStaff } = await import('./app');
+
+        await mostra(createElement(CorniceDelloStaff, { lingua, persona: staff, cerca: async () => [], onLogout: () => {} }, laPagina()));
+        await nonArriva(lingua);
+
+        expect(contenitore.querySelector('#pagina')).not.toBeNull();
+        const soloDellaLingua = lingua === 'en' ? soloStaffInglesi : soloDi(staffSpagnolo, staffItaliano, staffInglese);
+        expect(soloDellaLingua.filter((testo) => visibile().includes(testo))).toStrictEqual([]);
+        for (const testo of [staffItaliano.area, staffItaliano.planTitle, staffItaliano.planText, staffItaliano.settings]) {
+            expect(visibile()).toContain(testo);
+        }
+    });
+
+    it('T1.2 col ripiego l\'ora del riquadro è nella forma italiana; con la lingua arrivata i testi dello staff sono i suoi, mai italiani', async () => {
+        const { CorniceDelloStaff } = await import('./app');
+        const inInglese = () => createElement(CorniceDelloStaff, { lingua: 'en', persona: staff, sessioneFinoA: oggiAlle1830(), onLogout: () => {} }, laPagina());
+
+        await mostra(inInglese());
+        await nonArriva('en');
+        expect(contenitore.querySelector('.zr-plan span')?.textContent).toBe(staffItaliano.planUntil.replace('{ora}', '18:30'));
+
+        await mostra(null);
+        await mostra(inInglese());
+        await arrivano('en');
+        expect(contenitore.querySelector('.zr-plan span')?.textContent).toBe(staffInglese.planUntil.replace('{ora}', '06:30 PM'));
+        expect(soloStaffItaliani.filter((testo) => visibile().includes(testo))).toStrictEqual([]);
     });
 });

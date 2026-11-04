@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
-import { fileDelleLingue, linguaDeiTesti, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
+import { DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/staff/en.json';
@@ -165,7 +165,10 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
             () => questa.signal.aborted || setRicerca({ stato: 'error' }),
         );
     };
-    const { area, logout, searchCount, planRole, planUntil, ...dello } = testiDelloStaff(lingua);
+    // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi dello staff, che sono qui in
+    // tutte le lingue, e l'ora del riquadro (voce #3031). Prima restavano nella lingua chiesta, e la cornice era in due lingue.
+    const comeLaCornice = linguaPronta(lingua) ? lingua : DELL_INGRESSO;
+    const { area, logout, searchCount, planRole, planUntil, ...dello } = testiDelloStaff(comeLaCornice);
     // Il riquadro in fondo alla barra: il ruolo e l'ora della fine, quando il modulo li dà e si leggono; altrimenti i testi di prima.
     const fine = new Date(sessioneFinoA ?? '');
     if (ruolo?.trim()) {
@@ -173,7 +176,7 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
     }
     if (sessioneFinoA && !isNaN(+fine)) {
         // L'ora nella lingua dei testi, come le date della campanella: un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
-        const ora = new Intl.DateTimeFormat(linguaDeiTesti(lingua), { hour: '2-digit', minute: '2-digit' }).format(fine);
+        const ora = new Intl.DateTimeFormat(linguaDeiTesti(comeLaCornice), { hour: '2-digit', minute: '2-digit' }).format(fine);
         dello.planText = planUntil.replace('{ora}', () => ora);
     }
     const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';

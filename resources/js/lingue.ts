@@ -113,7 +113,7 @@ const dellIngresso: TestiDellaCornice = italiano;
 /** Il codice di una lingua dal percorso del suo file (`'../lingue/es.json'` → `es`). */
 const codiceDelFile = (percorso: string) => codiceDi(percorso.replace(/^.*\/|\.json$/g, ''));
 /** Il codice della lingua dell'ingresso e quello del ripiego, dai loro file. */
-const DELL_INGRESSO = codiceDelFile('../lingue/it.json');
+export const DELL_INGRESSO = codiceDelFile('../lingue/it.json');
 const DEL_RIPIEGO = codiceDelFile('../lingue/en.json');
 /** L'inglese, il ripiego dei testi che mancano a una lingua: niente finché non è arrivato. */
 let inglese: Partial<TestiDellaCornice> | undefined;
