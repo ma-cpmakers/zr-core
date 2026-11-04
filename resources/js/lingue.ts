@@ -1,4 +1,4 @@
-import inglese from '../lingue/en.json';
+import italiano from '../lingue/it.json';
 import type { AppShellLabels } from '../zeiras/index';
 import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
@@ -104,8 +104,18 @@ export type FrasiDelleNotifiche = {
     [diSotto: `notificationUnder.${string}`]: string | undefined;
 };
 
-/** Il ripiego di ogni lingua, quindi con tutti i testi: se all'inglese ne manca uno, tsc si ferma qui. */
-const ripiego: TestiDellaCornice = inglese;
+/**
+ * La lingua dell'ingresso, l'italiano (dalla `v4.4.0`, Decisione 20618 di zr-pm: la lingua di quasi tutte le persone di Zeiras):
+ * la sola che sta nel JS d'ingresso, quindi con tutti i testi: se all'italiano ne manca uno, tsc si ferma qui.
+ */
+const dellIngresso: TestiDellaCornice = italiano;
+/** Il codice di una lingua dal percorso del suo file (`'../lingue/es.json'` → `es`). */
+const codiceDelFile = (percorso: string) => codiceDi(percorso.replace(/^.*\/|\.json$/g, ''));
+/** Il codice della lingua dell'ingresso e quello del ripiego, dai loro file. */
+const DELL_INGRESSO = codiceDelFile('../lingue/it.json');
+const DEL_RIPIEGO = codiceDelFile('../lingue/en.json');
+/** L'inglese, il ripiego dei testi che mancano a una lingua: niente finché non è arrivato. */
+let inglese: Partial<TestiDellaCornice> | undefined;
 
 /** Il codice di una lingua com'è nei nomi dei file: minuscolo, col trattino (`es_ES` → `es-es`). */
 function codiceDi(lingua: string): string {
@@ -117,7 +127,7 @@ function codiceDi(lingua: string): string {
  * file che serve una lingua: il suo, o quello della lingua base. Nessuno, se zr-core non ce l'ha.
  */
 export function fileDelleLingue<Uno>(file: Record<string, Uno>) {
-    const perCodice = new Map(Object.entries(file).map(([percorso, uno]) => [codiceDi(percorso.replace(/^.*\/|\.json$/g, '')), uno]));
+    const perCodice = new Map(Object.entries(file).map(([percorso, uno]) => [codiceDelFile(percorso), uno]));
 
     return {
         perCodice,
@@ -129,56 +139,124 @@ export function fileDelleLingue<Uno>(file: Record<string, Uno>) {
     };
 }
 
-/** Le lingue di un elenco di file come lo dà `import.meta.glob`: `{ '../lingue/it.json': { … } }`. */
-export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>) {
-    const { perCodice, fileDi } = fileDelleLingue(file);
-    // Il codice dell'inglese: il file che `import.meta.glob` dà con lo stesso oggetto del ripiego.
-    const codiceDelRipiego = [...perCodice].find(([, testi]) => testi === ripiego)?.[0];
+/**
+ * Le lingue di un elenco di file: quelli già in memoria (`file`, come li dà `import.meta.glob` con `eager`:
+ * `{ '../lingue/it.json': { … } }`) e quelli che arrivano a richiesta (`aRichiesta`, un file per percorso, dalla `v4.4.0`).
+ */
+export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, aRichiesta: Record<string, () => Promise<Partial<TestiDellaCornice>>> = {}) {
+    const { perCodice, fileDi } = fileDelleLingue<Partial<TestiDellaCornice> | (() => Promise<Partial<TestiDellaCornice>>)>({ ...aRichiesta, ...file });
+    // I file arrivati, per codice: quelli in memoria da subito, e quelli a richiesta quando arrivano.
+    const arrivati = new Map(Object.entries(file).map(([percorso, testi]) => [codiceDelFile(percorso), testi]));
+    const inVolo = new Map<string, Promise<unknown>>();
     // I testi già composti, per file: il pannello delle notifiche li chiede per ogni notifica, a ogni render. Le lingue che
     // zr-core non ha stanno tutte sotto la stessa chiave, la vuota: ciò che arriva come lingua non fa crescere l'elenco.
     const composti = new Map<string, Readonly<TestiDellaCornice>>();
+    // L'inglese di questo elenco, se ne ha il file; altrimenti quello della cornice, quando è arrivato.
+    const ripiego = () => (perCodice.has(DEL_RIPIEGO) ? arrivati.get(DEL_RIPIEGO) : inglese);
+    const pronta = (lingua: string) => {
+        const codice = fileDi(lingua);
+
+        return codice === DELL_INGRESSO || ((codice === undefined || arrivati.has(codice)) && ripiego() !== undefined);
+    };
+    /** Un file a richiesta, una richiesta sola alla volta: arrivato resta, non arrivato si richiede alla chiamata dopo. */
+    const chiedi = (codice: string): Promise<unknown> | undefined => {
+        const chiesto = perCodice.get(codice);
+        if (arrivati.has(codice) || typeof chiesto !== 'function') {
+            return undefined;
+        }
+        const giaInVolo = inVolo.get(codice);
+        if (giaInVolo) {
+            return giaInVolo;
+        }
+        const adesso = chiesto().then((testi) => {
+            arrivati.set(codice, testi);
+            if (codice === DEL_RIPIEGO) {
+                inglese ??= testi;
+            }
+        }).finally(() => inVolo.delete(codice));
+        inVolo.set(codice, adesso);
+
+        return adesso;
+    };
 
     return {
         /** I codici delle lingue, uno per file. */
         lingue: [...perCodice.keys()] as readonly string[],
         /**
          * I testi in una lingua, sempre tutti: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in
-         * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Si compongono una volta per
-         * file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo chiedono, e non si cambia. Lo dice
-         * anche il tipo: una scrittura non passa `tsc`.
+         * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Finché la lingua non è pronta
+         * (`pronta`) sono quelli dell'italiano, la lingua dell'ingresso: la cornice non li mostra, e li mostra solo se la lingua
+         * non arriva. Si compongono una volta per file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo
+         * chiedono, e non si cambia. Lo dice anche il tipo: una scrittura non passa `tsc`.
          */
         testi(lingua: string): Readonly<TestiDellaCornice> {
-            const file = fileDi(lingua);
-            const pronti = composti.get(file ?? '');
+            const file = pronta(lingua) ? (fileDi(lingua) ?? '') : DELL_INGRESSO;
+            const pronti = composti.get(file);
             if (pronti) {
                 return pronti;
             }
 
-            const scelti = perCodice.get(file!) || {};
-            const testi = { ...ripiego };
-            for (const chiave of Object.keys(ripiego) as (keyof TestiDellaCornice)[]) {
+            const scelti = arrivati.get(file) || {};
+            const testi = { ...dellIngresso, ...ripiego() };
+            for (const chiave of Object.keys(dellIngresso) as (keyof TestiDellaCornice)[]) {
                 const testo = scelti[chiave];
                 if (typeof testo === 'string' && testo.trim()) {
                     testi[chiave] = testo;
                 }
             }
-            composti.set(file ?? '', Object.freeze(testi));
+            composti.set(file, Object.freeze(testi));
 
             return testi;
         },
         /**
-         * La lingua di `testi(lingua)`: il codice del suo file, della lingua base, o dell'inglese. Date e ore si scrivono con `Intl`
-         * in questa lingua, mai in quella del browser, e un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
+         * La lingua di `testi(lingua)` quando è pronta: il codice del suo file, della lingua base, o dell'inglese. Date e ore si
+         * scrivono con `Intl` in questa lingua, mai in quella del browser, e un codice che `Intl` rifiuta (`it_IT`) non gli
+         * arriva. Non aspetta che la lingua arrivi.
          */
         linguaDeiTesti(lingua: string): string | undefined {
-            return fileDi(lingua) ?? codiceDelRipiego;
+            return fileDi(lingua) ?? DEL_RIPIEGO;
+        },
+        /** Se i testi di una lingua sono pronti: l'italiano sempre; un'altra lingua quando sono arrivati il suo file e l'inglese. */
+        pronta,
+        /**
+         * Chiede i file che servono a una lingua — il suo e l'inglese, il ripiego dei testi che le mancano; per l'italiano
+         * nessuno — e si compie quando la lingua è pronta. Due richieste insieme sono una. Se un file non arriva la promessa è
+         * respinta, e la chiamata dopo lo richiede.
+         */
+        carica(lingua: string): Promise<void> {
+            const codice = fileDi(lingua);
+
+            return codice === DELL_INGRESSO ? Promise.resolve() : Promise.all([codice, DEL_RIPIEGO].map((questo) => questo && chiedi(questo))).then(() => undefined);
         },
     };
 }
 
-export const { lingue, testi, linguaDeiTesti } = caricaLingue(
-    import.meta.glob<Partial<TestiDellaCornice>>('../lingue/*.json', { eager: true, import: 'default' }),
+// I file delle lingue a richiesta. La cornice ne ha solo l'indirizzo (`?url`: un file `.json` della build, con la sua impronta
+// nel nome) e li chiede con `fetch`, come le frasi delle notifiche: un `import()` che non arriva resterebbe fallito fino al
+// ricaricamento. `no-inline` perché restino file anche in un frontend che alza `build.assetsInlineLimit`. Il server del modulo
+// li precarica (`Cornice::precaricoDellaLingua()`): la richiesta qui è la stessa, `fetch` con le sue credenziali.
+const ATTESA_DELLE_LINGUE = 10_000;
+/** L'indirizzo di ogni file delle lingue a richiesta, per percorso (`'../lingue/es.json'`): tutte tranne l'italiano. Esportato per `./prove`. */
+export const indirizziDelleLingue = import.meta.glob<string>(['../lingue/*.json', '!../lingue/it.json'], { query: '?url&no-inline', import: 'default', eager: true });
+
+export const { lingue, testi, linguaDeiTesti, pronta: linguaPronta, carica: caricaLaLingua } = caricaLingue(
+    { '../lingue/it.json': italiano },
+    Object.fromEntries(
+        Object.entries(indirizziDelleLingue).map(([percorso, indirizzo]) => [
+            percorso,
+            () =>
+                fetch(indirizzo, { signal: AbortSignal.timeout?.(ATTESA_DELLE_LINGUE) }).then((risposta) =>
+                    risposta.ok ? (risposta.json() as Promise<Partial<TestiDellaCornice>>) : Promise.reject(new Error(risposta.statusText)),
+                ),
+        ]),
+    ),
 );
+
+// La lingua del documento si chiede quando l'ingresso è eseguito, prima del primo render della cornice: il modulo la mette in
+// `<html lang>`. Se non arriva la chiederà la cornice.
+if (typeof document !== 'undefined' && document.documentElement.lang) {
+    caricaLaLingua(document.documentElement.lang).catch(() => undefined);
+}
 
 /** Il nome di una voce del registro in una lingua: la Dashboard ha il testo `dashboard`, un prodotto il testo col suo id. */
 export function nomeDellaVoce(voce: Pick<VoceDelRegistro, 'id'>, lingua: string): string {

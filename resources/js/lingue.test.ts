@@ -14,7 +14,7 @@ import ricercaItaliana from '../lingue/ricerca/it.json';
 import risorseDellaRicerca from '../registro/ricerca.json';
 import { testiDegliAvvisi } from './avvisi';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
-import { caricaLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche } from './lingue';
+import { caricaLingue, indirizziDelleLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -1799,5 +1799,80 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
         ]);
         // Il nome del gruppo e i testi dei codici non stanno nelle lingue della cornice: sono del pezzo.
         expect([italiano, spagnolo, inglese].flatMap((file) => chiavi.filter((chiave) => Object.hasOwn(file, chiave)))).toStrictEqual([]);
+    });
+});
+
+// Sprint 106 · T1 (voce #3015, Decisione 20618 di zr-pm): nel JS d'ingresso resta l'italiano, la lingua di quasi tutte le persone
+// di Zeiras; le altre lingue, inglese compreso, arrivano a richiesta. Chi ha un'altra lingua la aspetta con l'inglese, che è il
+// ripiego dei testi che le mancano.
+describe('le lingue a richiesta (sprint 106 · T1)', () => {
+    /** Un file che arriva quando lo si chiede, e conta le richieste. */
+    const arriva = (testi: Partial<TestiDellaCornice>) => vi.fn(() => Promise.resolve(testi));
+    const conLeDue = () => {
+        const dellInglese = arriva(inglese);
+        const delloSpagnolo = arriva(spagnolo);
+        const lingueDiProva = caricaLingue({ '../lingue/it.json': italiano }, { '../lingue/en.json': dellInglese, '../lingue/es.json': delloSpagnolo });
+
+        return { dellInglese, delloSpagnolo, ...lingueDiProva };
+    };
+
+    it("l'italiano è pronto subito, senza richieste; lo spagnolo dopo che spagnolo e inglese sono arrivati, e prima i suoi testi sono quelli dell'italiano (T1.2)", async () => {
+        const { dellInglese, delloSpagnolo, pronta, carica, testi: testiDiProva } = conLeDue();
+
+        expect(pronta('it-IT')).toBe(true);
+        await carica('it');
+        expect([dellInglese, delloSpagnolo].map((file) => file.mock.calls.length)).toStrictEqual([0, 0]);
+        expect(testiDiProva('it')).toStrictEqual(italiano);
+
+        expect(pronta('es-ES')).toBe(false);
+        expect(testiDiProva('es')).toStrictEqual(italiano);
+        await carica('es-ES');
+        expect([dellInglese, delloSpagnolo].map((file) => file.mock.calls.length)).toStrictEqual([1, 1]);
+        expect(pronta('es')).toBe(true);
+        expect(testiDiProva('es_ES')).toStrictEqual(spagnolo);
+    });
+
+    it("una lingua che zr-core non ha chiede il solo inglese; un testo che manca a una lingua arrivata è in inglese (T1.2)", async () => {
+        const dellInglese = arriva(inglese);
+        const delloSpagnolo = arriva({ ...spagnolo, logout: ' ' });
+        const { pronta, carica, testi: testiDiProva } = caricaLingue({ '../lingue/it.json': italiano }, { '../lingue/en.json': dellInglese, '../lingue/es.json': delloSpagnolo });
+
+        await carica('pt-BR');
+        expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 0]);
+        expect(pronta('pt-BR')).toBe(true);
+        expect(testiDiProva('pt-BR')).toStrictEqual(inglese);
+
+        await carica('es');
+        expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 1]);
+        expect(testiDiProva('es')).toStrictEqual({ ...spagnolo, logout: inglese.logout });
+    });
+
+    it("lo spagnolo non è pronto senza l'inglese; due richieste insieme sono una; un file non arrivato si richiede alla chiamata dopo (T1.2)", async () => {
+        const dellInglese = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(inglese);
+        const delloSpagnolo = arriva(spagnolo);
+        const { pronta, carica, testi: testiDiProva } = caricaLingue({ '../lingue/it.json': italiano }, { '../lingue/en.json': dellInglese, '../lingue/es.json': delloSpagnolo });
+
+        const insieme = [carica('es'), carica('es-ES')];
+        await expect(Promise.all(insieme)).rejects.toThrow('Failed to fetch');
+        expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 1]);
+        expect(pronta('es')).toBe(false);
+        expect(testiDiProva('es')).toStrictEqual(italiano);
+
+        await carica('es');
+        expect(dellInglese).toHaveBeenCalledTimes(2);
+        expect(pronta('es')).toBe(true);
+        expect(testiDiProva('es')).toStrictEqual(spagnolo);
+    });
+
+    it("`lingue` e `linguaDeiTesti` non aspettano: prima dell'arrivo lo spagnolo è `es` e una lingua che zr-core non ha è `en` (T1.3)", () => {
+        const { lingue: diProva, linguaDeiTesti: linguaDiProva } = conLeDue();
+
+        expect([...diProva].sort()).toStrictEqual(['en', 'es', 'it']);
+        expect(['es-ES', 'pt-BR', 'it_IT', ''].map((lingua) => linguaDiProva(lingua))).toStrictEqual(['es', 'en', 'it', 'en']);
+    });
+
+    it("la cornice chiede a richiesta l'inglese e lo spagnolo, mai l'italiano, che sta nell'ingresso (T1.1)", () => {
+        expect(Object.keys(indirizziDelleLingue).sort()).toStrictEqual(['../lingue/en.json', '../lingue/es.json']);
+        expect(lingue).toEqual(expect.arrayContaining(['it', 'es', 'en']));
     });
 });
