@@ -1182,24 +1182,33 @@
     var id = useId('ied');
     var L = Object.assign({}, INLINE_EDIT_LABELS, p.labels || {});
     var value = p.value == null ? '' : String(p.value);
-    var es = useState(!!p.defaultEditing), editing = es[0];
+    var ctrl = p.editing !== undefined; /* editing controllato da chi usa il componente («Rinomina» in un menu), con onEditingChange */
+    var es = useState(ctrl ? !!p.editing : !!p.defaultEditing), editing = ctrl ? !!p.editing : es[0];
     var ds = useState(value), draft = ds[0];
     var ss = useState('idle'), stato = ss[0]; /* idle · saving · saved · error */
     var ms = useState(''), msg = ms[0];
-    var mode = useRef(p.defaultEditing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false);
+    var mode = useRef(editing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false);
     useEffect(function () { alive.current = true; return function () { alive.current = false; clearTimeout(timer.current); }; }, []);
+    /* aperto o chiuso da fuori: si riparte dal valore, e chiuso da fuori non salva */
+    var pe = useState(editing);
+    if (pe[0] !== editing) {
+      pe[1](editing);
+      if (editing && mode.current === 'view') { mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); }
+      else if (!editing && mode.current === 'edit') { mode.current = 'view'; ss[1]('idle'); ms[1](''); }
+    }
     useEffect(function () {
       var first = !mounted.current; mounted.current = true;
       if (editing && fieldRef.current && (!first || p.autoFocus)) { fieldRef.current.focus(); fieldRef.current.select(); }
       if (!editing && back.current) { back.current = false; if (viewRef.current) viewRef.current.focus(); }
     }, [editing]);
-    function close(focusBack) { mode.current = 'view'; back.current = focusBack; es[1](false); }
-    function start() { if (p.disabled) return; clearTimeout(timer.current); mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); es[1](true); }
+    function setEditing(v) { if (!ctrl) es[1](v); if (p.onEditingChange) p.onEditingChange(v); }
+    function close(focusBack) { mode.current = 'view'; back.current = focusBack; setEditing(false); }
+    function start() { if (p.disabled) return; clearTimeout(timer.current); mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); setEditing(true); }
     function fail(m) { mode.current = 'edit'; ss[1]('error'); ms[1](m || L.error); }
     function save(focusBack) {
       if (mode.current !== 'edit') return;
       var next = p.trim === false ? draft : draft.trim();
-      if (next === value) { ss[1]('idle'); close(focusBack); return; }
+      if (next === value || (p.cancelOnEmpty && !next.trim())) { ss[1]('idle'); close(focusBack); return; } /* cancelOnEmpty: il vuoto annulla e torna il valore di prima */
       if (p.required && !next) { fail(L.required); return; }
       var bad = p.validate ? p.validate(next) : null;
       if (bad) { fail(bad); return; }

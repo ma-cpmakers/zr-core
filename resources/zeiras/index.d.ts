@@ -148,7 +148,9 @@ export declare const INLINE_EDIT_LABELS: Required<InlineEditLabels>;
 export declare function InlineEdit(props: { label: string; value: string | null | undefined;
   /** Se la Promise è rifiutata con un Error, il suo message è l'errore mostrato */ onSave?: (v: string) => void | Promise<unknown>;
   placeholder?: string; multiline?: boolean; rows?: number; required?: boolean; validate?: (v: string) => string | null | undefined; maxLength?: number; trim?: boolean; size?: 'body' | 'title'; disabled?: boolean;
-  /** Si apre già in modifica, senza prendere il fuoco (con autoFocus lo prende) */ defaultEditing?: boolean; autoFocus?: boolean; labels?: InlineEditLabels; className?: string }): React.ReactElement;
+  /** Si apre già in modifica, senza prendere il fuoco (con autoFocus lo prende) */ defaultEditing?: boolean; autoFocus?: boolean;
+  /** Aperto o chiuso da chi usa il componente (per esempio da «Rinomina» in un menu): con editing serve onEditingChange */ editing?: boolean; onEditingChange?: (editing: boolean) => void;
+  /** Il valore vuoto (o di soli spazi) annulla: niente salvataggio, niente errore, torna il valore di prima */ cancelOnEmpty?: boolean; labels?: InlineEditLabels; className?: string }): React.ReactElement;
 export interface CalendarEvent { id?: string | number; date: string; label: string; tone?: Tone }
 export interface CalendarLabels { prevMonth?: string; nextMonth?: string; prevWeek?: string; nextWeek?: string; marked?: string; events?: (n: number) => string; more?: (n: number) => string }
 export declare const CALENDAR_LABELS: Required<CalendarLabels>;
