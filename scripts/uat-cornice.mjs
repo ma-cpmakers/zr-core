@@ -1182,12 +1182,15 @@ async function ruoloEFine(page, apri, larghezza) {
             visibile: qui?.checkVisibility() ?? false,
             titolo: qui?.querySelector('strong')?.textContent ?? '',
             testo: qui?.querySelector('span')?.textContent ?? '',
-            ora: new Intl.DateTimeFormat(document.documentElement.lang || 'it', { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            // La lingua della pagina di prova è nel parametro `lingua` (staff.html non cambia `<html lang>`); altrimenti quella del documento.
+            ora: new Intl.DateTimeFormat(new URLSearchParams(location.search).get('lingua') || document.documentElement.lang || 'it', { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            prova: location.pathname.endsWith('/staff.html'),
         };
     }, fino);
     await page.screenshot({ path: join(cartella, `ruolo-e-fine-${larghezza}.png`) });
     const dove390 = larghezza <= 720 ? ' nel cassetto aperto' : ' nella barra';
-    if (!riquadro.titolo.startsWith('UAT Superadmin')) {
+    // Su staff.html i parametri ci sono sempre: un titolo senza il ruolo lì è il difetto (❌), non una pagina che non li capisce.
+    if (!riquadro.prova && !riquadro.titolo.startsWith('UAT Superadmin')) {
         return scrivi('➖', 'S.6', `a ${larghezza} px, il ruolo e la fine della sessione${dove390} (#2989)`, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
     }
     const bene = riquadro.visibile && riquadro.titolo === 'UAT Superadmin · 2FA' && riquadro.testo.includes(riquadro.ora) && !/undefined|Invalid Date|NaN/.test(riquadro.testo);

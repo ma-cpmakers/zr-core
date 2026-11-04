@@ -578,7 +578,11 @@ describe('il ruolo e la fine della sessione nel riquadro della barra (sprint 107
         process.env.TZ = 'Europe/Rome';
     });
     afterEach(() => {
-        process.env.TZ = fuso;
+        if (fuso === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = fuso;
+        }
     });
 
     it('T1.1 con un ruolo il titolo è il ruolo con «· 2FA»; senza, o vuoto, è quello di prima', async () => {
@@ -611,11 +615,19 @@ describe('il ruolo e la fine della sessione nel riquadro della barra (sprint 107
         ['es', 'Supervisor · 2FA', 'Sesión activa como máximo hasta las 18:30. Cada acción queda en el registro.'],
         // L'ora nella forma della lingua, come le date della campanella: in inglese a 12 ore.
         ['en', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
-        ['de', 'Superadmin · 2FA', 'Session active until 18:30 at the latest. Every action goes into the log.'],
+        // In una lingua che zr-core non ha anche l'ora è nella forma dell'inglese, la lingua dei testi, come le date della campanella.
+        ['de', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
     ])('T1.4 in %s le due frasi della lingua, e in una lingua che zr-core non ha l\'inglese', async (lingua, titolo, testo) => {
         await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} nav={nav} ruolo={titolo.split(' · ')[0]} sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
 
         expect(uno('.zr-plan strong')?.textContent).toBe(titolo);
         expect(uno('.zr-plan span')?.textContent).toBe(testo);
+    });
+
+    it('una lingua che Intl rifiuta (it_IT) non rompe la pagina, e un ruolo con «$&» si mostra com\'è (revisione dello sprint 107, R1 e R8)', async () => {
+        await mostra(<CorniceDelloStaff lingua="it_IT" persona={staff} nav={nav} ruolo="Ruolo $& $'" sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan strong')?.textContent).toBe("Ruolo $& $' · 2FA");
+        expect(uno('.zr-plan span')?.textContent).toBe('Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.');
     });
 });

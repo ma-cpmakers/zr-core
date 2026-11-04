@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
-import { fileDelleLingue, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
+import { fileDelleLingue, linguaDeiTesti, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/staff/en.json';
@@ -169,10 +169,12 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
     // Il riquadro in fondo alla barra: il ruolo e l'ora della fine, quando il modulo li dà e si leggono; altrimenti i testi di prima.
     const fine = new Date(sessioneFinoA ?? '');
     if (ruolo?.trim()) {
-        dello.planTitle = planRole.replace('{ruolo}', ruolo.trim());
+        dello.planTitle = planRole.replace('{ruolo}', () => ruolo.trim());
     }
     if (sessioneFinoA && !isNaN(+fine)) {
-        dello.planText = planUntil.replace('{ora}', new Intl.DateTimeFormat(lingua, { hour: '2-digit', minute: '2-digit' }).format(fine));
+        // L'ora nella lingua dei testi, come le date della campanella: un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
+        const ora = new Intl.DateTimeFormat(linguaDeiTesti(lingua), { hour: '2-digit', minute: '2-digit' }).format(fine);
+        dello.planText = planUntil.replace('{ora}', () => ora);
     }
     const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';
     // Con la ricerca all'invio la risposta di una parola che nel campo non c'è più (la persona ha scritto mentre caricava) si vede
