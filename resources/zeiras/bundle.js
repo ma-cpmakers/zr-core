@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -420,7 +420,7 @@
           h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + L.unread : ''),
             'aria-expanded': pop === 'notif' ? 'true' : 'false', 'aria-controls': sid + '-notif',
             onClick: function () { var next = pop === 'notif' ? null : 'notif'; setPop(next); if (next && p.onNotificationsOpen) p.onNotificationsOpen(); } },
-            h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: 'zr-bell-count', 'aria-hidden': 'true' }, unreadText) : null),
+            h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: cx('zr-bell-count', unreadText.length > 2 && 'is-wide'), 'aria-hidden': 'true' }, unreadText) : null),
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
             onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user, src: p.userPhoto })),
           notifPanel,
@@ -1083,13 +1083,20 @@
   }
 
   function Checkbox(p) {
-    var rest = omit(p, ['label', 'className', 'indeterminate']);
+    var id = useId('chk');
+    var rest = omit(p, ['label', 'className', 'indeterminate', 'hint', 'error']);
     var ref = useRef(null);
     useEffect(function () { if (ref.current) ref.current.indeterminate = !!p.indeterminate; });
-    return h('label', { className: cx('zr-check', p.className) },
-      h('input', Object.assign({ type: 'checkbox', ref: ref }, rest)),
+    var desc = p.error || p.hint ? id + '-d' : undefined; /* aiuto ed errore sotto, come Field (richiesta 144) */
+    var wrap = 'hint' in p || 'error' in p; /* dalle props passate, non dal valore: l'errore che sparisce non rimonta la casella */
+    var box = h('label', { className: cx('zr-check', p.error && 'is-error', !wrap && p.className) },
+      h('input', Object.assign({ type: 'checkbox', ref: ref, 'aria-describedby': desc, 'aria-invalid': p.error ? true : undefined }, rest)),
       h('span', { className: 'zr-check-box', 'aria-hidden': true }, h(Icon, { name: p.indeterminate ? 'close' : 'check', size: 14 })),
       p.label ? h('span', null, p.label) : null);
+    if (!wrap) return box;
+    return h('div', { className: cx('zr-check-field', p.className) }, box,
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
   function Switch(p) {
@@ -1112,6 +1119,230 @@
         return h('button', { key: v, type: 'button', role: 'tab', 'aria-selected': v === val, className: cx('zr-seg-item', v === val && 'is-active'),
           onClick: function () { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); } }, it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, l, it.count != null ? h('span', { className: 'zr-seg-count' }, it.count) : null);
       }));
+  }
+
+  /* ---------- RadioGroup: una scelta fra poche, tutte in vista (richiesta 89) ---------- */
+  function RadioGroup(p) {
+    var id = useId('rad');
+    var opts = p.options || [];
+    var ctrl = p.value !== undefined;
+    var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    return h('fieldset', { id: p.id, className: cx('zr-radio-group', p.orientation === 'horizontal' && 'is-horizontal', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
+      p.label ? h('legend', { className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
+      h('div', { className: 'zr-radio-list' }, opts.map(function (o, i) {
+        var obj = typeof o === 'string' ? { value: o, label: o } : o;
+        var hid = obj.hint ? id + '-h' + i : undefined;
+        return h('label', { key: obj.value, className: cx('zr-radio', obj.disabled && 'is-disabled') },
+          h('input', { type: 'radio', name: p.name || id, value: obj.value, checked: obj.value === val, disabled: obj.disabled, required: p.required, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': cx(hid, desc) || undefined,
+            onChange: function () { if (!ctrl) st[1](obj.value); if (p.onChange) p.onChange(obj.value); } }),
+          h('span', { className: 'zr-radio-dot', 'aria-hidden': true }),
+          h('span', { className: 'zr-radio-text' }, h('span', null, obj.label), obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null));
+      })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- ToggleGroup: scelte a pulsanti con lo stato premuto, una o più (richiesta 141) ---------- */
+  function ToggleGroup(p) {
+    var id = useId('tgl');
+    var opts = p.options || [];
+    var multi = !!p.multiple;
+    var ctrl = p.value !== undefined;
+    var st = useState(p.defaultValue !== undefined ? p.defaultValue : (multi ? [] : null)), val = ctrl ? p.value : st[0];
+    function isOn(v) { return multi ? (val || []).indexOf(v) >= 0 : val === v; }
+    function pick(v) {
+      var next;
+      if (multi) { var cur = val || []; next = cur.indexOf(v) >= 0 ? cur.filter(function (x) { return x !== v; }) : cur.concat([v]); }
+      else if (val === v) { if (!p.allowEmpty) return; next = null; }
+      else next = v;
+      if (!ctrl) st[1](next);
+      if (p.onChange) p.onChange(next);
+    }
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    return h('div', { id: p.id, className: cx('zr-toggle-field', p.className) },
+      p.label ? h('span', { id: id + '-l', className: 'zr-field-label' }, p.label) : null,
+      h('div', { role: 'group', className: cx('zr-toggle-group', multi && 'is-multi', p.size === 'sm' && 'is-sm', p.layout === 'grid' && 'is-grid', p.error && 'is-error'),
+        'aria-labelledby': p.label ? id + '-l' : undefined, 'aria-label': p.label ? undefined : p['aria-label'], 'aria-describedby': desc },
+        opts.map(function (o) {
+          var obj = typeof o === 'string' ? { value: o, label: o } : o;
+          var on = isOn(obj.value);
+          return h('button', { key: obj.value, type: 'button', className: cx('zr-toggle', on && 'is-on'), 'aria-pressed': on, disabled: p.disabled || obj.disabled, 'aria-label': obj['aria-label'], 'aria-describedby': desc, onClick: function () { pick(obj.value); } },
+            multi && on && !obj.icon ? h(Icon, { name: 'check', size: 16 }) : obj.icon ? h(Icon, { name: obj.icon, size: 16 }) : null,
+            h('span', null, obj.label),
+            obj.count != null ? h('span', { className: 'zr-toggle-count' }, obj.count) : null);
+        })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- InlineEdit: un valore che si modifica dove sta — clic, campo, «Salvato» o l'errore (richiesta 142) ---------- */
+  var INLINE_EDIT_LABELS = { edit: 'Modifica', empty: 'Aggiungi', saving: 'Salvataggio…', saved: 'Salvato', error: 'Non salvato. Riprova.', required: 'Il campo non può restare vuoto', keys: 'Invio salva, Esc annulla', keysMultiline: 'Ctrl+Invio salva, Esc annulla' };
+  function InlineEdit(p) {
+    var id = useId('ied');
+    var L = Object.assign({}, INLINE_EDIT_LABELS, p.labels || {});
+    var value = p.value == null ? '' : String(p.value);
+    var es = useState(!!p.defaultEditing), editing = es[0];
+    var ds = useState(value), draft = ds[0];
+    var ss = useState('idle'), stato = ss[0]; /* idle · saving · saved · error */
+    var ms = useState(''), msg = ms[0];
+    var mode = useRef(p.defaultEditing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false);
+    useEffect(function () { alive.current = true; return function () { alive.current = false; clearTimeout(timer.current); }; }, []);
+    useEffect(function () {
+      var first = !mounted.current; mounted.current = true;
+      if (editing && fieldRef.current && (!first || p.autoFocus)) { fieldRef.current.focus(); fieldRef.current.select(); }
+      if (!editing && back.current) { back.current = false; if (viewRef.current) viewRef.current.focus(); }
+    }, [editing]);
+    function close(focusBack) { mode.current = 'view'; back.current = focusBack; es[1](false); }
+    function start() { if (p.disabled) return; clearTimeout(timer.current); mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); es[1](true); }
+    function fail(m) { mode.current = 'edit'; ss[1]('error'); ms[1](m || L.error); }
+    function save(focusBack) {
+      if (mode.current !== 'edit') return;
+      var next = p.trim === false ? draft : draft.trim();
+      if (next === value) { ss[1]('idle'); close(focusBack); return; }
+      if (p.required && !next) { fail(L.required); return; }
+      var bad = p.validate ? p.validate(next) : null;
+      if (bad) { fail(bad); return; }
+      mode.current = 'saving'; ss[1]('saving'); ms[1]('');
+      Promise.resolve().then(function () { return p.onSave ? p.onSave(next) : undefined; }).then(function () {
+        if (!alive.current) return;
+        close(focusBack && document.activeElement === fieldRef.current); ss[1]('saved'); /* il fuoco torna solo se è ancora nel campo */
+        timer.current = setTimeout(function () { if (alive.current) ss[1](function (s) { return s === 'saved' ? 'idle' : s; }); }, 2500);
+      }, function (e) { if (alive.current) fail(e && e.message); });
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (mode.current !== 'saving') { ss[1]('idle'); close(true); } }
+      else if (e.key === 'Enter' && (!p.multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); }
+    }
+    var size = p.size === 'title' ? 'title' : 'body';
+    var errId = id + '-e', keysId = id + '-k';
+    var body;
+    if (editing) {
+      var attrs = { ref: fieldRef, id: id, value: draft, className: 'zr-inline-edit-field', 'aria-label': p.label, 'aria-invalid': stato === 'error' || undefined, 'aria-busy': stato === 'saving' || undefined,
+        'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', maxLength: p.maxLength, placeholder: p.placeholder,
+        onChange: function (e) { ds[1](e.target.value); if (stato === 'error') { ss[1]('idle'); ms[1](''); } }, onKeyDown: onKey, onBlur: function () { save(false); } };
+      body = p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: 'text' }, attrs));
+    } else {
+      body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
+        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + value : '') },
+        h('span', { className: 'zr-inline-edit-text' }, value || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
+    }
+    return h('div', { className: cx('zr-inline-edit', 'is-' + size, editing && 'is-editing', stato === 'error' && 'is-error', p.multiline && 'is-multiline', p.className) },
+      body,
+      editing && stato === 'error' ? h('p', { id: errId, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), msg) : null,
+      editing ? h('p', { id: keysId, className: 'zr-inline-edit-keys' }, p.multiline ? L.keysMultiline : L.keys) : null,
+      h('p', { className: cx('zr-inline-edit-status', stato === 'saved' && 'is-saved'), role: 'status' },
+        stato === 'saving' ? L.saving : stato === 'saved' ? [h(Icon, { key: 'i', name: 'check', size: 14 }), h('span', { key: 't' }, L.saved)] : null));
+  }
+
+  /* ---------- Calendar: scegliere un giorno, il mese con gli eventi, la settimana al telefono (richiesta 140) ---------- */
+  var CALENDAR_LABELS = { prevMonth: 'Mese precedente', nextMonth: 'Mese successivo', prevWeek: 'Settimana precedente', nextWeek: 'Settimana successiva', marked: 'disponibile',
+    events: function (n) { return n === 1 ? '1 evento' : n + ' eventi'; }, more: function (n) { return '+' + n + ' altri'; } };
+  var DAY_MS = 86400000;
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoOfT(t) { var d = new Date(t); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+  function tOfIso(iso) { var a = String(iso).split('-'); return Date.UTC(+a[0], +a[1] - 1, +(a[2] || 1)); }
+  function addMonths(iso, n) {
+    var a = iso.split('-'), y = +a[0], m = +a[1] - 1 + n, d = +a[2];
+    var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return isoOfT(Date.UTC(y, m, Math.min(d, last)));
+  }
+  function localTodayIso() { var n = new Date(); return n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate()); }
+  function Calendar(p) {
+    var id = useId('cal');
+    var loc = p.locale || 'it-IT';
+    var L = Object.assign({}, CALENDAR_LABELS, p.labels || {});
+    var variant = p.variant === 'month' || p.variant === 'week' ? p.variant : 'picker';
+    var today = p.today || localTodayIso();
+    var ctrl = p.value !== undefined;
+    var vs = useState(p.defaultValue || null), sel = ctrl ? p.value : vs[0];
+    var cs = useState(sel || (p.defaultMonth ? p.defaultMonth + '-01' : today)), cursor = cs[0];
+    var moveFocus = useRef(false), rootRef = useRef(null);
+    useEffect(function () { if (ctrl && p.value) cs[1](p.value); }, [p.value]);
+    var wk = p.weekStartsOn != null ? p.weekStartsOn : 1;
+    var dow = function (t) { return (new Date(t).getUTCDay() - wk + 7) % 7; };
+    var ct = tOfIso(cursor);
+    var from, n;
+    if (variant === 'week') { from = ct - dow(ct) * DAY_MS; n = 7; }
+    else {
+      var first = tOfIso(cursor.slice(0, 7) + '-01');
+      var days = new Date(Date.UTC(new Date(first).getUTCFullYear(), new Date(first).getUTCMonth() + 1, 0)).getUTCDate();
+      from = first - dow(first) * DAY_MS;
+      n = variant === 'picker' ? 42 : Math.ceil((dow(first) + days) / 7) * 7;
+    }
+    var fromIso = isoOfT(from), toIso = isoOfT(from + (n - 1) * DAY_MS);
+    var month = cursor.slice(0, 7);
+    useEffect(function () { if (p.onRangeChange) p.onRangeChange({ from: fromIso, to: toIso }); }, [fromIso, toIso]);
+    useEffect(function () {
+      if (!moveFocus.current || !rootRef.current) return;
+      moveFocus.current = false;
+      var b = rootRef.current.querySelector('[data-iso="' + cursor + '"]'); if (b) b.focus();
+    }, [cursor]);
+    var fmt = function (o) { return new Intl.DateTimeFormat(loc, Object.assign({ timeZone: 'UTC' }, o)); };
+    var fLong = fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), fWdS = fmt({ weekday: 'short' }), fWdL = fmt({ weekday: 'long' });
+    var titleText = fmt({ month: 'long', year: 'numeric' }).format(ct);
+    titleText = titleText.charAt(0).toLocaleUpperCase(loc) + titleText.slice(1);
+    var marked = p.marked || [];
+    var evs = {}; (p.events || []).forEach(function (e) { (evs[e.date] = evs[e.date] || []).push(e); });
+    function off(iso) { return (p.min && iso < p.min) || (p.max && iso > p.max) || (p.isDisabled ? !!p.isDisabled(iso) : false); }
+    function choose(iso) { if (off(iso)) return; moveFocus.current = iso !== cursor; cs[1](iso); if (!ctrl) vs[1](iso); if (p.onChange) p.onChange(iso); }
+    function go(iso, focus) { if (iso === cursor) return; moveFocus.current = !!focus; cs[1](iso); }
+    function shift(k) { go(variant === 'week' ? isoOfT(ct + k * 7 * DAY_MS) : addMonths(cursor, k), false); }
+    function onKey(e) {
+      var k = e.key, t = null;
+      if (k === 'ArrowLeft') t = isoOfT(ct - DAY_MS);
+      else if (k === 'ArrowRight') t = isoOfT(ct + DAY_MS);
+      else if (k === 'ArrowUp' && variant !== 'week') t = isoOfT(ct - 7 * DAY_MS);
+      else if (k === 'ArrowDown' && variant !== 'week') t = isoOfT(ct + 7 * DAY_MS);
+      else if (k === 'Home') t = isoOfT(ct - dow(ct) * DAY_MS);
+      else if (k === 'End') t = isoOfT(ct + (6 - dow(ct)) * DAY_MS);
+      else if (k === 'PageUp') t = variant === 'week' ? isoOfT(ct - 7 * DAY_MS) : addMonths(cursor, e.shiftKey ? -12 : -1);
+      else if (k === 'PageDown') t = variant === 'week' ? isoOfT(ct + 7 * DAY_MS) : addMonths(cursor, e.shiftKey ? 12 : 1);
+      if (t) { e.preventDefault(); go(t, true); }
+    }
+    function dayButton(iso, t, extra) {
+      var dis = off(iso), list = evs[iso] || [], isMarked = marked.indexOf(iso) >= 0;
+      var name = fLong.format(t) + (isMarked ? ', ' + L.marked : '') + (list.length ? ', ' + L.events(list.length) : '');
+      return h('button', { type: 'button', 'data-iso': iso, tabIndex: iso === cursor ? 0 : -1, className: cx('zr-cal-day', iso === sel && 'is-selected', iso === today && 'is-today', dis && 'is-disabled', isMarked && 'is-marked'),
+        'aria-label': name, 'aria-current': iso === today ? 'date' : undefined, 'aria-disabled': dis ? 'true' : undefined, 'aria-pressed': variant === 'week' ? iso === sel : undefined,
+        onFocus: function () { if (iso !== cursor && (variant === 'week' || iso.slice(0, 7) === month)) cs[1](iso); }, /* le frecce ripartono dal giorno col fuoco; un giorno di un altro mese cambia mese solo al clic */ onClick: function () { choose(iso); } }, extra, h('span', { className: 'zr-cal-num' }, new Date(t).getUTCDate()), isMarked ? h('span', { className: 'zr-cal-dot', 'aria-hidden': true }) : null);
+    }
+    var titleId = id + '-t';
+    var head = h('div', { className: 'zr-cal-head' },
+      h('div', { id: titleId, className: 'zr-cal-title', 'aria-live': 'polite' }, titleText),
+      h('div', { className: 'zr-cal-nav' },
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', 'aria-label': variant === 'week' ? L.prevWeek : L.prevMonth, onClick: function () { shift(-1); } }),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevron', 'aria-label': variant === 'week' ? L.nextWeek : L.nextMonth, onClick: function () { shift(1); } })));
+    var body;
+    if (variant === 'week') {
+      body = h('div', { role: 'group', 'aria-labelledby': titleId, className: 'zr-cal-week', onKeyDown: onKey },
+        Array.from({ length: 7 }, function (_, i) {
+          var t = from + i * DAY_MS, iso = isoOfT(t);
+          return h('div', { key: iso, className: 'zr-cal-week-cell' }, dayButton(iso, t, h('span', { className: 'zr-cal-wd', 'aria-hidden': true }, fWdS.format(t))));
+        }));
+    } else {
+      var rows = [];
+      for (var r = 0; r < n / 7; r++) {
+        rows.push(h('tr', { key: r }, Array.from({ length: 7 }, function (_, i) {
+          var t = from + (r * 7 + i) * DAY_MS, iso = isoOfT(t), out = iso.slice(0, 7) !== month, list = evs[iso] || [];
+          var max = p.maxEvents || 3, shown = list.length > max ? list.slice(0, max - 1) : list;
+          return h('td', { key: iso, role: 'gridcell', 'aria-selected': iso === sel, className: cx('zr-cal-cell', out && 'is-outside') },
+            dayButton(iso, t),
+            variant === 'month' && list.length ? h('ul', { className: 'zr-cal-evs' },
+              shown.map(function (e, k) {
+                var tone = TONES.indexOf(e.tone) >= 0 ? e.tone : 'pine';
+                return h('li', { key: e.id || k }, p.onEventClick
+                  ? h('button', { type: 'button', tabIndex: iso === cursor ? 0 : -1, className: cx('zr-cal-ev', 'zr-cal-ev-' + tone), onClick: function () { p.onEventClick(e); } }, e.label)
+                  : h('span', { className: cx('zr-cal-ev', 'zr-cal-ev-' + tone) }, e.label));
+              }),
+              list.length > shown.length ? h('li', { key: 'more' }, h('button', { type: 'button', tabIndex: iso === cursor ? 0 : -1, className: 'zr-cal-more', onClick: function () { if (p.onMore) p.onMore(iso); else choose(iso); } }, L.more(list.length - shown.length))) : null) : null);
+        })));
+      }
+      body = h('table', { role: 'grid', 'aria-labelledby': titleId, className: 'zr-cal-grid', onKeyDown: onKey },
+        h('thead', null, h('tr', null, Array.from({ length: 7 }, function (_, i) { var t = from + i * DAY_MS; return h('th', { key: i, scope: 'col', abbr: fWdL.format(t) }, fWdS.format(t)); }))),
+        h('tbody', null, rows));
+    }
+    return h('div', { ref: rootRef, className: cx('zr-cal', 'is-' + variant, p.className) }, head, body);
   }
 
   /* ---------- Feedback ---------- */
@@ -1802,7 +2033,7 @@
     KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard,
     SiteHeader: SiteHeader, Hero: Hero, SectionHeading: SectionHeading, StepList: StepList, AudienceGrid: AudienceGrid,
     PricingCard: PricingCard, FAQ: FAQ, CtaBand: CtaBand, SiteFooter: SiteFooter, LandingPage: LandingPage, LanguageSwitch: LanguageSwitch, SectorGrid: SectorGrid, Breadcrumb: Breadcrumb,
-    ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
+    ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
     ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
