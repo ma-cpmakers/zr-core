@@ -26,7 +26,7 @@ function valoriDeiToken(): array
     foreach ([...$token['color']['tokens'], ...$token['shadow']['tokens']] as $voce) {
         $valori["--{$voce['name']}"] = $valore($voce['value']['light']);
     }
-    foreach ([...$token['spacing']['tokens'], ...$token['radius']['tokens'], ...$token['layout']['tokens'], ...$token['zIndex']['tokens']] as $voce) {
+    foreach ([...$token['spacing']['tokens'], ...$token['radius']['tokens'], ...$token['layout']['tokens'], ...$token['zIndex']['tokens'], ...$token['border']['tokens']] as $voce) {
         $valori["--{$voce['name']}"] = $valore((string) $voce['value']);
     }
     foreach ($token['type']['families'] as $famiglia => $testo) {
@@ -130,7 +130,9 @@ function valoriAMano(iterable $file): array
 
     $problemi = [];
     foreach ($file as $sorgente) {
-        $testo = senzaCommenti($sorgente->getContents());
+        // Sprint 104: il contorno del fuoco del design system (`outline: 2px solid var(--focus)`, come in bundle.css) non è un token, e
+        // il suo 2px non è il raggio `radius-2xs` arrivato con la richiesta 139.
+        $testo = (string) preg_replace('/outline:\s*2px solid var\(--focus\)/', '', senzaCommenti($sorgente->getContents()));
         if (preg_match($colore, $testo, $trovato) === 1) {
             $problemi[] = "{$sorgente->getRelativePathname()}: «{$trovato[0]}»";
         }
@@ -156,21 +158,22 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
         ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}$/');
 });
 
-it('zeiras-token.css porta i nove stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1)', function () {
+it('zeiras-token.css porta i dieci stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1; label dalla v4.2.0)', function () {
     $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
     $testo = collect($css)->keys()->filter(fn (string $nome) => str_starts_with($nome, '--text-'))->values();
     $stili = $testo->reject(fn (string $nome) => str_contains(substr($nome, 2), '--'))->map(fn (string $nome) => substr($nome, 7))->values()->all();
 
-    expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'caption', 'overline'])
+    expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'label', 'caption', 'overline'])
         // Tre variabili per stile, e la quarta nei quattro che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline).
-        ->and($testo)->toHaveCount(9 * 3 + 4)
+        ->and($testo)->toHaveCount(10 * 3 + 4)
         ->and([$css['--text-heading-1'], $css['--text-heading-1--line-height'], $css['--text-heading-1--font-weight'], $css['--text-heading-1--letter-spacing']])
         ->toBe([['26px'], ['32px'], ['650'], ['-0.01em']])
         ->and($css['--text-overline--letter-spacing'])->toBe(['0.06em'])
+        ->and([$css['--text-label'], $css['--text-label--line-height'], $css['--text-label--font-weight']])->toBe([['13px'], ['18px'], ['500']])
         ->and($css)->not->toHaveKey('--text-heading-2--letter-spacing');
 });
 
-it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni `--text-…` del README c\'è nel file, e ci sono tutti e nove gli stili (sprint 86 · T2.1)', function () {
+it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni `--text-…` del README c\'è nel file, e ci sono tutti e dieci gli stili (sprint 86 · T2.1)', function () {
     $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
     preg_match('/^\*\*Gli stili di testo\*\*.*?(?=^\*\*`zeiras\.css`\*\*)/ms', File::get(__DIR__.'/../../README.md'), $capoverso);
     preg_match_all('/--text-[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z-]+)?/', $capoverso[0] ?? '', $nomi);
@@ -182,6 +185,20 @@ it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni 
         ->and(array_values(array_diff(array_unique($nomi[0]), array_keys($css))))->toBe([])
         ->and($stili->reject(fn (string $stile) => str_contains($capoverso[0], "`{$stile}`"))->values()->all())->toBe([])
         ->and($capoverso[0])->toContain('@theme inline reference', 'npm run token');
+});
+
+// Sprint 104 (revisione, R3): ogni gruppo di tokens.json con un elenco di token arriva in zeiras-token.css. Il generatore e l'oracolo
+// li nominano a mano: un gruppo nuovo che bundle.css non usa ancora resterebbe fuori senza che il caso T3.1 lo veda (così `border`).
+it('ogni gruppo di tokens.json con un elenco di token è letto da scripts/token-css.mjs, e ogni suo token è una variabile di zeiras-token.css (sprint 104)', function () {
+    $token = json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR);
+    $gruppi = array_keys(array_filter($token, fn (mixed $gruppo) => is_array($gruppo) && isset($gruppo['tokens'])));
+    preg_match_all('/\btoken\.([a-zA-Z]+)\b/', File::get(__DIR__.'/../../scripts/token-css.mjs'), $letti);
+    $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
+    $nomi = array_merge(...array_map(fn (string $gruppo) => array_map(fn (array $voce) => "--{$voce['name']}", $token[$gruppo]['tokens']), $gruppi));
+
+    expect($gruppi)->toContain('color', 'border')
+        ->and(array_values(array_diff($gruppi, $letti[1])))->toBe([])
+        ->and(array_values(array_diff($nomi, array_keys($css))))->toBe([]);
 });
 
 it('il controllo trova la variabile che manca, quella definita due volte e quella col valore scuro (T3.1)', function () {
@@ -227,11 +244,15 @@ it('il controllo trova un esadecimale, un rgba e il valore di un token scritti a
     File::put("$cartella/b.css", ".x { color: rgba(0, 0, 0, 0.5); }\n");
     File::put("$cartella/c.tsx", "export const stile = { width: '$larghezza' };\n");
     File::put("$cartella/d.ts", "// la voce #1254 e https://fonts.googleapis.com\nexport const larghezza = 'var(--sidebar-width)';\n");
+    // Sprint 104: il contorno del fuoco del design system passa, lo stesso 2px come raggio no.
+    File::put("$cartella/e.ts", "export const fuoco = 'outline:2px solid var(--focus)';\n");
+    File::put("$cartella/f.ts", "export const angolo = 'border-radius:2px';\n");
 
     expect(valoriAMano(File::allFiles($cartella)))->toEqualCanonicalizing([
         'a.ts: «#0e5e4e»',
         'b.css: «rgba(»',
         "c.tsx: «{$larghezza}» scritto a mano",
+        'f.ts: «2px» scritto a mano',
     ]);
 });
 

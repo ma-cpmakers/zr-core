@@ -45,6 +45,16 @@ const dati: DatiDellaCornice = { ...datiDiUnMembro, moduli: 'https://app.zeiras.
  */
 const fontiDeiDati = ['pm.board.scheda', 'pm.board.board', 'pm.board.cartelle', 'bookings.bookings.prenotazione', 'bookings.bookings.calendario', 'home.workspace.membro'] as const;
 const esciSenzaEffetto = () => {};
+/**
+ * I due metodi d'ascolto di una risposta finta di `matchMedia`: dal design system ds-1793812748-4f74 il `DetailPanel` ascolta il
+ * cambio di larghezza (sotto 720 px è modale), e una risposta con la sola `matches` lo fa cadere. Chi cambia la larghezza a pagina
+ * montata chiama gli ascoltatori, come fa il browser.
+ */
+const ascoltatoriDellaLarghezza = new Set<() => void>();
+const ascoltoFinto = {
+    addEventListener: (_tipo: string, ascoltatore: () => void) => ascoltatoriDellaLarghezza.add(ascoltatore),
+    removeEventListener: (_tipo: string, ascoltatore: () => void) => ascoltatoriDellaLarghezza.delete(ascoltatore),
+};
 const percorso = [{ label: 'Marketing', href: 'https://board.zeiras.com/w/acme-marketing' }, { label: 'Q4 launch' }];
 /**
  * Le aziende della persona in un ordine che non è alfabetico: il workspace dei dati è il secondo della seconda azienda. Gli id
@@ -1708,15 +1718,39 @@ describe('il pannello delle notifiche', () => {
         expect(document.body.innerHTML).not.toContain(impronta);
     });
 
-    // Sprint 99 · T2.4 (voce #2982): i dati portano l'indirizzo della foto, ma l'`Avatar` del design system ha solo le iniziali.
-    it('coi dati che portano `persona.foto` la cornice resta quella di prima: nessuna immagine e nessuna richiesta della foto, nemmeno col menu del profilo aperto (sprint 99 · T2.4)', async () => {
-        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [] }));
-        vi.stubGlobal('fetch', fetchFinto);
-        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, foto: '/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z' } }} onLogout={esciSenzaEffetto} />);
+    // Sprint 104 · T2.1 (riga 155 del design system, ds-1793812748-4f74): la foto della persona nell'avatar della barra e nella testa
+    // del menu del profilo, dall'indirizzo che portano i dati; senza foto le iniziali, come prima. Nello sprint 99 (T2.4) la cornice
+    // non la mostrava, perché l'`Avatar` del design system aveva solo le iniziali.
+    it('coi dati che portano `persona.foto` l\'avatar della barra e quello del menu del profilo mostrano la foto, senza testo alternativo; senza foto restano le iniziali (sprint 104 · T2.1)', async () => {
+        const foto = '/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z&p=ada';
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [] })));
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, foto } }} onLogout={esciSenzaEffetto} />);
+        const nellaBarra = [...document.querySelectorAll<HTMLImageElement>('.zr-avatar-btn .zr-avatar-img')];
+        expect(nellaBarra.map((immagine) => [immagine.getAttribute('src'), immagine.getAttribute('alt')])).toStrictEqual([[foto, '']]);
         await clic(uno('.zr-avatar-btn'));
 
-        expect(document.body.innerHTML).not.toContain('/cornice/foto');
-        expect(richieste(fetchFinto)).toStrictEqual([]);
+        expect([...document.querySelectorAll<HTMLImageElement>('.zr-profile-head .zr-avatar-img')].map((immagine) => [immagine.getAttribute('src'), immagine.getAttribute('alt')]))
+            .toStrictEqual([[foto, '']]);
+    });
+
+    // Sprint 104 · T1.3: l'invito e il «Premi Invio» della ricerca all'invio (riga 164) non stanno nelle lingue della cornice, che
+    // non la chiede: se un giorno la chiedesse, l'`AppShell` mostrerebbe i suoi testi italiani in ogni lingua.
+    it('la cornice non chiede la ricerca all\'invio, e non le passa i due testi che solo quella mostra (sprint 104 · T1.3)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        for (const lingua of ['it', 'es', 'en']) {
+            await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
+            const props = appShell.mock.lastCall?.[0];
+            expect([props?.searchOn, props?.labels?.searchSubmitHint, props?.labels?.searchPressEnter]).toStrictEqual([undefined, undefined, undefined]);
+        }
+    });
+
+    it('senza `persona.foto` nessun avatar della cornice ha un\'immagine: restano le iniziali (sprint 104 · T2.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [] })));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(document.querySelectorAll('.zr-avatar-img')).toHaveLength(0);
+        expect(uno('.zr-avatar-btn .zr-avatar')?.textContent).not.toBe('');
     });
 
     // Sprint 60 (review della PR #96, R1; sicurezza S1): un'email può passare da un account a un altro. Con la stessa email e
@@ -8728,7 +8762,12 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
     const { Dialog, DetailPanel, Menu } = componenti;
     const senzaEffetto = () => {};
     /** La larghezza della pagina come la legge il CSS del design system: sotto 720 px il pannello di dettaglio è a tutta pagina. */
-    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
+    let stretta = false;
+    const largaAlPiu720 = (comè: boolean) => {
+        stretta = comè;
+        vi.stubGlobal('matchMedia', (domanda: string) => ({ get matches() { return stretta && domanda === '(max-width: 720px)'; }, ...ascoltoFinto }));
+        act(() => ascoltatoriDellaLarghezza.forEach((ascoltatore) => ascoltatore()));
+    };
     /** La pagina dentro la cornice, coi rimedi di tastiera già arrivati. */
     const laPagina = async (figli: ReactElement) => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}>{figli}</Cornice>);
@@ -8842,6 +8881,8 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         largaAlPiu720(true);
         await laPagina(ilPannello(false, <Dialog open title="Elimina la scheda" onClose={senzaEffetto} footer={<button type="button" id="elimina">Elimina</button>}>Sicuro?</Dialog>));
 
+        // Col fuoco rimasto nel pannello, sotto 720 px, Tab entra nel dialogo: il `DetailPanel` modale del design system, che
+        // trattiene il Tab da sé (riga 167), cede a un dialogo aperto sopra (riga 175, ds dello sprint 104).
         await conIlFuoco(uno('#commenta'));
         expect(await premi('Tab')).toBe(true);
         expect(document.activeElement).toBe(chiudi());
@@ -8850,6 +8891,9 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(chiudi());
 
         largaAlPiu720(false);
+        await conIlFuoco(uno('#commenta'));
+        expect(await premi('Tab')).toBe(true);
+        expect(document.activeElement).toBe(chiudi());
         await conIlFuoco(uno('#titolo'));
         expect(await premi('Tab', true)).toBe(true);
         expect(document.activeElement).toBe(uno('#elimina'));
@@ -9329,7 +9373,7 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         vi.stubGlobal('matchMedia', (domanda: string) => {
             domande.push(domanda);
 
-            return { matches: domanda === delCss };
+            return { matches: domanda === delCss, ...ascoltoFinto };
         });
         await laPagina(ilPannello());
 
@@ -10174,7 +10218,7 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         await conLaTastiera();
     };
     const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => uno(selettore)?.getAttribute('role') ?? null);
-    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)' }));
+    const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)', ...ascoltoFinto }));
     const azioni = () => uno('.zr-top > .zr-top-actions');
     const campo = () => uno('.zr-top .zr-search input') as HTMLInputElement;
     /** Il fuoco nel campo della ricerca, poi fuori: dopo l'uscita si aspetta il giro, come il rimedio. */

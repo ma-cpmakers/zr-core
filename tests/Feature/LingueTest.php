@@ -772,7 +772,20 @@ function italianoDecisoPrimaDelDesignSystem(): array
  */
 function italianoAtteso(): array
 {
-    return [...testiItalianiDelDesignSystem(), ...italianoDecisoPrimaDelDesignSystem()];
+    return [...array_diff_key(testiItalianiDelDesignSystem(), array_flip(testiDellAppShellCheLaCorniceNonUsa())), ...italianoDecisoPrimaDelDesignSystem()];
+}
+
+/**
+ * I testi dell'`AppShell` che la cornice non mostra mai, e che quindi non stanno nelle sue lingue (sprint 104, design system
+ * ds-1793812748-4f74): l'invito e il «Premi Invio» della ricerca che parte solo a Invio (`searchOn: 'submit'`, riga 164), che la
+ * cornice non chiede. Nelle lingue della cornice, che stanno nel JS d'ingresso, costerebbero 85 byte con gzip; li ha la cornice
+ * dello staff, con le sue lingue, quando cerca all'invio (voce #2965).
+ *
+ * @return list<string>
+ */
+function testiDellAppShellCheLaCorniceNonUsa(): array
+{
+    return ['searchSubmitHint', 'searchPressEnter'];
 }
 
 /**
@@ -804,7 +817,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
     $chiavi = [
-        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
+        ...array_diff(chiaviDiAppShellLabels(), testiDellAppShellCheLaCorniceNonUsa()), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
         'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'skipToContent', 'mainContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
@@ -938,6 +951,8 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
     $lingue['it']['soon'] = 'Fra poco';
     $lingue['it']['reports'] = 'Reports';
     $lingue['it']['ciao'] = 'Ciao';
+    // Sprint 104: un testo dell'`AppShell` che la cornice non mostra non sta nelle sue lingue.
+    $lingue['es']['searchPressEnter'] = 'Pulsa Intro para buscar';
 
     // Le letture del design system non sono vuote: chiavi, testi con l'apostrofo, menu di partenza coi nomi dei prodotti.
     expect(chiaviDiAppShellLabels())->toContain('soon', 'logout', 'crumbs')
@@ -951,6 +966,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
             'en: manca «pm.board.cartelle»',
             'es: «retry» è vuoto',
             'es: «pm.scheda» non è un testo della cornice',
+            'es: «searchPressEnter» non è un testo della cornice',
             'it: «ciao» non è un testo della cornice',
             'it: «soon» non è il testo del design system',
             'it: «reports» non è il testo del design system',
@@ -1217,20 +1233,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 100 tipi della versione 6a67cc74 e l\'elenco 60, con crm.campo.creato, workspace.eliminato e le tre aperture di Bookings (sprint 79 · T2.1, T2.2, T2.3; 03/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 102 tipi della versione 6aeb650e e l\'elenco 62, con crm.campo.creato, workspace.eliminato e le tre aperture di Bookings (sprint 79 · T2.1, T2.2, T2.3; 03/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('6a67cc74')
-        ->and($contratto['tipi'])->toHaveCount(100)
-        // L'impronta dei tipi di 6a67cc74, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('6aeb650e')
+        ->and($contratto['tipi'])->toHaveCount(102)
+        // L'impronta dei tipi di 6aeb650e, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('4d91aeb2602641f857e431cea545e23fef863081497482b1f839e89655ecacbe')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(100)
-        ->and($contratto['non_arrivano'])->toHaveCount(60)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('8b6d757555fb4279202257d3a4d07c59821670cfaca46d1aebe5a2d0264a4e5a')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(102)
+        ->and($contratto['non_arrivano'])->toHaveCount(62)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
