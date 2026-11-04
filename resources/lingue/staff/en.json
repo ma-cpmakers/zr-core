@@ -5,6 +5,8 @@
     "planText": "Every action goes into the log.",
     "planRole": "{ruolo} · 2FA",
     "planUntil": "Session active until {ora} at the latest. Every action goes into the log.",
+    "planUntilTomorrow": "Session active until tomorrow at {ora} at the latest. Every action goes into the log.",
+    "planUntilDay": "Session active until {giorno} at {ora} at the latest. Every action goes into the log.",
     "searchPlaceholder": "Search people and workspaces…",
     "searchHint": "Search people and workspaces: type at least 2 characters.",
     "searchSubmitHint": "Search people and workspaces: type at least 2 characters and press Enter.",

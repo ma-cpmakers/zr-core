@@ -28,6 +28,9 @@ type TestiDelloStaff = Pick<TestiDellaCornice, 'settings' | 'planTitle' | 'planT
     /** Il titolo del riquadro in fondo alla barra col ruolo dello staff (`{ruolo}`), e il testo con la fine della sessione (`{ora}`): voce #2989. */
     planRole: string;
     planUntil: string;
+    /** La fine della sessione domani (`{ora}`), e in un altro giorno (`{giorno}`, con la data): voce #3030, dalla `v4.5.1`. */
+    planUntilTomorrow: string;
+    planUntilDay: string;
 };
 
 /** I testi dello staff in una lingua: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in inglese. */
@@ -168,7 +171,7 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi dello staff, che sono qui in
     // tutte le lingue, e l'ora del riquadro (voce #3031). Prima restavano nella lingua chiesta, e la cornice era in due lingue.
     const comeLaCornice = linguaPronta(lingua) ? lingua : DELL_INGRESSO;
-    const { area, logout, searchCount, planRole, planUntil, ...dello } = testiDelloStaff(comeLaCornice);
+    const { area, logout, searchCount, planRole, planUntil, planUntilTomorrow, planUntilDay, ...dello } = testiDelloStaff(comeLaCornice);
     // Il riquadro in fondo alla barra: il ruolo e l'ora della fine, quando il modulo li dà e si leggono; altrimenti i testi di prima.
     const fine = new Date(sessioneFinoA ?? '');
     if (ruolo?.trim()) {
@@ -176,8 +179,13 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
     }
     if (sessioneFinoA && !isNaN(+fine)) {
         // L'ora nella lingua dei testi, come le date della campanella: un codice che `Intl` rifiuta (`it_IT`) non gli arriva.
-        const ora = new Intl.DateTimeFormat(linguaDeiTesti(comeLaCornice), { hour: '2-digit', minute: '2-digit' }).format(fine);
-        dello.planText = planUntil.replace('{ora}', () => ora);
+        const nellaLingua = linguaDeiTesti(comeLaCornice);
+        const ora = new Intl.DateTimeFormat(nellaLingua, { hour: '2-digit', minute: '2-digit' }).format(fine);
+        // Il giorno quando non è oggi (voce #3030): i giorni del calendario nel fuso del browser, non 24 ore. Fra due mezzanotti
+        // passano 23 o 25 ore al cambio dell'ora legale: l'arrotondamento le conta come un giorno.
+        const giorni = Math.round((new Date(fine).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
+        const frase = giorni === 0 ? planUntil : giorni === 1 ? planUntilTomorrow : planUntilDay.replace('{giorno}', () => new Intl.DateTimeFormat(nellaLingua, { weekday: 'long', day: 'numeric', month: 'long' }).format(fine));
+        dello.planText = frase.replace('{ora}', () => ora);
     }
     const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';
     // Con la ricerca all'invio la risposta di una parola che nel campo non c'è più (la persona ha scritto mentre caricava) si vede
