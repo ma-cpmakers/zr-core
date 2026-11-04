@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -143,6 +144,8 @@ it('la rotta risponde a una GET senza `Persona` e senza `X-Zr-Persona`, come la 
 })->with(['nel workspace' => [true], 'senza workspace' => [false]]);
 
 it('fra le rotte della cornice la foto è la sola fuori da StessaPersona e da ConWorkspace; ha la guardia di zr-auth e non SoloDallaPersona, come le altre (sprint 99 · T1.5)', function () {
+    // Gruppi e priorità arrivano al router quando nasce il kernel HTTP, come in `Rotte::senzaGuardia()` di zr-auth.
+    app(Kernel::class);
     $router = app('router');
     $senza = fn (string $classe) => collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
