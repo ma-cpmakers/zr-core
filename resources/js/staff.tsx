@@ -22,6 +22,9 @@ type TestiDelloStaff = Pick<TestiDellaCornice, 'settings' | 'planTitle' | 'planT
     area: string;
     /** Quanti risultati ha trovato la ricerca (`{n}`), per il lettore di schermo: nella zona nascosta alla vista (voce #2986). */
     searchCount: string;
+    /** La ricerca all'invio (voce #2965): l'invito, e ciò che dice il pannello prima di Invio. Fuori dalle lingue della cornice (Decisione 20570). */
+    searchSubmitHint: string;
+    searchPressEnter: string;
 };
 
 /** I testi dello staff in una lingua: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in inglese. */
@@ -62,17 +65,22 @@ export interface CorniceDelloStaffProps {
     /** «Esci»: la sessione la chiude il modulo. Obbligatorio: senza, «Esci» non farebbe niente. */
     onLogout: () => void;
     /**
-     * La ricerca della barra: dal secondo carattere, 300 ms dopo l'ultimo tasto, con la parola e un segnale che si annulla quando
-     * la persona scrive un'altra parola o la cornice si smonta. Dà i risultati, o rifiuta (la ricerca è in errore). Senza, il
-     * campo non cerca niente.
+     * La ricerca della barra: dal secondo carattere, 300 ms dopo l'ultimo tasto (con `cercaAllInvio`, a Invio), con la parola e un
+     * segnale che si annulla quando la persona scrive un'altra parola o la cornice si smonta. Dà i risultati, o rifiuta (la ricerca è
+     * in errore). Senza, il campo non cerca niente.
      */
     cerca?: ((parola: string, segnale: AbortSignal) => Promise<ShellSearchResult[]>) | undefined;
+    /**
+     * La ricerca parte solo con Invio (dalla `v4.3.0`, voce #2965), non da sola mentre si scrive: prima di Invio il pannello dice
+     * «Premi Invio per cercare». Una parola cambiata dopo i risultati torna lì, senza annullare la ricerca di prima.
+     */
+    cercaAllInvio?: boolean | undefined;
     /** Come si apre l'indirizzo di un risultato: di norma il browser ci va. */
     naviga?: ((indirizzo: string) => void) | undefined;
     children?: ReactNode;
 }
 
-export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
+export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = [], configurazione = true, onLogout, cerca, cercaAllInvio = false, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelloStaffProps) {
     const t = testi(lingua);
     // La ricerca: lo stato dell'`AppShell` e i risultati dell'ultima parola. Una parola nuova annulla quella di prima, e una
     // risposta di una richiesta annullata — arrivata, o rifiutata per l'annullo — non entra: lo stato è sempre dell'ultima.
@@ -84,8 +92,11 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     // cambiato durante l'evento ridisegnerebbe l'`AppShell` col valore di prima, e in un browser vero il campo terrebbe un
     // carattere solo (R.0 di `scripts/uat-cornice.mjs`). Un `input` che lascia nel campo il valore di prima non arriva
     // all'`AppShell`, che non chiama la cornice: lì il tasto non cambia niente. Smontata, la cornice annulla la richiesta in volo.
+    // Con la ricerca all'invio un tasto non cerca: niente caricamento e niente annullo.
     const conCerca = useRef(cerca);
     conCerca.current = cerca;
+    const allInvio = useRef(cercaAllInvio);
+    allInvio.current = cercaAllInvio;
     // Quanti risultati ha trovato la ricerca, per il lettore di schermo (voce #2986): come nella `Cornice` (#2801), una zona figlia
     // di `body`, nascosta alla vista, che c'è dal montaggio — una zona che nasce col testo dentro non si legge — e si svuota a ogni
     // ricerca che parte, così lo stesso numero si dice di nuovo. Provvisoria come quella: si toglie quando l'`AppShell` ne tiene una
@@ -101,7 +112,7 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
         let visto: string | undefined;
         const alTasto = (e: Event) => {
             const campo = e.target as HTMLInputElement;
-            if (conCerca.current && campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && campo.value.trim().length > 1) {
+            if (conCerca.current && !allInvio.current && campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && campo.value.trim().length > 1) {
                 inVolo.current?.abort();
                 setRicerca({ stato: 'loading' });
             }
@@ -153,6 +164,7 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
                 accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
                 notifications={[]}
                 {...(cerca ? { onSearch: cercaParola } : {})}
+                {...(cercaAllInvio ? { searchOn: 'submit' as const } : {})}
                 searchState={ricerca?.stato ?? 'ready'}
                 searchResults={ricerca?.stato === 'ready' ? ricerca.risultati : []}
                 onSelectResult={(scelto) => scelto.href !== undefined && naviga(scelto.href)}

@@ -5,6 +5,8 @@
     "planText": "Cada acción queda en el registro.",
     "searchPlaceholder": "Buscar personas y workspaces…",
     "searchHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres.",
+    "searchSubmitHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres y pulsa Intro.",
+    "searchPressEnter": "Pulsa Intro para buscar",
     "searchEmptyText": "Prueba con el correo completo o con el nombre de la empresa.",
     "searchCount": "Resultados: {n}",
     "notificationsEmptyText": "En el backoffice no llegan notificaciones.",

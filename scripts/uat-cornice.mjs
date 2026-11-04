@@ -34,8 +34,8 @@ const opzione = (nome, altrimenti) => {
 const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
 // axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
-// che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`).
-// Prima del tag zr-core la lancia su `staff.html --parola uat`.
+// che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
+// S.5 (`invio=1`). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
@@ -1055,6 +1055,37 @@ async function senzaConfigurazione(page, apri, larghezza) {
     scrivi(barra.voci === 0 && barra.riquadro && (larghezza > 720 || barra.cassetto) ? '✅' : '❌', 'S.4', `a ${larghezza} px, con configurazione=0, nessuna «Configurazione»${dove390} (#2954)`, `voci in fondo alla barra: ${barra.voci}, riquadro dello staff: ${barra.riquadro}${larghezza <= 720 ? `, cassetto aperto: ${barra.cassetto}` : ''}`);
 }
 
+// S.5 (dalla v4.3.0, #2965): con `cercaAllInvio` la ricerca dello staff parte solo con Invio. Su `staff.html?invio=1` si scrive la
+// parola: dopo 900 ms nessun risultato, il pannello dice la parola da cercare con Invio e il modulo non ha cercato (`data-cerche` del
+// `body`, che la pagina conta); con Invio i risultati, una ricerca sola; Invio sul primo lo apre con la `naviga` del modulo.
+async function ricercaAllInvio(page, apri) {
+    const dove = new URL(indirizzo);
+    dove.searchParams.set('invio', '1');
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    const stato = () => page.evaluate(() => ({
+        righe: document.querySelectorAll('.zr-shell .zr-search-panel [role="option"]').length,
+        nota: document.querySelector('.zr-shell .zr-search-panel .zr-search-note')?.textContent ?? '',
+        cerche: Number(document.body.dataset.cerche ?? 0),
+        ultima: document.querySelector('#uat-ultima')?.textContent ?? '',
+    }));
+    await page.click('.zr-shell .zr-top > .zr-search input');
+    await page.keyboard.type(parola, { delay: 60 });
+    await pausa(900);
+    const prima = await stato();
+    await page.screenshot({ path: join(cartella, 'ricerca-all-invio-prima.png') });
+    await page.keyboard.press('Enter');
+    await pausa(900);
+    const dopo = await stato();
+    await page.screenshot({ path: join(cartella, 'ricerca-all-invio-dopo.png') });
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const aperto = await stato();
+    const bene = prima.righe === 0 && prima.cerche === 0 && prima.nota.includes(`«${parola}»`) && dopo.righe > 0 && dopo.cerche === 1 && aperto.ultima.startsWith('naviga /');
+    scrivi(bene ? '✅' : '❌', 'S.5', 'con invio=1 la ricerca dello staff parte solo con Invio, una volta, e Invio apre il primo risultato (#2965)', `prima di Invio: ${prima.righe} righe, ${prima.cerche} ricerche, «${prima.nota}» · dopo: ${dopo.righe} righe, ${dopo.cerche} ricerche · ${aperto.ultima}`);
+}
+
 // TO (dalla v3.17.0, #2910): il Toast della cornice. Sulla pagina coi parametri `toast=1` (e a 1280 px `dialogo=1`, un Dialog
 // aperto), che `staff.html` capisce: TO.1 e TO.3 il centro del Toast al centro della finestra e il fondo a 24 px dal fondo, a 1280 e a
 // 390 px; TO.2 sopra il Dialog, TO.4 sopra il cassetto aperto: al centro del Toast il punto è del Toast; TO.5 (v3.17.1) Tab dal
@@ -1174,6 +1205,7 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await loStaff(page);
         await senzaConfigurazione(page, apri, 1280);
+        await ricercaAllInvio(page, apri);
         await toastAlSuoPosto(page, apri, 1280);
         return a390(page, apri, diGoogle, errori, csp);
     }

@@ -5,6 +5,8 @@
     "planText": "Every action goes into the log.",
     "searchPlaceholder": "Search people and workspaces…",
     "searchHint": "Search people and workspaces: type at least 2 characters.",
+    "searchSubmitHint": "Search people and workspaces: type at least 2 characters and press Enter.",
+    "searchPressEnter": "Press Enter to search",
     "searchEmptyText": "Try the full email address or the company name.",
     "searchCount": "Results: {n}",
     "notificationsEmptyText": "No notifications arrive in the back office.",
