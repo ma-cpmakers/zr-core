@@ -275,13 +275,19 @@ export function useLinguaPronta(lingua: string): string | undefined {
     }
 
     useEffect(() => {
-        if (!linguaPronta(lingua)) {
-            caricaLaLingua(lingua).then(
-                () => arrivata((volte) => volte + 1),
-                () => nonArriva(lingua),
-            );
+        if (pronta) {
+            return;
         }
-    }, [lingua]);
+        // Arrivata fra il disegno e l'effetto (col precarico del server, prima del montaggio): si ridisegna, senza chiederla.
+        if (linguaPronta(lingua)) {
+            arrivata((volte) => volte + 1);
+            return;
+        }
+        caricaLaLingua(lingua).then(
+            () => arrivata((volte) => volte + 1),
+            () => nonArriva(lingua),
+        );
+    }, [lingua, pronta]);
 
     return pronta ? lingua : mostrata;
 }

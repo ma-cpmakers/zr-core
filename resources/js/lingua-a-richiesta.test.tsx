@@ -192,3 +192,44 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
         expect(contenitore.innerHTML).toBe('');
     });
 });
+
+// Sprint 106 · T4.2 (voce #3015). Col precarico del server (`Cornice::precaricoDellaLingua()`) la lingua chiesta da `<html lang>`
+// arriva prima che la cornice si monti: in Chromium fra il primo disegno, vuoto, e l'effetto che l'avrebbe chiesta. L'effetto la
+// trova pronta, e la cornice deve ridisegnarsi: senza, restava vuota per sempre (la UAT, R.L.1 su layout.html in spagnolo).
+describe('la lingua che arriva fra il disegno e l\'effetto (sprint 106 · T4.2)', () => {
+    it('in spagnolo, con la lingua arrivata dopo il primo disegno e prima del suo effetto, la cornice si disegna in spagnolo e non resta vuota', async () => {
+        const attese = new Map<string, () => void>();
+        // Risposte senza flussi: arrivano in qualche microtask, prima del giro in cui React fa gli effetti.
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((indirizzo: RequestInfo | URL) => {
+                const lingua = /\/lingue\/([\w-]+)\.json/.exec(String(indirizzo))?.[1] ?? '';
+
+                return new Promise((arriva) => attese.set(lingua, () => arriva({ ok: true, json: () => Promise.resolve(deiFile[lingua] ?? { data: [] }) })));
+            }),
+        );
+        document.documentElement.lang = 'es';
+        const { Fragment } = await import('react');
+        const { Cornice } = await import('./index');
+        expect([...attese.keys()].sort()).toStrictEqual(['en', 'es']);
+        // Le lingue arrivano mentre React disegna: il primo disegno della cornice è vuoto, l'effetto viene dopo che sono arrivate.
+        const Arrivano = () => {
+            attese.forEach((arriva) => arriva());
+            return null;
+        };
+        const ambiente = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+        ambiente.IS_REACT_ACT_ENVIRONMENT = false;
+        try {
+            radice.render(createElement(Fragment, null, createElement(Arrivano), createElement(Cornice, { dati: { ...dati, lingua: 'es' }, product: 'pm', onLogout: () => {} }, laPagina())));
+            for (let volta = 0; volta < 30 && contenitore.querySelector('#pagina') === null; volta++) {
+                await new Promise((fatto) => setTimeout(fatto, 10));
+            }
+        } finally {
+            ambiente.IS_REACT_ACT_ENVIRONMENT = true;
+        }
+
+        expect(contenitore.querySelector('#pagina')).not.toBeNull();
+        expect(visibile()).toContain(spagnolo.skipToContent);
+        expect(inUnAltraLingua(soloItaliani, soloInglesi)).toStrictEqual([]);
+    });
+});
