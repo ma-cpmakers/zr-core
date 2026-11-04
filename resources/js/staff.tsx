@@ -127,7 +127,9 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     }, [t.mainContent, t.searchResults]);
     // La `cerca` è quella di adesso, non quella del tasto di 300 ms fa: se il modulo l'ha tolta non parte niente. Una `cerca` che
     // lancia è una ricerca in errore, non un caricamento che non finisce.
+    const cercata = useRef<string>(undefined);
     const cercaParola = (parola: string) => {
+        cercata.current = parola;
         inVolo.current?.abort();
         const questa = (inVolo.current = new AbortController());
         const ora = conCerca.current;
@@ -142,7 +144,13 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     };
     const { area, logout, searchCount, ...dello } = testiDelloStaff(lingua);
     const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';
+    // Con la ricerca all'invio la risposta di una parola che nel campo non c'è più (la persona ha scritto mentre caricava) si vede
+    // solo tornando a quella parola: il lettore di schermo non ne dice il numero (revisione dello sprint 105, R1).
     useLayoutEffect(() => {
+        const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
+        if (numero && allInvio.current && campo?.value.trim() !== cercata.current) {
+            return;
+        }
         if (quanti.current && quanti.current.textContent !== numero) {
             quanti.current.textContent = numero;
         }

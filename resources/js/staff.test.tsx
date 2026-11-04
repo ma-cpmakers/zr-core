@@ -511,6 +511,25 @@ describe('la ricerca della cornice dello staff', () => {
         expect(cerca).toHaveBeenCalledTimes(1);
     });
 
+    it('con cercaAllInvio la zona di quanti risultati non dice il numero di una parola che non è più nel campo (revisione dello sprint 105, R1)', async () => {
+        const risposta = inAttesa();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={() => risposta.promessa} cercaAllInvio onLogout={esci} />);
+        await scrivi('an');
+        await invio();
+
+        // Mentre «an» carica si scrive «anc»: la risposta di «an», che non si annulla, non va al lettore di schermo.
+        await scrivi('anc');
+        await risposta.arriva([anna, clienti]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['']);
+
+        // Con la parola cercata nel campo e Invio di nuovo, il numero si dice.
+        const seconda = inAttesa();
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={() => seconda.promessa} cercaAllInvio onLogout={esci} />);
+        await invio();
+        await seconda.arriva([anna]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['Risultati: 1']);
+    });
+
     it.each([[undefined], [false]])('con cercaAllInvio=%s la ricerca parte da sola dal secondo carattere, come prima (sprint 105, T2.4)', async (cercaAllInvio) => {
         const cerca = vi.fn(async (_parola: string, _segnale: AbortSignal) => [anna]);
         await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} {...(cercaAllInvio === undefined ? {} : { cercaAllInvio })} onLogout={esci} />);

@@ -2522,11 +2522,12 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   (`role="status"`, classe `zr-visually-hidden`) che c'è da quando la cornice è montata, si svuota a ogni ricerca che parte e
   se ne va con la cornice.
 - **La ricerca all'invio**: dalla `v4.3.0` (#2965), con `cercaAllInvio` la cornice passa `searchOn="submit"` all'`AppShell`, e
-  `cerca` parte solo quando la persona preme Invio con 2 caratteri o più, una volta, mai da sola mentre scrive: ogni ricerca dello
-  staff pesa sul tetto orario del backoffice. Prima di Invio il pannello dice «Premi Invio per cercare «parola»», e l'invito
+  `cerca` parte solo quando la persona preme Invio con 2 caratteri o più, una volta per Invio, mai da sola mentre scrive: ogni
+  ricerca dello staff pesa sul tetto orario del backoffice. Invio sulla parola già cercata ricerca solo se i risultati erano
+  vuoti o in errore, o se il pannello si era chiuso nel frattempo (l'`AppShell` dimentica allora la parola cercata). Prima di Invio il pannello dice «Premi Invio per cercare «parola»», e l'invito
   dice di premere Invio, coi testi dello staff. Una parola cambiata dopo i risultati torna a «Premi Invio» senza chiamare `cerca`
-  e senza annullare la ricerca di prima; Invio sui risultati apre quello evidenziato. Senza la prop la ricerca è quella di
-  sopra.
+  e senza annullare la ricerca di prima, e la zona di stato non dice il numero di una parola che nel campo non c'è più; Invio
+  sui risultati apre quello evidenziato. Senza la prop la ricerca è quella di sopra.
 - **Cosa non c'è**: il selettore di workspace, il menu Moduli, le notifiche, il registro. La campanella resta, senza numero e
   col pannello vuoto, perché l'`AppShell` la disegna sempre (spegnerla è la richiesta 64 al design system).
 - **I testi** dello staff stanno in `resources/lingue/staff/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
