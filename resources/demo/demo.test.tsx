@@ -38,15 +38,16 @@ describe('la pagina di prova della Cornice e «Nuovo workspace»', () => {
     /** La pagina di prova caricata con quella query. */
     async function apri(query: string): Promise<void> {
         (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(`https://uat.example.com/${query}`);
+        // Moduli nuovi, e con loro la memoria delle frasi delle notifiche e delle lingue: qui sono già arrivate, come a una seconda
+        // apertura (in un browser sono file a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
+        // Prima della pagina, dalla `v4.4.0`: una cornice in inglese o in spagnolo aspetta la sua lingua per disegnarsi.
+        const { frasiInMemoria } = await import('../js/prove');
+        await frasiInMemoria();
         await act(async () => {
             await import('./index');
         });
         // I pezzi a richiesta che la cornice chiede al montaggio: i rimedi e, nello stato ridotto, i testi degli avvisi.
         await act(() => vi.dynamicImportSettled());
-        // Moduli nuovi, e con loro la memoria delle frasi delle notifiche: qui sono già arrivate, come a una seconda apertura
-        // (in un browser sono un file a richiesta: lo guarda la UAT, non questi casi, che contano i giri delle rotte finte).
-        const { frasiInMemoria } = await import('../js/prove');
-        await frasiInMemoria();
     }
 
     function uno(selettore: string): HTMLElement | null {

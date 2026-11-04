@@ -1,6 +1,6 @@
 import { createContext, createElement, useContext, useEffect, useLayoutEffect, useReducer, useState } from 'react';
 import { Cornice, type CorniceProps, type DatiDellaCornice, type DatiDopo, type DatiSubito } from './cornice';
-import { testi } from './lingue';
+import { testi, useLinguaPronta } from './lingue';
 import { segno } from './servizi';
 import { Button, Logo } from './zeiras/componenti';
 
@@ -155,6 +155,8 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
  */
 function SenzaDati({ children, ...barra }: Pick<CorniceProps, 'nav' | 'active' | 'onNavigate' | 'onLogout' | 'children'>) {
     const [Barra, mostra] = useState<typeof import('./barra').default>();
+    // Senza dati non c'è la lingua della persona: quella del documento. La barra aspetta anche lei (dalla `v4.4.0`).
+    const lingua = useLinguaPronta(document.documentElement.lang);
 
     useEffect(() => {
         import('./barra').then((pezzo) => mostra(() => pezzo.default), () => undefined);
@@ -162,8 +164,8 @@ function SenzaDati({ children, ...barra }: Pick<CorniceProps, 'nav' | 'active' |
 
     return (
         <>
-            {/* Senza dati non c'è la lingua della persona: quella del documento, e i testi che mancano sono in inglese (come nella cornice). */}
-            {Barra && <Barra h={createElement} Button={Button} Logo={Logo} t={testi(document.documentElement.lang)} {...barra} />}
+            {/* I testi che alla lingua del documento mancano sono in inglese, come nella cornice. */}
+            {Barra && lingua !== undefined && <Barra h={createElement} Button={Button} Logo={Logo} t={testi(lingua)} {...barra} />}
             {children}
         </>
     );

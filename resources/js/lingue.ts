@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import italiano from '../lingue/it.json';
 import type { AppShellLabels } from '../zeiras/index';
 import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
@@ -256,6 +257,33 @@ export const { lingue, testi, linguaDeiTesti, pronta: linguaPronta, carica: cari
 // `<html lang>`. Se non arriva la chiederà la cornice.
 if (typeof document !== 'undefined' && document.documentElement.lang) {
     caricaLaLingua(document.documentElement.lang).catch(() => undefined);
+}
+
+/**
+ * La lingua in cui la cornice di chi parla `lingua` si disegna (dalla `v4.4.0`): lei, quando è pronta (`linguaPronta`); finché
+ * non lo è, quella che la cornice mostrava, se ne mostrava una, e niente (`undefined`) al primo disegno: la cornice aspetta invece
+ * di mostrarsi in un'altra lingua. Se non arriva, lei comunque, coi testi dell'italiano: la cornice non resta vuota. La chiede al
+ * montaggio e a ogni cambio di lingua, anche dopo una che non era arrivata.
+ */
+export function useLinguaPronta(lingua: string): string | undefined {
+    const [, arrivata] = useState(0);
+    const [mostrata, mostra] = useState<string>();
+    const [nonArrivata, nonArriva] = useState<string>();
+    const pronta = linguaPronta(lingua) || nonArrivata === lingua;
+    if (pronta && mostrata !== lingua) {
+        mostra(lingua);
+    }
+
+    useEffect(() => {
+        if (!linguaPronta(lingua)) {
+            caricaLaLingua(lingua).then(
+                () => arrivata((volte) => volte + 1),
+                () => nonArriva(lingua),
+            );
+        }
+    }, [lingua]);
+
+    return pronta ? lingua : mostrata;
 }
 
 /** Il nome di una voce del registro in una lingua: la Dashboard ha il testo `dashboard`, un prodotto il testo col suo id. */
