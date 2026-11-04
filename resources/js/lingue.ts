@@ -14,8 +14,10 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * di ogni codice che una chiave di `contesto` può portare (il ruolo di un membro del workspace) non è qui dalla `v3.9.0`: sta coi
  * testi del pezzo della ricerca, in `resources/lingue/ricerca/`, perché lo mostra solo una riga dei risultati. Le frasi delle
  * notifiche non sono qui: stanno in un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
+ * Non ci sono nemmeno i due testi dell'`AppShell` che mostra solo la ricerca all'invio (`searchOn: 'submit'`, dalla `v4.2.0`), che la
+ * cornice non chiede.
  */
-export type TestiDellaCornice = Required<AppShellLabels> &
+export type TestiDellaCornice = Required<Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter'>> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
     Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> & {

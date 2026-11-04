@@ -52,13 +52,13 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
-**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i nove stili di `tokens.json` — `display-xl`,
-`display`, `heading-1`, `heading-2`, `heading-3`, `body`, `body-sm`, `caption`, `overline` —, coi nomi del tema di Tailwind 4:
-per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e, nei quattro che la
-hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non sta nello stile: i
-primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sei del gruppo Testo, con `--font-sans`. Con
-Tailwind 4 un modulo li porta nel tema per nome, con le due famiglie, e scrive `text-heading-1 font-display` invece di
-`text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
+**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dieci stili di `tokens.json` — `display-xl`,
+`display`, `heading-1`, `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`, `overline` —, coi nomi
+del tema di Tailwind 4: per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e,
+nei quattro che la hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non
+sta nello stile: i primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sette del gruppo Testo, con
+`--font-sans`. Con Tailwind 4 un modulo li porta nel tema per nome, con le due famiglie, e scrive `text-heading-1 font-display`
+invece di `text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
 
 ```css
 @theme inline reference {
@@ -170,9 +170,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 48,9 KB | 16,8 KB | 63,1 KB | 13,3 KB |
-| la cornice e due componenti per nome | 52,2 KB | 17,9 KB | 63,1 KB | 13,3 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,7 KB | 40,3 KB | 63,1 KB | 13,3 KB |
+| solo la cornice, dall'ingresso per le app | 50,0 KB | 17,1 KB | 63,5 KB | 13,7 KB |
+| la cornice e due componenti per nome | 53,3 KB | 18,3 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 127,8 KB | 41,2 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -199,7 +199,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.213 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.573 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -220,7 +220,10 @@ l'ingresso pesa 403 byte in meno, e il tetto è la sua misura più 20 (zr-pm: l'
 alzare la soglia; il margine sta nel peso tolto, non nel tetto). Dalla `v3.8.1` è salito di 40 byte, alla misura più 20: la
 cornice ridotta richiede il pezzo degli avvisi se non è arrivato (sì di zr-pm). Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20:
 i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l'esito di un'opportunità) sono
-usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Hanno
+usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Dalla `v4.2.0` è salito di 360 byte, alla
+misura più 20: il design system nuovo, col codice dell'`AppShell` per la ricerca all'invio, `settings={false}` e la foto
+nell'avatar (352 byte), e la foto della persona nella cornice (8); un'eccezione di zr-pm senza contropartita (Decisione
+20570). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -258,8 +261,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 70,9 KB | 12,0 KB | 3,1 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 67,7 KB | 11,5 KB | 3,1 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 72,7 KB | 12,2 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 69,5 KB | 11,8 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -401,6 +404,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v3.17.0` | il Toast della cornice, `ToastDellaCornice` (#2910): il `Toast` del design system già in basso al centro, a 24 px dal fondo più il bordo sicuro del telefono, sopra dialoghi, pannelli e cassetto; l'app che non lo usa pesa come prima (vedi «Il Toast della cornice») | niente; chi mostra un `Toast` col suo CSS di posizione può passare a `ToastDellaCornice` e togliere quel CSS | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.1-TO.4) |
 | `v3.17.1` | con un `Dialog` aperto il Toast della cornice si rende dentro il dialogo: il Tab del dialogo arriva ad «Annulla» e il lettore di schermo lo legge; chiuso il dialogo torna nel `body` (#2951); il testo entra nella regione `role="status"` 100 ms dopo la regione, perché sia annunciato | niente | niente | `scripts/uat-cornice.mjs --staff` su `staff.html` (TO.5) |
 | `v4.0.0` | la CSP di tutti senza Google Fonts: `style-src 'self'` e `font-src 'self'` (#2946); stringe, quindi maggiore («Passare alla v4») | `^4` nel `composer.json`, nella prossima PR; prima i font del pacchetto («Passare alla v3.15») | un caso che confronta la CSP intera la riscrive senza Google | `scripts/uat-cornice.mjs`: R.F e R.C ✅, in console nessun blocco della CSP |
+| `v4.2.0` | il design system `ds-1793813518-fdc2`: token nuovi (`label` 13/18, quattro spazi, quattro raggi, `--border-strong`), `SectionCard`, `Avatar` `src`, `AppShell` `settings`, `userPhoto` e `searchOn`, `DetailPanel` `modal` e `returnFocus`, `Switch` `aria-disabled`, `LineChart` `step`; la foto della persona nella cornice (#3014) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -502,8 +506,8 @@ public function share(Request $request): array
 Dalla `v4.1.0` la persona porta `foto` se ne ha una: l'indirizzo della rotta della foto, `/cornice/foto` col `?v=` di
 `utente.foto_aggiornata_il` di `io.mostra` (codificato) e `p`, di chi è, letto nella stessa lettura delle non lette; il `?v=` cambia a ogni
 sostituzione, e la foto nuova non resta nella cache del browser. Senza foto, e nei dati ridotti, la chiave non c'è: i dati
-sono quelli di prima. `Cornice::subito()` non la porta (non legge il backoffice), e nemmeno la cornice ridotta. La cornice
-oggi non la mostra: aspetta l'`Avatar` con l'immagine nel design system (vedi «Le rotte della cornice»).
+sono quelli di prima. `Cornice::subito()` non la porta (non legge il backoffice), e nemmeno la cornice ridotta. Dalla
+`v4.2.0` la cornice la mostra nell'avatar della barra e in cima al menu del profilo (vedi «Le rotte della cornice»).
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
@@ -729,8 +733,9 @@ nella cache del browser sotto il suo indirizzo. Altrimenti risponde `200` coi by
 risponde la guardia di zr-auth, come a ogni GET del gruppo `web`. Un `<img>` non manda le intestazioni della persona: la foto
 sta fuori da `StessaPersona` e da `ConWorkspace`, e le regole sulla persona e sul workspace che seguono, scritte per le
 quattro rotte, non valgono per lei; risponde solo alla persona della sessione, con la sua foto, anche senza un workspace.
-Oggi la cornice non la mostra: l'`Avatar` del design system ha solo le iniziali, e la foto entra quando il design system gli
-dà un'immagine, con una versione minore di zr-core. Una pagina del frontend che mostra la foto della persona usa la stessa
+Dalla `v4.2.0` la cornice la mostra: l'`Avatar` del design system (`src`, e `userPhoto` dell'`AppShell`) la mette nell'avatar
+della barra e in cima al menu del profilo, con un testo alternativo vuoto perché il nome sta accanto; senza foto, o se non si
+carica, restano le iniziali. Una pagina del frontend che mostra la foto della persona usa la stessa
 rotta con l'indirizzo che dà `persona.foto`, mai `/cornice/foto` da solo, che senza `p` risponde `404`. `p` non è
 un'identità: è lo stesso per la persona in tutto il frontend, e cambia con `APP_KEY` (le schede aperte ricevono il `404` fino
 al ricaricamento); senza una chiave dell'app non c'è, e nemmeno la foto. La richiesta della foto non diventa la pagina di

@@ -108,10 +108,12 @@ import * as React from 'react';
   }
   function Avatar(p) {
     var size = p.size || 'md';
+    var failSt = useState(null), failed = failSt[0], setFailed = failSt[1];
+    var photo = p.src && failed !== p.src ? p.src : null; /* senza foto, o se non si carica: le iniziali */
     return h('span', {
-      className: cx('zr-avatar', 'zr-avatar-' + size, 'zr-label-' + (p.tone || toneFor(p.name)), p.className),
+      className: cx('zr-avatar', 'zr-avatar-' + size, 'zr-label-' + (p.tone || toneFor(p.name)), photo && 'has-photo', p.className),
       title: p.name, role: 'img', 'aria-label': p.name
-    }, initials(p.name));
+    }, initials(p.name), photo ? h('img', { className: 'zr-avatar-img', src: photo, alt: '', onError: function () { setFailed(photo); } }) : null);
   }
   function AvatarStack(p) {
     var people = p.people || [], max = p.max || 3;
@@ -142,7 +144,7 @@ import * as React from 'react';
     soon: 'Presto', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace',
-    search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.',
+    search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
     notifications: 'Notifiche', unread: 'non lette', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
@@ -291,22 +293,27 @@ import * as React from 'react';
     var results = p.searchResults || [];
     var sState = p.searchState || 'ready';
     var showPanel = pop === 'search';
+    var onSubmit = p.searchOn === 'submit'; /* la ricerca parte solo con Invio */
+    var askedSt = useState(null), asked = askedSt[0], setAsked = askedSt[1];
+    useEffect(function () { if (pop !== 'search') setAsked(null); }, [pop]); /* chiuso il pannello, la parola si ricerca con Invio */
     function runSearch(v) {
       setQ(v); setHi(0); setPop('search');
       clearTimeout(timer.current);
-      if (v.trim().length >= 2 && p.onSearch) timer.current = setTimeout(function () { p.onSearch(v.trim()); }, 300);
+      if (!onSubmit && v.trim().length >= 2 && p.onSearch) timer.current = setTimeout(function () { p.onSearch(v.trim()); }, 300);
     }
     function pick(r) { if (!r) return; setPop(null); if (inputRef.current) inputRef.current.blur(); if (p.onSelectResult) p.onSelectResult(r); }
     function searchKeys(e) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setPop(null); e.currentTarget.blur(); return; }
-      if (!showPanel || q.trim().length < 2 || !results.length) return;
+      if (onSubmit && e.key === 'Enter' && q.trim().length >= 2 && (q.trim() !== asked || sState === 'error' || (sState === 'ready' && !results.length))) { e.preventDefault(); setAsked(q.trim()); setHi(0); setPop('search'); if (p.onSearch) p.onSearch(q.trim()); return; }
+      if (!showPanel || q.trim().length < 2 || !results.length || (onSubmit && (q.trim() !== asked || sState !== 'ready'))) return;
       if (e.key === 'ArrowDown') { e.preventDefault(); setHi((hi + 1) % results.length); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((hi + results.length - 1) % results.length); }
       else if (e.key === 'Enter') { e.preventDefault(); pick(results[hi]); }
     }
     var qOk = q.trim().length >= 2;
     var panelBody;
-    if (!qOk) panelBody = h('p', { className: 'zr-search-note' }, L.searchHint);
+    if (!qOk) panelBody = h('p', { className: 'zr-search-note' }, onSubmit ? L.searchSubmitHint : L.searchHint);
+    else if (onSubmit && q.trim() !== asked) panelBody = h('p', { className: 'zr-search-note' }, h('strong', null, L.searchPressEnter + ' «' + q.trim() + '»'));
     else if (sState === 'loading') panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('span', { className: 'zr-visually-hidden' }, L.searchLoading), h(Skeleton, { lines: 3 }));
     else if (sState === 'error') panelBody = h('p', { className: 'zr-search-note is-error', role: 'alert' }, L.searchError);
     else if (!results.length) panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('strong', null, L.searchEmpty + ' «' + q.trim() + '»'), h('span', null, L.searchEmptyText));
@@ -322,7 +329,7 @@ import * as React from 'react';
       });
       panelBody = h('div', { id: sid + '-results', role: 'listbox', 'aria-label': L.searchResults }, rows);
     }
-    var listOpen = showPanel && qOk && sState === 'ready' && results.length > 0;
+    var listOpen = showPanel && qOk && sState === 'ready' && results.length > 0 && !(onSubmit && q.trim() !== asked);
 
     /* ---- Notifiche ---- */
     var notes = p.notifications || [];
@@ -394,7 +401,7 @@ import * as React from 'react';
               g.items.map(item));
           })),
         h('div', { className: 'zr-side-foot' },
-          item(settingsItem),
+          p.settings === false ? null : item(settingsItem),
           h('div', { className: 'zr-plan' },
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
@@ -404,7 +411,7 @@ import * as React from 'react';
         h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); } } },
           h('span', { className: 'zr-search-icon' }, h(Icon, { name: 'search', size: 18 })),
           h('input', { ref: inputRef, type: 'search', value: q, placeholder: p.searchPlaceholder || L.searchPlaceholder, 'aria-label': L.search, role: 'combobox', 'aria-autocomplete': 'list',
-            'aria-expanded': listOpen ? 'true' : 'false', 'aria-controls': listOpen ? sid + '-results' : undefined, 'aria-activedescendant': listOpen ? sid + '-r' + hi : undefined, 'aria-keyshortcuts': IS_MAC ? 'Meta+K' : 'Control+K',
+            'aria-expanded': listOpen ? 'true' : 'false', 'aria-controls': listOpen ? sid + '-results' : undefined, 'aria-activedescendant': listOpen ? sid + '-r' + hi : undefined, 'aria-keyshortcuts': IS_MAC ? 'Meta+K' : 'Control+K', enterKeyHint: onSubmit ? 'search' : undefined,
             onFocus: function () { setPop('search'); }, onChange: function (e) { runSearch(e.target.value); }, onKeyDown: searchKeys }),
           h('kbd', null, kbd),
           showPanel ? h('div', { className: 'zr-search-panel' }, panelBody) : null),
@@ -415,10 +422,10 @@ import * as React from 'react';
             onClick: function () { var next = pop === 'notif' ? null : 'notif'; setPop(next); if (next && p.onNotificationsOpen) p.onNotificationsOpen(); } },
             h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: 'zr-bell-count', 'aria-hidden': 'true' }, unreadText) : null),
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
-            onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user })),
+            onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user, src: p.userPhoto })),
           notifPanel,
           pop === 'profile' ? h(Menu, { anchor: avatarRef.current, inline: true, label: L.account, items: profileItems, className: 'zr-profile-menu',
-        head: h('div', { className: 'zr-profile-head' }, h(Avatar, { name: user }), h('span', null, h('strong', null, user), p.email ? h('span', null, p.email) : null, p.planName ? h('span', null, p.planName) : null)),
+        head: h('div', { className: 'zr-profile-head' }, h(Avatar, { name: user, src: p.userPhoto }), h('span', null, h('strong', null, user), p.email ? h('span', null, p.email) : null, p.planName ? h('span', null, p.planName) : null)),
         onClose: function () { setPop(null); } }) : null)),
       h('main', { className: cx('zr-main', p.flush && 'is-flush', crumbs && 'has-crumbs') },
         crumbs ? [h('div', { key: 'cb', className: 'zr-crumbbar' }, crumbs), h('div', { key: 'body', className: 'zr-main-body' }, p.children)] : p.children));
@@ -1088,8 +1095,9 @@ import * as React from 'react';
   function Switch(p) {
     var ctrl = p.checked !== undefined;
     var st = useState(!!p.defaultChecked), on = ctrl ? p.checked : st[0];
-    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, className: cx('zr-switch', on && 'is-on', p.className),
-      onClick: function () { if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } },
+    var off = p['aria-disabled'] === true || p['aria-disabled'] === 'true'; /* spento ma raggiungibile: tiene il fuoco */
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, className: cx('zr-switch', on && 'is-on', p.className),
+      onClick: function () { if (off) return; if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } },
       h('span', { className: 'zr-switch-track', 'aria-hidden': true }, h('span', { className: 'zr-switch-thumb' })),
       p.label ? h('span', { className: 'zr-switch-label' }, p.label) : null);
   }
@@ -1281,7 +1289,8 @@ import * as React from 'react';
           tip ? h('line', { x1: xAt(tip.i), x2: xAt(tip.i), y1: PAD.t, y2: PAD.t + ih, className: 'zr-crosshair' }) : null,
           series.map(function (s, k) {
             var c = s.color || k + 1;
-            var d = s.data.map(function (v, i) { return (i ? 'L' : 'M') + xAt(i).toFixed(1) + ' ' + yAt(v).toFixed(1); }).join(' ');
+            var step = s.step !== undefined ? s.step : p.step; /* a gradino: orizzontale fino al punto dopo, poi il salto */
+            var d = s.data.map(function (v, i) { return !i ? 'M' + xAt(i).toFixed(1) + ' ' + yAt(v).toFixed(1) : step ? 'H' + xAt(i).toFixed(1) + ' V' + yAt(v).toFixed(1) : 'L' + xAt(i).toFixed(1) + ' ' + yAt(v).toFixed(1); }).join(' ');
             return h('g', { key: s.name },
               p.area && k === 0 ? h('path', { d: d + ' L' + xAt(s.data.length - 1) + ' ' + (PAD.t + ih) + ' L' + xAt(0) + ' ' + (PAD.t + ih) + 'Z', className: 'zr-area zr-fill-chart-' + c }) : null,
               h('path', { d: d, className: cx('zr-line', 'zr-stroke-chart-' + c, s.dashed && 'is-dashed') }),
@@ -1360,6 +1369,20 @@ import * as React from 'react';
       p.delta != null ? h('div', { className: 'zr-stat-foot' },
         h('span', { className: cx('zr-delta', p.delta === 0 ? 'is-flat' : good ? 'is-good' : 'is-bad') }, h(Icon, { name: up ? 'trendUp' : 'trendDown', size: 14 }), (up ? '+' : '') + String(p.delta).replace('.', ',') + '%'),
         h('span', null, p.deltaLabel || 'vs periodo precedente')) : null);
+  }
+
+  /* Riquadro di sezione: titolo, azioni a destra, contenuto qualsiasi (dati di una scheda, un elenco, un modulo d'ingresso) */
+  var sectionCardUid = 0;
+  function SectionCard(p) {
+    var idRef = useRef(null); if (!idRef.current) { sectionCardUid += 1; idRef.current = 'zr-section-card-' + sectionCardUid; }
+    var tid = idRef.current + '-t';
+    var head = p.title || p.actions ? h('header', { className: 'zr-section-card-head' },
+      p.title ? h('div', { className: 'zr-section-card-heading' }, h(p.headingLevel === 3 ? 'h3' : 'h2', { id: tid, className: 'zr-section-card-title' }, p.title), p.subtitle ? h('p', { className: 'zr-section-card-sub' }, p.subtitle) : null) : h('span'),
+      p.actions ? h('div', { className: 'zr-section-card-actions' }, p.actions) : null) : null;
+    return h('section', { id: p.id, className: cx('zr-section-card', p.variant === 'standalone' && 'is-standalone', p.className), 'aria-labelledby': p.title ? tid : undefined, 'aria-label': p.title ? undefined : p['aria-label'] },
+      head,
+      h('div', { className: 'zr-section-card-body' }, p.children),
+      p.footer ? h('footer', { className: 'zr-section-card-foot' }, p.footer) : null);
   }
 
   function ChartCard(p) {
@@ -1721,22 +1744,50 @@ import * as React from 'react';
   }
 
   /* ---------- DetailPanel (P-15: dettaglio nel pannello a destra) ---------- */
+  var PANEL_FULL = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, il pannello copre la pagina */
+  var FOCUSABLE = ['a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])', 'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]'].map(function (s) { return s + ':not([tabindex="-1"])'; }).join(', ');
   function DetailPanel(p) {
-    var ref = useRef(null);
+    var ref = useRef(null), last = useRef(p); last.current = p;
+    var mqRef = useRef(undefined); if (mqRef.current === undefined) mqRef.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PANEL_FULL) : null;
+    var mq = mqRef.current;
+    var fullSt = useState(mq ? mq.matches : false), full = fullSt[0], setFull = fullSt[1];
+    React.useEffect(function () {
+      if (!mq) return;
+      function ch() { setFull(mq.matches); }
+      if (mq.addEventListener) mq.addEventListener('change', ch); else mq.addListener(ch);
+      return function () { if (mq.removeEventListener) mq.removeEventListener('change', ch); else mq.removeListener(ch); };
+    }, []);
+    /* modale: con modal={true}, o da solo quando copre la pagina (sotto 720 px, non inline) */
+    var modal = p.modal !== undefined ? !!p.modal : (!p.inline && full);
     React.useEffect(function () {
       var origin = document.activeElement;
       var t = ref.current && (ref.current.querySelector('[data-autofocus]') || ref.current);
       if (t && t.focus) try { t.focus({ preventScroll: true }); } catch (e) {}
-      function key(e) { if (e.key === 'Escape' && p.onClose && !document.querySelector('.zr-scrim') && !document.querySelector('.zr-menu')) p.onClose(); }
+      function key(e) {
+        /* un Esc già usato da altro, o con sopra un dialogo o un menu, non chiude il pannello */
+        if (e.key !== 'Escape' || e.defaultPrevented || !last.current.onClose) return;
+        if (document.querySelector('.zr-scrim, .zr-menu, dialog[open], [role="menu"]')) return;
+        last.current.onClose();
+      }
       document.addEventListener('keydown', key);
       return function () {
         document.removeEventListener('keydown', key);
+        var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf;
         var id = origin && origin.getAttribute && origin.getAttribute('data-id');
-        var back = id ? document.querySelector('[data-id="' + id + '"]') : origin;
+        var back = target && document.contains(target) ? target : id ? document.querySelector('[data-id="' + id + '"]') : origin;
         if (back && document.contains(back) && back.focus && !document.querySelector('.zr-detail')) try { back.focus({ preventScroll: true }); } catch (e) {}
       };
     }, []);
-    return h('aside', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': 'false', 'aria-label': p.label },
+    /* il Tab resta dentro quando il pannello è modale */
+    function trap(e) {
+      if (!modal || e.key !== 'Tab' || !ref.current || document.querySelector('.zr-scrim, dialog[open]')) return; /* un dialogo aperto sopra tiene lui il Tab */
+      var els = Array.prototype.filter.call(ref.current.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; });
+      if (!els.length) { e.preventDefault(); ref.current.focus(); return; }
+      var first = els[0], lastEl = els[els.length - 1], a = document.activeElement;
+      if (e.shiftKey && (a === first || a === ref.current)) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && a === lastEl) { e.preventDefault(); first.focus(); }
+    }
+    return h('aside', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
       h('header', { className: 'zr-detail-head' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || 'Indietro'),
         h('div', { className: 'zr-detail-ctx' }, p.head),
@@ -1792,6 +1843,7 @@ export {
   FilterBar,
   StatCard,
   ChartCard,
+  SectionCard,
   LineChart,
   BarChart,
   DonutChart,

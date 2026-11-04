@@ -772,7 +772,20 @@ function italianoDecisoPrimaDelDesignSystem(): array
  */
 function italianoAtteso(): array
 {
-    return [...testiItalianiDelDesignSystem(), ...italianoDecisoPrimaDelDesignSystem()];
+    return [...array_diff_key(testiItalianiDelDesignSystem(), array_flip(testiDellAppShellCheLaCorniceNonUsa())), ...italianoDecisoPrimaDelDesignSystem()];
+}
+
+/**
+ * I testi dell'`AppShell` che la cornice non mostra mai, e che quindi non stanno nelle sue lingue (sprint 104, design system
+ * ds-1793812748-4f74): l'invito e il «Premi Invio» della ricerca che parte solo a Invio (`searchOn: 'submit'`, riga 164), che la
+ * cornice non chiede. Nelle lingue della cornice, che stanno nel JS d'ingresso, costerebbero 85 byte con gzip; li ha la cornice
+ * dello staff, con le sue lingue, quando cerca all'invio (voce #2965).
+ *
+ * @return list<string>
+ */
+function testiDellAppShellCheLaCorniceNonUsa(): array
+{
+    return ['searchSubmitHint', 'searchPressEnter'];
 }
 
 /**
@@ -804,7 +817,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
 {
     $prodotti ??= idDeiProdotti();
     $chiavi = [
-        ...chiaviDiAppShellLabels(), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
+        ...array_diff(chiaviDiAppShellLabels(), testiDellAppShellCheLaCorniceNonUsa()), 'products', 'dashboard', 'notificationTitle', 'unreadOne', 'markingAllRead', 'markRestRead', 'unreadNone',
         'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'skipToContent', 'mainContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
@@ -938,6 +951,8 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
     $lingue['it']['soon'] = 'Fra poco';
     $lingue['it']['reports'] = 'Reports';
     $lingue['it']['ciao'] = 'Ciao';
+    // Sprint 104: un testo dell'`AppShell` che la cornice non mostra non sta nelle sue lingue.
+    $lingue['es']['searchPressEnter'] = 'Pulsa Intro para buscar';
 
     // Le letture del design system non sono vuote: chiavi, testi con l'apostrofo, menu di partenza coi nomi dei prodotti.
     expect(chiaviDiAppShellLabels())->toContain('soon', 'logout', 'crumbs')
@@ -951,6 +966,7 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
             'en: manca «pm.board.cartelle»',
             'es: «retry» è vuoto',
             'es: «pm.scheda» non è un testo della cornice',
+            'es: «searchPressEnter» non è un testo della cornice',
             'it: «ciao» non è un testo della cornice',
             'it: «soon» non è il testo del design system',
             'it: «reports» non è il testo del design system',

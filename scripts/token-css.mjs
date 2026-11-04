@@ -3,9 +3,10 @@
 // `--font-display` e `--font-sans` per le famiglie —, che sono i nomi che usa bundle.css. Di colori e ombre vale il tema chiaro;
 // un valore che rimanda a un altro token (`{pine}`) diventa `var(--pine)`. Dalla v3.13.0 (voce #2828) anche gli stili di testo,
 // coi nomi del tema di Tailwind 4: `--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight` e, dove
-// c'è, `--text-heading-1--letter-spacing`. È un file statico, non uno stile iniettato da JS: con una CSP senza 'unsafe-inline'
-// lo stile iniettato è bloccato. Si lancia con `npm run token` a ogni riallineamento; `npm run token -- --controlla` non scrive:
-// rigenera in memoria, confronta col file ed esce con 1 se è diverso.
+// c'è, `--text-heading-1--letter-spacing`; dalla v4.2.0 anche gli spessori di bordo (`--border-strong`, richiesta 139). È un
+// file statico, non uno stile iniettato da JS: con una CSP senza 'unsafe-inline' lo stile iniettato è bloccato. Si lancia con
+// `npm run token` a ogni riallineamento; `npm run token -- --controlla` non scrive: rigenera in memoria, confronta col file ed
+// esce con 1 se è diverso.
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const token = JSON.parse(readFileSync(new URL('../resources/zeiras/tokens.json', import.meta.url), 'utf8'));
@@ -14,7 +15,7 @@ const valore = (testo) => String(testo).replace(/^\{([a-z0-9-]+)\}$/, 'var(--$1)
 
 const variabili = [
     ...[token.color, token.shadow].flatMap((gruppo) => gruppo.tokens.map(({ name, value }) => [`--${name}`, valore(value.light)])),
-    ...[token.spacing, token.radius, token.layout, token.zIndex].flatMap((gruppo) =>
+    ...[token.spacing, token.radius, token.layout, token.zIndex, token.border].flatMap((gruppo) =>
         gruppo.tokens.map(({ name, value }) => [`--${name}`, valore(value)]),
     ),
     ...Object.entries(token.type.families).map(([famiglia, testo]) => [`--font-${famiglia}`, valore(testo)]),

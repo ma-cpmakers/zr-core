@@ -5,5 +5,5 @@
 .zr-address-box .zr-mention-x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
 .zr-address-list { max-height: 300px; }
 .zr-address-ico { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); flex: none; }
-.zr-address-attr { padding: 6px var(--space-2) 2px; text-align: right; font-size: 11px; line-height: 16px; color: var(--ink-muted); border-top: 1px solid var(--line); margin-top: var(--space-1); }
+.zr-address-attr { padding: var(--space-1-5) var(--space-2) 2px; text-align: right; font-size: 11px; line-height: 16px; color: var(--ink-muted); border-top: 1px solid var(--line); margin-top: var(--space-1); }
 .zr-field-msg.zr-address-ok { color: var(--success); }

@@ -38,8 +38,8 @@ export interface DatiDellaCornice {
         impronta?: string | null;
         /**
          * L'indirizzo della foto della persona (dalla `v4.1.0`): la rotta `/cornice/foto` col `?v=` del momento della foto e `p`, di
-         * chi è. C'è solo
-         * se la persona ne ha una. La cornice non la mostra ancora: l'`Avatar` del design system ha solo le iniziali.
+         * chi è. C'è solo se la persona ne ha una. Dalla `v4.2.0` la cornice la mostra nell'avatar della barra e del menu del
+         * profilo (`userPhoto` dell'`AppShell`); senza, o se non si carica, restano le iniziali.
          */
         foto?: string | undefined;
     };
@@ -1008,6 +1008,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 searchState: ridotta ?? ricerca?.stato ?? 'ready',
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
                 onNewWorkspace: nuovoWorkspace,
+                // La foto della persona, se ce l'ha (dalla `v4.2.0`): senza, l'`Avatar` mette le iniziali.
+                userPhoto: persona.foto,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
