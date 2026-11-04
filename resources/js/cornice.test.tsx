@@ -1708,6 +1708,17 @@ describe('il pannello delle notifiche', () => {
         expect(document.body.innerHTML).not.toContain(impronta);
     });
 
+    // Sprint 99 · T2.4 (voce #2982): i dati portano l'indirizzo della foto, ma l'`Avatar` del design system ha solo le iniziali.
+    it('coi dati che portano `persona.foto` la cornice resta quella di prima: nessuna immagine e nessuna richiesta della foto, nemmeno col menu del profilo aperto (sprint 99 · T2.4)', async () => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ data: [] }));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, persona: { ...dati.persona, foto: '/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z' } }} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-avatar-btn'));
+
+        expect(document.body.innerHTML).not.toContain('/cornice/foto');
+        expect(richieste(fetchFinto)).toStrictEqual([]);
+    });
+
     // Sprint 60 (review della PR #96, R1; sicurezza S1): un'email può passare da un account a un altro. Con la stessa email e
     // un'altra impronta la cornice è di un'altra persona: si rifà, e niente di ciò che teneva resta sotto il nome nuovo.
     it('dati più nuovi con la stessa email e un\'altra impronta rifanno la cornice: il pannello aperto si chiude, e la richiesta dopo porta l\'impronta nuova (sprint 60 · T1.1, R1, S1)', async () => {

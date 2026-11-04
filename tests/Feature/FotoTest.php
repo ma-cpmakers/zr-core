@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Http\Middleware\ConGettone;
 use Zeiras\Auth\Http\Middleware\SoloDallaPersona;
 use Zeiras\Auth\Persona;
+use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\ConWorkspace;
 use Zeiras\Core\Http\StessaPersona;
 
@@ -155,4 +157,82 @@ it('fra le rotte della cornice la foto è la sola fuori da StessaPersona e da Co
     // Il controllo nei due versi: un'altra rotta della cornice fuori da StessaPersona si vede.
     Route::middleware('web')->get('cornice/scoperta', fn () => 'senza la persona');
     expect($senza(StessaPersona::class))->toBe(['GET cornice/foto', 'GET cornice/scoperta']);
+});
+
+// Sprint 99 · T2 (voce #2982): l'indirizzo della foto nei dati della cornice. `persona.foto` è la rotta della foto col `?v=`
+// che io.mostra dà in `utente.foto_aggiornata_il`: cambia a ogni sostituzione, e una foto nuova non resta nella cache del
+// browser. Viene dalla stessa lettura di io.mostra delle non lette, e c'è solo se la persona ha una foto e i dati non sono
+// ridotti: senza, la chiave non c'è, e i dati restano quelli di prima.
+
+/** Il momento della foto che io.mostra dà nei casi, e l'indirizzo che ne fanno i dati. */
+const FOTO_AGGIORNATA_IL = '2026-11-04T09:30:00.000000Z';
+const INDIRIZZO_DELLA_FOTO = '/cornice/foto?v=2026-11-04T09%3A30%3A00.000000Z';
+
+/** io.mostra di Ada con tre non lette e `foto_aggiornata_il` com'è dato; `$senza` la toglie. */
+function ioMostraConFoto(mixed $foto, bool $senza = false): array
+{
+    $io = ioMostra(3);
+    if (! $senza) {
+        $io['data']['utente']['foto_aggiornata_il'] = $foto;
+    }
+
+    return $io;
+}
+
+/** La persona dei dati di Ada, con la foto. */
+function adaConLaFoto(string $indirizzo = INDIRIZZO_DELLA_FOTO): array
+{
+    return ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada'), 'foto' => $indirizzo];
+}
+
+it('Cornice::dati() e dopo() danno in `persona.foto` la rotta della foto col `?v=` di `foto_aggiornata_il`, dalla stessa lettura di io.mostra; un altro momento è un altro indirizzo (sprint 99 · T2.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL)]);
+
+    expect(Cornice::dati())->toBe(datiAttesi('2026-11-04T10:00:00.000000Z', ['persona' => adaConLaFoto()]));
+    richiestaNuova();
+    expect(Cornice::dopo()['persona'] ?? null)->toBe(adaConLaFoto())
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
+
+    richiestaNuova();
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto('2026-11-04T09:45:00.000000Z')]);
+    expect(Cornice::dati()['persona'] ?? null)->toBe(adaConLaFoto('/cornice/foto?v=2026-11-04T09%3A45%3A00.000000Z'));
+});
+
+it('senza una foto che si legge — `foto_aggiornata_il` null, che manca, vuoto o non un testo — la persona dei dati non ha `foto`, ed è quella di prima (sprint 99 · T2.1)', function (mixed $foto, bool $senza) {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto($foto, $senza)]);
+
+    expect(Cornice::dati())->toBe(datiAttesi('2026-11-04T10:00:00.000000Z'));
+})->with([
+    'null' => [null, false],
+    'che manca' => [null, true],
+    'vuoto' => ['', false],
+    'un numero' => [1793792000, false],
+    'una lista' => [[FOTO_AGGIORNATA_IL], false],
+]);
+
+it('la richiesta rimandata dà la foto della lettura della pagina, senza rileggere io.mostra (sprint 99 · T2.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL)]);
+
+    Cornice::lingua();
+    richiestaNuova();
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:02.000000', 'UTC'));
+
+    expect(Cornice::dopo()['persona'] ?? null)->toBe(adaConLaFoto())
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
+});
+
+it('i dati ridotti, `subito()` e la cornice ridotta non portano la foto, anche se io.mostra la dà (sprint 99 · T2.3)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL), '/v1/app' => accettazioneRichiesta()]);
+
+    expect(Cornice::dati())->toBe(datiRidotti('2026-11-04T10:00:00.000000Z'))
+        ->and(Cornice::subito()['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')])
+        ->and(Cornice::ridotta()['persona'] ?? null)->toBe(['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')]);
 });

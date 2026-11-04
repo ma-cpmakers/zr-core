@@ -492,12 +492,18 @@ public function share(Request $request): array
 
 | `Cornice::dati()` dà | quando |
 |---|---|
-| `{lingua, persona: {nome, email, impronta}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
+| `{lingua, persona: {nome, email, impronta, foto?}, workspace: {nome, slug}, prodotti: {<codice>: attivo \| disponibile \| in_arrivo}, aziende: [{id, nome, workspace: [{id, nome, slug}], nuovo_workspace}], non_lette, aggiornati_il}` | la persona è entrata in un workspace |
 | gli stessi dati, ridotti: `prodotti` `[]`, `aziende` `[]`, `non_lette` `0`, e in fondo `accettazione_richiesta: true` | dalla `v1.14.0`: la persona non ha ancora accettato i documenti legali in vigore, e a una delle letture il backoffice risponde 403 `accettazione_richiesta`. Non è un guasto, e `Cornice::dati()` non lancia (più sotto, «Chi non ha accettato i documenti legali») |
 | `null`, senza chiamare il backoffice | nessuna sessione, o una sessione senza workspace (prima della scelta) |
 | l'eccezione `BackofficeNonRisponde` di zr-auth | il backoffice non risponde, o (dalla `v2.17.0`) risponde con un elenco che la cornice non sa leggere — un'app, un'azienda o un workspace senza un campo testo: mai una lista di prodotti vuota, che li farebbe tutti «Presto», né aziende vuote o zero non lette |
 | l'eccezione `GettoneRifiutato` di zr-auth | il backoffice non accetta più il gettone (401): zr-auth chiude la sessione e rimanda all'ingresso da sé |
 | l'eccezione `ErroreApi` di zr-auth | il backoffice risponde con un altro errore (403, 404, 422, 429…): `stato` e `codice` lo dicono |
+
+Dalla `v4.1.0` la persona porta `foto` se ne ha una: l'indirizzo della rotta della foto, `/cornice/foto` col `?v=` di
+`utente.foto_aggiornata_il` di `io.mostra` (codificato), letto nella stessa lettura delle non lette; il `?v=` cambia a ogni
+sostituzione, e la foto nuova non resta nella cache del browser. Senza foto, e nei dati ridotti, la chiave non c'è: i dati
+sono quelli di prima. `Cornice::subito()` non la porta (non legge il backoffice), e nemmeno la cornice ridotta. La cornice
+oggi non la mostra: aspetta l'`Avatar` con l'immagine nel design system (vedi «Le rotte della cornice»).
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non

@@ -54,6 +54,9 @@ final class Cornice
     /** Il primo istante che la forma dei segni può dire, l'inizio dell'anno 0000: il segno di `ridotta()` senza una lettura. */
     private const IL_PIU_VECCHIO = '0000-01-01T00:00:00.000000Z';
 
+    /** Il momento di una foto più lungo che i dati portano (un istante ISO 8601 ne ha una trentina): oltre, senza foto. */
+    private const FOTO_IL_PIU_LUNGO = 64;
+
     /** Fino a quanti secondi dal suo segno la lettura tenuta per la richiesta rimandata vale. */
     private const SECONDI_DELLA_RIMANDATA = 10;
 
@@ -99,7 +102,11 @@ final class Cornice
      * StessaPersona dà 409 a quest'ultima). La cornice la manda in `X-Zr-Persona`, e StessaPersona la
      * confronta: un'email passata da un account a un altro non basta più a una scheda rimasta aperta. Non va mai a schermo.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * Dalla `v4.1.0`, se la persona ha una foto e i dati non sono ridotti, la persona porta anche `foto`: l'indirizzo della rotta
+     * della foto (`/cornice/foto`, FotoDellaCornice) col `?v=` di `utente.foto_aggiornata_il` della stessa lettura di
+     * io.mostra. Senza foto la chiave non c'è. `subito()` non la porta: non legge il backoffice.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -129,7 +136,7 @@ final class Cornice
 
         return [
             'lingua' => $utente['lingua'],
-            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta()],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($lettura['foto']))],
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             ...($letti === null ? [] : self::moduli($workspace['slug'])),
@@ -206,7 +213,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
      */
     public static function dopo(): ?array
     {
@@ -401,8 +408,8 @@ final class Cornice
     /**
      * La lettura di io.mostra di questa richiesta, una sola per `lingua()` e `dati()`: prende il segno, legge, dà la risposta a
      * `Sessione::aggiorna` e tiene fra gli attributi della richiesta di chi è (l'id della persona e il workspace della
-     * sessione), il segno, l'esito (le non lette, o l'errore al loro posto) e se una `dati()` l'ha già usata. Della risposta
-     * di io.mostra non tiene altro. Sta sulla richiesta e non in una proprietà statica, che passerebbe alla richiesta dopo
+     * sessione), il segno, l'esito (le non lette, o l'errore al loro posto), se una `dati()` l'ha già usata e, dalla `v4.1.0`,
+     * il momento della foto della persona (`fotoAggiornataIl()`). Della risposta di io.mostra non tiene altro. Sta sulla richiesta e non in una proprietà statica, che passerebbe alla richiesta dopo
      * dove il processo resta vivo; e porta di chi è, perché le non lette di un workspace non escano nei dati di un altro se
      * la sessione cambia a metà richiesta. Senza l'id della persona non si sa di chi è: la lettura tenuta non si usa.
      *
@@ -414,7 +421,7 @@ final class Cornice
      *
      * @param  array<string, mixed>  $utente  la persona della sessione
      * @param  array<string, mixed>  $workspace  il workspace della sessione
-     * @return array{di: array{mixed, array<string, mixed>}, segno: string, esito: int<0, max>|BackofficeNonRisponde|ErroreApi, nei_dati: bool}
+     * @return array{di: array{mixed, array<string, mixed>}, segno: string, esito: int<0, max>|BackofficeNonRisponde|ErroreApi, nei_dati: bool, foto: string|null}
      */
     private static function lettura(array $utente, array $workspace, bool $perIDati): array
     {
@@ -438,20 +445,22 @@ final class Cornice
             Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
             self::ricordaLaLingua($io, $segno);
             $esito = $io['notifiche_non_lette'];
+            $foto = self::fotoAggiornataIl($io, $di[0]);
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
+            $foto = null;
             // Il 403 `accettazione_richiesta` non è un guasto: non lascia un avviso.
             if (! $perIDati && ! Accettazione::richiesta($errore)) {
                 self::avvisa($errore);
             }
         }
 
-        $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati];
+        $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati, 'foto' => $foto];
         request()->attributes->set(self::LETTURA, $lettura);
 
         // La lettura della pagina, se è riuscita, resta per la sua richiesta rimandata; una fallita non resta, e toglie quella di prima.
         if (! $perIDati) {
-            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio()]) : session()->forget(self::RIMANDATA);
+            is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio(), 'foto' => $foto]) : session()->forget(self::RIMANDATA);
         }
 
         return $lettura;
@@ -461,14 +470,15 @@ final class Cornice
      * La lettura tenuta per la richiesta rimandata, se è della persona e del workspace della sessione; se non lo è più (un
      * cambio di workspace, un'altra persona entrata, nessuna sessione) o non ha la sua forma, la toglie dalla sessione e dà null.
      *
-     * @return array{di: array{0: string, 1: array<string, mixed>}, segno: string, esito: int, il: string}|null
+     * @return array{di: array{0: string, 1: array<string, mixed>}, segno: string, esito: int, il: string, foto: string|null}|null
      */
     private static function tenuta(): ?array
     {
         $tenuta = session(self::RIMANDATA);
         $id = Sessione::utente()['id'] ?? null;
 
-        if (is_string($id) && is_array($tenuta) && ($tenuta['di'] ?? null) === [$id, Sessione::workspace()] && is_string($tenuta['segno'] ?? null) && is_int($tenuta['esito'] ?? null) && is_string($tenuta['il'] ?? null)) {
+        if (is_string($id) && is_array($tenuta) && ($tenuta['di'] ?? null) === [$id, Sessione::workspace()] && is_string($tenuta['segno'] ?? null) && is_int($tenuta['esito'] ?? null) && is_string($tenuta['il'] ?? null)
+            && array_key_exists('foto', $tenuta) && ($tenuta['foto'] === null || is_string($tenuta['foto']))) {
             return $tenuta;
         }
 
@@ -491,7 +501,7 @@ final class Cornice
         session()->forget(self::RIMANDATA);
 
         if ($tenuta !== null && ! request()->attributes->has(self::LETTURA) && $tenuta['segno'] === (self::linguaIl()['lingua_il'] ?? null) && Segno::negliUltimi($tenuta['il'], self::SECONDI_DELLA_RIMANDATA)) {
-            request()->attributes->set(self::LETTURA, ['di' => $tenuta['di'], 'segno' => $tenuta['segno'], 'esito' => $tenuta['esito'], 'nei_dati' => false]);
+            request()->attributes->set(self::LETTURA, ['di' => $tenuta['di'], 'segno' => $tenuta['segno'], 'esito' => $tenuta['esito'], 'nei_dati' => false, 'foto' => $tenuta['foto']]);
         }
     }
 
@@ -662,6 +672,32 @@ final class Cornice
         }
 
         return $testi;
+    }
+
+    /**
+     * Il momento della foto della persona in io.mostra (`utente.foto_aggiornata_il`, dalla `v4.1.0`): un testo non vuoto, se la
+     * risposta è della persona della sessione e ha una foto; altrimenti null, e i dati sono senza foto. Non è un guasto: una foto
+     * che non si legge lascia l'avatar con le iniziali.
+     *
+     * @param  array<string, mixed>  $io  i `data` di io.mostra
+     */
+    private static function fotoAggiornataIl(array $io, mixed $id): ?string
+    {
+        $chi = $io['utente'] ?? null;
+        $il = is_array($chi) && $id !== null && ($chi['id'] ?? null) === $id ? ($chi['foto_aggiornata_il'] ?? null) : null;
+
+        return is_string($il) && $il !== '' && strlen($il) <= self::FOTO_IL_PIU_LUNGO ? $il : null;
+    }
+
+    /**
+     * La foto nella persona dei dati (dalla `v4.1.0`): `foto`, l'indirizzo della rotta della foto (FotoDellaCornice) col `?v=` del
+     * momento della foto, che cambia a ogni sostituzione e la tiene fuori dalla cache del browser; senza foto, niente.
+     *
+     * @return array{foto?: string}
+     */
+    private static function foto(?string $aggiornataIl): array
+    {
+        return $aggiornataIl === null ? [] : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl)];
     }
 
     /**
