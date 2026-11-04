@@ -541,6 +541,16 @@ async function percorso(page) {
 }
 
 /**
+ * Il pannello delle notifiche aperto è vuoto: niente da raggiungere col Tab oltre alle linguette, né righe né «Vedi tutte» (lo
+ * staff, a cui non arrivano notifiche, o una persona senza notifiche: voce #2986). Solo allora N.2 e D.2 si provano in un altro
+ * modo; un pannello con notifiche che ha perso le righe o il piede resta ❌ (revisione dello sprint 100, R1-R2).
+ */
+const pannelloVuoto = (page) => page.evaluate(() => {
+    const pannello = document.querySelector('.zr-top-actions > .zr-pop');
+    return !!pannello && ![...pannello.querySelectorAll('button, a[href], [tabindex]')].some((e) => e.getAttribute('role') !== 'tab' && e.tabIndex >= 0);
+});
+
+/**
  * I menu della barra in alto sopra il pannello di dettaglio (riga 102 delle richieste al design system). Se la pagina non ha
  * un `DetailPanel` aperto, ne mette uno finto: un elemento con la classe del design system in fondo al documento, che il CSS
  * del design system mette dove sta il pannello vero (fisso, sotto la barra, a destra, a `--z-dialog`). «Esci» (l'ultima voce
@@ -586,7 +596,7 @@ async function sopraIlPannello(page) {
     await page.waitForSelector('.zr-top-actions > .zr-pop', { timeout: 5000 }).catch(() => undefined);
     await pausa(500);
     // Un pannello senza «Vedi tutte» (lo staff, a cui non arrivano notifiche: voce #2986) si prova con la sua ultima linguetta.
-    const piede = (await page.$('.zr-top-actions > .zr-pop .zr-pop-foot button')) !== null;
+    const piede = !(await pannelloVuoto(page));
     const [notifiche, comeNotifiche] = await coperto('.zr-top-actions > .zr-pop', piede ? '.zr-top-actions > .zr-pop .zr-pop-foot button' : '.zr-top-actions > .zr-pop [role=tab]');
     scrivi(notifiche ? '✅' : '❌', 'D.2', 'il pannello delle notifiche sta sopra il pannello di dettaglio (riga 102)', `${piede ? '«Vedi tutte»' : 'senza «Vedi tutte», l\'ultima linguetta'}: ${comeNotifiche}`);
     await page.screenshot({ path: join(cartella, 'pannello-notifiche-1280.png') });
@@ -852,10 +862,11 @@ async function linguetteDelleNotifiche(page) {
 
     // Col fuoco sulla linguetta scelta, Tab va oltre le linguette e Maiusc+Tab torna a lei; scelta «Tutte», Maiusc+Tab non si ferma su «Per me».
     const linguetta = () => page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' ? document.activeElement.textContent : '-');
+    const vuoto = await pannelloVuoto(page);
     await page.keyboard.press('Tab');
     await pausa(150);
     const avanti = await linguetta();
-    if (!(await page.$('.zr-top-actions > .zr-pop'))) {
+    if (vuoto && !(await page.$('.zr-top-actions > .zr-pop'))) {
         // Dopo le linguette il pannello non ha niente da raggiungere (lo staff, a cui non arrivano notifiche: voce #2986): il Tab esce
         // e il pannello si chiude (#2804), e il ritorno con Maiusc+Tab non si chiede. Si riapre, si sceglie «Tutte» e si prova da lì.
         await page.focus('.zr-shell .zr-bell');
