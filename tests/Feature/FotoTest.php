@@ -188,19 +188,27 @@ function adaConLaFoto(string $indirizzo = INDIRIZZO_DELLA_FOTO): array
     return ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada'), 'foto' => $indirizzo];
 }
 
-it('Cornice::dati() e dopo() danno in `persona.foto` la rotta della foto col `?v=` di `foto_aggiornata_il`, dalla stessa lettura di io.mostra; un altro momento è un altro indirizzo (sprint 99 · T2.1)', function () {
+it('Cornice::dati() e dopo() danno in `persona.foto` la rotta della foto col `?v=` di `foto_aggiornata_il`, dalla stessa lettura di io.mostra; un altro momento è un altro indirizzo (sprint 99 · T2.1)', function (string $quale, string $il, string $indirizzo) {
+    Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
+    sessioneAMano(marketing());
+    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto($il)]);
+
+    $dati = $quale === 'dati' ? Cornice::dati() : Cornice::dopo();
+
+    expect($dati['persona'] ?? null)->toBe(adaConLaFoto($indirizzo))
+        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(1);
+})->with([
+    'dati()' => ['dati', FOTO_AGGIORNATA_IL, INDIRIZZO_DELLA_FOTO],
+    'dopo()' => ['dopo', FOTO_AGGIORNATA_IL, INDIRIZZO_DELLA_FOTO],
+    'un altro momento' => ['dati', '2026-11-04T09:45:00.000000Z', '/cornice/foto?v=2026-11-04T09%3A45%3A00.000000Z'],
+]);
+
+it('con la foto il resto dei dati è quello di prima (sprint 99 · T2.1)', function () {
     Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00.000000', 'UTC'));
     sessioneAMano(marketing());
     backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto(FOTO_AGGIORNATA_IL)]);
 
     expect(Cornice::dati())->toBe(datiAttesi('2026-11-04T10:00:00.000000Z', ['persona' => adaConLaFoto()]));
-    richiestaNuova();
-    expect(Cornice::dopo()['persona'] ?? null)->toBe(adaConLaFoto())
-        ->and(array_count_values(percorsiChiamati())['/v1/io'])->toBe(2);
-
-    richiestaNuova();
-    backofficeDiChiHaAccettato(['/v1/io' => ioMostraConFoto('2026-11-04T09:45:00.000000Z')]);
-    expect(Cornice::dati()['persona'] ?? null)->toBe(adaConLaFoto('/cornice/foto?v=2026-11-04T09%3A45%3A00.000000Z'));
 });
 
 it('senza una foto che si legge — `foto_aggiornata_il` null, che manca, vuoto o non un testo — la persona dei dati non ha `foto`, ed è quella di prima (sprint 99 · T2.1)', function (mixed $foto, bool $senza) {
