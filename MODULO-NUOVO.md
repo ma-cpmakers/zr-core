@@ -366,6 +366,10 @@ richiesta (senza una lettura, il primo istante che la forma dei segni può dire)
 righe nel log — per esempio quando il 403 di `Cornice::dopo()` si ripete dopo la ricarica
 (README, «La cornice in due dati»).
 
+Fra le rotte della cornice fa eccezione la foto della persona (`GET /cornice/foto`, dalla `v4.1.0`): la chiede un `<img>`,
+che non manda l'intestazione `Persona` che le altre vogliono. Una tua pagina la mostra con l'indirizzo che dà `persona.foto`
+(README, «Le rotte della cornice»).
+
 Dalla `v2.11.0` i segni non vanno indietro per lo stesso browser: l'ultimo dato sta nel cookie `__Host-zr-core-segno`,
 che la parte server scrive da sé nel gruppo `web`, senza codice tuo (README, «Il cookie del segno»). Una cosa sola tocca
 a te: citalo nell'informativa sui cookie del modulo, come cookie tecnico.
