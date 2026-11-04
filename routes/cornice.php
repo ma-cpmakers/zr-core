@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Zeiras\Auth\Http\Middleware\SoloDallaPersona;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Http\ConWorkspace;
+use Zeiras\Core\Http\FotoDellaCornice;
 use Zeiras\Core\Http\NotificheDellaCornice;
 use Zeiras\Core\Http\RicercaDellaCornice;
 use Zeiras\Core\Http\StessaPersona;
@@ -33,3 +34,9 @@ Route::middleware(['web', StessaPersona::class, ConWorkspace::class])->withoutMi
     Route::patch('notifiche/{notifica}/lettura', [NotificheDellaCornice::class, 'lettura'])->where('notifica', NotificheDellaCornice::ID);
     Route::post('ricerca', [RicercaDellaCornice::class, 'cerca']);
 });
+
+// Dalla v4.1.0 la foto della persona: la chiede un `<img>`, che non manda le intestazioni della persona della pagina, e per
+// questo sta fuori da StessaPersona. Risponde solo alla persona della sessione, con la sua foto, letta col gettone della
+// persona: anche senza un workspace, e fuori da ConWorkspace (FotoDellaCornice). La guardia di zr-auth resta; da
+// SoloDallaPersona esce come le altre, e una GET non la vedrebbe comunque.
+Route::middleware('web')->withoutMiddleware(SoloDallaPersona::class)->prefix('cornice')->get('foto', [FotoDellaCornice::class, 'mostra']);

@@ -466,7 +466,7 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.41` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.120` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
@@ -474,7 +474,9 @@ e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecch
 `v1.5.0`. Dalla `v2.16.0` serve la 0.12.31: è quella che protegge la richiesta rimandata della cornice in due dati
 (`SessioneChiusa`, vedi «La cornice in due dati»), e con una più vecchia Composer lascia zr-core alla `v2.15.0`. Dalla
 `v2.19.0` serve la 0.12.41: le rotte della cornice escono da `SoloDallaPersona`, che c'è da quella (vedi «Le rotte della
-cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`. Dalla `v4.1.0` serve la 0.12.120: la rotta della
+foto legge il file con `Api::immagine`, che c'è da quella (vedi «Le rotte della cornice»), e con una più vecchia Composer lascia
+zr-core alla `v4.0.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
@@ -707,6 +709,19 @@ portava `persona`, l'email della sessione. Un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
 sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
 guardia.
+
+Dalla `v4.1.0` c'è una quinta rotta, `GET /cornice/foto`: la foto della persona della sessione, letta da
+`io.foto.file.mostra` col gettone della persona, per l'`<img>` del suo avatar. L'indirizzo lo danno i dati della cornice
+(`persona.foto`, vedi «La parte server»), col `?v=` che cambia quando cambia la foto. Risponde `200` coi byte, il tipo
+(`image/webp`) e l'`ETag` del backoffice, `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff` e
+`Cross-Origin-Resource-Policy: same-origin`; a un `If-None-Match` uguale all'`ETag`, `304` senza corpo. Senza foto risponde
+`404`, e a ogni altro 4xx del backoffice lo stesso stato, sempre senza corpo e con `Cache-Control: no-store`. Senza sessione
+risponde la guardia di zr-auth, come a ogni GET del gruppo `web`. Un `<img>` non manda le intestazioni della persona: la foto
+sta fuori da `StessaPersona` e da `ConWorkspace`, e le regole sulla persona e sul workspace che seguono, scritte per le
+quattro rotte, non valgono per lei; risponde solo alla persona della sessione, con la sua foto, anche senza un workspace.
+Oggi la cornice non la mostra: l'`Avatar` del design system ha solo le iniziali, e la foto entra quando il design system gli
+dà un'immagine, con una versione minore di zr-core. Una pagina del frontend che mostra la foto della persona può usare la
+stessa rotta.
 
 Dalla `v2.6.0` le quattro rotte hanno una regola sola sulla persona, prima di ogni controllo loro. La richiesta può dire di
 chi è la pagina che chiede — nell'intestazione `Persona`, l'email passata da `encodeURIComponent`, o in `persona` nel corpo

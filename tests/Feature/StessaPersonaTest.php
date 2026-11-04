@@ -20,7 +20,7 @@ const CORPO_PER_OGNI_ROTTA = ['letta' => true, 'q' => 'uat', 'fino_a' => '2026-1
 
 /**
  * Le rotte della cornice lette dal router, non scritte qui: di ognuna il metodo e l'indirizzo, con un id al posto di un
- * parametro. Una rotta nuova sotto `cornice/` entra da sé nei casi di questo file.
+ * parametro. Una rotta nuova sotto `cornice/` entra da sé nei casi di questo file; la foto no.
  *
  * @return list<array{string, string}>
  */
@@ -28,6 +28,9 @@ function rotteDellaCorniceDalRouter(): array
 {
     return collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
+        // La foto (dalla `v4.1.0`, sprint 99 · T1.5) la chiede un `<img>`, senza intestazioni: sta fuori da StessaPersona, ed è la
+        // sola (FotoTest lo prova nei due versi).
+        ->reject(fn ($rotta) => $rotta->uri() === 'cornice/foto')
         ->map(fn ($rotta) => [array_values(array_diff($rotta->methods(), ['HEAD']))[0], (string) preg_replace('/\{[^}]+\}/', 'uat-n3', $rotta->uri())])
         ->values()->all();
 }

@@ -554,7 +554,8 @@ it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la se
         array_filter($dellaCornice(), fn ($rotta) => ! in_array('web', $rotta->gatherMiddleware(), true)),
     ));
 
-    expect($dellaCornice())->toHaveCount(4)
+    // Cinque dalla `v4.1.0`: la foto (sprint 99 · T1).
+    expect($dellaCornice())->toHaveCount(5)
         ->and($fuoriDalWeb())->toBe([]);
 
     // Il controllo nei due versi: nel gruppo `api` una rotta ha la guardia della sessione ma non il CSRF, e qui si vede.
