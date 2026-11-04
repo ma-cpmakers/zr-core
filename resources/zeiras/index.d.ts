@@ -6,7 +6,8 @@ export type IconName = 'menu' | 'home' | 'grid' | 'folder' | 'board' | 'users' |
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'md' | 'sm'; icon?: IconName }
 export declare function Button(props: ButtonProps): React.ReactElement;
 
-export interface LabelProps { tone?: Tone; children?: React.ReactNode; className?: string }
+export interface LabelProps { tone?: Tone; children?: React.ReactNode; className?: string;
+  /** "type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte; senza, l'etichetta piena */ variant?: 'type' }
 export declare function Label(props: LabelProps): React.ReactElement;
 
 export interface AvatarProps { name: string; size?: 'sm' | 'md' | 'lg'; tone?: Exclude<Tone, 'neutral'>;
@@ -76,6 +77,7 @@ export declare function Menu(props: { anchor: HTMLElement | null; items: MenuIte
 export declare function Composer(props: { onCreate: (text: string) => void; onCancel?: () => void; placeholder?: string; label?: string; multiline?: boolean; rows?: number; submitLabel?: string; maxLength?: number; defaultValue?: string; autoFocus?: boolean; className?: string }): React.ReactElement;
 /** Pannello di dettaglio a destra (P-15 F1): un record alla volta, senza velo; X ed Esc chiudono; su mobile tutto schermo con «Indietro». */
 export declare function DetailPanel(props: { label: string; head?: React.ReactNode; children?: React.ReactNode; foot?: React.ReactNode; onClose: () => void; onBack?: () => void; backLabel?: string; inline?: boolean; className?: string;
+  /** Nome della ✕, default «Chiudi» */ closeLabel?: string;
   /** true: aria-modal e Tab trattenuto; se manca, modale solo quando copre la pagina (sotto 720 px, non inline) */ modal?: boolean;
   /** Il controllo a cui torna il fuoco alla chiusura, se c'è ancora (altrimenti chi ha aperto il pannello) */ returnFocus?: HTMLElement | null | React.RefObject<HTMLElement | null> }): React.ReactElement;
 
@@ -130,12 +132,15 @@ export declare function Checkbox(props: React.InputHTMLAttributes<HTMLInputEleme
   /** Testo d'aiuto sotto l'etichetta, legato con aria-describedby */ hint?: React.ReactNode;
   /** Messaggio d'errore sotto (prende il posto dell'aiuto, come in Field): bordo danger e aria-invalid */ error?: React.ReactNode }): React.ReactElement;
 export declare function Switch(props: { label?: string; checked?: boolean; defaultChecked?: boolean; onChange?: (v: boolean) => void; disabled?: boolean; 'aria-label'?: string;
-  /** Spento ma raggiungibile col Tab: non cambia e non chiama onChange, stesso stile di disabled */ 'aria-disabled'?: boolean | 'true' | 'false' }): React.ReactElement;
+  /** Spento ma raggiungibile col Tab: non cambia e non chiama onChange, stesso stile di disabled */ 'aria-disabled'?: boolean | 'true' | 'false';
+  /** Il testo d'aiuto o d'errore sotto, per id (richiesta 179) */ 'aria-describedby'?: string; 'aria-invalid'?: boolean | 'true' | 'false' }): React.ReactElement;
 export interface TabItem { value: string; label: string; icon?: IconName; count?: number }
 export declare function Tabs(props: { items: (string | TabItem)[]; value?: string; defaultValue?: string; onChange?: (v: string) => void; variant?: 'segmented' | 'underline'; size?: 'sm'; 'aria-label'?: string }): React.ReactElement;
 export interface ChoiceOption { value: string; label: React.ReactNode; hint?: React.ReactNode; disabled?: boolean }
 /** Una scelta fra poche opzioni, tutte in vista: radio nativi in un fieldset (richiesta 89) */
-export declare function RadioGroup(props: { options: (string | ChoiceOption)[]; value?: string | null; defaultValue?: string | null; onChange?: (v: string) => void; label?: React.ReactNode; hint?: React.ReactNode; error?: React.ReactNode; required?: boolean; orientation?: 'vertical' | 'horizontal'; name?: string; disabled?: boolean; 'aria-label'?: string; id?: string; className?: string }): React.ReactElement;
+export declare function RadioGroup(props: { options: (string | ChoiceOption)[]; value?: string | null; defaultValue?: string | null; onChange?: (v: string) => void; label?: React.ReactNode; hint?: React.ReactNode; error?: React.ReactNode; required?: boolean; orientation?: 'vertical' | 'horizontal'; name?: string; disabled?: boolean; 'aria-label'?: string; id?: string; className?: string;
+  /** "card": ogni scelta un riquadro col titolo (label) e la descrizione (hint); orientation non vale; senza, il pallino */ variant?: 'card';
+  /** Con variant="card": "grid" mette due riquadri per riga da 480 px in su */ layout?: 'list' | 'grid' }): React.ReactElement;
 export interface ToggleOption { value: string; label: React.ReactNode; icon?: IconName; count?: number | string; disabled?: boolean; 'aria-label'?: string }
 /** Scelte a pulsanti con lo stato premuto (aria-pressed), una o più (richiesta 141) */
 export declare function ToggleGroup(props: { options: (string | ToggleOption)[]; multiple?: boolean;
@@ -159,16 +164,18 @@ export declare function Calendar(props: { variant?: 'picker' | 'month' | 'week';
   /** 'AAAA-MM' */ defaultMonth?: string; onRangeChange?: (r: { from: string; to: string }) => void; min?: string; max?: string; isDisabled?: (giorno: string) => boolean; marked?: string[];
   events?: CalendarEvent[]; maxEvents?: number; onEventClick?: (e: CalendarEvent) => void; onMore?: (giorno: string) => void; locale?: string; weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6; today?: string; labels?: CalendarLabels; className?: string }): React.ReactElement;
 export type StatusTone = 'info' | 'success' | 'warning' | 'danger';
-export declare function Alert(props: { tone?: StatusTone; title?: string; children?: React.ReactNode; action?: React.ReactNode; onClose?: () => void }): React.ReactElement;
-export declare function Toast(props: { tone?: StatusTone; children: React.ReactNode; actionLabel?: string; onAction?: () => void; onClose?: () => void }): React.ReactElement;
-export declare function Dialog(props: { open: boolean; title: string; description?: string; onClose?: () => void; footer?: React.ReactNode; size?: 'md' | 'lg'; inline?: boolean; children?: React.ReactNode }): React.ReactElement | null;
+export declare function Alert(props: { tone?: StatusTone; title?: string; children?: React.ReactNode; action?: React.ReactNode; onClose?: () => void; /** Nome della ✕ per il lettore di schermo, nella lingua del modulo (default «Chiudi») */ closeLabel?: string }): React.ReactElement;
+export declare function Toast(props: { tone?: StatusTone; children: React.ReactNode; actionLabel?: string; onAction?: () => void; onClose?: () => void; /** Nome della ✕, default «Chiudi» */ closeLabel?: string }): React.ReactElement;
+export declare function Dialog(props: { open: boolean; title: string; description?: string; onClose?: () => void; footer?: React.ReactNode; size?: 'md' | 'lg'; inline?: boolean; children?: React.ReactNode; /** Nome della ✕, default «Chiudi» */ closeLabel?: string }): React.ReactElement | null;
 export declare function EmptyState(props: { title: string; text?: string; icon?: IconName; tone?: Exclude<Tone, 'neutral'>; action?: React.ReactNode; compact?: boolean }): React.ReactElement;
 export declare function Progress(props: { value: number; max?: number; label?: string; valueLabel?: string; tone?: 'pine' | 'warning' | 'danger' }): React.ReactElement;
 export declare function Skeleton(props: { lines?: number }): React.ReactElement;
 export declare function PageHeader(props: { title: string; overline?: string; subtitle?: string; count?: number; actions?: React.ReactNode }): React.ReactElement;
 export interface Column<R> { key: string; label: string; align?: 'left' | 'right'; width?: string; sortable?: boolean; sortValue?: (r: R) => number | string; render?: (r: R) => React.ReactNode }
 export declare function DataTable<R extends { id?: string | number }>(props: { columns: Column<R>[]; rows: R[]; selectable?: boolean; bulkActions?: React.ReactNode; pageSize?: number; defaultSort?: { key: string; dir: 'asc' | 'desc' }; onRowClick?: (r: R) => void; onSelect?: (ids: (string | number)[]) => void; empty?: React.ReactNode }): React.ReactElement;
-export declare function FilterBar(props: { query?: string; onQuery?: (q: string) => void; searchPlaceholder?: string; search?: boolean; actions?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
+export declare function FilterBar(props: { query?: string; onQuery?: (q: string) => void; searchPlaceholder?: string; search?: boolean; actions?: React.ReactNode; children?: React.ReactNode;
+  /** Nome del campo di ricerca per il lettore di schermo, nella lingua del modulo (default «Cerca») */ searchLabel?: string;
+  /** Frase d'aiuto sotto il campo, legata con aria-describedby (cosa si può cercare) */ searchHint?: React.ReactNode }): React.ReactElement;
 export interface Series { name: string; data: number[]; color?: 1 | 2 | 3 | 4 | 5 | 'other'; dashed?: boolean;
   /** A gradino: orizzontale fino al punto dopo, poi il salto in verticale (vince su LineChart.step) */ step?: boolean }
 export declare function LineChart(props: { labels: string[]; series: Series[]; height?: number; format?: (v: number) => string; area?: boolean; ariaLabel?: string;
@@ -181,7 +188,7 @@ export declare function StatCard(props: { label: string; value: string; icon?: I
 export declare function SectionCard(props: { title?: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; footer?: React.ReactNode; children?: React.ReactNode; variant?: 'section' | 'standalone'; headingLevel?: 2 | 3; id?: string; className?: string; 'aria-label'?: string }): React.ReactElement;
 export declare function ChartCard(props: { title: string; subtitle?: string; actions?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
 export declare function StatusLabel(props: { status: string; tone?: Tone }): React.ReactElement;
-export declare function RecordHeader(props: { name: string; status?: string; subtitle?: string; meta?: { icon: IconName; text: string; href?: string }[]; actions?: React.ReactNode }): React.ReactElement;
+export declare function RecordHeader(props: { name: string; status?: string; /** Il tono dello stato, come tone di StatusLabel nelle liste */ statusTone?: Tone; subtitle?: string; meta?: { icon: IconName; text: string; href?: string }[]; actions?: React.ReactNode }): React.ReactElement;
 export interface Activity { type: 'email' | 'call' | 'note' | 'deal' | 'task' | 'automation'; title: string; time: string; text?: string; by?: string }
 export declare function ActivityTimeline(props: { items: Activity[] }): React.ReactElement;
 /** Coppie etichetta → valore in sola lettura (campi di un record nel pannello di dettaglio, riepiloghi). `label` già tradotta; `value` testo o nodo (Label, link). Su schermi stretti l'etichetta resta a 110px a sinistra. */

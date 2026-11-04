@@ -64,7 +64,7 @@ import '../../css/zeiras/AddressField.css';
           }),
           !list.length ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null,
           p.attribution !== false ? h('li', { className: 'zr-address-attr', role: 'presentation', 'aria-hidden': true }, L.attribution) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : h('p', { id: desc, className: cx('zr-field-msg', place && 'zr-address-ok') }, status || p.hint || L.hint));
   }
 

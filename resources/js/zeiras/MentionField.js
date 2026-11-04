@@ -71,7 +71,7 @@ import '../../css/zeiras/MentionField.css';
           h('span', { className: 'zr-mention-plus', 'aria-hidden': true }, h(Icon, { name: 'plus', size: 16 })),
           h('span', { className: 'zr-mention-opt-text' }, h('strong', null, (p.createLabel || L.create).replace('{q}', text.slice(at + 1).trim())))) : null,
         !count ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint !== false ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint || L.hint) : null);
   }
 

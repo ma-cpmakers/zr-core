@@ -52,11 +52,12 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
-**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dieci stili di `tokens.json` — `display-xl`,
-`display`, `heading-1`, `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`, `overline` —, coi nomi
+**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dodici stili di `tokens.json` — `display-xl`,
+`display`, `heading-1`, `wordmark` (il nome nel logo), `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`,
+`overline`, `micro` (le iniziali dell'avatar piccolo e il numero sulla campanella) —, coi nomi
 del tema di Tailwind 4: per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e,
-nei quattro che la hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non
-sta nello stile: i primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sette del gruppo Testo, con
+nei cinque che la hanno (`display-xl`, `display`, `heading-1`, `wordmark`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non
+sta nello stile: i primi quattro sono del gruppo Display, col carattere `--font-display`; gli altri otto del gruppo Testo, con
 `--font-sans`. Con Tailwind 4 un modulo li porta nel tema per nome, con le due famiglie, e scrive `text-heading-1 font-display`
 invece di `text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
 
@@ -172,7 +173,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
 | la cornice e due componenti per nome | 50,4 KB | 17,8 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 136,0 KB | 44,1 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 136,9 KB | 44,3 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -263,8 +264,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 82,5 KB | 13,7 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 79,3 KB | 13,2 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 85,6 KB | 14,2 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 82,4 KB | 13,7 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel

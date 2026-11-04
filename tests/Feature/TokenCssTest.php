@@ -158,18 +158,20 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
         ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}$/');
 });
 
-it('zeiras-token.css porta i dieci stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1; label dalla v4.2.0)', function () {
+it('zeiras-token.css porta i dodici stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1; label dalla v4.2.0; wordmark e micro dal secondo lotto del 05/11)', function () {
     $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
     $testo = collect($css)->keys()->filter(fn (string $nome) => str_starts_with($nome, '--text-'))->values();
     $stili = $testo->reject(fn (string $nome) => str_contains(substr($nome, 2), '--'))->map(fn (string $nome) => substr($nome, 7))->values()->all();
 
-    expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'label', 'caption', 'overline'])
-        // Tre variabili per stile, e la quarta nei quattro che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline).
-        ->and($testo)->toHaveCount(10 * 3 + 4)
+    expect($stili)->toEqualCanonicalizing(['display-xl', 'display', 'heading-1', 'heading-2', 'heading-3', 'body', 'body-sm', 'label', 'caption', 'overline', 'wordmark', 'micro'])
+        // Tre variabili per stile, e la quarta nei cinque che hanno la spaziatura delle lettere (display-xl, display, heading-1, overline, wordmark).
+        ->and($testo)->toHaveCount(12 * 3 + 5)
         ->and([$css['--text-heading-1'], $css['--text-heading-1--line-height'], $css['--text-heading-1--font-weight'], $css['--text-heading-1--letter-spacing']])
         ->toBe([['26px'], ['32px'], ['650'], ['-0.01em']])
         ->and($css['--text-overline--letter-spacing'])->toBe(['0.06em'])
         ->and([$css['--text-label'], $css['--text-label--line-height'], $css['--text-label--font-weight']])->toBe([['13px'], ['18px'], ['500']])
+        ->and([$css['--text-micro'], $css['--text-micro--line-height'], $css['--text-micro--font-weight']])->toBe([['10px'], ['16px'], ['700']])
+        ->and([$css['--text-wordmark'], $css['--text-wordmark--line-height'], $css['--text-wordmark--font-weight'], $css['--text-wordmark--letter-spacing']])->toBe([['24px'], ['28px'], ['750'], ['-0.02em']])
         ->and($css)->not->toHaveKey('--text-heading-2--letter-spacing');
 });
 

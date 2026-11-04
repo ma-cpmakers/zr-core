@@ -93,6 +93,8 @@
   var TONES = ['pine', 'citrus', 'coral', 'sky', 'plum', 'neutral'];
   function Label(p) {
     var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral';
+    /* variant="type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte (richiesta 154) */
+    if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
     return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.className) }, p.children);
   }
 
@@ -955,7 +957,7 @@
     return h('div', { className: cx('zr-field', p.error && 'is-error', p.className) },
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       control,
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
@@ -1013,7 +1015,7 @@
           }),
           !list.length ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null,
           p.attribution !== false ? h('li', { className: 'zr-address-attr', role: 'presentation', 'aria-hidden': true }, L.attribution) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : h('p', { id: desc, className: cx('zr-field-msg', place && 'zr-address-ok') }, status || p.hint || L.hint));
   }
 
@@ -1078,7 +1080,7 @@
           h('span', { className: 'zr-mention-plus', 'aria-hidden': true }, h(Icon, { name: 'plus', size: 16 })),
           h('span', { className: 'zr-mention-opt-text' }, h('strong', null, (p.createLabel || L.create).replace('{q}', text.slice(at + 1).trim())))) : null,
         !count ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint !== false ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint || L.hint) : null);
   }
 
@@ -1095,7 +1097,7 @@
       p.label ? h('span', null, p.label) : null);
     if (!wrap) return box;
     return h('div', { className: cx('zr-check-field', p.className) }, box,
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
@@ -1103,7 +1105,7 @@
     var ctrl = p.checked !== undefined;
     var st = useState(!!p.defaultChecked), on = ctrl ? p.checked : st[0];
     var off = p['aria-disabled'] === true || p['aria-disabled'] === 'true'; /* spento ma raggiungibile: tiene il fuoco */
-    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, className: cx('zr-switch', on && 'is-on', p.className),
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, 'aria-describedby': p['aria-describedby'], 'aria-invalid': p['aria-invalid'], className: cx('zr-switch', on && 'is-on', p.className),
       onClick: function () { if (off) return; if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } },
       h('span', { className: 'zr-switch-track', 'aria-hidden': true }, h('span', { className: 'zr-switch-thumb' })),
       p.label ? h('span', { className: 'zr-switch-label' }, p.label) : null);
@@ -1128,18 +1130,20 @@
     var ctrl = p.value !== undefined;
     var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
-    return h('fieldset', { id: p.id, className: cx('zr-radio-group', p.orientation === 'horizontal' && 'is-horizontal', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
+    var card = p.variant === 'card'; /* ogni scelta un riquadro col titolo e la descrizione, anche in griglia (richiesta 177) */
+    return h('fieldset', { id: p.id, className: cx('zr-radio-group', p.orientation === 'horizontal' && !card && 'is-horizontal', card && 'is-card', card && p.layout === 'grid' && 'is-grid', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
       p.label ? h('legend', { className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       h('div', { className: 'zr-radio-list' }, opts.map(function (o, i) {
         var obj = typeof o === 'string' ? { value: o, label: o } : o;
-        var hid = obj.hint ? id + '-h' + i : undefined;
-        return h('label', { key: obj.value, className: cx('zr-radio', obj.disabled && 'is-disabled') },
-          h('input', { type: 'radio', name: p.name || id, value: obj.value, checked: obj.value === val, disabled: obj.disabled, required: p.required, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': cx(hid, desc) || undefined,
+        var hid = obj.hint ? id + '-h' + i : undefined, lid = id + '-l' + i; /* il nome è solo l'etichetta: l'aiuto, che sta nella stessa label, è la descrizione */
+        return h('label', { key: obj.value, className: cx(card ? 'zr-radio-card' : 'zr-radio', obj.disabled && 'is-disabled') },
+          h('input', { type: 'radio', name: p.name || id, value: obj.value, checked: obj.value === val, disabled: obj.disabled, required: p.required, 'aria-invalid': p.error ? true : undefined, 'aria-labelledby': lid, 'aria-describedby': cx(hid, desc) || undefined,
             onChange: function () { if (!ctrl) st[1](obj.value); if (p.onChange) p.onChange(obj.value); } }),
-          h('span', { className: 'zr-radio-dot', 'aria-hidden': true }),
-          h('span', { className: 'zr-radio-text' }, h('span', null, obj.label), obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null));
+          card ? null : h('span', { className: 'zr-radio-dot', 'aria-hidden': true }),
+          card ? h('span', { id: lid, className: 'zr-radio-card-title' }, obj.label) : h('span', { className: 'zr-radio-text' }, h('span', { id: lid }, obj.label), obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null),
+          card && obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null);
       })),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
@@ -1172,7 +1176,7 @@
             h('span', null, obj.label),
             obj.count != null ? h('span', { className: 'zr-toggle-count' }, obj.count) : null);
         })),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
@@ -1362,7 +1366,7 @@
       h(Icon, { name: TONE_ICON[tone], size: 20 }),
       h('div', { className: 'zr-alert-body' }, p.title ? h('strong', null, p.title) : null, p.children ? h('div', null, p.children) : null),
       p.action || null,
-      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': 'Chiudi', onClick: p.onClose }) : null);
+      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null);
   }
 
   function Toast(p) {
@@ -1371,7 +1375,7 @@
       h(Icon, { name: TONE_ICON[tone], size: 18 }),
       h('span', { className: 'zr-toast-text' }, p.children),
       p.actionLabel ? h('button', { type: 'button', className: 'zr-toast-action', onClick: p.onAction }, p.actionLabel) : null,
-      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': 'Chiudi', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
+      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
   }
 
   function Dialog(p) {
@@ -1384,7 +1388,7 @@
     if (!p.open) return null;
     return h('div', { className: cx('zr-scrim', p.inline && 'is-inline'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
       h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
-        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': 'Chiudi', onClick: p.onClose }) : null),
+        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null),
         p.description ? h('p', { className: 'zr-dialog-desc' }, p.description) : null,
         h('div', { className: 'zr-dialog-body' }, p.children),
         p.footer ? h('footer', { className: 'zr-dialog-foot' }, p.footer) : null));
@@ -1467,9 +1471,12 @@
   }
 
   function FilterBar(p) {
+    var id = useId('flt');
+    /* il nome del campo e la frase d'aiuto legata li dà il modulo, nella sua lingua (richieste 173 e 19) */
+    var search = p.search !== false ? h('label', { className: 'zr-input has-icon zr-filter-search' }, h(Icon, { name: 'search', size: 16 }),
+      h('input', { type: 'search', placeholder: p.searchPlaceholder || 'Cerca…', 'aria-label': p.searchLabel || 'Cerca', 'aria-describedby': p.searchHint ? id + '-h' : undefined, value: p.query, onChange: p.onQuery ? function (e) { p.onQuery(e.target.value); } : undefined })) : null;
     return h('div', { className: 'zr-filterbar' },
-      p.search !== false ? h('label', { className: 'zr-input has-icon zr-filter-search' }, h(Icon, { name: 'search', size: 16 }),
-        h('input', { type: 'search', placeholder: p.searchPlaceholder || 'Cerca…', 'aria-label': 'Cerca', value: p.query, onChange: p.onQuery ? function (e) { p.onQuery(e.target.value); } : undefined })) : null,
+      search && p.searchHint ? h('div', { className: 'zr-filter-search-wrap' }, search, h('p', { id: id + '-h', className: 'zr-filter-hint' }, p.searchHint)) : search,
       p.children,
       p.actions ? h('div', { className: 'zr-filter-actions' }, p.actions) : null);
   }
@@ -1639,7 +1646,7 @@
     return h('header', { className: 'zr-record' },
       h(Avatar, { name: p.name, size: 'lg' }),
       h('div', { className: 'zr-record-main' },
-        h('div', { className: 'zr-record-title' }, h('h1', null, p.name), p.status ? h(StatusLabel, { status: p.status }) : null),
+        h('div', { className: 'zr-record-title' }, h('h1', null, p.name), p.status ? h(StatusLabel, { status: p.status, tone: p.statusTone }) : null), /* statusTone come tone nelle liste (richiesta 174) */
         p.subtitle ? h('p', null, p.subtitle) : null,
         p.meta ? h('ul', { className: 'zr-record-meta' }, p.meta.map(function (m) { return h('li', { key: m.text }, h(Icon, { name: m.icon, size: 14 }), m.href ? h('a', { href: m.href }, m.text) : m.text); })) : null),
       p.actions ? h('div', { className: 'zr-page-actions' }, p.actions) : null);
@@ -2031,7 +2038,7 @@
       h('header', { className: 'zr-detail-head' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || 'Indietro'),
         h('div', { className: 'zr-detail-ctx' }, p.head),
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': 'Chiudi', onClick: p.onClose })),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose })),
       h('div', { className: 'zr-detail-body' }, p.children),
       p.foot ? h('footer', { className: 'zr-detail-foot' }, p.foot) : null);
   }
