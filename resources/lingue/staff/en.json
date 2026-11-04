@@ -6,6 +6,7 @@
     "searchPlaceholder": "Search people and workspaces…",
     "searchHint": "Search people and workspaces: type at least 2 characters.",
     "searchEmptyText": "Try the full email address or the company name.",
+    "searchCount": "Results: {n}",
     "notificationsEmptyText": "No notifications arrive in the back office.",
     "logout": "Log out of the back office"
 }

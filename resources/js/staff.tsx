@@ -20,6 +20,8 @@ const file = import.meta.glob<TestiDelloStaff>('../lingue/staff/*.json', { eager
 type TestiDelloStaff = Pick<TestiDellaCornice, 'settings' | 'planTitle' | 'planText' | 'searchPlaceholder' | 'searchHint' | 'searchEmptyText' | 'notificationsEmptyText' | 'logout'> & {
     /** In cima alla barra, al posto del workspace. */
     area: string;
+    /** Quanti risultati ha trovato la ricerca (`{n}`), per il lettore di schermo: nella zona nascosta alla vista (voce #2986). */
+    searchCount: string;
 };
 
 /** I testi dello staff in una lingua: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in inglese. */
@@ -79,6 +81,17 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
     // all'`AppShell`, che non chiama la cornice: lì il tasto non cambia niente. Smontata, la cornice annulla la richiesta in volo.
     const conCerca = useRef(cerca);
     conCerca.current = cerca;
+    // Quanti risultati ha trovato la ricerca, per il lettore di schermo (voce #2986): come nella `Cornice` (#2801), una zona figlia
+    // di `body`, nascosta alla vista, che c'è dal montaggio — una zona che nasce col testo dentro non si legge — e si svuota a ogni
+    // ricerca che parte, così lo stesso numero si dice di nuovo. Provvisoria come quella: si toglie quando l'`AppShell` ne tiene una
+    // sua (riga 134 delle richieste al design system). Sta prima degli altri ascolti: alla prima ricerca c'è già.
+    const quanti = useRef<HTMLElement>(undefined);
+    useLayoutEffect(() => {
+        document.body.insertAdjacentHTML('beforeend', '<p role="status" class="zr-visually-hidden">');
+        const zona = (quanti.current = document.body.lastElementChild as HTMLElement);
+
+        return () => zona.remove();
+    }, []);
     useLayoutEffect(() => {
         let visto: string | undefined;
         const alTasto = (e: Event) => {
@@ -111,7 +124,13 @@ export function CorniceDelloStaff({ lingua, persona, nav = [], active, menu = []
             () => questa.signal.aborted || setRicerca({ stato: 'error' }),
         );
     };
-    const { area, logout, ...dello } = testiDelloStaff(lingua);
+    const { area, logout, searchCount, ...dello } = testiDelloStaff(lingua);
+    const numero = ricerca?.stato === 'ready' ? searchCount.replace('{n}', `${ricerca.risultati.length}`) : '';
+    useLayoutEffect(() => {
+        if (quanti.current && quanti.current.textContent !== numero) {
+            quanti.current.textContent = numero;
+        }
+    }, [numero]);
     const esci: MenuItem = { icon: 'arrow', label: logout, onClick: onLogout };
 
     return (

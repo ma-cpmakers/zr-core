@@ -34,7 +34,8 @@ const opzione = (nome, altrimenti) => {
 const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
 // axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
-// che la pagina dei moduli non ha: lì sono ➖). Prima del tag zr-core la lancia su `staff.html --parola uat`.
+// che la pagina dei moduli non ha: lì sono ➖), e dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2. Prima del tag zr-core la lancia su
+// `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
@@ -584,8 +585,10 @@ async function sopraIlPannello(page) {
     await page.click('.zr-shell .zr-bell');
     await page.waitForSelector('.zr-top-actions > .zr-pop', { timeout: 5000 }).catch(() => undefined);
     await pausa(500);
-    const [notifiche, comeNotifiche] = await coperto('.zr-top-actions > .zr-pop', '.zr-top-actions > .zr-pop .zr-pop-foot button');
-    scrivi(notifiche ? '✅' : '❌', 'D.2', 'il pannello delle notifiche sta sopra il pannello di dettaglio (riga 102)', `«Vedi tutte»: ${comeNotifiche}`);
+    // Un pannello senza «Vedi tutte» (lo staff, a cui non arrivano notifiche: voce #2986) si prova con la sua ultima linguetta.
+    const piede = (await page.$('.zr-top-actions > .zr-pop .zr-pop-foot button')) !== null;
+    const [notifiche, comeNotifiche] = await coperto('.zr-top-actions > .zr-pop', piede ? '.zr-top-actions > .zr-pop .zr-pop-foot button' : '.zr-top-actions > .zr-pop [role=tab]');
+    scrivi(notifiche ? '✅' : '❌', 'D.2', 'il pannello delle notifiche sta sopra il pannello di dettaglio (riga 102)', `${piede ? '«Vedi tutte»' : 'senza «Vedi tutte», l\'ultima linguetta'}: ${comeNotifiche}`);
     await page.screenshot({ path: join(cartella, 'pannello-notifiche-1280.png') });
     await page.keyboard.press('Escape');
     await pausa(300);
@@ -852,6 +855,23 @@ async function linguetteDelleNotifiche(page) {
     await page.keyboard.press('Tab');
     await pausa(150);
     const avanti = await linguetta();
+    if (!(await page.$('.zr-top-actions > .zr-pop'))) {
+        // Dopo le linguette il pannello non ha niente da raggiungere (lo staff, a cui non arrivano notifiche: voce #2986): il Tab esce
+        // e il pannello si chiude (#2804), e il ritorno con Maiusc+Tab non si chiede. Si riapre, si sceglie «Tutte» e si prova da lì.
+        await page.focus('.zr-shell .zr-bell');
+        await page.keyboard.press('Enter');
+        await pausa(500);
+        await page.keyboard.press('ArrowRight');
+        await pausa(150);
+        await page.keyboard.press('Shift+Tab');
+        await pausa(150);
+        const primaDiTutte = await linguetta();
+        scrivi(avanti === '-' && primaDiTutte === '-' ? '✅' : '❌', 'N.2', 'nel giro del Tab c\'è solo la linguetta scelta (#2803)', `Tab da «Per me»: ${avanti}, e il pannello si chiude (dopo le linguette non c'è niente); scelta «Tutte», Maiusc+Tab: ${primaDiTutte}`);
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.keyboard.press('Escape');
+        await pausa(200);
+        return;
+    }
     await page.keyboard.press('Shift+Tab');
     await pausa(150);
     const indietro = await linguetta();
@@ -1111,6 +1131,13 @@ async function uat(page, apri) {
         await fuoriDaiMenu(page);
         await tornaAllaPagina();
         await inizioEFineNeiMenu(page);
+        await tornaAllaPagina();
+        // Dalla v4.1.1 (voce #2986): la zona di quanti risultati, le linguette del pannello vuoto e i menu sopra il dettaglio.
+        await linguetteDelleNotifiche(page);
+        await tornaAllaPagina();
+        await quantiRisultati(page);
+        await tornaAllaPagina();
+        await sopraIlPannello(page);
         await tornaAllaPagina();
         await loStaff(page);
         await toastAlSuoPosto(page, apri, 1280);

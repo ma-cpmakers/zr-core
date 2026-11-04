@@ -2507,14 +2507,18 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   è in errore. Una parola nuova annulla il segnale di quella di prima, e la sua risposta non entra; dal tasto la ricerca è già
   in caricamento, come nella `Cornice`. Un risultato si apre con `naviga` (di norma il browser va all'indirizzo). Una `cerca`
   che lancia è una ricerca in errore come una che rifiuta. Senza `cerca` il campo non cerca niente, e il pannello dice che non
-  ci sono risultati.
+  ci sono risultati. Dalla `v4.1.1` (#2986), come nella `Cornice`, a ricerca finita una zona di stato nascosta alla vista dice
+  quanti risultati mostra il pannello, «Risultati: 12» nella lingua dello staff: un paragrafo in fondo al documento
+  (`role="status"`, classe `zr-visually-hidden`) che c'è da quando la cornice è montata, si svuota a ogni ricerca che parte e
+  se ne va con la cornice.
 - **Cosa non c'è**: il selettore di workspace, il menu Moduli, le notifiche, il registro. La campanella resta, senza numero e
   col pannello vuoto, perché l'`AppShell` la disegna sempre (spegnerla è la richiesta 64 al design system).
 - **I testi** dello staff stanno in `resources/lingue/staff/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
   l'inglese), fuori dalle lingue della cornice: un'app che non monta questa cornice non li porta nella build. Il resto — «Salta
   al contenuto», i rimedi di tastiera, i nomi della ricerca — è quello della `Cornice`.
 
-La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto).
+La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--staff` (righe S.1-S.3, con la ricerca, Esc, i menu e il cassetto;
+dalla `v4.1.1` anche N.1-N.2, Q.1 e D.1-D.2: le linguette del pannello vuoto, quanti risultati, i menu sopra il dettaglio).
 
 ### Il Toast della cornice
 

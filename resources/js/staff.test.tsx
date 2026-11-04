@@ -360,6 +360,53 @@ describe('la ricerca della cornice dello staff', () => {
         await act(() => vi.advanceTimersByTimeAsync(0));
         expect(uno('.zr-search-panel [role="status"] span')?.textContent).toBe(dellaLingua.searchEmptyText);
     });
+
+    // Sprint 100 (voce #2986, Decisione 20345): come la `Cornice` (#2801), una zona fuori dalla cornice, figlia di `body`, dice al
+    // lettore di schermo quanti risultati ha trovato la ricerca. uat-cornice la cercava anche nello staff (Q.1) e non c'era.
+    const zone = () => [...document.querySelectorAll<HTMLElement>('body > p[role="status"]')];
+
+    it('T1.1 a ricerca finita una zona role=status figlia di body, nascosta alla vista, dice quante righe ha il pannello; si svuota a ogni ricerca che parte; smontata la cornice non c\'è più', async () => {
+        const prima = inAttesa();
+        const seconda = inAttesa();
+        const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        expect(zone()).toHaveLength(1);
+        expect(zone()[0]!.matches('.zr-visually-hidden')).toBe(true);
+        expect(zone()[0]!.textContent).toBe('');
+
+        await scrivi('an');
+        await prima.arriva([anna, clienti]);
+        expect(tutti('.zr-search-panel [role="option"]')).toHaveLength(2);
+        expect(zone().map((zona) => zona.textContent)).toEqual([staffItaliano.searchCount.replace('{n}', '2')]);
+
+        await scrivi('ann');
+        expect(zone().map((zona) => zona.textContent)).toEqual(['']);
+        await seconda.arriva([]);
+        expect(zone().map((zona) => zona.textContent)).toEqual([staffItaliano.searchCount.replace('{n}', '0')]);
+
+        await act(async () => radice.render(<p>Altro</p>));
+        expect(zone()).toHaveLength(0);
+    });
+
+    it('T1.1 il numero è nella lingua dello staff, e una ricerca in errore non scrive un numero', async () => {
+        const prima = inAttesa();
+        const seconda = inAttesa();
+        const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
+        await mostra(<CorniceDelloStaff lingua="es" persona={staff} cerca={cerca} onLogout={esci} />);
+
+        await scrivi('an');
+        await prima.arriva([anna]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['Resultados: 1']);
+
+        await scrivi('cli');
+        await seconda.fallisce(new Error('500'));
+        expect(zone().map((zona) => zona.textContent)).toEqual(['']);
+    });
+
+    it('T1.2 il testo di quanti risultati sta nei tre file dello staff, col numero da mettere', () => {
+        expect([staffItaliano.searchCount, staffSpagnolo.searchCount, staffInglese.searchCount]).toEqual(['Risultati: {n}', 'Resultados: {n}', 'Results: {n}']);
+    });
 });
 
 describe('tastiera e salto della cornice dello staff', () => {
