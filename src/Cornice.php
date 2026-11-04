@@ -438,7 +438,7 @@ final class Cornice
         // Il file della lingua com'è nei nomi (`es_MX` → `es-mx`), o della sua lingua base; sempre l'inglese, il ripiego.
         $file = [];
         foreach (glob(__DIR__.'/../resources/lingue/*.json') ?: [] as $percorso) {
-            $file[basename($percorso, '.json')] = $percorso;
+            $file[strtolower(basename($percorso, '.json'))] = $percorso;
         }
         $codice = strtolower(str_replace('_', '-', $lingua));
         $sua = array_values(array_filter([$codice, explode('-', $codice)[0]], fn (string $scelto) => isset($file[$scelto])))[0] ?? null;
@@ -449,6 +449,9 @@ final class Cornice
 
         $righe = [];
         foreach (array_unique(array_filter([$sua, self::LINGUA_DEL_RIPIEGO])) as $scelto) {
+            if (! isset($file[$scelto])) {
+                continue;
+            }
             try {
                 $righe[] = '<link rel="preload" as="fetch" href="'.e(Vite::asset(self::percorsoPerVite($file[$scelto]))).'" crossorigin>';
             } catch (ViteException) {

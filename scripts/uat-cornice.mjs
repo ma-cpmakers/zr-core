@@ -1056,7 +1056,9 @@ async function laLingua(page, registrata) {
         scrivi(altrove.length === 0 && nellaSua && senzaRichieste ? '✅' : '❌', 'R.L.1', `la cornice in ${lingua || '(nessuna lingua)'} dall'apertura, in ogni testo: ${sua === 'it' ? 'al primo disegno, senza richieste di lingue' : 'dopo l\'attesa della sua lingua'} (#3015)`, `primo testo a ${primo ?? '—'} ms dall'apertura, ${testi.length} stati dei testi; lingue chieste: ${nomi(dellaPrima) || 'nessuna'}${altrove.length ? ` · in un'altra lingua: ${[...new Set(altrove)].slice(0, 3).join(' | ')}` : ''}${nellaSua ? '' : ' · il primo stato non è nella sua lingua'}`);
     }
     const attesi = sua === 'it' ? 0 : sua === 'en' ? 1 : 2;
-    if (sua !== 'it' && precarichi.length === 0) {
+    // Le pagine di prova servite da servi-demo con `?lingua=` hanno i precarichi, salvo con `&precarico=0`: lì mancarli è un difetto.
+    const promessi = /[?&]lingua=/.test(page.url()) && !/[?&]precarico=0(?:&|$)/.test(page.url());
+    if (sua !== 'it' && precarichi.length === 0 && !promessi) {
         scrivi('➖', 'R.L.2', 'i precarichi della lingua nella testa della pagina (#3015)', 'la pagina non ne ha: manca la riga `Cornice::precaricoDellaLingua()` nel Blade, e la cornice aspetta un giro di rete in più');
     } else {
         const bene = precarichi.length === attesi && precarichi.every((uno) => !uno.endsWith('senza crossorigin')) && registrata.avvisi.length === 0;

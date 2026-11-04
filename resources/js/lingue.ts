@@ -269,6 +269,10 @@ export function useLinguaPronta(lingua: string): string | undefined {
     const [, arrivata] = useState(0);
     const [mostrata, mostra] = useState<string>();
     const [nonArrivata, nonArriva] = useState<string>();
+    // Una lingua che non era arrivata si richiede quando la persona ci torna, anche sulla stessa cornice.
+    if (nonArrivata !== undefined && nonArrivata !== lingua) {
+        nonArriva(undefined);
+    }
     const pronta = linguaPronta(lingua) || nonArrivata === lingua;
     if (pronta && mostrata !== lingua) {
         mostra(lingua);

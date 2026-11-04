@@ -170,9 +170,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 46,6 KB | 16,4 KB | 63,5 KB | 13,7 KB |
+| solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
 | la cornice e due componenti per nome | 49,9 KB | 17,6 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,4 KB | 40,4 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,5 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -199,7 +199,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 16.856 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 16.880 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -223,7 +223,7 @@ i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di 
 usciti dal JS d'ingresso, nel pezzo della ricerca (Decisione 18762 di zr-pm). Dalla `v4.2.0` è salito di 360 byte, alla
 misura più 20: il design system nuovo, col codice dell'`AppShell` per la ricerca all'invio, `settings={false}` e la foto
 nell'avatar (352 byte), e la foto della persona nella cornice (8); un'eccezione di zr-pm senza contropartita (Decisione
-20570). Dalla `v4.4.0` è sceso di 717 byte, alla misura più 20: nel JS d'ingresso c'è solo l'italiano, e inglese e spagnolo
+20570). Dalla `v4.4.0` è sceso di 693 byte, alla misura più 20: nel JS d'ingresso c'è solo l'italiano, e inglese e spagnolo
 sono file a richiesta (Decisione 20618 di zr-pm; «Il precarico della lingua», in fondo), con un tetto ciascuno, la misura
 più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
@@ -2987,7 +2987,9 @@ cornice chiede con `fetch`: la lingua della persona e l'inglese, da cui prende i
 zr-core non ha (`pt-BR`) ha i testi dell'inglese. La richiesta parte quando il JS d'ingresso è eseguito, dalla lingua del
 documento (`<html lang>`), e la cornice la chiede da sé se la lingua dei dati è un'altra. Finché la lingua non è arrivata la
 cornice non si disegna: è vuota un attimo, mai in un'altra lingua. Se la lingua non arriva si disegna in italiano. A un
-cambio di lingua resta in quella di prima finché la nuova non è arrivata.
+cambio di lingua resta in quella di prima finché la nuova non è arrivata. Anche `testi` e `nomeDellaVoce`, per chi li usa
+fuori dalla cornice, danno l'italiano finché la lingua non è arrivata; con la lingua che non arriva i testi della cornice
+sono in italiano, mentre date, frasi delle notifiche e ricerca restano nella lingua della persona.
 
 Il server del modulo sa la lingua della pagina prima del browser: una riga nella testa del Blade, prima di `@vite`, mette il
 precarico dei file di quella lingua, così il browser comincia a scaricarli insieme al JS d'ingresso.
@@ -3005,7 +3007,9 @@ precarico dei file di quella lingua, così il browser comincia a scaricarli insi
 - **Dove trova i file**: nel manifest della build del modulo, con la chiave che Vite dà ai file del pacchetto (il percorso
   vero, relativo alla radice del frontend: va anche col pacchetto installato in symlink). Senza manifest, con Vite in
   sviluppo (`npm run dev`), o con un file che il manifest non ha, quella riga manca e la pagina va: la cornice chiede la sua
-  lingua da sé, un giro di rete dopo.
+  lingua da sé, un giro di rete dopo. La radice è quella del frontend (`base_path()`), che dev'essere anche la `root` di
+  Vite: con un'altra, o con il pacchetto in symlink nella build e copiato in produzione, le chiavi non combaciano e il
+  precarico manca, senza errori.
 - **Senza la riga**: tutto funziona, e la cornice di chi non parla italiano aspetta un giro di rete in più. Chi parla
   italiano non aspetta niente, con o senza.
 - **Nei test del modulo**: `beforeAll(() => frasiInMemoria())` (vedi «Le notifiche») mette in memoria anche le lingue, e la

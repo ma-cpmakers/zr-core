@@ -1802,7 +1802,7 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
     });
 });
 
-// Sprint 106 · T1 (voce #3015, Decisione 20618 di zr-pm): nel JS d'ingresso resta l'italiano, la lingua di quasi tutte le persone
+// Sprint 106 · T1 (voce 3015, Decisione 20618 di zr-pm): nel JS d'ingresso resta l'italiano, la lingua di quasi tutte le persone
 // di Zeiras; le altre lingue, inglese compreso, arrivano a richiesta. Chi ha un'altra lingua la aspetta con l'inglese, che è il
 // ripiego dei testi che le mancano.
 describe('le lingue a richiesta (sprint 106 · T1)', () => {

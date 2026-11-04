@@ -6,7 +6,7 @@ import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
 import type { DatiDellaCornice } from './index';
 
-// Sprint 106 · T2 (voce #3015, Decisione 20618 di zr-pm). Nel JS d'ingresso c'è solo l'italiano: inglese e spagnolo arrivano a
+// Sprint 106 · T2 (voce 3015, Decisione 20618 di zr-pm). Nel JS d'ingresso c'è solo l'italiano: inglese e spagnolo arrivano a
 // richiesta, e la cornice di chi parla un'altra lingua aspetta la sua invece di disegnarsi in italiano o in inglese. Qui i
 // moduli sono nuovi a ogni caso (`vi.resetModules()`), senza le lingue che il file di preparazione dei test mette in memoria,
 // e `fetch` tiene i file delle lingue finché il caso non li fa arrivare, o non arrivare.
@@ -156,6 +156,20 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
         expect(visibile()).toContain(spagnolo.skipToContent);
     });
 
+    it('se la lingua non arriva, e la persona passa all\'italiano e torna allo spagnolo sulla stessa cornice, lo spagnolo si richiede (T2.3; revisione, D1)', async () => {
+        const { Cornice } = await import('./index');
+        const inLingua = (lingua: string) => createElement(Cornice, { dati: { ...dati, lingua }, product: 'pm', onLogout: () => {} }, laPagina());
+
+        await mostra(inLingua('es'));
+        await nonArriva('es');
+        await mostra(inLingua('it'));
+        await mostra(inLingua('es'));
+        expect(chiesti.filter((lingua) => lingua === 'es')).toHaveLength(2);
+        await arrivano('es', 'en');
+
+        expect(visibile()).toContain(spagnolo.skipToContent);
+    });
+
     it('la cornice dello staff in spagnolo aspetta la sua lingua come quella dei moduli (T2.4)', async () => {
         const { CorniceDelloStaff } = await import('./app');
 
@@ -193,7 +207,7 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
     });
 });
 
-// Sprint 106 · T4.2 (voce #3015). Col precarico del server (`Cornice::precaricoDellaLingua()`) la lingua chiesta da `<html lang>`
+// Sprint 106 · T4.2 (voce 3015). Col precarico del server (`Cornice::precaricoDellaLingua()`) la lingua chiesta da `<html lang>`
 // arriva prima che la cornice si monti: in Chromium fra il primo disegno, vuoto, e l'effetto che l'avrebbe chiesta. L'effetto la
 // trova pronta, e la cornice deve ridisegnarsi: senza, restava vuota per sempre (la UAT, R.L.1 su layout.html in spagnolo).
 describe('la lingua che arriva fra il disegno e l\'effetto (sprint 106 · T4.2)', () => {
