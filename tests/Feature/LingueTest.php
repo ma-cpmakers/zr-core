@@ -781,13 +781,14 @@ function italianoAtteso(): array
  * cornice non chiede. Nelle lingue della cornice, che stanno nel JS d'ingresso, costerebbero 85 byte con gzip; li ha la cornice
  * dello staff, con le sue lingue, quando cerca all'invio (voce #2965). Dal lotto 0512 del design system anche «Da attivare» (`off`,
  * richiesta 78) e «Impostazioni del workspace» (`workspaceSettings`, richiesta 128): la cornice non segna moduli `off` e non passa
- * le impostazioni del workspace.
+ * le impostazioni del workspace. Dal design system 1793914149-8632 anche i tre testi dello spazio cliente di zr-account («Il mio
+ * spazio», «Come cliente», «Crea il tuo workspace»): la cornice non passa `personal`, e senza aziende non ha il selettore.
  *
  * @return list<string>
  */
 function testiDellAppShellCheLaCorniceNonUsa(): array
 {
-    return ['searchSubmitHint', 'searchPressEnter', 'off', 'workspaceSettings'];
+    return ['searchSubmitHint', 'searchPressEnter', 'off', 'workspaceSettings', 'personal', 'personalGroup', 'firstWorkspace'];
 }
 
 /**

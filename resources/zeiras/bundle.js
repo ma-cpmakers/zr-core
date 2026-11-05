@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -155,6 +155,7 @@
     soon: 'Presto', off: 'Da attivare', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
+    personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
@@ -197,6 +198,29 @@
         p.text ? h('span', { className: 'zr-notif-sub' }, p.text) : null,
         (p.time || p.product) ? h('span', { className: 'zr-notif-meta' }, [p.product, p.time].filter(Boolean).join(' · ')) : null),
       p.unread ? h('span', { className: 'zr-notif-dot', 'aria-label': p.unreadLabel || C.unread }) : null);
+  }
+
+  /* AppointmentItem: la riga di un appuntamento (Bookings, Il mio spazio). Testi già scritti dal modulo nella sua lingua. */
+  function AppointmentItem(p) {
+    var past = !!p.past, canceled = p.statusTone === 'coral' || p.canceled;
+    var titleId = useRef('zr-appt-' + Math.random().toString(36).slice(2, 8)).current;
+    var title = p.href ? h('a', { href: p.href, onClick: p.onOpen, className: 'zr-appt-title', id: titleId }, p.title)
+      : p.onOpen ? h('button', { type: 'button', onClick: p.onOpen, className: 'zr-appt-title', id: titleId }, p.title)
+      : h('span', { className: 'zr-appt-title', id: titleId }, p.title);
+    return h('article', { className: cx('zr-appt', past && 'is-past', canceled && 'is-canceled', p.compact && 'is-compact', p.className), 'aria-labelledby': titleId },
+      h('div', { className: 'zr-appt-date', 'aria-hidden': p.dateLabel ? 'true' : undefined },
+        h('span', { className: 'zr-appt-wd' }, p.weekday),
+        h('span', { className: 'zr-appt-day' }, p.day),
+        h('span', { className: 'zr-appt-month' }, p.month)),
+      p.dateLabel ? h('span', { className: 'zr-visually-hidden' }, p.dateLabel) : null,
+      h('div', { className: 'zr-appt-body' },
+        h('div', { className: 'zr-appt-head' }, title, p.status ? h(StatusLabel, { status: p.status, tone: p.statusTone || 'pine' }) : null),
+        h('div', { className: 'zr-appt-meta' },
+          p.time ? h('span', { className: 'zr-appt-m' }, h(Icon, { name: 'clock', size: 14 }), h('span', null, p.time)) : null,
+          p.place ? h('span', { className: 'zr-appt-m' }, h(Icon, { name: p.online ? 'link' : 'home', size: 14 }), h('span', null, p.place)) : null,
+          p.provider ? h('span', { className: 'zr-appt-m' }, h('span', { className: 'zr-ws-dot', style: { background: 'var(--' + (p.providerTone || 'pine') + ')' }, 'aria-hidden': 'true' }), h('span', null, p.provider)) : null),
+        p.note ? h('p', { className: 'zr-appt-note' }, p.note) : null,
+        p.actions ? h('div', { className: 'zr-appt-actions' }, p.actions) : null));
   }
 
   function AppShell(p) {
@@ -252,7 +276,9 @@
     var companies = p.companies || [];
     var curCompany = null, curWs = null;
     companies.forEach(function (c) { (c.workspaces || []).forEach(function (w) { if (w.slug === p.workspaceSlug) { curCompany = c; curWs = w; } }); });
-    if (!curCompany && companies.length) { curCompany = companies[0]; curWs = (curCompany.workspaces || [])[0] || null; }
+    var personal = p.personal || null, onPersonal = !!(personal && personal.active); /* «Il mio spazio»: la persona come cliente (zr-account) */
+    if (onPersonal) { curCompany = null; curWs = null; }
+    else if (!curCompany && companies.length) { curCompany = companies[0]; curWs = (curCompany.workspaces || [])[0] || null; }
     function wsKeys(e) {
       if (e.key === 'Escape') { e.stopPropagation(); setPop(null); if (wsBtn.current) wsBtn.current.focus(); return; }
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -262,14 +288,23 @@
     }
     useEffect(function () { if (pop === 'ws' && wsRef.current) { var a = wsRef.current.querySelector('.zr-ws-item[aria-current]') || wsRef.current.querySelector('.zr-ws-item'); if (a) a.focus({ preventScroll: true }); } }, [pop]);
     var wsSettings = !!(curWs && (p.workspaceSettingsHref || p.onWorkspaceSettings));
-    var wsSwitch = companies.length ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys },
-      h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': sid + '-ws', 'aria-label': L.workspaceSwitch + ': ' + (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : ''),
+    var personalName = personal ? (personal.label || L.personal) : '';
+    var wsSwitch = (companies.length || personal) ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys },
+      h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': sid + '-ws', 'aria-label': L.workspaceSwitch + ': ' + (onPersonal ? L.personalGroup + ' › ' + personalName : (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : '')),
         onClick: function () { setPop(pop === 'ws' ? null : 'ws'); } },
+        onPersonal ? h('span', { className: 'zr-iconbox zr-iconbox-sm zr-label-pine zr-ws-me', 'aria-hidden': 'true' }, h(Icon, { name: 'user', size: 16 })) : null,
         h('span', { className: 'zr-ws-text' },
-          h('span', { className: 'zr-ws-company' }, curCompany ? curCompany.name : ''),
-          h('span', { className: 'zr-ws-name' }, curWs ? curWs.name : '')),
+          h('span', { className: 'zr-ws-company' }, onPersonal ? L.personalGroup : (curCompany ? curCompany.name : '')),
+          h('span', { className: 'zr-ws-name' }, onPersonal ? personalName : (curWs ? curWs.name : ''))),
         h(Icon, { name: 'chevronDown', size: 16, className: 'zr-ws-chev' })),
       pop === 'ws' ? h('div', { id: sid + '-ws', className: 'zr-ws-menu', role: 'group', 'aria-label': L.workspaceSwitch },
+        personal ? h('div', { className: 'zr-ws-group' },
+          h('div', { className: 'zr-ws-group-title' }, h(Icon, { name: 'user', size: 14 }), h('span', null, L.personalGroup)),
+          h(personal.href ? 'a' : 'button', { type: personal.href ? undefined : 'button', href: personal.href, className: cx('zr-ws-item', onPersonal && 'is-active'), 'aria-current': onPersonal ? 'true' : undefined,
+            onClick: function (e) { setPop(null); setDrawer(false); if (!onPersonal && personal.onSelect) personal.onSelect(e); } },
+            h('span', { className: 'zr-ws-dot', style: { background: 'var(--pine)' }, 'aria-hidden': 'true' }),
+            h('span', { className: 'zr-nav-label' }, personalName),
+            onPersonal ? h(Icon, { name: 'check', size: 16 }) : null)) : null,
         companies.map(function (c) {
           return h('div', { key: c.id, className: 'zr-ws-group' },
             h('div', { className: 'zr-ws-group-title' }, h(Icon, { name: 'building', size: 14 }), h('span', null, c.name)),
@@ -287,7 +322,7 @@
           onClick: function (e) { setPop(null); setDrawer(false); if (p.onWorkspaceSettings) p.onWorkspaceSettings(e, curWs ? curWs.slug : undefined, curCompany ? curCompany.id : undefined); } },
           h(Icon, { name: 'settings', size: 16 }), h('span', { className: 'zr-nav-label' }, L.workspaceSettings)) : null,
         p.onNewWorkspace ? h('button', { type: 'button', className: 'zr-ws-item zr-ws-new', onClick: function () { setPop(null); setDrawer(false); p.onNewWorkspace(curCompany ? curCompany.id : undefined); } },
-          h(Icon, { name: 'plus', size: 16 }), h('span', { className: 'zr-nav-label' }, L.newWorkspace)) : null) : null)
+          h(Icon, { name: 'plus', size: 16 }), h('span', { className: 'zr-nav-label' }, companies.length ? L.newWorkspace : L.firstWorkspace)) : null) : null)
       : (p.workspace ? h('span', { className: 'zr-workspace' }, p.workspace) : null);
 
     /* ---- Menu Prodotti collassabile ---- */
@@ -423,7 +458,7 @@
           })),
         h('div', { className: 'zr-side-foot' },
           p.settings === false ? null : item(settingsItem),
-          h('div', { className: 'zr-plan' },
+          p.plan === false ? null : h('div', { className: 'zr-plan' },
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
       h('header', { className: 'zr-top' },
@@ -2371,6 +2406,6 @@
     ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
-    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
+    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, AppointmentItem: AppointmentItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
   });
 })();

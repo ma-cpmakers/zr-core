@@ -17,9 +17,13 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * notifiche non sono qui: stanno in un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  * Non ci sono nemmeno i due testi dell'`AppShell` che mostra solo la ricerca all'invio (`searchOn: 'submit'`, dalla `v4.2.0`), che la
  * cornice non chiede, né quelli del modulo «Da attivare» (`off`) e di «Impostazioni del workspace» (`workspaceSettings`, dal lotto
- * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace.
+ * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace. Né i tre dello spazio
+ * cliente di zr-account (`personal`, `personalGroup`, `firstWorkspace`, dal design system 1793914149-8632): la cornice non passa
+ * `personal`, e senza aziende non ha il selettore.
  */
-export type TestiDellaCornice = Required<Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'off' | 'workspaceSettings'>> &
+export type TestiDellaCornice = Required<
+    Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'off' | 'workspaceSettings' | 'personal' | 'personalGroup' | 'firstWorkspace'>
+> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
     Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> & {
