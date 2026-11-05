@@ -4652,8 +4652,8 @@ it('il README dice, dalla v3.6.0, i titoli e i tipi del promemoria di una To-do,
 ]);
 
 // Sprint 79 · T1 (voce 2820). I due tipi di evento degli sprint hanno un titolo: il README lo dice nel punto «Le notifiche», coi
-// titoli che ora sono 58, e dice che gli altri tipi del contratto del 27/10 non generano notifiche.
-it('il README dice, dalla v3.11.0, i titoli dei due tipi degli sprint, chi l\'ha fatto, che con loro i titoli sono 58, che gli altri tipi nuovi non generano notifiche e che un clic apre la pagina delle notifiche (sprint 79 · T1)', function (string $frase) {
+// titoli che con loro erano 58 (59 dalla v4.12.0), e dice che gli altri tipi del contratto del 27/10 non generano notifiche.
+it('il README dice, dalla v3.11.0, i titoli dei due tipi degli sprint, chi l\'ha fatto, che con loro i titoli erano 58, che gli altri tipi nuovi non generano notifiche e che un clic apre la pagina delle notifiche (sprint 79 · T1)', function (string $frase) {
     $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
 
     expect($testo)->not->toBe('')
