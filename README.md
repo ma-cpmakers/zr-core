@@ -476,7 +476,7 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.120` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.128` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
@@ -486,7 +486,9 @@ e la 0.12.4 è la patch con cui la CI ha provato quel codice; con una più vecch
 `v2.19.0` serve la 0.12.41: le rotte della cornice escono da `SoloDallaPersona`, che c'è da quella (vedi «Le rotte della
 cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`. Dalla `v4.1.0` serve la 0.12.120: la rotta della
 foto legge il file con `Api::immagine`, che c'è da quella (vedi «Le rotte della cornice»), e con una più vecchia Composer lascia
-zr-core alla `v4.0.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+zr-core alla `v4.0.0`. Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina
+di ritorno dopo l'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia
+zr-core alla `v4.5.1`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
