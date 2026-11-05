@@ -110,8 +110,11 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     // sparirebbe dal modulo senza errore; ciò che il bundle dice di MentionField fuori dal blocco non entrerebbe; una funzione
     // chiusa da «};» prenderebbe la chiusura di Checkbox. Ognuna ferma lo script.
     const RIGA_DI_USEREF = '  var useRef = React.useRef;';
+    const RIGA_DI_CX = "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }";
     it.each<[string, (testo: string) => string, string]>([
         ['due nomi con la virgola', (testo) => testo.replace(RIGA_DI_USEREF, '  var a = 1, useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
+        // Lotto 0514: l'espressione regolare si salta, e la riga `var` con una barra e un'altra dichiarazione si ferma sul testo.
+        ['un\'espressione regolare con una parentesi prima di un\'altra dichiarazione', (testo) => testo.replace(RIGA_DI_CX, `  var RX = /[(]/; ${RIGA_DI_CX.trim()}`), 'la riga 8 ha una barra e più di una dichiarazione'],
         ['un nome fra graffe', (testo) => testo.replace(RIGA_DI_USEREF, '  var { useRef } = React;'), 'la riga 6 («var { useRef } = React;») ha una forma che lo script non conosce'],
         ['un `const`', (testo) => testo.replace(RIGA_DI_USEREF, '  const useRef = React.useRef;'), 'la riga 6 («const useRef = React.useRef;») ha una forma che lo script non conosce'],
         ['una proprietà data a MentionField dopo il blocco', (testo) => testo.replace('  function Checkbox(p) {', '  MentionField.Prova = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a MentionField, che il modulo di MentionField porta'],
@@ -125,7 +128,8 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         // Seconda lettura della PR #126: le stesse cose su una riga `function`, sulla riga che continua una `var`, su un nome
         // privato che il modulo porta, e con un apostrofo in un commento.
         ['una riga `function` con due nomi dopo', (testo) => testo.replace(RIGA_DI_USEREF, '  function rr() {} var zz = 1, useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
-        ['una riga `function` con un\'espressione regolare con una parentesi', (testo) => testo.replace(RIGA_DI_USEREF, '  function rr() { return /[(]/; } var useRef = React.useRef;'), 'le graffe della dichiarazione della riga 6 non si chiudono'],
+        // Dalla v4.9.0 (lotto 0514) dopo `return` la barra apre un'espressione regolare; dopo `)` no: lì resta una divisione.
+        ['una riga `function` con un\'espressione regolare con una parentesi dopo `)`', (testo) => testo.replace(RIGA_DI_USEREF, '  function rr(p) { if (p) /[(]/; } var useRef = React.useRef;'), 'le graffe della dichiarazione della riga 6 non si chiudono'],
         ['un secondo nome sulla riga che continua una `var`', (testo) => testo.replace(RIGA_DI_USEREF, '  var zq9 = [1,\n    2], useRef = React.useRef;'), 'la riga 6 dichiara più nomi con la virgola'],
         ['una proprietà data a una riga privata', (testo) => testo.replace('  function Checkbox(p) {', '  cx.sep = Avatar;\n  function Checkbox(p) {'), 'dà una proprietà a cx, che il modulo di MentionField porta'],
         ['un apostrofo in un commento su una riga privata', (testo) => testo.replace(RIGA_DI_USEREF, "  var useRef = React.useRef; /* l'id */"), 'MentionField usa «useRef», dichiarato alla riga 6 del bundle, e la riga non è fra le righe private'],
@@ -138,14 +142,17 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     });
 
     // Lotto 0514: DealPipeline ha `/["\\]/g`, e una virgoletta dentro un'espressione regolare apriva un testo che non si chiudeva.
-    // Una barra dove comincia un valore apre un'espressione regolare, saltata fino alla barra che la chiude; dopo `return` lo
-    // script non la riconosce, e si ferma (il caso della riga `function` qui sopra).
-    it('un\'espressione regolare con una virgoletta e una parentesi non conta nelle graffe, e la riga entra nel modulo così com\'è', () => {
-        const riga = "    var id = useId('mnt'); var rx = /[\"(\\]/g;";
-        const conUnaRegex = bundle.replace("    var id = useId('mnt');", riga);
+    // Una barra dove comincia un valore (anche dopo `return` o `=>`) apre un'espressione regolare, saltata fino alla barra che la
+    // chiude, fuori da una classe `[…]` (dove una barra non chiude): la `]` dopo `\\` chiude la classe, e la parentesi e la graffa dopo la regex contano.
+    it.each([
+        ['dopo `(`', "    var id = useId('mnt'); if (/[/\"(\\\\]/g.test(id)) {"],
+        ['dopo `return`', "    var id = useId('mnt'); if (function () { return /[/\"(\\\\]/g; }().test(id)) {"],
+    ])('un\'espressione regolare con una virgoletta e una parentesi %s non conta nelle graffe, e le righe entrano nel modulo così come sono', (_dove, riga) => {
+        const righe = [riga, "      id = id + '';", '    }'];
+        const conUnaRegex = bundle.replace("    var id = useId('mnt');", righe.join('\n'));
 
         expect(conUnaRegex).not.toBe(bundle);
-        expect(aParte(leggi(conUnaRegex), 'MentionField', dividiIlCss(bundleCss)).split('\n')).toContain(riga);
+        expect(aParte(leggi(conUnaRegex), 'MentionField', dividiIlCss(bundleCss)).split('\n')).toEqual(expect.arrayContaining(righe));
     });
 
     it('se il blocco non usa più una riga privata dell\'elenco, lo script si ferma: l\'elenco va riallineato', () => {

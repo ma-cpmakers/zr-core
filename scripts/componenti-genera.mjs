@@ -311,6 +311,18 @@ const DICHIARAZIONE = new RegExp(`^(?:var|function) (${NOME})`);
 const NOME_USATO = /(?<![.\w$])[A-Za-z_$][\w$]*/g;
 
 /**
+ * Se una barra apre un'espressione regolare: dopo un carattere da cui comincia un valore, a inizio testo, dopo `=>` o dopo una
+ * parola che ha un valore dopo di sé (`return`, `typeof`…). Si guarda la coda di quanto letto, senza copiare tutto il testo. Dopo
+ * `)` resta una divisione (`(a + b) / 2`), anche in `if (p) /re/`: il bundle non ha quella forma.
+ */
+function apreUnaRegex(letto) {
+    let fine = letto.length;
+    while (fine > 0 && /\s/.test(letto[fine - 1])) fine--;
+
+    return fine === 0 || /[(,=:[!&|?{};]$|=>$|(?:^|[^\w$])(?:return|typeof|void|case|do|else|delete|new|throw|in|of)$/.test(letto.slice(Math.max(0, fine - 12), fine));
+}
+
+/**
  * Il testo senza testi né commenti, letti insieme da sinistra a destra: un testo diventa `''`, un commento uno spazio. Così un
  * apostrofo in un commento non apre un testo, e un `//` in un testo non apre un commento.
  */
@@ -331,7 +343,7 @@ function pulito(testo) {
             const fine = testo.indexOf('\n', qui);
             fuori += ' ';
             qui = (fine < 0 ? testo.length : fine) - 1;
-        } else if (carattere === '/' && /[(,=:[!&|?{};]$/.test(fuori.trimEnd() || ';')) {
+        } else if (carattere === '/' && apreUnaRegex(fuori)) {
             // Un'espressione regolare (una barra dove comincia un valore): le sue virgolette e parentesi non contano, come
             // `/["\\]/g` di DealPipeline (lotto 0514). Si salta fino alla barra che la chiude, fuori da una classe `[…]`.
             let fine = qui + 1, classe = false;
@@ -339,6 +351,9 @@ function pulito(testo) {
                 if (testo[fine] === '\\') fine++; else if (testo[fine] === '[') classe = true; else if (testo[fine] === ']') classe = false;
                 fine++;
             }
+            // I flag dopo la barra che chiude (`g`, `i`, `u`…) non sono nomi; una regex che non si chiude lascia l'a capo.
+            if (testo[fine] === '/') while (/[a-z]/.test(testo[fine + 1] ?? '')) fine++;
+            else fine--;
             fuori += '//';
             qui = fine;
         } else {
