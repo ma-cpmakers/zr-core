@@ -200,7 +200,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 16.880 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.188 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -226,7 +226,10 @@ misura più 20: il design system nuovo, col codice dell'`AppShell` per la ricerc
 nell'avatar (352 byte), e la foto della persona nella cornice (8); un'eccezione di zr-pm senza contropartita (Decisione
 20570). Dalla `v4.4.0` è sceso di 693 byte, alla misura più 20: nel JS d'ingresso c'è solo l'italiano, e inglese e spagnolo
 sono file a richiesta (Decisione 20618 di zr-pm; «Il precarico della lingua», in fondo), con un tetto ciascuno, la misura
-più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Hanno
+più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Dalla `v4.7.0` è salito di 308 byte, alla misura più 20: il
+design system nuovo (il lotto 0512), col codice dell'`AppShell` e del `Menu` per le impostazioni del workspace, il modulo «Da
+attivare», il numero col suo nome e il fuoco dei menu, che la cornice non usa ancora tutto; un'eccezione di zr-pm come quella
+della `v4.2.0` (Decisione 21046), e quando l'avviso della cornice ridotta esce dal JS d'ingresso il tetto riscende. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
