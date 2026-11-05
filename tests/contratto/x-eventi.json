@@ -1,6 +1,6 @@
 {
-    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
-    "versione": "6aeb650e",
+    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. L'invito di Bookings su bd078afd (05/11/2026), con la fonte di zr-backoffice-c6. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
+    "versione": "bd078afd",
     "tipi": [
         "com.zeiras.app.modificata",
         "com.zeiras.board.board.creata",
@@ -32,6 +32,7 @@
         "com.zeiras.bookings.calendario.creato",
         "com.zeiras.bookings.calendario.eliminato",
         "com.zeiras.bookings.calendario.modificato",
+        "com.zeiras.bookings.invito.creato",
         "com.zeiras.bookings.link.creato",
         "com.zeiras.bookings.link.eliminato",
         "com.zeiras.bookings.pagina.creata",
@@ -117,6 +118,7 @@
         "com.zeiras.bookings.calendario.creato": "Calendario::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.calendario.eliminato": "Calendario::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.calendario.modificato": "Calendario::notifica() è false: l'evento resta nel registro",
+        "com.zeiras.bookings.invito.creato": "zr-backoffice su bd078afd: bookings.inviti.crea lo emette col solo id e non fa notifiche ai colleghi; il tipo non è nel catalogo delle notifiche né fra le personali",
         "com.zeiras.bookings.link.creato": "Link::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.link.eliminato": "Link::notifica() è false: l'evento resta nel registro",
         "com.zeiras.bookings.pagina.creata": "Pagina::notifica() è false: l'evento resta nel registro",

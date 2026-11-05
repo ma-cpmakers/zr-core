@@ -1234,20 +1234,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 102 tipi della versione 6aeb650e e l\'elenco 62, con crm.campo.creato, workspace.eliminato e le tre aperture di Bookings (sprint 79 · T2.1, T2.2, T2.3; 03/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 103 tipi della versione bd078afd e l\'elenco 63, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings (sprint 79 · T2.1, T2.2, T2.3; 05/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('6aeb650e')
-        ->and($contratto['tipi'])->toHaveCount(102)
-        // L'impronta dei tipi di 6aeb650e, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('bd078afd')
+        ->and($contratto['tipi'])->toHaveCount(103)
+        // L'impronta dei tipi di bd078afd, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('8b6d757555fb4279202257d3a4d07c59821670cfaca46d1aebe5a2d0264a4e5a')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(102)
-        ->and($contratto['non_arrivano'])->toHaveCount(62)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('7494f588dc7c5e634d0cc9672d412146d0e374f58347e2f71fd9bf9f6adf7d30')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(103)
+        ->and($contratto['non_arrivano'])->toHaveCount(63)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
@@ -1255,6 +1255,8 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.apertura.creata')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.apertura.modificata')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.apertura.eliminata')
+        // bookings.inviti.crea emette l'invito col solo id e non fa notifiche (zr-backoffice su bd078afd).
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.invito.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')
         ->and(array_filter($contratto['non_arrivano'], fn (string $fonte) => trim($fonte) === ''))->toBe([])
