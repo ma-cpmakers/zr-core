@@ -16,9 +16,10 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * testi del pezzo della ricerca, in `resources/lingue/ricerca/`, perché lo mostra solo una riga dei risultati. Le frasi delle
  * notifiche non sono qui: stanno in un file loro (`FrasiDelleNotifiche`), che la cornice carica quando si apre la campanella.
  * Non ci sono nemmeno i due testi dell'`AppShell` che mostra solo la ricerca all'invio (`searchOn: 'submit'`, dalla `v4.2.0`), che la
- * cornice non chiede.
+ * cornice non chiede, né quelli del modulo «Da attivare» (`off`) e di «Impostazioni del workspace» (`workspaceSettings`, dal lotto
+ * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace.
  */
-export type TestiDellaCornice = Required<Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter'>> &
+export type TestiDellaCornice = Required<Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'off' | 'workspaceSettings'>> &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &
     Record<`searchSource.${TipoDiRisorsa | TipoDellaRicerca}`, string> & {

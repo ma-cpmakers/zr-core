@@ -25,6 +25,7 @@ import '../../css/zeiras/MentionField.css';
     var taken = values.map(function (v) { return v.id; });
     var list = q === null ? [] : (p.suggestions || []).filter(function (s) {
       if (taken.indexOf(s.id) >= 0) return false;
+      if (p.filter === false) return true;
       var hay = [s.name, s.email, s.phone, s.sub].filter(Boolean).join(' ').toLowerCase();
       return !q || hay.indexOf(q) >= 0;
     }).slice(0, p.maxResults || 8);

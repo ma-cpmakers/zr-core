@@ -51,13 +51,14 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
     it('ha il blocco del bundle riga per riga, dalle righe attaccate alla funzione alla graffa che la chiude, e le righe private che usa, com\'erano', () => {
         const delBundle = bundle.split('\n');
         const funzione = delBundle.indexOf('  function MentionField(p) {');
-        // Nel design system di oggi il blocco è di 64 righe: `MENTION_LABELS` e la funzione; prima una riga vuota, dopo la sua
+        // Nel design system di oggi il blocco è di 65 righe (64 fino al lotto 0512, che aggiunge `filter={false}`): `MENTION_LABELS`
+        // e la funzione; prima una riga vuota, dopo la sua
         // graffa il bundle va a capo e comincia Checkbox.
         const inizio = funzione - 1;
-        const blocco = delBundle.slice(inizio, inizio + 64);
+        const blocco = delBundle.slice(inizio, inizio + 65);
         const daQui = righe.indexOf(blocco[0] ?? '');
 
-        expect([delBundle[inizio - 1], blocco[0]?.startsWith('  var MENTION_LABELS = '), daQui > 0, blocco.at(-1), delBundle[inizio + 64], delBundle[inizio + 65]]).toStrictEqual(['', true, true, '  }', '', '  function Checkbox(p) {']);
+        expect([delBundle[inizio - 1], blocco[0]?.startsWith('  var MENTION_LABELS = '), daQui > 0, blocco.at(-1), delBundle[inizio + 65], delBundle[inizio + 66]]).toStrictEqual(['', true, true, '  }', '', '  function Checkbox(p) {']);
         expect(righe.slice(daQui, daQui + blocco.length)).toStrictEqual(blocco);
         expect(righe.slice(6, daQui - 1)).toStrictEqual([
             '  var h = React.createElement;',
@@ -78,7 +79,7 @@ describe('il modulo di MentionField è quello che il bundle genera (sprint 71 ·
         expect([delBundle[commento + 1]?.startsWith('  /* ---------- AddressField: '), commento < delBundle.indexOf('  function AddressField(p) {'), delBundle.indexOf('  function AddressField(p) {') < delBundle.indexOf('  function MentionField(p) {')]).toStrictEqual([true, true, true]);
         expect(['zr-address', 'ADDRESS_LABELS', 'AddressField', '/* ---------- '].filter((testo) => generato.includes(testo))).toStrictEqual([]);
         // Una riga di meno della `v3.1.0` (79 col fondo): il commento di MentionField, che non sta più attaccato alla funzione.
-        expect(righe.length).toBe(79); // 78 fino alla `v3.2.x`: dalla `v3.3.0` c'è anche l'import dei suoi stili (sprint 75 · T1.2)
+        expect(righe.length).toBe(80); // 78 fino alla `v3.2.x`: dalla `v3.3.0` c'è anche l'import dei suoi stili (sprint 75 · T1.2); dal lotto 0512 la riga di `filter={false}`
     });
 
     it('col commento attaccato alla funzione, come nel design system di prima, il blocco comincia dal commento', () => {

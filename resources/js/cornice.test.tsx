@@ -9004,15 +9004,19 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
 
     it('un `Menu` aperto fuori dal dialogo, accanto, conta come uno dentro: il gestore non interviene e il fuoco resta nel menu (T4.6)', async () => {
         largaAlPiu720(false);
+        const menuChiuso = vi.fn();
         await laPagina(<>
             {ilDialogo(<input id="nome" />)}
-            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />
         </>);
         const voce = uno('.zr-menu [role="menuitem"]');
         expect(uno('.zr-dialog .zr-menu')).toBeNull();
 
+        // Dal lotto 0512 del design system (richiesta 93) il Tab nel `Menu` lo ferma il `Menu`, che si chiude e rende il fuoco al
+        // pulsante (qui non c'è): il gestore della cornice non lo porta nel dialogo.
         await conIlFuoco(voce);
-        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([true, true]);
+        expect(menuChiuso).toHaveBeenCalledTimes(2);
         expect(document.activeElement).toBe(voce);
     });
 

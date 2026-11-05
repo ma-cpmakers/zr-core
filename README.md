@@ -171,9 +171,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
-| la cornice e due componenti per nome | 50,4 KB | 17,8 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 136,9 KB | 44,3 KB | 63,5 KB | 13,7 KB |
+| solo la cornice, dall'ingresso per le app | 47,8 KB | 16,8 KB | 63,5 KB | 13,7 KB |
+| la cornice e due componenti per nome | 53,7 KB | 18,7 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 140,0 KB | 45,1 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -264,8 +264,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 85,6 KB | 14,2 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 82,4 KB | 13,7 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 86,4 KB | 14,3 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 83,2 KB | 13,9 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
