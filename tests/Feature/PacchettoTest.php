@@ -2101,7 +2101,9 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
  * perché resta lì anche in un passo spento. Lettura della PR #59, R5: un passo sano non ha nemmeno uno `shell:` suo, e sta in
  * un job che ferma la CI — senza `continue-on-error`, `if:` né `defaults:` —, in un file senza `defaults:`; un job che il
  * controllo non riconosce non è sano. Lettura della PR #60, R5: nemmeno un job dietro un altro (`needs:`), che è saltato
- * quando quello è saltato; e una chiave scritta fra virgolette o fra apici è la stessa chiave.
+ * quando quello è saltato; e una chiave scritta fra virgolette o fra apici è la stessa chiave. Dalla PR #170 il job ha un solo
+ * `if:` ammesso, quello che lo salta su una PR in bozza (i minuti di Actions, decisione di zr-pm): una bozza non si unisce a
+ * main, e su main, sui tag e su una PR pronta il job gira sempre. Ogni altro `if:` sul job resta un difetto.
  *
  * @return list<string>
  */
@@ -2133,8 +2135,10 @@ function difettiDelPassoCheLancia(string $comando, string $ci): array
     if (count($delPasso) !== 1) {
         $difetti[] = 'il job del passo non si trova';
     }
+    $soloInBozza = "    if: github.event_name != 'pull_request' || !github.event.pull_request.draft\n";
+    $jobDelPasso = str_replace($soloInBozza, '', $delPasso[0] ?? '');
     foreach (['continue-on-error', 'if', 'defaults', 'needs'] as $chiave) {
-        if (preg_match('/^ {4}["\']?'.$chiave.'["\']?:/m', $delPasso[0] ?? '') === 1) {
+        if (preg_match('/^ {4}["\']?'.$chiave.'["\']?:/m', $jobDelPasso) === 1) {
             $difetti[] = "il job del passo ha `{$chiave}:`";
         }
     }
@@ -2203,6 +2207,8 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
         'con needs sul job' => str_replace($job, "    needs: [prima]\n".$job, $ci),
         // Una chiave scritta fra virgolette o fra apici è la stessa chiave.
         'con un if fra virgolette sul job' => str_replace($job, "    \"if\": false\n".$job, $ci),
+        // PR #170: l'`if:` della bozza è il solo ammesso, e solo così. Rovesciato salterebbe il job proprio sulle PR pronte.
+        'con l\'if della bozza rovesciato' => str_replace('|| !github.event.pull_request.draft', '|| github.event.pull_request.draft', $ci),
         'con continue-on-error fra apici sul passo' => str_replace($riga, $riga."        'continue-on-error': true\n", $ci),
         // Tre spazi davanti al nome del job: per YAML è lo stesso file, ma il controllo non sa più qual è il job del passo.
         'col job che non si trova' => str_replace("\n  ci:\n", "\n   ci:\n", $ci),
@@ -2218,6 +2224,7 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
             'con defaults sul file' => ['il file ha `defaults:`'],
             'con needs sul job' => ['il job del passo ha `needs:`'],
             'con un if fra virgolette sul job' => ['il job del passo ha `if:`'],
+            'con l\'if della bozza rovesciato' => ['il job del passo ha `if:`'],
             'con continue-on-error fra apici sul passo' => ['il passo ha `continue-on-error:`'],
             'col job che non si trova' => ['il job del passo non si trova'],
         ]);
