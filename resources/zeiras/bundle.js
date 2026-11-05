@@ -1237,9 +1237,10 @@
     function cap(v, prev, el) {
       var a = Array.from(v), b = Array.from(prev);
       if (!p.maxLength || a.length <= p.maxLength || a.length <= b.length) return v;
-      var i = 0, j = 0;
-      while (i < b.length && a[i] === b[i]) i++;
-      while (j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+      var i = 0, j = 0, end = el && typeof el.selectionEnd === 'number' ? el.selectionEnd : -1;
+      if (end >= 0) j = Math.min(b.length, Array.from(v.slice(end)).length); /* dopo il cursore c'è ciò che c'era dopo l'inserimento */
+      else while (j < b.length && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+      while (i < b.length - j && a[i] === b[i]) i++;
       var put = a.slice(i, a.length - j).slice(0, Math.max(0, p.maxLength - i - j)), head = a.slice(0, i).concat(put).join('');
       var out = head + a.slice(a.length - j).join('');
       if (el) { el.value = out; try { el.setSelectionRange(head.length, head.length); } catch (e) {} } /* il cursore resta dopo ciò che è entrato */
@@ -1483,7 +1484,7 @@
     })));
     return h('div', { className: 'zr-table-wrap' },
       p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
-        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); } }, L.deselect)) : null,
+        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); if (p.onSelect) p.onSelect([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
         onChange: function (e) { var v = e.target.value.split(':'); setSort(v[0] ? { key: v[0], dir: v[1] } : null); setPage(0); } }) : null,
       p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */

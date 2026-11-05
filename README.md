@@ -1074,8 +1074,8 @@ cornice === null ? pagina : (
   design system); il fuoco che lascia la finestra no. Dalla `v4.7.0` lo fa l'`AppShell` del design system (lotto 0512), e il pezzo
   dei rimedi non lo fa più: prima, a ricerca aperta, mandava un Esc finto al campo. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
-  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
-  sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
+  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. Il nascondere le azioni è provvisorio,
+  come i punti sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva la barra resta com'era.
 - **Esc nella ricerca, il cassetto e i menu della barra da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
   il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto i 1024 px) Esc lo chiude anche col
