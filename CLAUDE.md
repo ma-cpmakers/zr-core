@@ -136,8 +136,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 
 ## Progetto sulla board
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.8.0` (lotto 0513, `ds-1793895705-5d03`); ora la #3055
-   (l'Alert della cornice ridotta nel pezzo degli avvisi: il tetto riscende) e il design del primo accesso di Bookings (pagina
-   prima/dopo per Luciano, /tmp/ma-board-zr-core/s113); poi lo 0514 (riga 1, DealPipeline, con zr-crm). #2909 (la fascia di assistenza) esce quando zr-backoffice ha
+   (l'Alert della cornice ridotta nel pezzo degli avvisi: il tetto riscende); il design del primo accesso di Bookings aspetta il sì
+   di Luciano (pagina prima/dopo mandata a zr-pm, copia in /tmp/ma-board-zr-core/s114/dopo); poi lo 0514 (riga 1, DealPipeline, con zr-crm). #2909 (la fascia di assistenza) esce quando zr-backoffice ha
    `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
