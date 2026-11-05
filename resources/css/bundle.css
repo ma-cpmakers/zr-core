@@ -22,6 +22,10 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-btn-danger { background: var(--coral); color: var(--on-coral); }
 .zr-btn-danger:hover { background: var(--coral); filter: brightness(.94); }
 .zr-btn:disabled { opacity: .5; cursor: not-allowed; }
+.zr-btn.is-busy { cursor: progress; }
+.zr-btn-spin { flex: none; box-sizing: border-box; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: var(--radius-pill); animation: zr-spin .8s linear infinite; }
+@keyframes zr-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .zr-btn-spin { animation-duration: 2.4s; } }
 
 /* Label + tone pairs (shared by avatar and icon boxes) */
 .zr-label { display: inline-flex; align-items: center; height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-pill); font-size: 12px; line-height: 16px; font-weight: 600; white-space: nowrap; }
@@ -32,6 +36,14 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-label-sky { background: var(--sky-soft); color: var(--sky); }
 .zr-label-plum { background: var(--plum-soft); color: var(--plum); }
 /* Label variant="type": il tipo di una cosa, a contorno, col puntino del tono (richiesta 154) */
+.zr-label.is-wrap { white-space: normal; height: auto; min-height: 22px; max-width: 100%; padding-top: 3px; padding-bottom: 3px; border-radius: var(--radius-md); box-sizing: border-box; } /* una frase lunga va a capo (richiesta 161) */
+.zr-label.has-remove { gap: var(--space-1); padding-right: 2px; }
+.zr-label-x { position: relative; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: var(--radius-pill); background: none; color: inherit; cursor: pointer; }
+.zr-label-x:hover { background: var(--surface-raised); }
+.zr-label-add { gap: var(--space-1); box-sizing: border-box; border: var(--border-strong, 1.5px) dashed var(--line-strong); background: transparent; font-family: inherit; color: var(--ink-muted); cursor: pointer; }
+.zr-label-add:hover { color: var(--ink); border-color: var(--ink-muted); }
+.zr-label-x:focus-visible, .zr-label-add:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .zr-label-add { position: relative; } .zr-label-x::after, .zr-label-add::after { content: ''; position: absolute; top: 50%; height: 22px; transform: translateY(-50%); } .zr-label-x::after { right: -2px; width: 44px; } .zr-label-add::after { left: 50%; width: max(100%, 44px); height: 100%; transform: translate(-50%, -50%); } } /* al tocco l'area si allarga solo di lato: alta come la pillola, su più righe non copre quella sopra; la «×» si allarga verso il testo, non sull'etichetta dopo */
 .zr-label.zr-label-type { gap: var(--space-1-5); box-sizing: border-box; background: transparent; border: 1px solid var(--line-strong); border-radius: var(--radius-xs); color: var(--ink); }
 .zr-label-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--ink-muted); }
 .zr-label-dot.is-pine { background: var(--pine); } .zr-label-dot.is-citrus { background: var(--citrus); } .zr-label-dot.is-coral { background: var(--coral); } .zr-label-dot.is-sky { background: var(--sky); } .zr-label-dot.is-plum { background: var(--plum); }
@@ -149,6 +161,14 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-card:hover { border-color: var(--line-strong); }
 .zr-card:active { cursor: grabbing; }
 .zr-card.is-dragging { opacity: .45; box-shadow: var(--shadow-lift); }
+/* il «⋯» delle azioni rapide (richiesta 157): in alto a destra, si vede al passaggio, col fuoco sulla scheda, a menu aperto; al tocco sempre */
+.zr-card-actions { position: absolute; top: var(--space-1-5); right: var(--space-1-5); z-index: 1; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink-muted); cursor: pointer; opacity: 0; }
+.zr-card-actions:hover { background: var(--surface-sunken); color: var(--ink); }
+.zr-card:hover .zr-card-actions, .zr-card:focus-within .zr-card-actions, .zr-card-actions[aria-expanded="true"] { opacity: 1; }
+.zr-card-actions:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-card.has-actions .zr-card-title, .zr-card.has-actions .zr-card-labels { padding-right: var(--space-6); } /* il «⋯» non copre il titolo né le etichette della prima riga */
+@media (hover: none) { .zr-card-actions { opacity: 1; } }
+@media (pointer: coarse) { .zr-card-actions { top: var(--space-2); right: var(--space-2); } /* a 8 px dal bordo l'area da 44 sta tutta dentro la scheda */ .zr-card-actions::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); } }
 .zr-card-cover { height: 32px; margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0; }
 .zr-cover-pine { background: var(--pine); }
 .zr-cover-citrus { background: var(--citrus); }
@@ -167,6 +187,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-composer textarea { font: inherit; font-size: 14px; line-height: 20px; padding: var(--space-2) var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); resize: none; box-shadow: var(--shadow-card); }
 .zr-composer textarea::placeholder { color: var(--ink-muted); }
 .zr-composer-row { display: flex; gap: var(--space-2); }
+.zr-composer.is-error textarea { border-color: var(--danger); }
 
 /* ===================== Homepage (sito pubblico) ===================== */
 .zr-btn { text-decoration: none; box-sizing: border-box; }
@@ -373,6 +394,10 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-field.is-error input, .zr-field.is-error select, .zr-field.is-error textarea { border-color: var(--danger); }
 .zr-field-msg { display: flex; align-items: center; gap: var(--space-1); margin: 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .zr-field-msg.is-error { color: var(--danger); font-weight: 600; }
+.zr-field-foot { display: flex; align-items: flex-start; gap: var(--space-3); }
+.zr-field-count { margin-left: auto; flex: none; font-size: 12px; line-height: 16px; color: var(--ink-muted); font-variant-numeric: tabular-nums; } /* «n/max» sotto il campo, a destra (richiesta 55) */
+.zr-field-count.is-full { color: var(--ink); font-weight: 600; }
+.zr-field-count.is-over { color: var(--danger); font-weight: 600; }
 .zr-field-inline { width: 180px; }
 
 .zr-check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; cursor: pointer; position: relative; }
@@ -437,6 +462,20 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-radio-card input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .zr-radio-card-title { font-weight: 600; }
 .zr-radio-card.is-disabled, .zr-radio-group:disabled .zr-radio-card { opacity: .5; cursor: not-allowed; }
+/* ColorPicker (richiesta 104): radio nativi dietro pallini da 24 px, ognuno su un'area da 44 */
+.zr-color-picker { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 0; border: 0; gap: var(--space-1-5); }
+.zr-color-picker > legend { padding: 0; margin-bottom: var(--space-1-5); }
+.zr-color-list { display: flex; flex-wrap: wrap; margin: calc(-1 * var(--space-2-5)) 0 calc(-1 * var(--space-2-5)) calc(-1 * var(--space-2-5)); } /* i pallini allineati alla legenda; a destra niente, la pagina non scorre di lato */
+.zr-color { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+.zr-color input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: inherit; }
+.zr-color-dot { box-sizing: border-box; width: var(--space-5); height: var(--space-5); border-radius: var(--radius-pill); border: 1px solid transparent; }
+.zr-color-dot.is-pine { background: var(--pine); } .zr-color-dot.is-citrus { background: var(--citrus); } .zr-color-dot.is-coral { background: var(--coral); } .zr-color-dot.is-sky { background: var(--sky); } .zr-color-dot.is-plum { background: var(--plum); } .zr-color-dot.is-neutral { background: var(--ink-muted); }
+.zr-color-dot.is-none { border: var(--border-strong) dashed var(--line-strong); }
+.zr-color input:checked + .zr-color-dot { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--ink); }
+.zr-color input:focus-visible + .zr-color-dot { outline: 2px solid var(--focus); outline-offset: 6px; }
+.zr-color-picker.is-error .zr-color-dot.is-none { border-color: var(--danger); }
+.zr-color-picker:disabled .zr-color { opacity: .5; cursor: not-allowed; }
+@media (forced-colors: active) { .zr-color input:checked + .zr-color-dot { outline: 2px solid Highlight; outline-offset: 2px; } }
 /* ToggleGroup (141) */
 .zr-toggle-field { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; }
 .zr-toggle-group { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -466,6 +505,10 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-inline-edit.is-multiline .zr-inline-edit-text { white-space: pre-line; }
 .zr-inline-edit-field { width: 100%; box-sizing: border-box; margin: calc(-1 * var(--space-1) - 1px) 0; padding: var(--space-1) var(--space-1-5); border: 1px solid var(--focus); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); font: inherit; outline: 2px solid var(--focus); outline-offset: 1px; }
 textarea.zr-inline-edit-field { resize: vertical; }
+.zr-inline-edit-select { position: relative; display: flex; align-items: center; } /* as="select" (richiesta 184) */
+.zr-inline-edit-select > .zr-icon { position: absolute; right: var(--space-1-5); color: var(--ink-muted); pointer-events: none; }
+select.zr-inline-edit-field { appearance: none; padding-right: calc(var(--space-1-5) + 16px + var(--space-1)); cursor: pointer; }
+@media (pointer: coarse) { select.zr-inline-edit-field { min-height: 44px; } }
 .zr-inline-edit-field[aria-busy="true"] { color: var(--ink-muted); }
 .zr-inline-edit.is-error .zr-inline-edit-field { border-color: var(--danger); outline-color: var(--danger); }
 .zr-inline-edit .zr-field-msg { margin-top: var(--space-1-5); }
@@ -534,6 +577,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-toast { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 280px; max-width: 420px; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--ink); color: var(--surface); box-shadow: var(--shadow-overlay); font-size: 14px; line-height: 20px; }
 .zr-toast-text { flex: 1; }
 .zr-toast-action { border: 0; background: none; font: inherit; font-weight: 700; color: var(--surface); text-decoration: underline; cursor: pointer; }
+@media (pointer: coarse) { .zr-toast-action, .zr-toast-close { position: relative; } .zr-toast-action::after, .zr-toast-close::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); } } /* al tocco «×» e azione si prendono su 44 px, l'avviso non cresce (richiesta 10) */
 .zr-toast-close { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--surface); cursor: pointer; }
 .zr-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: grid; place-items: center; padding: var(--space-4); background: var(--scrim); }
 .zr-scrim.is-inline { position: absolute; }
@@ -611,6 +655,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-filterbar:has(> .zr-filter-search-wrap) { align-items: flex-start; } /* con la frase d'aiuto i filtri si allineano al campo, non al blocco */
 .zr-filter-hint { margin: 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .zr-filter-actions { margin-left: auto; display: flex; gap: var(--space-2); }
+.zr-filter-items { display: contents; } /* compact: sopra 720 px i filtri stanno nella barra come senza */
 
 /* Charts */
 .zr-chart { position: relative; display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
@@ -729,6 +774,10 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
   .zr-grid-4 { grid-template-columns: 1fr; }
   .zr-main { padding: var(--space-4); }
   .zr-filter-search, .zr-filter-search-wrap { width: 100%; }
+  /* compact: i filtri in una riga sola che scorre (richiesta 51) */
+  .zr-filterbar.is-compact { gap: var(--space-2); }
+  .zr-filterbar.is-compact .zr-filter-items { display: flex; flex-wrap: nowrap; gap: var(--space-2); box-sizing: border-box; width: 100%; margin: calc(-1 * var(--space-1)) 0; padding: var(--space-1); overflow-x: auto; overscroll-behavior-x: contain; } /* 4 px intorno per il contorno di fuoco, che la riga che scorre taglierebbe: sopra e sotto si riprendono col margine, di lato restano dentro la barra (la pagina non scorre) */
+  .zr-filterbar.is-compact .zr-filter-items > * { flex: none; }
 }
 
 /* Footer: dati societari */
@@ -773,7 +822,9 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-menu-label { flex: 1; }
 .zr-menu-item:hover:not(:disabled), .zr-menu-item:focus-visible { background: var(--surface-sunken); outline: none; }
 .zr-menu-item:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
-.zr-menu-item:disabled { opacity: .5; cursor: not-allowed; }
+.zr-menu-item:disabled, .zr-menu-item.is-disabled { opacity: .5; cursor: not-allowed; }
+.zr-menu-item.is-disabled:hover:not(:focus-visible) { background: transparent; }
+.zr-menu-reason { margin: 0; padding: 0 var(--space-3) var(--space-2); font-size: 12px; line-height: 16px; color: var(--ink-muted); } /* il perché di una voce spenta, sotto la voce (richiesta 83) */
 .zr-menu-item.is-danger, .zr-menu-item.is-danger .zr-icon { color: var(--danger); }
 .zr-menu-sep { height: 1px; margin: var(--space-1) 0; background: var(--line); }
 .zr-kbd { font: inherit; font-size: 11px; line-height: 16px; padding: 0 var(--space-1-5); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink-muted); background: var(--surface); }
@@ -824,7 +875,11 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
   .zr-dialog, .zr-dialog.is-lg { width: 100%; max-height: none; height: 100%; border-radius: 0; padding-top: env(safe-area-inset-top, 0px); }
   .zr-dialog-body { flex: 1; }
   .zr-dialog-foot { flex-wrap: wrap; padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); }
-  .zr-dialog-foot .zr-btn { flex: 1; min-width: fit-content; justify-content: center; } /* un'etichetta non va a capo finché ci sta; se i due non ci stanno affiancati vanno uno sotto l'altro (153) */
+  .zr-dialog-foot .zr-btn:not(.zr-btn-icon) { flex: 1; min-width: fit-content; justify-content: center; } /* un'etichetta non va a capo finché ci sta; se i due non ci stanno affiancati vanno uno sotto l'altro (153); il pulsante a sola icona resta quadrato */
+  /* size="sm": la domanda sì/no resta una scheda al centro (richiesta 53) */
+  .zr-scrim.is-compact { padding: calc(var(--space-4) + env(safe-area-inset-top, 0px)) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); place-items: center; }
+  .zr-dialog.is-sm { height: auto; max-height: 100%; border-radius: var(--radius-lg); padding-top: 0; }
+  .zr-dialog.is-sm .zr-dialog-foot { padding-bottom: var(--space-4); }
   .zr-menu { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .zr-side { transition: none; } }

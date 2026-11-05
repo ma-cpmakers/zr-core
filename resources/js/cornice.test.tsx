@@ -10773,7 +10773,8 @@ describe('i menu della barra si chiudono quando il fuoco esce (sprint 78, voce 2
 
 // Sprint 78 · T5 (voce 2802): nel menu del profilo e nel menu «+» le frecce muovono il fuoco, Home e Fine no (il `Menu` del design
 // system ascolta le sole frecce). Col pezzo della tastiera Home e Fine vanno alla prima e all'ultima voce, come nel selettore dei
-// workspace (riga 48). Solo nei menu della cornice: un `Menu` della pagina resta com'è.
+// workspace (riga 48). Dal lotto 0513 lo fa il `Menu` del design system (richiesta 132), in ogni menu: il pezzo della tastiera
+// lo tiene solo nel selettore dei workspace, che non è un `Menu`.
 describe('nel menu del profilo e nel «+» Home e Fine vanno alla prima e all\'ultima voce (sprint 78, voce 2802)', () => {
     const { Menu } = componenti;
     const premi = async (key: string) => {
@@ -10803,7 +10804,7 @@ describe('nel menu del profilo e nel «+» Home e Fine vanno alla prima e all\'u
         expect([document.activeElement, uno(pulsante)?.getAttribute('aria-expanded')]).toStrictEqual([voci()[0], 'true']);
     });
 
-    it('un menu della pagina dentro la cornice non cambia: Fine non sposta il fuoco (voce 2802)', async () => {
+    it('un menu della pagina dentro la cornice: Fine lo porta all\'ultima voce il `Menu` del design system, dal lotto 0513 (richiesta 132), non il rimedio della cornice (voce 2802)', async () => {
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><Menu anchor={null} inline label="Della pagina" items={[{ label: 'Uno' }, { label: 'Due' }, { label: 'Tre' }]} onClose={() => {}} /></Cornice>);
         await act(async () => {
             await vi.dynamicImportSettled();
@@ -10813,7 +10814,7 @@ describe('nel menu del profilo e nel «+» Home e Fine vanno alla prima e all\'u
 
         await premi('End');
 
-        expect(document.activeElement).toBe(tutti('.zr-main [role="menuitem"]')[0]);
+        expect(document.activeElement).toBe(tutti('.zr-main [role="menuitem"]')[2]);
     });
 });
 

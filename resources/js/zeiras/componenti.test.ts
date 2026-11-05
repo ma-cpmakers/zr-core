@@ -56,7 +56,7 @@ describe('il file generato è quello che il bundle genera (T1.1)', () => {
     });
 
     it('con un carattere cambiato nel bundle non è più uguale: un bundle riallineato senza rigenerare non passa', () => {
-        const cambiato = bundle.replace("'aria-label': 'Percorso'", "'aria-label': 'Percorsi'");
+        const cambiato = bundle.replace("p.label || 'Percorso'", "p.label || 'Percorsi'");
 
         expect(cambiato).not.toBe(bundle);
         expect(genera(cambiato)).not.toBe(generato);
