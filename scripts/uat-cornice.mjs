@@ -1086,9 +1086,9 @@ async function lingueCheNonArrivano(page, apri) {
         await pausa(800);
         const testo = await page.evaluate(() => document.querySelector('.zr-shell')?.textContent?.trim() ?? '');
         const italiani = soli.it.filter((uno) => testo.includes(uno)).length;
-        const inglesi = soli.en.filter((uno) => testo.includes(uno));
-        // Con lo staff i testi suoi sono già nella lingua della pagina: di quelli della cornice ne restano in vista pochi.
-        scrivi(testo !== '' && inglesi.length === 0 && (italiani > 0 || conLoStaff) ? '✅' : '❌', 'R.L.3', 'con le lingue che non arrivano la cornice si disegna in italiano, non resta vuota (#3015)', `${italiani} testi italiani nella cornice con i file delle lingue fermati${inglesi.length ? ` · in inglese: ${inglesi.slice(0, 3).join(' | ')}` : ''}`);
+        // I testi di una lingua che non è l'italiano: dalla v4.5.1 nemmeno quelli dello staff (#3031; revisione dello sprint 108, R1).
+        const inglesi = [...soli.en, ...soli.es].filter((uno) => testo.includes(uno));
+        scrivi(testo !== '' && inglesi.length === 0 && italiani > 0 ? '✅' : '❌', 'R.L.3', 'con le lingue che non arrivano la cornice si disegna in italiano, non resta vuota (#3015)', `${italiani} testi italiani nella cornice con i file delle lingue fermati${inglesi.length ? ` · in un'altra lingua: ${inglesi.slice(0, 3).join(' | ')}` : ''}`);
     } finally {
         await page.unroute(UN_FILE_DI_LINGUA, ferma);
         await apri(indirizzo);
@@ -1197,28 +1197,32 @@ async function ruoloEFine(page, apri, larghezza) {
     scrivi(bene ? '✅' : '❌', 'S.6', `a ${larghezza} px, il ruolo con «· 2FA» e l'ora della fine della sessione${dove390} (#2989)`, `«${riquadro.titolo}» · «${riquadro.testo}» · ora attesa ${riquadro.ora}`);
 }
 
-// S.7 (dalla v4.5.1, #3030): quando la sessione finisce domani il riquadro lo dice. `staff.html` con `fino` domani alle 02:00 locali
-// (il fuso di questo processo, che è anche quello del Chromium): il testo è la frase `planUntilTomorrow` della lingua della pagina,
-// dal file dello staff accanto allo script, con l'ora nella forma della lingua. Senza i file accanto allo script, o su una pagina
-// che non prende `fino` dai parametri: ➖.
+// S.7 (dalla v4.5.1, #3030): quando la sessione finisce domani il riquadro lo dice. `staff.html` con `fino` domani alle 02:00 nel
+// fuso della pagina (calcolato nella pagina, come l'ora attesa: il browser condiviso può avere un altro fuso di questo processo): il
+// testo è la frase `planUntilTomorrow` della lingua della pagina, dal file dello staff accanto allo script, con l'ora nella forma
+// della lingua. Senza i file accanto allo script, o su una pagina che non prende `fino` dai parametri: ➖; e ➖ se la mezzanotte
+// passa fra il calcolo e il disegno (revisione dello sprint 108, R2 e R3).
 async function fineDomani(page, apri, larghezza) {
-    const lingua = new URL(indirizzo).searchParams.get('lingua') || 'it';
-    let frase;
+    const riga = `a ${larghezza} px, la fine della sessione domani (#3030)`;
+    const frasi = {};
     try {
-        const dello = (codice) => JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/staff/${codice}.json`, import.meta.url)), 'utf8'));
-        frase = (['it', 'es', 'en'].includes(lingua) ? dello(lingua) : dello('en')).planUntilTomorrow;
+        for (const codice of ['it', 'es', 'en']) {
+            frasi[codice] = JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/staff/${codice}.json`, import.meta.url)), 'utf8')).planUntilTomorrow;
+        }
     } catch {
-        frase = undefined;
+        return scrivi('➖', 'S.7', riga, 'i file dello staff non sono accanto allo script');
     }
-    if (!frase) {
-        return scrivi('➖', 'S.7', `a ${larghezza} px, la fine della sessione domani (#3030)`, 'i file dello staff non sono accanto allo script');
-    }
-    const domani = new Date();
-    domani.setDate(domani.getDate() + 1);
-    domani.setHours(2, 0, 0, 0);
+    await apri(indirizzo);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    const prima = await page.evaluate(() => {
+        const domani = new Date();
+        domani.setDate(domani.getDate() + 1);
+        domani.setHours(2, 0, 0, 0);
+        return { fino: domani.toISOString(), oggi: new Date().toDateString() };
+    });
     const dove = new URL(indirizzo);
     dove.searchParams.set('ruolo', 'UAT Superadmin');
-    dove.searchParams.set('fino', domani.toISOString());
+    dove.searchParams.set('fino', prima.fino);
     await apri(dove.href);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
     await pausa(500);
@@ -1226,16 +1230,29 @@ async function fineDomani(page, apri, larghezza) {
         await page.click('.zr-shell .zr-top-menu');
         await pausa(300);
     }
-    const riquadro = await page.evaluate(() => {
+    const riquadro = await page.evaluate((fino) => {
         const qui = document.querySelector('.zr-shell .zr-side-foot .zr-plan');
-        return { visibile: qui?.checkVisibility() ?? false, titolo: qui?.querySelector('strong')?.textContent ?? '', testo: qui?.querySelector('span')?.textContent ?? '', prova: location.pathname.endsWith('/staff.html') };
-    });
+        // La lingua della pagina di prova è nel parametro `lingua`; altrimenti quella del documento. Il codice base, come la cornice.
+        const lingua = (new URLSearchParams(location.search).get('lingua') || document.documentElement.lang || 'it').slice(0, 2).toLowerCase();
+        const deiTesti = ['it', 'es', 'en'].includes(lingua) ? lingua : 'en';
+        return {
+            visibile: qui?.checkVisibility() ?? false,
+            titolo: qui?.querySelector('strong')?.textContent ?? '',
+            testo: qui?.querySelector('span')?.textContent ?? '',
+            deiTesti,
+            ora: new Intl.DateTimeFormat(deiTesti, { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            oggi: new Date().toDateString(),
+            prova: location.pathname.endsWith('/staff.html'),
+        };
+    }, prima.fino);
     await page.screenshot({ path: join(cartella, `fine-domani-${larghezza}.png`) });
     if (!riquadro.prova && !riquadro.titolo.startsWith('UAT Superadmin')) {
-        return scrivi('➖', 'S.7', `a ${larghezza} px, la fine della sessione domani (#3030)`, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
+        return scrivi('➖', 'S.7', riga, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
     }
-    const ora = new Intl.DateTimeFormat(['it', 'es', 'en'].includes(lingua) ? lingua : 'en', { hour: '2-digit', minute: '2-digit' }).format(domani);
-    const attesa = frase.replace('{ora}', () => ora);
+    if (riquadro.oggi !== prima.oggi) {
+        return scrivi('➖', 'S.7', riga, 'la mezzanotte è passata fra il calcolo e il disegno: si rilancia');
+    }
+    const attesa = frasi[riquadro.deiTesti].replace('{ora}', () => riquadro.ora);
     scrivi(riquadro.visibile && riquadro.testo === attesa ? '✅' : '❌', 'S.7', `a ${larghezza} px, la fine della sessione domani: «${attesa}» (#3030)`, `«${riquadro.testo}»`);
 }
 

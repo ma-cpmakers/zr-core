@@ -674,6 +674,10 @@ describe('il giorno della fine della sessione nel riquadro (sprint 108 · T2)', 
         ['2026-11-04T22:30:00Z', '2026-11-05T00:30:00Z', '01:30'],
         // 09:00 del 4 e 02:00 del 5.
         ['2026-11-04T08:00:00Z', '2026-11-05T01:00:00Z', '02:00'],
+        // 09:00 del 4 e 00:30 del 5 a Roma: per il giorno UTC (il 4 tutte e due) sarebbe oggi (revisione dello sprint 108, R5).
+        ['2026-11-04T08:00:00Z', '2026-11-04T23:30:00Z', '00:30'],
+        // Il 29 marzo l'ora legale: fra la sua mezzanotte e quella del 30 23 ore, e il giorno dopo resta domani (revisione dello sprint 108, R4).
+        ['2026-03-29T08:00:00Z', '2026-03-30T01:00:00Z', '03:00'],
     ])('T2.2 con la fine nel giorno locale dopo (%s → %s) «fino a domani alle …»', async (adesso, fine, ora) => {
         expect(await nelRiquadro(adesso, fine)).toBe(staffItaliano.planUntilTomorrow.replace('{ora}', ora));
     });
@@ -684,11 +688,12 @@ describe('il giorno della fine della sessione nel riquadro (sprint 108 · T2)', 
         // Il giorno prima di oggi: la data, mai «domani» né la frase di oggi.
         ['2026-11-04T08:00:00Z', '2026-11-03T17:30:00Z', 'martedì 3 novembre', '18:30'],
     ])('T2.3 con la fine oltre domani o prima di oggi (%s → %s) il giorno con la data', async (adesso, fine, giorno, ora) => {
-        expect(await nelRiquadro(adesso, fine)).toBe(staffItaliano.planUntilDay.replace('{giorno}', giorno).replace('{ora}', ora));
+        expect(await nelRiquadro(adesso, fine)).toBe(`Sessione al più tardi fino a ${giorno} alle ${ora}. Ogni azione va nel registro.`);
     });
 
     it.each([
-        ['es', 'Sesión activa como máximo hasta mañana a las 02:00. Cada acción queda en el registro.', 'Sesión activa como máximo hasta el sábado, 7 de noviembre a las 02:00. Cada acción queda en el registro.'],
+        // In spagnolo il giorno senza la virgola che Intl mette dopo quello della settimana (revisione dello sprint 108, R7).
+        ['es', 'Sesión activa como máximo hasta mañana a las 02:00. Cada acción queda en el registro.', 'Sesión activa como máximo hasta el sábado 7 de noviembre a las 02:00. Cada acción queda en el registro.'],
         ['en', 'Session active until tomorrow at 02:00 AM at the latest. Every action goes into the log.', 'Session active until Saturday, November 7 at 02:00 AM at the latest. Every action goes into the log.'],
         // Una lingua che zr-core non ha: l'inglese, nelle parole e nella forma della data.
         ['de', 'Session active until tomorrow at 02:00 AM at the latest. Every action goes into the log.', 'Session active until Saturday, November 7 at 02:00 AM at the latest. Every action goes into the log.'],

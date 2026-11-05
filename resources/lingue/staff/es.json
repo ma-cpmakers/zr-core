@@ -6,7 +6,7 @@
     "planRole": "{ruolo} · 2FA",
     "planUntil": "Sesión activa como máximo hasta las {ora}. Cada acción queda en el registro.",
     "planUntilTomorrow": "Sesión activa como máximo hasta mañana a las {ora}. Cada acción queda en el registro.",
-    "planUntilDay": "Sesión activa como máximo hasta el {giorno} a las {ora}. Cada acción queda en el registro.",
+    "planUntilDay": "Sesión activa como máximo hasta el {giorno} {data} a las {ora}. Cada acción queda en el registro.",
     "searchPlaceholder": "Buscar personas y workspaces…",
     "searchHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres.",
     "searchSubmitHint": "Busca entre personas y workspaces: escribe al menos 2 caracteres y pulsa Intro.",
