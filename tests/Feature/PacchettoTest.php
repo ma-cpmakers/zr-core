@@ -1667,6 +1667,8 @@ it('CLAUDE.md dice perché il vincolo parte dalla 0.12.128, e né CLAUDE.md né 
 
     expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` parte dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm).'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v4.1.0` parte dalla 0.12.120'))->toBe(false)
+        // Anche il README dice il perché del vincolo nuovo (rilievo della revisione della PR #169).
+        ->and(substr_count($readme, 'Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l\'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia zr-core alla `v4.5.1`.'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v2.19.0` parte dalla 0.12.41'))->toBe(false)
         ->and(str_contains($claude, 'dalla `v2.16.0` parte dalla 0.12.31'))->toBe(false)
         ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
