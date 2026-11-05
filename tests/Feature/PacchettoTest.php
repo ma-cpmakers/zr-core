@@ -4128,7 +4128,10 @@ it('il README non dice più che i titoli sono 40, né che sono 41, 42, 44, 45, 4
         ->and(substr_count($readme, 'i titoli erano 49'))->toBe(1)
         ->and(substr_count($readme, 'i titoli sono 56'))->toBe(0)
         ->and(substr_count($readme, 'i titoli erano 56'))->toBe(1)
-        ->and(substr_count($readme, 'i titoli sono 58'))->toBe(1)
+        // v4.12.0: col Gate deciso i titoli sono 59, e i 58 passano al passato.
+        ->and(substr_count($readme, 'i titoli sono 58'))->toBe(0)
+        ->and(substr_count($readme, 'i titoli erano 58'))->toBe(1)
+        ->and(substr_count($readme, 'i titoli sono 59'))->toBe(1)
         ->and(substr_count($readme, 'le schede non hanno una destinazione'))->toBe(0)
         ->and(substr_count($readme, 'diciotto tipi del CRM'))->toBe(1)
         ->and(substr_count($guida, 'Vale anche per una notifica che non è un evento: per quella a chi viene assegnata una scheda (`board.scheda.assegnata`, dalla `v1.14.0`) zr-board ha dato il titolo, «Ti è stata assegnata una scheda», e la pagina, `/c/{id}`'))->toBe(1);
@@ -4658,10 +4661,29 @@ it('il README dice, dalla v3.11.0, i titoli dei due tipi degli sprint, chi l\'ha
 })->with([
     'i due titoli' => ['Dalla `v3.11.0` hanno un titolo i due tipi di evento degli sprint di Project Management che il contratto ha dal 27/10/2026: `com.zeiras.board.sprint.creato`, «Sprint creato», e `com.zeiras.board.sprint.modificato`, «Sprint modificato»'],
     'chi l\'ha fatto' => ['con chi l\'ha fatto «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint»'],
-    'quanti sono i titoli' => ['Con loro i titoli sono 58: 40 tipi di evento e i diciotto che non sono eventi'],
+    // v4.12.0: col Gate deciso i titoli sono 59, e i 58 passano al passato.
+    'quanti erano i titoli' => ['Con loro i titoli erano 58: 40 tipi di evento e i diciotto che non sono eventi'],
     'gli altri non notificano' => ['Gli altri tipi di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo'],
     'dove si apre' => ['Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche'],
 ]);
+
+// v4.12.0 (#2791, zr-board-6b). Il Gate deciso ha un titolo e apre il Gate: il README lo dice nel punto «Le notifiche», coi
+// titoli che ora sono 59, e fra le destinazioni del registro.
+it('il README dice, dalla v4.12.0, il titolo e il tipo del Gate deciso, che non dice chi né l\'esito, che un clic apre il Gate e che con lui i titoli sono 59 (v4.12.0)', function (string $frase) {
+    $testo = puntoDelleNotifiche((string) file_get_contents(__DIR__.'/../../README.md'));
+
+    expect($testo)->not->toBe('')
+        ->and(str_contains($testo, $frase))->toBe(true);
+})->with([
+    'il titolo e il tipo' => ['Dalla `v4.12.0` ha un titolo anche il Gate deciso di Project Management, «Gate deciso» (`board.gate.deciso`), che non è un evento'],
+    'senza chi e senza esito' => ['senza chi l\'ha fatto e senza l\'esito, che il titolo non dice ancora'],
+    'dove si apre' => ['Un clic apre il Gate, che è una scheda (`/c/{id}`)'],
+    'quanti sono i titoli' => ['Con lui i titoli sono 59: 40 tipi di evento e i diciannove che non sono eventi'],
+]);
+
+it('il README dice, dalla v4.12.0, la riga del registro del Gate deciso (v4.12.0)', function () {
+    expect(substr_count(suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md')), 'Dalla `v4.12.0` anche il Gate deciso (`board.gate.deciso`), con `/c/{id}`: il Gate è una scheda.'))->toBe(1);
+});
 
 // Sprint 77 · T2.1 (voce #2677). README e guida dicono `Cornice::nuovoWorkspace()`: l'indirizzo, quando dà null, che pagina e
 // dialogo sono di zr-home e che un errore del backoffice non diventa null.

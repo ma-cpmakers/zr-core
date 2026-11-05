@@ -9,6 +9,7 @@
         { "tipo": "board.commento.menzione", "percorso": "/c/{id}" },
         { "tipo": "board.scheda.scade_domani", "percorso": "/c/{id}" },
         { "tipo": "board.scheda.scade_oggi", "percorso": "/c/{id}" },
+        { "tipo": "board.gate.deciso", "percorso": "/c/{id}" },
         { "tipo": "board.todo.promemoria", "percorso": "/todo?todo={id}" }
     ],
     "crm": [

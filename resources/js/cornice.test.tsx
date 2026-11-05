@@ -2690,8 +2690,8 @@ describe('il pannello delle notifiche', () => {
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
         // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
-        // accettato, che si apre nella Dashboard.
-        expect(righe).toHaveLength(35);
+        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso.
+        expect(righe).toHaveLength(36);
         expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
         // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.

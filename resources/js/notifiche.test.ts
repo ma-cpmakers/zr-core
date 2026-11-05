@@ -55,6 +55,8 @@ describe('la destinazione di una notifica', () => {
             // v3.6.1: le scadenze di una scheda e il promemoria di una To-do.
             { tipo: 'board.scheda.scade_domani', percorso: '/c/{id}' },
             { tipo: 'board.scheda.scade_oggi', percorso: '/c/{id}' },
+            // v4.12.0 (#2791): il Gate deciso apre il Gate, che è una scheda.
+            { tipo: 'board.gate.deciso', percorso: '/c/{id}' },
             { tipo: 'board.todo.promemoria', percorso: '/todo?todo={id}' },
         ]);
         expect(righe.crm).toStrictEqual([
@@ -305,6 +307,16 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'pm', tipo, ids: {} })).toBeUndefined();
         expect(apre({ app: 'pm', tipo, ids: { id: 'uat scheda' } })).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-scheda-1' } })).toBeUndefined();
+    });
+
+    // v4.12.0 (#2791, zr-board-6b): il Gate è una scheda, e il Gate deciso lo apre col suo `id`.
+    it('una notifica del Gate deciso apre il Gate, `/c/<id>`; senza `id`, con un id fuori forma o con l\'app di un altro prodotto il pannello apre la pagina delle notifiche (v4.12.0)', () => {
+        const gate = { tipo: 'board.gate.deciso', ids: { id: '01jb2m5k8q9r7s6t4v3w2x1y0z' } };
+        expect(apre({ ...gate, app: 'pm' })).toBe(`${BOARD}/c/01jb2m5k8q9r7s6t4v3w2x1y0z`);
+        expect(apre({ ...gate, app: 'pm', ids: {} })).toBeUndefined();
+        expect(apre({ ...gate, app: 'pm', ids: { id: 'uat/gate' } })).toBeUndefined();
+        expect(apre({ ...gate, app: 'crm' })).toBeUndefined();
+        expect(apre({ ...gate, app: null })).toBeUndefined();
     });
 
     it('una notifica del promemoria di una To-do apre la To-do, `/todo?todo=<id>`; senza `id`, con un id fuori forma o con l\'app di un altro prodotto il pannello apre la pagina delle notifiche (v3.6.1)', () => {
