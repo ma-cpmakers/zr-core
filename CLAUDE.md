@@ -135,8 +135,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · dopo lo sprint 109 (`v4.5.2`) il lotto 0512 del design system
-   (ramo `lotto-0512`, `v4.7.0`) aspetta il sì di Luciano, portato da zr-pm. #2909 (la fascia di assistenza) esce quando
-   zr-backoffice ha `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.7.0` (lotto 0512, `ds-1793888110-145c`); ora lo 0513
+   (ramo `luciano/da-caricare-0513` del design system, ramo `lotto-0513` qui): i rilievi R1-R14, poi la 184 se ci sta (Decisione 21149);
+   lo 0514 ha la riga 1 (DealPipeline, con zr-crm). #2909 (la fascia di assistenza) esce quando zr-backoffice ha
+   `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
