@@ -331,6 +331,16 @@ function pulito(testo) {
             const fine = testo.indexOf('\n', qui);
             fuori += ' ';
             qui = (fine < 0 ? testo.length : fine) - 1;
+        } else if (carattere === '/' && /[(,=:[!&|?{};]$/.test(fuori.trimEnd() || ';')) {
+            // Un'espressione regolare (una barra dove comincia un valore): le sue virgolette e parentesi non contano, come
+            // `/["\\]/g` di DealPipeline (lotto 0514). Si salta fino alla barra che la chiude, fuori da una classe `[…]`.
+            let fine = qui + 1, classe = false;
+            while (fine < testo.length && testo[fine] !== '\n' && (classe || testo[fine] !== '/')) {
+                if (testo[fine] === '\\') fine++; else if (testo[fine] === '[') classe = true; else if (testo[fine] === ']') classe = false;
+                fine++;
+            }
+            fuori += '//';
+            qui = fine;
         } else {
             fuori += carattere;
         }
