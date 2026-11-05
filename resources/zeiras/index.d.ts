@@ -17,7 +17,7 @@ export interface AvatarStackProps { people: string[]; max?: number; size?: 'sm' 
 export declare function AvatarStack(props: AvatarStackProps): React.ReactElement;
 export declare function Icon(props: { name: IconName; size?: number; className?: string }): React.ReactElement;
 
-export interface NavItem { id: string; label: string; icon: IconName; soon?: boolean; off?: boolean; count?: number; countLabel?: string; href?: string }
+export interface NavItem { id: string; label: string; icon: IconName; soon?: boolean; off?: boolean; count?: number; /** la frase intera col numero, «2 da leggere»: si sente al posto del numero */ countLabel?: string; href?: string }
 export interface AppShellLabels { soon?: string; off?: string; settings?: string; planTitle?: string; planText?: string; nav?: string; openMenu?: string; closeMenu?: string; userFallback?: string; create?: string; workspaceSwitch?: string; newWorkspace?: string; workspaceSettings?: string; search?: string; searchPlaceholder?: string; searchHint?: string; searchSubmitHint?: string; searchPressEnter?: string; searchLoading?: string; searchEmpty?: string; searchEmptyText?: string; searchError?: string; searchResults?: string; notifications?: string; unread?: string; forMe?: string; all?: string; markAllRead?: string; seeAll?: string; notificationsEmpty?: string; notificationsEmptyText?: string; notificationsError?: string; retry?: string; loading?: string; account?: string; profile?: string; accountSettings?: string; plan?: string; company?: string; logout?: string; crumbs?: string }
 export interface ShellWorkspace { slug: string; name: string; tone?: Exclude<Tone, 'neutral'> }
 export interface ShellCompany { id: string; name: string; workspaces: ShellWorkspace[] }
@@ -134,14 +134,14 @@ export declare function Checkbox(props: React.InputHTMLAttributes<HTMLInputEleme
 export declare function Switch(props: { label?: string; checked?: boolean; defaultChecked?: boolean; onChange?: (v: boolean) => void; disabled?: boolean; 'aria-label'?: string;
   /** Spento ma raggiungibile col Tab: non cambia e non chiama onChange, stesso stile di disabled */ 'aria-disabled'?: boolean | 'true' | 'false';
   /** Il testo d'aiuto o d'errore sotto, per id (richiesta 179) */ 'aria-describedby'?: string; 'aria-invalid'?: boolean | 'true' | 'false' }): React.ReactElement;
-export interface TabItem { value: string; label: string; icon?: IconName; count?: number; countLabel?: string }
+export interface TabItem { value: string; label: string; icon?: IconName; count?: number; /** la frase intera col numero, «2 da leggere»: si sente al posto del numero */ countLabel?: string }
 export declare function Tabs(props: { items: (string | TabItem)[]; value?: string; defaultValue?: string; onChange?: (v: string) => void; variant?: 'segmented' | 'underline'; size?: 'sm'; 'aria-label'?: string }): React.ReactElement;
 export interface ChoiceOption { value: string; label: React.ReactNode; hint?: React.ReactNode; disabled?: boolean }
 /** Una scelta fra poche opzioni, tutte in vista: radio nativi in un fieldset (richiesta 89) */
 export declare function RadioGroup(props: { options: (string | ChoiceOption)[]; value?: string | null; defaultValue?: string | null; onChange?: (v: string) => void; label?: React.ReactNode; hint?: React.ReactNode; error?: React.ReactNode; required?: boolean; orientation?: 'vertical' | 'horizontal'; name?: string; disabled?: boolean; 'aria-label'?: string; id?: string; className?: string;
   /** "card": ogni scelta un riquadro col titolo (label) e la descrizione (hint); orientation non vale; senza, il pallino */ variant?: 'card';
   /** Con variant="card": "grid" mette due riquadri per riga da 480 px in su */ layout?: 'list' | 'grid' }): React.ReactElement;
-export interface ToggleOption { value: string; label: React.ReactNode; icon?: IconName; count?: number | string; countLabel?: string; disabled?: boolean; 'aria-label'?: string }
+export interface ToggleOption { value: string; label: React.ReactNode; icon?: IconName; count?: number | string; /** la frase intera col numero, «2 da leggere»: si sente al posto del numero */ countLabel?: string; disabled?: boolean; 'aria-label'?: string }
 /** Scelte a pulsanti con lo stato premuto (aria-pressed), una o più (richiesta 141) */
 export declare function ToggleGroup(props: { options: (string | ToggleOption)[]; multiple?: boolean;
   /** Una scelta: string | null; con multiple: string[] */ value?: string | null | string[]; defaultValue?: string | null | string[]; onChange?: (v: string | null | string[]) => void;
@@ -170,7 +170,7 @@ export declare function Dialog(props: { open: boolean; title: string; descriptio
 export declare function EmptyState(props: { title: string; text?: string; icon?: IconName; tone?: Exclude<Tone, 'neutral'>; action?: React.ReactNode; compact?: boolean }): React.ReactElement;
 export declare function Progress(props: { value: number; max?: number; label?: string; valueLabel?: string; tone?: 'pine' | 'warning' | 'danger' }): React.ReactElement;
 export declare function Skeleton(props: { lines?: number }): React.ReactElement;
-export declare function PageHeader(props: { title: string; overline?: string; subtitle?: string; count?: number; countLabel?: string; actions?: React.ReactNode }): React.ReactElement;
+export declare function PageHeader(props: { title: string; overline?: string; subtitle?: string; count?: number; /** la frase intera col numero, «2 da leggere»: si sente al posto del numero */ countLabel?: string; actions?: React.ReactNode }): React.ReactElement;
 export interface Column<R> { key: string; label: string; align?: 'left' | 'right'; width?: string; sortable?: boolean; sortValue?: (r: R) => number | string; render?: (r: R) => React.ReactNode }
 export interface DataTableLabels { selected?: string; deselect?: string; selectAll?: string; selectRow?: string; range?: string; prev?: string; next?: string; emptyTitle?: string; emptyText?: string; sortBy?: string; sortNone?: string; ascending?: string; descending?: string }
 export declare const DATATABLE_LABELS: Required<DataTableLabels>;

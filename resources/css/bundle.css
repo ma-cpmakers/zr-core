@@ -600,7 +600,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-bulk strong { margin-right: var(--space-2); }
 .zr-pager { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted); }
 .zr-pager > div { display: flex; gap: var(--space-1); }
-.zr-table-sortbar { display: none; }
+.zr-table-sortbar, .zr-table-selectall { display: none; }
 .zr-cell-person { display: inline-flex; align-items: center; gap: var(--space-3); }
 .zr-cell-person > span:last-child { display: flex; flex-direction: column; }
 .zr-cell-person small { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
@@ -830,7 +830,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 @media (prefers-reduced-motion: reduce) { .zr-side { transition: none; } }
 @media (max-width: 720px) {
   .zr-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); visibility: hidden; }
-  .zr-table-sortbar { display: flex; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+  .zr-table-sortbar, .zr-table-selectall { display: flex; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
   .zr-table, .zr-table tbody, .zr-table tr, .zr-table td { display: block; width: 100%; box-sizing: border-box; }
   .zr-table tr { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
   .zr-table td { padding: 2px 0; border: 0; text-align: left; }

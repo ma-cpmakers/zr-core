@@ -173,7 +173,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 47,8 KB | 16,8 KB | 63,5 KB | 13,7 KB |
 | la cornice e due componenti per nome | 53,7 KB | 18,7 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 140,0 KB | 45,1 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 140,8 KB | 45,1 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -1071,7 +1071,8 @@ cornice === null ? pagina : (
   mostrano prima che il browser cerchi dove portare il fuoco, e dal campo o dal pannello il Tab arriva alle azioni della barra
   prima del contenuto (#2805: nella `v3.4.0` le saltava); se il fuoco resta nella ricerca si nascondono di nuovo. Dalla `v3.8.1` il fuoco che esce dalla
   ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
-  design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
+  design system); il fuoco che lascia la finestra no. Dalla `v4.7.0` lo fa l'`AppShell` del design system (lotto 0512), e il pezzo
+  dei rimedi non lo fa più: prima, a ricerca aperta, mandava un Esc finto al campo. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
   sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
@@ -1114,10 +1115,9 @@ cornice === null ? pagina : (
   un `Dialog` del design system senza dargli il fuoco, subito o più tardi (dopo una richiesta), il fuoco non resta sul «+» dietro
   il velo, che Invio premerebbe: va al dialogo, e quando il dialogo se ne va torna al «+». Un `<dialog>` del browser che la voce
   apre più tardi trova il fuoco sul «+», e alla chiusura glielo rende; il fuoco dentro, all'apertura, lo dà il modulo. Il modulo
-  non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
-  (riga 11 delle richieste al design system) si toglie. Il pezzo arriva al primo tasto premuto nella pagina: se non arriva, o se
-  la voce è scelta prima che arrivi — col tasto che lo chiede, o col mouse da chi non ha ancora premuto un tasto —, il fuoco resta
-  alla pagina com'era.
+  non deve fare niente altro. Dalla `v4.7.0` il fuoco al «+» prima della voce lo dà il `Menu` del design system (lotto 0512, riga
+  11 delle richieste al design system), anche prima del primo tasto premuto nella pagina, e il pezzo della tastiera non lo fa più;
+  il fuoco dal «+» al dialogo che non lo prende resta del pezzo della tastiera, che arriva al primo tasto.
 - **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
   portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
   schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della

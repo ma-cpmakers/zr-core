@@ -1046,6 +1046,9 @@
     }).slice(0, p.maxResults || 8);
     var canCreate = !!(p.onCreate || p.createLabel) && q;
     var count = list.length + (canCreate ? 1 : 0);
+    var lk = list.map(function (x) { return x.id; }).join('\n'), pk = useState(lk); /* risultati nuovi (anche dal server, con filter={false}): l'opzione attiva torna la prima */
+    if (pk[0] !== lk) { pk[1](lk); if (active) as[1](0); }
+    if (active >= count && count) active = 0;
     var showList = open && q !== null;
     function setText(t) { if (p.query == null) ts[1](t); var i = t.lastIndexOf('@'); if (p.onQuery) p.onQuery(i >= 0 ? t.slice(i + 1) : null); if (p.open === undefined) os[1](i >= 0); as[1](0); }
     function setValues(v) { if (!ctrlVal) vs[1](v); if (p.onChange) p.onChange(v); }
@@ -1230,7 +1233,19 @@
         timer.current = setTimeout(function () { if (alive.current) ss[1](function (s) { return s === 'saved' ? 'idle' : s; }); }, 2500);
       }, function (e) { if (alive.current) fail(e && e.message); });
     }
-    function cap(v) { var a = p.maxLength ? Array.from(v) : null; return a && a.length > p.maxLength ? a.slice(0, p.maxLength).join('') : v; } /* il tetto in caratteri, non in unità UTF-16 (richiesta 182) */
+    /* il tetto in caratteri, non in unità UTF-16 (richiesta 182), come maxlength: dell'inserimento entra ciò che ci sta, il resto del testo non si tocca, e un valore già oltre il tetto si può accorciare */
+    function cap(v, prev, el) {
+      var a = Array.from(v), b = Array.from(prev);
+      if (!p.maxLength || a.length <= p.maxLength || a.length <= b.length) return v;
+      var i = 0, j = 0;
+      while (i < b.length && a[i] === b[i]) i++;
+      while (j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+      var put = a.slice(i, a.length - j).slice(0, Math.max(0, p.maxLength - i - j)), head = a.slice(0, i).concat(put).join('');
+      var out = head + a.slice(a.length - j).join('');
+      if (el) { el.value = out; try { el.setSelectionRange(head.length, head.length); } catch (e) {} } /* il cursore resta dopo ciò che è entrato */
+      return out;
+    }
+    var pre = useRef('');
     function onKey(e) {
       if (e.nativeEvent.isComposing || e.keyCode === 229) return; /* Invio ed Esc dell'IME confermano o annullano la composizione (richiesta 181) */
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (mode.current !== 'saving') { ss[1]('idle'); close(true); } }
@@ -1242,8 +1257,8 @@
     if (editing) {
       var attrs = { ref: fieldRef, id: id, value: draft, className: 'zr-inline-edit-field', 'aria-label': p.label, 'aria-invalid': stato === 'error' || undefined, 'aria-busy': stato === 'saving' || undefined,
         'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', placeholder: p.placeholder,
-        onChange: function (e) { ds[1](e.nativeEvent.isComposing ? e.target.value : cap(e.target.value)); if (stato === 'error') { ss[1]('idle'); ms[1](''); } },
-        onCompositionEnd: function (e) { ds[1](cap(e.target.value)); }, onKeyDown: onKey, onBlur: function () { save(false); } };
+        onChange: function (e) { ds[1](e.nativeEvent.isComposing ? e.target.value : cap(e.target.value, draft, e.target)); if (stato === 'error') { ss[1]('idle'); ms[1](''); } },
+        onCompositionStart: function () { pre.current = draft; }, onCompositionEnd: function (e) { ds[1](cap(e.target.value, pre.current, e.target)); }, onKeyDown: onKey, onBlur: function () { save(false); } };
       body = p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: 'text' }, attrs));
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
@@ -1442,7 +1457,10 @@
   function DataTable(p) {
     var cols = p.columns || [], rows = p.rows || [];
     var L = Object.assign({}, DATATABLE_LABELS, p.labels || {});
-    var num = p.locale ? function (v) { return new Intl.NumberFormat(p.locale).format(v); } : fmtNum;
+    var loc = p.locale, nf = null;
+    if (loc) try { nf = new Intl.NumberFormat(loc); } catch (e) { loc = null; } /* una lingua che il browser non conosce non rompe la tabella: si usa la forma italiana */
+    var num = nf ? function (v) { return nf.format(v); } : fmtNum;
+    function fill(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
     var so = useState(p.defaultSort || null), sort = so[0], setSort = so[1];
     var se = useState([]), sel = se[0], setSel = se[1];
     var pg = useState(0), page = pg[0], setPage = pg[1];
@@ -1451,26 +1469,28 @@
     if (sort) {
       var c = cols.find(function (x) { return x.key === sort.key; });
       var get = (c && c.sortValue) || function (r) { return r[sort.key]; };
-      sorted.sort(function (a, b) { var x = get(a), y = get(b); var r = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), p.locale || 'it'); return sort.dir === 'asc' ? r : -r; });
+      sorted.sort(function (a, b) { var x = get(a), y = get(b); var r = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), loc || 'it'); return sort.dir === 'asc' ? r : -r; });
     }
     var pages = Math.max(1, Math.ceil(sorted.length / size));
     var shown = sorted.slice(page * size, page * size + size);
     var rid = function (r, i) { return r.id != null ? r.id : i; };
     var allOn = shown.length > 0 && shown.every(function (r, i) { return sel.indexOf(rid(r, i)) >= 0; });
+    function all() { var ids = shown.map(rid), n = allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids))); setSel(n); if (p.onSelect) p.onSelect(n); } /* anche «Seleziona tutti» lo dice al modulo, come la casella di una riga */
     function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); if (p.onSelect) p.onSelect(n); }
     var sortCols = cols.filter(function (c) { return c.sortable !== false; });
     var sortOpts = (sort ? [] : [{ value: '', label: L.sortNone }]).concat([].concat.apply([], sortCols.map(function (c) {
-      return [{ value: c.key + ':asc', label: L.ascending.replace('{col}', c.label) }, { value: c.key + ':desc', label: L.descending.replace('{col}', c.label) }];
+      return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label) }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label) }];
     })));
     return h('div', { className: 'zr-table-wrap' },
-      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, L.selected.replace('{n}', num(sel.length))), p.bulkActions || null,
+      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
         h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
         onChange: function (e) { var v = e.target.value.split(':'); setSort(v[0] ? { key: v[0], dir: v[1] } : null); setPage(0); } }) : null,
+      p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */
       h('div', { className: 'zr-table-scroll' },
         h('table', { className: 'zr-table' },
           h('thead', null, h('tr', null,
-            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, onChange: function () { var ids = shown.map(rid); setSel(allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids)))); } })) : null,
+            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, onChange: all })) : null,
             cols.map(function (c) {
               var active = sort && sort.key === c.key;
               return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right'), style: c.width ? { width: c.width } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
@@ -1483,7 +1503,7 @@
               cols.map(function (c) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' ? c.label : undefined, className: cx(c.align === 'right' && 'is-right') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
       pages > 1 ? h('div', { className: 'zr-pager' },
-        h('span', null, L.range.replace('{from}', num(page * size + 1)).replace('{to}', num(Math.min(sorted.length, page * size + size))).replace('{total}', num(sorted.length))),
+        h('span', null, fill(fill(fill(L.range, '{from}', num(page * size + 1)), '{to}', num(Math.min(sorted.length, page * size + size))), '{total}', num(sorted.length))),
         h('div', null,
           h(Button, { variant: 'secondary', size: 'sm', icon: 'chevronLeft', 'aria-label': L.prev, disabled: page === 0, onClick: function () { setPage(page - 1); } }),
           h(Button, { variant: 'secondary', size: 'sm', icon: 'chevron', 'aria-label': L.next, disabled: page >= pages - 1, onClick: function () { setPage(page + 1); } }))) : null);
@@ -1989,7 +2009,7 @@
     var top = r.bottom + 6; if (!p.head && top > vh - 40 * items.length - 16) top = Math.max(8, r.top - 6 - 38 * items.length);
     function back() { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) p.anchor.focus(); }
     function move(e) {
-      if (e.key === 'Tab') { e.preventDefault(); if (p.onClose) p.onClose(); back(); return; } /* richiesta 93 */
+      if (e.key === 'Tab') { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) { e.preventDefault(); if (p.onClose) p.onClose(); p.anchor.focus(); } return; } /* richiesta 93: col pulsante che l'ha aperto il fuoco torna lì; senza, il Tab resta del browser o di chi contiene il menu (un Dialog) */
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       e.preventDefault();
       var list = Array.prototype.slice.call(ref.current.querySelectorAll('[role="menuitem"]:not(:disabled)'));

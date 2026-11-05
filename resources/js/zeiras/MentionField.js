@@ -31,6 +31,9 @@ import '../../css/zeiras/MentionField.css';
     }).slice(0, p.maxResults || 8);
     var canCreate = !!(p.onCreate || p.createLabel) && q;
     var count = list.length + (canCreate ? 1 : 0);
+    var lk = list.map(function (x) { return x.id; }).join('\n'), pk = useState(lk); /* risultati nuovi (anche dal server, con filter={false}): l'opzione attiva torna la prima */
+    if (pk[0] !== lk) { pk[1](lk); if (active) as[1](0); }
+    if (active >= count && count) active = 0;
     var showList = open && q !== null;
     function setText(t) { if (p.query == null) ts[1](t); var i = t.lastIndexOf('@'); if (p.onQuery) p.onQuery(i >= 0 ? t.slice(i + 1) : null); if (p.open === undefined) os[1](i >= 0); as[1](0); }
     function setValues(v) { if (!ctrlVal) vs[1](v); if (p.onChange) p.onChange(v); }
