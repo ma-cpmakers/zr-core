@@ -147,6 +147,10 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   frontend la ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l'informativa non
   sono approvate.
 
+  Dalla `v4.8.1` ha un modulo suo anche l'Alert, `resources/js/zeiras/Alert`, ma è della cornice: lo prende il pezzo degli
+  avvisi della cornice ridotta (#3055). Un frontend prende l'Alert da `…/zeiras/componenti`, come prima: dai due posti nella
+  stessa app avrebbe due copie del componente.
+
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
   una riga.

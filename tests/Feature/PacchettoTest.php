@@ -5107,6 +5107,8 @@ it('il README dice, in «Come si installa in un frontend», i due ingressi, il p
     'AddressField, l\'import' => ['import { AddressField, type AddressPlace, type AddressSuggestion } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField\';'],
     'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dalla sua parte server, a ogni `onQuery`, e li passa al campo in `suggestions`. Per un modulo di Zeiras a parlare con Google è un metodo di zr-backoffice, non il server del modulo. Il browser non parla con Google, e la CSP della cornice non cambia.'],
     'AddressField, spento' => ['Nei frontend la ricerca di Google resta spenta (il campo accetta il testo libero) finché la chiave e l\'informativa non sono approvate.'],
+    // v4.8.1 (#3055, revisione): il modulo dell'Alert è della cornice, e un frontend continua a prenderlo da `componenti`.
+    'Alert, della cornice' => ['Dalla `v4.8.1` ha un modulo suo anche l\'Alert, `resources/js/zeiras/Alert`, ma è della cornice: lo prende il pezzo degli avvisi della cornice ridotta (#3055). Un frontend prende l\'Alert da `…/zeiras/componenti`, come prima'],
     'l\'import dei componenti' => ['import * as Zeiras from \'../../vendor/zeiras/zr-core/resources/js/zeiras/componenti\';'],
     'che cosa non si scrive' => ['Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.'],
     'l\'ingresso di sempre' => ['**L\'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in `window.Zeiras`, con `window.React`. Resta com\'è, coi nomi di prima'],

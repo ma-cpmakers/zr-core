@@ -20,7 +20,7 @@ const FILE_DEL_MODULO = 'resources/js/zeiras/componenti.js';
 const FILE_A_PARTE = 'resources/js/zeiras/MentionField.js';
 // Dalla `v3.2.0` (sprint 72 · T1.3) anche quello di AddressField.
 const FILE_DI_ADDRESS = 'resources/js/zeiras/AddressField.js';
-// Dalla `v4.8.1` (#3055) anche quello dell'Alert, senza un CSS suo.
+// Dalla `v4.8.1` (voce 3055) anche quello dell'Alert, senza un CSS suo.
 const FILE_DELL_ALERT = 'resources/js/zeiras/Alert.js';
 // Dalla `v3.3.0` (sprint 75 · T1.1) divide anche bundle.css: il CSS senza gli stili dei due componenti, e quelli di ognuno.
 const FILE_DEL_CSS = 'resources/zeiras/bundle.css';
@@ -160,7 +160,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect(readFileSync(nellaCopia(FILE_A_PARTE), 'utf8')).toBe(`${generatoAParte}// ritoccato a mano\n`);
     });
 
-    it('`--controlla` col modulo dell\'Alert ritoccato a mano: esce 1 e dice quale file; senza `--controlla` lo riscrive (#3055)', () => {
+    it('`--controlla` col modulo dell\'Alert ritoccato a mano: esce 1 e dice quale file; senza `--controlla` lo riscrive (voce 3055)', () => {
         writeFileSync(nellaCopia(FILE_DELL_ALERT), `${generatoDellAlert}// ritoccato a mano\n`);
         const ritoccato = comando(['--controlla']);
 

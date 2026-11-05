@@ -11,7 +11,7 @@ import * as componenti from './componenti';
 // Un CSS con `?raw` vitest lo dà vuoto: si legge dal disco.
 const bundleCss = readFileSync(resolve(process.cwd(), 'resources/zeiras/bundle.css'), 'utf8');
 
-// #3055 (Decisione 21220). L'Alert ha un modulo suo, resources/js/zeiras/Alert.js, come MentionField e AddressField: la cornice
+// voce 3055 (Decisione 21220). L'Alert ha un modulo suo, resources/js/zeiras/Alert.js, come MentionField e AddressField: la cornice
 // lo prende da lì nel pezzo degli avvisi, e il JS d'ingresso non lo porta (lo prova peso.test.ts). Nel bundle sta nel gruppo
 // «Feedback», col Toast (`NEL_GRUPPO`): il blocco non ha un commento suo e comincia dalla funzione, e `TONE_ICON`, che usa anche
 // il Toast, è una riga privata. Qui: che il file è quello che il bundle genera, che lo script si ferma quando il bundle cambia
@@ -19,7 +19,7 @@ const bundleCss = readFileSync(resolve(process.cwd(), 'resources/zeiras/bundle.c
 
 const RIGA_DI_TONE_ICON = "  var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };";
 
-describe('il modulo dell\'Alert è quello che il bundle genera (#3055)', () => {
+describe('il modulo dell\'Alert è quello che il bundle genera (voce 3055)', () => {
     it('rigenerato in memoria dal bundle il file è uguale, carattere per carattere; non importa stili: i suoi restano in zeiras.css', () => {
         expect(NEL_GRUPPO).toStrictEqual(['Alert']);
         expect(aParte(leggi(bundle), 'Alert', dividiIlCss(bundleCss))).toBe(generato);
@@ -47,7 +47,7 @@ describe('il modulo dell\'Alert è quello che il bundle genera (#3055)', () => {
     });
 });
 
-describe('l\'Alert del modulo fa ciò che fa quello di componenti (#3055)', () => {
+describe('l\'Alert del modulo fa ciò che fa quello di componenti (voce 3055)', () => {
     it('è un altro oggetto, e dà lo stesso HTML nei quattro toni, con titolo, testo, azione e chiusura', () => {
         expect(Alert).not.toBe(componenti.Alert);
         for (const tone of ['info', 'success', 'warning', 'danger'] as const) {
