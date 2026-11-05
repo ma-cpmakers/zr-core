@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,4 KB | 17,5 KB | 63,6 KB | 13,9 KB |
-| la cornice e due componenti per nome | 56,6 KB | 19,8 KB | 63,6 KB | 13,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 158,7 KB | 51,1 KB | 63,6 KB | 13,9 KB |
+| solo la cornice, dall'ingresso per le app | 50,3 KB | 17,7 KB | 63,6 KB | 13,9 KB |
+| la cornice e due componenti per nome | 57,5 KB | 20,0 KB | 63,6 KB | 13,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 161,1 KB | 51,8 KB | 63,6 KB | 13,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.922 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.169 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -243,7 +243,9 @@ più 20: il lotto 0514 del design system, col codice del `Menu` per le voci di u
 senza contropartita. Dalla `v4.10.0` è salito di 411 byte, alla misura più 20: i lotti 0515 e 0516 del design system, coi
 testi comuni dei componenti in tre lingue (`COMMON_LABELS`), che l'`AppShell` porta nel JS d'ingresso con la riga
 delle notifiche (`NotificationItem`) e `Label`; un'eccezione
-di zr-pm. Hanno
+di zr-pm. Dalla `v4.11.0` è salito di 247 byte, alla misura più 20: il design system con «Il mio spazio», lo spazio cliente
+di zr-account, dentro l'`AppShell`, che la cornice non usa ancora ma il cui codice entra lo stesso; un sì di zr-pm senza
+contropartita. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -281,8 +283,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 93,8 KB | 15,2 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 90,6 KB | 14,8 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 95,9 KB | 15,8 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 92,7 KB | 15,4 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -436,6 +438,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.8.1` | l'Alert dell'avviso della cornice ridotta arriva col pezzo degli avvisi, dal suo modulo `resources/js/zeiras/Alert`, fuori dal JS d'ingresso (#3055): 110 byte in meno, tetto 17.456 | niente | niente: l'avviso arriva col pezzo, come i suoi testi dalla `v3.7.0` | l'avviso compare con l'accettazione richiesta, col pulsante, e senza backoffice («Zeiras non risponde»), senza pulsante |
 | `v4.9.0` | il design system `ds-1793904392-2019`, il lotto 0514 (richieste 1 e 185): `DealPipeline` per la lavagna del CRM, con numero, totale e ponderato di fase e della testa dal modulo (`count`, `total`, `weighted`, `totals`), il ponderato sotto il totale delle fasi aperte, «Mostra altre» (`hasMore`, `loadingMore`, `onMore`), «Vedi tutte» su vinta e persa (`onSeeAll`), il «⋯» di ogni scheda con «Sposta in…» e le voci del modulo (`dealActions`), `onMove` che può fermare o riportare indietro uno spostamento, più pipeline (`pipelines`, `pipelineId`, `onPipeline`); `DealCard` `actions` e `busy`; `Menu` con le voci di una scelta (`checked`, `menuitemradio`); al tocco campo di testo e select alti 44 px. Il JS d'ingresso sale di 55 byte, tetto 17.511 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative e stessi default; senza di loro la `DealPipeline` cambia solo per il ponderato sotto il totale delle fasi aperte e per il «⋯» sulle schede, e un caso che misura un campo di testo o una select al tocco vede 44 px | la lavagna delle trattative, i form a 390 px al tocco |
 | `v4.10.0` | il design system `ds-1793913087-6ea4`, i lotti 0515 e 0516 (richieste 186, 170, 166, 68, 187, 191, 190, 188): i testi comuni dei componenti nella lingua dell'app (`LabelsProvider`, `useLabels`, `COMMON_LABELS`: la ✕ di `Dialog`, `Toast`, `Alert`, `DetailPanel`, «Annulla», «Aggiungi», «Indietro», «Togli», «non letta»; senza `LabelsProvider` seguono `<html lang>`, una lingua che il design system non ha cade sull'inglese, una pagina senza lingua resta in italiano; la prop del componente vince sempre); `KanbanCard` `votes`, il voto della retrospettiva; `NotificationItem`, la riga di una notifica, la stessa del pannello della campanella; `DealCard` `amountText`; `DealPipeline` e `DealCard` `formatAmount`; `DetailPanel` `actions`, le azioni accanto alla ✕; l'icona `archive`. Il JS d'ingresso sale di 411 byte, tetto 17.922 | `composer update zeiras/zr-core`, poi la build | in italiano niente: props nuove facoltative e stessi default. In una pagina con `<html lang="en">` o `"es"` la ✕ e gli altri testi comuni passano a quella lingua anche senza toccare il modulo: un caso che cerca «Chiudi» su una pagina inglese o spagnola trova «Close» o «Cerrar» | i dialoghi, i toast e il pannello di dettaglio in inglese e spagnolo |
+| `v4.11.0` | il design system `ds-1793914149-8632`: lo spazio cliente di zr-account nell'`AppShell` (`personal`, «Il mio spazio» in cima al selettore nel gruppo «Come cliente», il selettore anche per chi è solo cliente con «Crea il tuo workspace», `plan={false}`) e `AppointmentItem`, la riga di un appuntamento. La cornice non passa `personal`: i suoi tre testi non stanno nelle lingue della cornice. Il JS d'ingresso sale di 247 byte, tetto 18.169 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative, senza tutto resta com'era | `AppointmentItem` e `personal` per chi fa lo spazio cliente o gli appuntamenti |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
