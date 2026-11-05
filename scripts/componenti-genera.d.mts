@@ -13,6 +13,12 @@ export function genera(bundle: string): string;
 /** I componenti che hanno anche un modulo loro, resources/js/zeiras/<Nome>.js (dalla `v3.1.0`). */
 export const A_PARTE: Readonly<Record<string, readonly string[]>>;
 
+/** I componenti di `A_PARTE` che nel bundle stanno in un gruppo con altri, senza commento suo e coi loro stili in zeiras.css (dalla `v4.8.1`). */
+export const NEL_GRUPPO: readonly string[];
+
+/** I componenti di `A_PARTE` coi loro stili in resources/css/zeiras/<Nome>.css: tutti tranne quelli di `NEL_GRUPPO`. */
+export const CON_GLI_STILI_A_PARTE: readonly string[];
+
 /** Il bundle CSS diviso (dalla `v3.3.0`): `zeiras` senza gli stili dei componenti di `A_PARTE`, `stili` di ognuno, `proprie` le classi che solo i suoi stili definiscono. */
 export function dividiIlCss(css: string): { zeiras: string; stili: Record<string, string>; proprie: Record<string, string[]> };
 

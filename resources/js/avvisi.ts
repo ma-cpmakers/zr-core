@@ -2,10 +2,13 @@
 // che manca e il backoffice che non risponde. Servono solo in quei due stati, e il JS d'ingresso non li porta: la cornice chiede
 // questo pezzo quando i dati dicono uno dei due (`accettazione_richiesta`, il segnale dell'accettazione, `non_letti`), e
 // l'avviso sopra la pagina, con la frase di campanella e ricerca spente, c'è quando il pezzo è arrivato. Nessun ingresso
-// riesporta niente da qui.
+// riesporta niente da qui. Dalla `v4.8.1` (#3055, Decisione 21220) il pezzo porta anche l'Alert del design system, dal suo
+// modulo: l'avviso è il solo posto della cornice che lo usa, e il JS d'ingresso non lo porta più.
 
 import inglesi from '../lingue/avvisi/en.json';
 import { linguaDeiTesti } from './lingue';
+
+export { Alert } from './zeiras/Alert';
 
 /**
  * I testi: stanno in `resources/lingue/avvisi/`, un file per lingua col codice per nome come le lingue della cornice. Il file è

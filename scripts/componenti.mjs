@@ -11,7 +11,7 @@
 // cartella lo si lanci, e non c'è niente da importare (chi vuole `genera` lo prende di là).
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { A_PARTE, aParte, bundleIntero, componi, dividiIlCss, leggi, nonIntero } from './componenti-genera.mjs';
+import { A_PARTE, CON_GLI_STILI_A_PARTE, aParte, bundleIntero, componi, dividiIlCss, leggi, nonIntero } from './componenti-genera.mjs';
 
 const qui = (percorso) => new URL(`../${percorso}`, import.meta.url);
 const fileDelBundle = 'resources/zeiras/bundle.js';
@@ -59,9 +59,9 @@ try {
     file = [
         [fileDelModulo, componi(letto), `${letto.nomi.length} nomi esportati`, fileDelBundle],
         ...Object.keys(A_PARTE).map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome, divisi), nome, fileDelBundle]),
-        ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${Object.keys(A_PARTE).join(' e di ')}`, fileDelCss],
+        ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${CON_GLI_STILI_A_PARTE.join(' e di ')}`, fileDelCss],
         ['resources/css/bundle.css', bundleIntero(css), 'il bundle intero coi font del pacchetto', fileDelCss],
-        ...Object.keys(A_PARTE).map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
+        ...CON_GLI_STILI_A_PARTE.map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
     ];
 } catch (errore) {
     console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto: né ${[fileDelModulo, ...Object.keys(A_PARTE).map((nome) => `resources/js/zeiras/${nome}.js`)].join(' né ')}: lo script va riallineato alla forma nuova del bundle.`);

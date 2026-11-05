@@ -191,7 +191,23 @@ export const A_PARTE = {
         "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
         "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
     ],
+    // Dalla `v4.8.1` (#3055, Decisione 21220): l'Alert dell'avviso della cornice ridotta, che arriva col pezzo degli avvisi.
+    // `TONE_ICON` è una tabella di soli testi, senza stato: la usa anche il Toast, che resta in `componenti`.
+    Alert: [
+        '  var h = React.createElement;',
+        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
+        "  var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };",
+    ],
 };
+
+// I componenti di `A_PARTE` che nel bundle stanno in un gruppo con altri (dalla `v4.8.1`, #3055): l'Alert sta sotto il commento
+// «Feedback», col Toast, in bundle.js e in bundle.css. Il blocco non ha un commento suo e comincia dalla funzione, e gli stili
+// restano in zeiras.css, dove servono anche al Toast della cornice. Se il bundle gli dà un commento suo, lo script si ferma: il
+// componente esce da questo elenco, e i suoi stili da zeiras.css.
+export const NEL_GRUPPO = ['Alert'];
+
+/** I componenti di `A_PARTE` coi loro stili in resources/css/zeiras/<Nome>.css: tutti tranne quelli di `NEL_GRUPPO`. */
+export const CON_GLI_STILI_A_PARTE = Object.keys(A_PARTE).filter((nome) => !NEL_GRUPPO.includes(nome));
 
 const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
 
@@ -238,7 +254,7 @@ export function dividiIlCss(css) {
     const righe = coiFontDelPacchetto(css).split('\n');
     const tolte = new Set();
     const blocchi = {};
-    for (const nome of Object.keys(A_PARTE)) {
+    for (const nome of CON_GLI_STILI_A_PARTE) {
         const inizi = righe.flatMap((riga, indice) => (INIZIO_DEGLI_STILI(nome).test(riga) ? [indice] : []));
         vuole(inizi.length === 1, `il commento «/* ${nome} …», che segna gli stili di ${nome} in bundle.css, c'è ${inizi.length} volte`);
         const [inizio] = inizi;
@@ -255,7 +271,7 @@ export function dividiIlCss(css) {
     // un commento in mezzo agli stili del componente, e il resto dei suoi stili lasciato in zeiras.css.
     // Il prefisso viene dalla prima classe del blocco che il resto non ha (revisione della PR #134, seconda lettura).
     const delResto = new Set(classiIn(resto));
-    for (const nome of Object.keys(A_PARTE)) {
+    for (const nome of CON_GLI_STILI_A_PARTE) {
         const sua = classiIn(blocchi[nome]).find((classe) => !delResto.has(classe) && /^zr-[a-z]+/.test(classe));
         vuole(sua !== undefined, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
         const [prefisso] = /^zr-[a-z]+/.exec(sua);
@@ -264,12 +280,12 @@ export function dividiIlCss(css) {
     }
     const prese = new Set(classiIn(resto));
     const proprie = {};
-    for (const nome of Object.keys(A_PARTE).sort((a, b) => righe.indexOf(blocchi[a][0]) - righe.indexOf(blocchi[b][0]))) {
+    for (const nome of [...CON_GLI_STILI_A_PARTE].sort((a, b) => righe.indexOf(blocchi[a][0]) - righe.indexOf(blocchi[b][0]))) {
         proprie[nome] = classiIn(blocchi[nome]).filter((classe) => !prese.has(classe));
         vuole(proprie[nome].length > 0, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
         proprie[nome].forEach((classe) => prese.add(classe));
     }
-    const nomi = Object.keys(A_PARTE);
+    const nomi = CON_GLI_STILI_A_PARTE;
 
     return {
         zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, e coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.`), ...resto].join('\n'),
@@ -282,7 +298,7 @@ export function dividiIlCss(css) {
 function stiliUsati(righe, { proprie }) {
     const testo = righe.join('\n');
 
-    return Object.keys(A_PARTE).filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
+    return CON_GLI_STILI_A_PARTE.filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
 }
 const NOME = '[A-Za-z_$][\\w$]*';
 // Le forme che una riga del corpo col rientro del bundle (due spazi) può avere: una dichiarazione `var` o `function` di un nome
@@ -380,9 +396,13 @@ export function aParte({ corpo, nomi }, nome, divisi = undefined) {
     });
 
     const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
-    vuole(inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», che segna il blocco di ${nome}, c'è ${inizi.length} volte`);
-    const funzione = corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
-    vuole(funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
+    const nelGruppo = NEL_GRUPPO.includes(nome);
+    vuole(!nelGruppo || inizi.length === 0, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …» segna un blocco di ${nome}, che lo script legge in un gruppo (NEL_GRUPPO): l'elenco va riallineato, e gli stili di ${nome} escono da zeiras.css`);
+    vuole(nelGruppo || inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», che segna il blocco di ${nome}, c'è ${inizi.length} volte`);
+    const funzioni = corpo.flatMap((riga, indice) => (riga === `  function ${nome}(p) {` ? [indice] : []));
+    vuole(!nelGruppo || funzioni.length === 1, `la riga «function ${nome}(p) {» c'è ${funzioni.length} volte`);
+    const funzione = nelGruppo ? funzioni[0] : corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
+    vuole(nelGruppo || funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
     const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
     vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
     // Il blocco comincia dalla funzione e risale, una riga alla volta, sulle sole righe che sono sue: il suo commento (e lì si
@@ -398,7 +418,9 @@ export function aParte({ corpo, nomi }, nome, divisi = undefined) {
             inizio -= 1;
             break;
         }
-        if (!FORME[0].test(sopra)) break;
+        // In un gruppo (NEL_GRUPPO) una riga privata dell'elenco chiude la risalita: il modulo la porta da sé, nell'ordine del
+        // bundle (per l'Alert `TONE_ICON`, che usa anche il Toast).
+        if (!FORME[0].test(sopra) || (nelGruppo && A_PARTE[nome].includes(sopra))) break;
         const dichiarati = dichiaratiIn(istruzioneDa(corpo, inizio - 1, numero), numero(inizio - 1));
         if (!dichiarati.some((dichiarato) => usatiDallaFunzione.has(dichiarato))) break;
         const usatiFuori = nomiUsati([...corpo.slice(0, inizio - 1), ...corpo.slice(fine + 1)]);

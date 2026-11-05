@@ -5,7 +5,7 @@ import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, re
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { SaltaAlContenuto } from './salto';
 import { tonoDelWorkspace } from './tono';
-import { Alert, AppShell, Button } from './zeiras/componenti';
+import { AppShell, Button } from './zeiras/componenti';
 
 // Le frasi delle notifiche stanno nel pezzo della campanella (`./campanella`), che arriva a richiesta: qui c'è solo chi lo
 // chiede. `caricaFrasi` chiede prima il pezzo e poi, a lui, le frasi di una lingua; `frasiPronte` le dà se pezzo e frasi sono
@@ -991,7 +991,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     };
     // In attesa non c'è un avviso; quando il backoffice non ha risposto c'è il suo, senza pulsante. Sta nello stesso posto di
     // quello dell'accettazione: la pagina resta dov'è quando compare e quando se ne va.
-    const avvisoSopraLaPagina = a && ridotta === 'error' ? (
+    // L'Alert arriva col pezzo degli avvisi (dalla `v4.8.1`, #3055), insieme ai testi.
+    const Alert = avvisi?.Alert;
+    const avvisoSopraLaPagina = a && Alert && ridotta === 'error' ? (
         <div className="zr-stack">
             <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
                 {daAccettare ? a.acceptanceText : a.downText}

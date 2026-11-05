@@ -33,8 +33,8 @@ const AZIENDE: MentionOption[] = [
 const senzaNumeriDegliId = (html: string) => html.replace(/mnt-\d+/g, 'mnt-N');
 
 describe('il modulo di MentionField è quello che il bundle genera (sprint 71 · T1.3)', () => {
-    it('MentionField e AddressField (dalla `v3.2.0`) sono i componenti a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
-        expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField', 'AddressField']);
+    it('MentionField, AddressField (dalla `v3.2.0`) e Alert (dalla `v4.8.1`) sono i componenti a parte, e rigenerato in memoria dal bundle il file è uguale, carattere per carattere', () => {
+        expect(Object.keys(A_PARTE)).toStrictEqual(['MentionField', 'AddressField', 'Alert']);
         expect(aParte(letto(), 'MentionField', dividiIlCss(bundleCss))).toBe(generato);
     });
 

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { A_PARTE, aParte, bundleIntero, coiFontDelPacchetto, dividiIlCss, leggi } from '../../../scripts/componenti-genera.mjs';
+import { A_PARTE, aParte, bundleIntero, CON_GLI_STILI_A_PARTE, coiFontDelPacchetto, dividiIlCss, leggi, NEL_GRUPPO } from '../../../scripts/componenti-genera.mjs';
 
 // Sprint 75 · T1 (voce 2570). Dalla `v3.3.0` `npm run componenti` divide anche resources/zeiras/bundle.css (copia derivata del
 // design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `A_PARTE`, e ognuno
@@ -12,7 +12,9 @@ import { A_PARTE, aParte, bundleIntero, coiFontDelPacchetto, dividiIlCss, leggi 
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso}`, import.meta.url));
 const bundleCss = readFileSync(delRepo('resources/zeiras/bundle.css'), 'utf8');
 const bundleJs = readFileSync(delRepo('resources/zeiras/bundle.js'), 'utf8');
-const NOMI = Object.keys(A_PARTE);
+// Dalla `v4.8.1` (#3055) l'Alert ha un modulo suo ma non un CSS suo: nel bundle sta nel gruppo «Feedback», col Toast
+// (`NEL_GRUPPO`), e i suoi stili restano in zeiras.css.
+const NOMI = CON_GLI_STILI_A_PARTE;
 /** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
@@ -21,7 +23,8 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
         const divisi = dividiIlCss(bundleCss);
 
-        expect(NOMI).toStrictEqual(['MentionField', 'AddressField']);
+        expect([NOMI, Object.keys(A_PARTE), NEL_GRUPPO]).toStrictEqual([['MentionField', 'AddressField'], ['MentionField', 'AddressField', 'Alert'], ['Alert']]);
+        expect(divisi.zeiras).toContain('.zr-alert {');
         expect(readFileSync(delRepo('resources/css/zeiras.css'), 'utf8')).toBe(divisi.zeiras);
         for (const nome of NOMI) {
             expect(readFileSync(delRepo(`resources/css/zeiras/${nome}.css`), 'utf8')).toBe(divisi.stili[nome]);
@@ -67,7 +70,8 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
 
         expect(importati('MentionField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';"]);
         expect(importati('AddressField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';", "import '../../css/zeiras/AddressField.css';"]);
-        for (const nome of NOMI) {
+        expect(importati('Alert')).toStrictEqual([]);
+        for (const nome of Object.keys(A_PARTE)) {
             expect(readFileSync(delRepo(`resources/js/zeiras/${nome}.js`), 'utf8')).toBe(aParte(letto, nome, divisi));
         }
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.
