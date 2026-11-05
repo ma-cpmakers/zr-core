@@ -20,7 +20,7 @@
  *
  * Dalla v4.4.0 le righe R.L guardano la lingua della cornice dalla prima pagina aperta (con un Chromium suo, a cache vuota):
  * la lingua di `<html lang>`; sulle pagine di prova `?lingua=es` (e `&precarico=0` per la pagina senza la riga nel Blade).
- * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano e in spagnolo.
+ * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
@@ -40,7 +40,7 @@ const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
 // axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
 // che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
-// S.5 (`invio=1`). Prima del tag zr-core la lancia su `staff.html --parola uat`.
+// S.5 (`invio=1`), dalla v4.5.0 S.6 (`ruolo` e `fino`) e dalla v4.5.1 S.7 (`fino` domani). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
@@ -1086,9 +1086,9 @@ async function lingueCheNonArrivano(page, apri) {
         await pausa(800);
         const testo = await page.evaluate(() => document.querySelector('.zr-shell')?.textContent?.trim() ?? '');
         const italiani = soli.it.filter((uno) => testo.includes(uno)).length;
-        const inglesi = soli.en.filter((uno) => testo.includes(uno));
-        // Con lo staff i testi suoi sono già nella lingua della pagina: di quelli della cornice ne restano in vista pochi.
-        scrivi(testo !== '' && inglesi.length === 0 && (italiani > 0 || conLoStaff) ? '✅' : '❌', 'R.L.3', 'con le lingue che non arrivano la cornice si disegna in italiano, non resta vuota (#3015)', `${italiani} testi italiani nella cornice con i file delle lingue fermati${inglesi.length ? ` · in inglese: ${inglesi.slice(0, 3).join(' | ')}` : ''}`);
+        // I testi di una lingua che non è l'italiano: dalla v4.5.1 nemmeno quelli dello staff (#3031; revisione dello sprint 108, R1).
+        const inglesi = [...soli.en, ...soli.es].filter((uno) => testo.includes(uno));
+        scrivi(testo !== '' && inglesi.length === 0 && italiani > 0 ? '✅' : '❌', 'R.L.3', 'con le lingue che non arrivano la cornice si disegna in italiano, non resta vuota (#3015)', `${italiani} testi italiani nella cornice con i file delle lingue fermati${inglesi.length ? ` · in un'altra lingua: ${inglesi.slice(0, 3).join(' | ')}` : ''}`);
     } finally {
         await page.unroute(UN_FILE_DI_LINGUA, ferma);
         await apri(indirizzo);
@@ -1159,6 +1159,101 @@ async function senzaConfigurazione(page, apri, larghezza) {
     await page.screenshot({ path: join(cartella, `senza-configurazione-${larghezza}.png`) });
     const dove390 = larghezza <= 720 ? ' nel cassetto aperto' : ' nella barra';
     scrivi(barra.voci === 0 && barra.riquadro && (larghezza > 720 || barra.cassetto) ? '✅' : '❌', 'S.4', `a ${larghezza} px, con configurazione=0, nessuna «Configurazione»${dove390} (#2954)`, `voci in fondo alla barra: ${barra.voci}, riquadro dello staff: ${barra.riquadro}${larghezza <= 720 ? `, cassetto aperto: ${barra.cassetto}` : ''}`);
+}
+
+// S.6 (dalla v4.5.0, #2989): il riquadro in fondo alla barra dello staff dice il ruolo con «· 2FA» e l'ora in cui la sessione finisce
+// al più tardi, nel fuso e nella forma della lingua della pagina. `staff.html` li prende dai parametri `ruolo` e `fino` (una data ISO,
+// qui fra due ore); a 390 px il riquadro si legge nel cassetto aperto. Una pagina che non capisce i parametri (un modulo vero): ➖.
+async function ruoloEFine(page, apri, larghezza) {
+    const dove = new URL(indirizzo);
+    const fino = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+    dove.searchParams.set('ruolo', 'UAT Superadmin');
+    dove.searchParams.set('fino', fino);
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    if (larghezza <= 720) {
+        await page.click('.zr-shell .zr-top-menu');
+        await pausa(300);
+    }
+    const riquadro = await page.evaluate((fino) => {
+        const qui = document.querySelector('.zr-shell .zr-side-foot .zr-plan');
+        return {
+            visibile: qui?.checkVisibility() ?? false,
+            titolo: qui?.querySelector('strong')?.textContent ?? '',
+            testo: qui?.querySelector('span')?.textContent ?? '',
+            // La lingua della pagina di prova è nel parametro `lingua` (staff.html non cambia `<html lang>`); altrimenti quella del documento.
+            ora: new Intl.DateTimeFormat(new URLSearchParams(location.search).get('lingua') || document.documentElement.lang || 'it', { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            prova: location.pathname.endsWith('/staff.html'),
+        };
+    }, fino);
+    await page.screenshot({ path: join(cartella, `ruolo-e-fine-${larghezza}.png`) });
+    const dove390 = larghezza <= 720 ? ' nel cassetto aperto' : ' nella barra';
+    // Su staff.html i parametri ci sono sempre: un titolo senza il ruolo lì è il difetto (❌), non una pagina che non li capisce.
+    if (!riquadro.prova && !riquadro.titolo.startsWith('UAT Superadmin')) {
+        return scrivi('➖', 'S.6', `a ${larghezza} px, il ruolo e la fine della sessione${dove390} (#2989)`, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
+    }
+    const bene = riquadro.visibile && riquadro.titolo === 'UAT Superadmin · 2FA' && riquadro.testo.includes(riquadro.ora) && !/undefined|Invalid Date|NaN/.test(riquadro.testo);
+    scrivi(bene ? '✅' : '❌', 'S.6', `a ${larghezza} px, il ruolo con «· 2FA» e l'ora della fine della sessione${dove390} (#2989)`, `«${riquadro.titolo}» · «${riquadro.testo}» · ora attesa ${riquadro.ora}`);
+}
+
+// S.7 (dalla v4.5.1, #3030): quando la sessione finisce domani il riquadro lo dice. `staff.html` con `fino` domani alle 02:00 nel
+// fuso della pagina (calcolato nella pagina, come l'ora attesa: il browser condiviso può avere un altro fuso di questo processo): il
+// testo è la frase `planUntilTomorrow` della lingua della pagina, dal file dello staff accanto allo script, con l'ora nella forma
+// della lingua. Senza i file accanto allo script, o su una pagina che non prende `fino` dai parametri: ➖; e ➖ se la mezzanotte
+// passa fra il calcolo e il disegno (revisione dello sprint 108, R2 e R3).
+async function fineDomani(page, apri, larghezza) {
+    const riga = `a ${larghezza} px, la fine della sessione domani (#3030)`;
+    const frasi = {};
+    try {
+        for (const codice of ['it', 'es', 'en']) {
+            frasi[codice] = JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/staff/${codice}.json`, import.meta.url)), 'utf8')).planUntilTomorrow;
+        }
+    } catch {
+        return scrivi('➖', 'S.7', riga, 'i file dello staff non sono accanto allo script');
+    }
+    await apri(indirizzo);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    const prima = await page.evaluate(() => {
+        const domani = new Date();
+        domani.setDate(domani.getDate() + 1);
+        domani.setHours(2, 0, 0, 0);
+        return { fino: domani.toISOString(), oggi: new Date().toDateString() };
+    });
+    const dove = new URL(indirizzo);
+    dove.searchParams.set('ruolo', 'UAT Superadmin');
+    dove.searchParams.set('fino', prima.fino);
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    if (larghezza <= 720) {
+        await page.click('.zr-shell .zr-top-menu');
+        await pausa(300);
+    }
+    const riquadro = await page.evaluate((fino) => {
+        const qui = document.querySelector('.zr-shell .zr-side-foot .zr-plan');
+        // La lingua della pagina di prova è nel parametro `lingua`; altrimenti quella del documento. Il codice base, come la cornice.
+        const lingua = (new URLSearchParams(location.search).get('lingua') || document.documentElement.lang || 'it').slice(0, 2).toLowerCase();
+        const deiTesti = ['it', 'es', 'en'].includes(lingua) ? lingua : 'en';
+        return {
+            visibile: qui?.checkVisibility() ?? false,
+            titolo: qui?.querySelector('strong')?.textContent ?? '',
+            testo: qui?.querySelector('span')?.textContent ?? '',
+            deiTesti,
+            ora: new Intl.DateTimeFormat(deiTesti, { hour: '2-digit', minute: '2-digit' }).format(new Date(fino)),
+            oggi: new Date().toDateString(),
+            prova: location.pathname.endsWith('/staff.html'),
+        };
+    }, prima.fino);
+    await page.screenshot({ path: join(cartella, `fine-domani-${larghezza}.png`) });
+    if (!riquadro.prova && !riquadro.titolo.startsWith('UAT Superadmin')) {
+        return scrivi('➖', 'S.7', riga, `la pagina non prende ruolo e fino dai parametri: «${riquadro.titolo}»`);
+    }
+    if (riquadro.oggi !== prima.oggi) {
+        return scrivi('➖', 'S.7', riga, 'la mezzanotte è passata fra il calcolo e il disegno: si rilancia');
+    }
+    const attesa = frasi[riquadro.deiTesti].replace('{ora}', () => riquadro.ora);
+    scrivi(riquadro.visibile && riquadro.testo === attesa ? '✅' : '❌', 'S.7', `a ${larghezza} px, la fine della sessione domani: «${attesa}» (#3030)`, `«${riquadro.testo}»`);
 }
 
 // S.5 (dalla v4.3.0, #2965): con `cercaAllInvio` la ricerca dello staff parte solo con Invio. Su `staff.html?invio=1` si scrive la
@@ -1314,6 +1409,8 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await loStaff(page);
         await senzaConfigurazione(page, apri, 1280);
+        await ruoloEFine(page, apri, 1280);
+        await fineDomani(page, apri, 1280);
         await ricercaAllInvio(page, apri);
         await toastAlSuoPosto(page, apri, 1280);
         return a390(page, apri, diGoogle, errori, csp);
@@ -1365,6 +1462,8 @@ async function a390(page, apri, diGoogle, errori, csp) {
         await campanella(page, false);
     } else {
         await senzaConfigurazione(page, apri, 390);
+        await ruoloEFine(page, apri, 390);
+        await fineDomani(page, apri, 390);
         await toastAlSuoPosto(page, apri, 390);
     }
 

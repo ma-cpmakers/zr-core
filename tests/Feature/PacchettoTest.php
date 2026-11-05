@@ -137,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.120 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function () {
+it('composer.json chiede zr-auth ^0.12.128 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -155,7 +155,9 @@ it('composer.json chiede zr-auth ^0.12.120 e nessuna minore più vecchia, e la C
     // quella (Decisione 13268 di zr-pm; sprint 55 · T1.4). Dalla `v2.19.0` dalla 0.12.41: le rotte della cornice escono da
     // `SoloDallaPersona`, che c'è da quella, e i due giri le provano con l'interruttore acceso (nota 13633; sprint 59 · T1.4).
     // Dalla `v4.1.0` dalla 0.12.120: la rotta della foto legge il file con `Api::immagine`, che c'è da quella (sprint 99 · T1.6).
-    expect($vincolo)->toBe('^0.12.120')
+    // Dalla `v4.5.2` dalla 0.12.128: `ConGettone` ricorda il ritorno solo per le navigazioni, e la foto chiesta da un `<img>` a
+    // sessione scaduta non diventa la pagina di ritorno (#3019; sprint 109 · T1.3). Il giro «minima» la installa: FotoTest lo prova.
+    expect($vincolo)->toBe('^0.12.128')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
@@ -1649,21 +1651,24 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.120, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.128, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
     // Ogni vincolo 0.12 che il testo dice, intero: `^0.12.4` è anche l'inizio di `^0.12.41`.
     $vincoli = fn (string $t): array => preg_match_all('/\^0\.12\.\d+/', $t, $trovati) > 0 ? $trovati[0] : [];
 
-    expect($vincoli($testo))->toBe(['^0.12.120'])
+    expect($vincoli($testo))->toBe(['^0.12.128'])
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and($vincoli(str_replace('^0.12.120', '^0.12.41', $testo)))->toBe(['^0.12.41']);
+        ->and($vincoli(str_replace('^0.12.128', '^0.12.120', $testo)))->toBe(['^0.12.120']);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.120, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.128, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` parte dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella (decisioni di zr-pm).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` parte dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm).'))->toBe(1)
+        ->and(str_contains($claude, 'dalla `v4.1.0` parte dalla 0.12.120'))->toBe(false)
+        // Anche il README dice il perché del vincolo nuovo (rilievo della revisione della PR #169).
+        ->and(substr_count($readme, 'Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l\'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia zr-core alla `v4.5.1`.'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v2.19.0` parte dalla 0.12.41'))->toBe(false)
         ->and(str_contains($claude, 'dalla `v2.16.0` parte dalla 0.12.31'))->toBe(false)
         ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
@@ -2096,7 +2101,9 @@ it('il README dice, in «La favicon», la riga per la testa della pagina, i tre 
  * perché resta lì anche in un passo spento. Lettura della PR #59, R5: un passo sano non ha nemmeno uno `shell:` suo, e sta in
  * un job che ferma la CI — senza `continue-on-error`, `if:` né `defaults:` —, in un file senza `defaults:`; un job che il
  * controllo non riconosce non è sano. Lettura della PR #60, R5: nemmeno un job dietro un altro (`needs:`), che è saltato
- * quando quello è saltato; e una chiave scritta fra virgolette o fra apici è la stessa chiave.
+ * quando quello è saltato; e una chiave scritta fra virgolette o fra apici è la stessa chiave. Dalla PR #170 il job ha un solo
+ * `if:` ammesso, quello che lo salta su una PR in bozza (i minuti di Actions, decisione di zr-pm): una bozza non si unisce a
+ * main, e su main, sui tag e su una PR pronta il job gira sempre. Ogni altro `if:` sul job resta un difetto.
  *
  * @return list<string>
  */
@@ -2128,8 +2135,10 @@ function difettiDelPassoCheLancia(string $comando, string $ci): array
     if (count($delPasso) !== 1) {
         $difetti[] = 'il job del passo non si trova';
     }
+    $soloInBozza = "    if: github.event_name != 'pull_request' || !github.event.pull_request.draft\n";
+    $jobDelPasso = str_replace($soloInBozza, '', $delPasso[0] ?? '');
     foreach (['continue-on-error', 'if', 'defaults', 'needs'] as $chiave) {
-        if (preg_match('/^ {4}["\']?'.$chiave.'["\']?:/m', $delPasso[0] ?? '') === 1) {
+        if (preg_match('/^ {4}["\']?'.$chiave.'["\']?:/m', $jobDelPasso) === 1) {
             $difetti[] = "il job del passo ha `{$chiave}:`";
         }
     }
@@ -2198,6 +2207,8 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
         'con needs sul job' => str_replace($job, "    needs: [prima]\n".$job, $ci),
         // Una chiave scritta fra virgolette o fra apici è la stessa chiave.
         'con un if fra virgolette sul job' => str_replace($job, "    \"if\": false\n".$job, $ci),
+        // PR #170: l'`if:` della bozza è il solo ammesso, e solo così. Rovesciato salterebbe il job proprio sulle PR pronte.
+        'con l\'if della bozza rovesciato' => str_replace('|| !github.event.pull_request.draft', '|| github.event.pull_request.draft', $ci),
         'con continue-on-error fra apici sul passo' => str_replace($riga, $riga."        'continue-on-error': true\n", $ci),
         // Tre spazi davanti al nome del job: per YAML è lo stesso file, ma il controllo non sa più qual è il job del passo.
         'col job che non si trova' => str_replace("\n  ci:\n", "\n   ci:\n", $ci),
@@ -2213,6 +2224,7 @@ it('in ci.yml il passo che rigenera e confronta sta in un job che ferma la CI: l
             'con defaults sul file' => ['il file ha `defaults:`'],
             'con needs sul job' => ['il job del passo ha `needs:`'],
             'con un if fra virgolette sul job' => ['il job del passo ha `if:`'],
+            'con l\'if della bozza rovesciato' => ['il job del passo ha `if:`'],
             'con continue-on-error fra apici sul passo' => ['il passo ha `continue-on-error:`'],
             'col job che non si trova' => ['il job del passo non si trova'],
         ]);

@@ -569,3 +569,136 @@ describe('tastiera e salto della cornice dello staff', () => {
         expect(via).toHaveBeenCalledWith(naviga, testi('en').mainContent, testi('en').searchResults);
     });
 });
+
+// Sprint 107 (voce #2989, Decisione 20721 di zr-pm-07): in fondo alla barra il riquadro dice il ruolo dello staff e fin quando
+// dura al più la sessione, come la barra del prototipo superadmin; «al più tardi», perché 30 minuti d'inattività la chiudono prima.
+describe('il ruolo e la fine della sessione nel riquadro della barra (sprint 107)', () => {
+    const fuso = process.env.TZ;
+    beforeEach(() => {
+        process.env.TZ = 'Europe/Rome';
+        // Dalla `v4.5.1` (#3030) il riquadro dice il giorno quando la fine non è oggi: qui «adesso» è la mattina dello stesso giorno.
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-04T08:00:00Z'));
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        if (fuso === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = fuso;
+        }
+    });
+
+    it('T1.1 con un ruolo il titolo è il ruolo con «· 2FA»; senza, o vuoto, è quello di prima', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} ruolo="Superadmin" onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe('Superadmin · 2FA');
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} ruolo=" " onLogout={esci} />);
+        expect(uno('.zr-plan strong')?.textContent).toBe(staffItaliano.planTitle);
+    });
+
+    it('T1.2 con la fine della sessione il testo dice l\'ora locale, non quella UTC della stringa', async () => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan span')?.textContent).toBe('Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.');
+    });
+
+    it.each(['', 'domani', 'undefined'])('T1.3 senza una fine che si legge («%s») il testo è quello di prima, mai rotto', async (fine) => {
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA={fine} onLogout={esci} />);
+        expect(uno('.zr-plan span')?.textContent).toBe(staffItaliano.planText);
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} sessioneFinoA={undefined} onLogout={esci} />);
+        expect(uno('.zr-plan')?.textContent).not.toMatch(/undefined|Invalid Date|NaN/);
+        expect(uno('.zr-plan span')?.textContent).toBe(staffItaliano.planText);
+    });
+
+    it.each([
+        ['es', 'Supervisor · 2FA', 'Sesión activa como máximo hasta las 18:30. Cada acción queda en el registro.'],
+        // L'ora nella forma della lingua, come le date della campanella: in inglese a 12 ore.
+        ['en', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
+        // In una lingua che zr-core non ha anche l'ora è nella forma dell'inglese, la lingua dei testi, come le date della campanella.
+        ['de', 'Superadmin · 2FA', 'Session active until 06:30 PM at the latest. Every action goes into the log.'],
+    ])('T1.4 in %s le due frasi della lingua, e in una lingua che zr-core non ha l\'inglese', async (lingua, titolo, testo) => {
+        await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} nav={nav} ruolo={titolo.split(' · ')[0]} sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan strong')?.textContent).toBe(titolo);
+        expect(uno('.zr-plan span')?.textContent).toBe(testo);
+    });
+
+    it('una lingua che Intl rifiuta (it_IT) non rompe la pagina, e un ruolo con «$&» si mostra com\'è (revisione dello sprint 107, R1 e R8)', async () => {
+        await mostra(<CorniceDelloStaff lingua="it_IT" persona={staff} nav={nav} ruolo="Ruolo $& $'" sessioneFinoA="2026-11-04T17:30:00Z" onLogout={esci} />);
+
+        expect(uno('.zr-plan strong')?.textContent).toBe("Ruolo $& $' · 2FA");
+        expect(uno('.zr-plan span')?.textContent).toBe('Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.');
+    });
+});
+
+// Sprint 108 · T2 (voce #3030, R3 della revisione dello sprint 107): il riquadro dice anche il giorno quando la sessione non finisce
+// oggi, perché con un gettone di 8 ore preso la sera «fino alle 02:00» si legge come oggi. Oggi e domani sono i giorni del
+// calendario nel fuso del browser, non 24 ore e non il giorno UTC.
+describe('il giorno della fine della sessione nel riquadro (sprint 108 · T2)', () => {
+    const fuso = process.env.TZ;
+    beforeEach(() => {
+        process.env.TZ = 'Europe/Rome';
+        vi.useFakeTimers({ toFake: ['Date'] });
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        if (fuso === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = fuso;
+        }
+    });
+    const nelRiquadro = async (adesso: string, fine: string, lingua = 'it') => {
+        vi.setSystemTime(new Date(adesso));
+        await mostra(<CorniceDelloStaff lingua={lingua} persona={staff} nav={nav} sessioneFinoA={fine} onLogout={esci} />);
+
+        return uno('.zr-plan span')?.textContent;
+    };
+
+    it.each([
+        // 09:00 e 18:30 a Roma, il 4 novembre.
+        ['2026-11-04T08:00:00Z', '2026-11-04T17:30:00Z', '18:30'],
+        // 00:30 e 02:00 a Roma, tutte e due il 5 novembre: per il giorno UTC (il 4 e il 5) sarebbe domani.
+        ['2026-11-04T23:30:00Z', '2026-11-05T01:00:00Z', '02:00'],
+    ])('T2.1 con la fine nello stesso giorno locale di adesso (%s → %s) la frase di prima, senza giorno', async (adesso, fine, ora) => {
+        expect(await nelRiquadro(adesso, fine)).toBe(staffItaliano.planUntil.replace('{ora}', ora));
+    });
+
+    it.each([
+        // 23:30 del 4 e 01:30 del 5 a Roma: meno di 24 ore, ma il giorno dopo.
+        ['2026-11-04T22:30:00Z', '2026-11-05T00:30:00Z', '01:30'],
+        // 09:00 del 4 e 02:00 del 5.
+        ['2026-11-04T08:00:00Z', '2026-11-05T01:00:00Z', '02:00'],
+        // 09:00 del 4 e 00:30 del 5 a Roma: per il giorno UTC (il 4 tutte e due) sarebbe oggi (revisione dello sprint 108, R5).
+        ['2026-11-04T08:00:00Z', '2026-11-04T23:30:00Z', '00:30'],
+        // Il 29 marzo l'ora legale: fra la sua mezzanotte e quella del 30 23 ore, e il giorno dopo resta domani (revisione dello sprint 108, R4).
+        ['2026-03-29T08:00:00Z', '2026-03-30T01:00:00Z', '03:00'],
+    ])('T2.2 con la fine nel giorno locale dopo (%s → %s) «fino a domani alle …»', async (adesso, fine, ora) => {
+        expect(await nelRiquadro(adesso, fine)).toBe(staffItaliano.planUntilTomorrow.replace('{ora}', ora));
+    });
+
+    it.each([
+        // Il 7 novembre, sabato, oltre domani.
+        ['2026-11-04T08:00:00Z', '2026-11-07T01:00:00Z', 'sabato 7 novembre', '02:00'],
+        // Il giorno prima di oggi: la data, mai «domani» né la frase di oggi.
+        ['2026-11-04T08:00:00Z', '2026-11-03T17:30:00Z', 'martedì 3 novembre', '18:30'],
+    ])('T2.3 con la fine oltre domani o prima di oggi (%s → %s) il giorno con la data', async (adesso, fine, giorno, ora) => {
+        expect(await nelRiquadro(adesso, fine)).toBe(`Sessione al più tardi fino a ${giorno} alle ${ora}. Ogni azione va nel registro.`);
+    });
+
+    it.each([
+        // In spagnolo il giorno senza la virgola che Intl mette dopo quello della settimana (revisione dello sprint 108, R7).
+        ['es', 'Sesión activa como máximo hasta mañana a las 02:00. Cada acción queda en el registro.', 'Sesión activa como máximo hasta el sábado 7 de noviembre a las 02:00. Cada acción queda en el registro.'],
+        ['en', 'Session active until tomorrow at 02:00 AM at the latest. Every action goes into the log.', 'Session active until Saturday, November 7 at 02:00 AM at the latest. Every action goes into the log.'],
+        // Una lingua che zr-core non ha: l'inglese, nelle parole e nella forma della data.
+        ['de', 'Session active until tomorrow at 02:00 AM at the latest. Every action goes into the log.', 'Session active until Saturday, November 7 at 02:00 AM at the latest. Every action goes into the log.'],
+    ])('T2.4 in %s le frasi di domani e del giorno sono quelle della lingua', async (lingua, domani, giorno) => {
+        expect(await nelRiquadro('2026-11-04T08:00:00Z', '2026-11-05T01:00:00Z', lingua)).toBe(domani);
+        expect(await nelRiquadro('2026-11-04T08:00:00Z', '2026-11-07T01:00:00Z', lingua)).toBe(giorno);
+    });
+});
