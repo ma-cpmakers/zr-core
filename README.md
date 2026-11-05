@@ -175,8 +175,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 49,4 KB | 17,0 KB | 63,6 KB | 13,9 KB |
-| la cornice e due componenti per nome | 56,6 KB | 19,3 KB | 63,6 KB | 13,9 KB |
+| solo la cornice, dall'ingresso per le app | 49,4 KB | 17,5 KB | 63,6 KB | 13,9 KB |
+| la cornice e due componenti per nome | 56,6 KB | 19,8 KB | 63,6 KB | 13,9 KB |
 | la stessa cornice, dall'ingresso di sempre | 158,7 KB | 51,1 KB | 63,6 KB | 13,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
@@ -241,7 +241,8 @@ byte, alla misura più 20: l'Alert del design system, che la cornice usa solo pe
 pezzo degli avvisi, dal suo modulo (#3055, Decisione 21220 di zr-pm). Dalla `v4.9.0` è salito di 55 byte, alla misura
 più 20: il lotto 0514 del design system, col codice del `Menu` per le voci di una scelta (`checked`); un'eccezione di zr-pm
 senza contropartita. Dalla `v4.10.0` è salito di 411 byte, alla misura più 20: i lotti 0515 e 0516 del design system, coi
-testi comuni dei componenti in tre lingue (`COMMON_LABELS`), che `Dialog` e `Toast` portano nel JS d'ingresso; un'eccezione
+testi comuni dei componenti in tre lingue (`COMMON_LABELS`), che l'`AppShell` porta nel JS d'ingresso con la riga
+delle notifiche (`NotificationItem`) e `Label`; un'eccezione
 di zr-pm. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più

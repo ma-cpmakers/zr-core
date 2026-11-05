@@ -141,7 +141,7 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * col codice del `Menu` per le voci di una scelta (`checked`) (17.491 misurati).
  *
  * v4.10.0: 17.922, 411 in più (sì di zr-pm-07 del 05/11, la misura + 20): i lotti 0515 e 0516 del design system, coi testi
- * comuni in tre lingue (`COMMON_LABELS`) che Dialog e Toast portano nell'ingresso (17.902 misurati). La contropartita dei
+ * comuni in tre lingue (`COMMON_LABELS`) che l'AppShell porta nell'ingresso con NotificationItem e Label (17.902 misurati). La contropartita dei
  * «Chiudi» doppi non libera niente: la cornice non ha un testo suo per la ✕ (solo «Chiudi il menu» del cassetto, un'altra cosa).
  */
 const TETTO_DELL_INGRESSO = 17_922;
