@@ -171,9 +171,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
-| la cornice e due componenti per nome | 50,4 KB | 17,8 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 136,9 KB | 44,3 KB | 63,5 KB | 13,7 KB |
+| solo la cornice, dall'ingresso per le app | 47,8 KB | 16,8 KB | 63,5 KB | 13,7 KB |
+| la cornice e due componenti per nome | 53,7 KB | 18,7 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 140,8 KB | 45,1 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -200,7 +200,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 16.880 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.188 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -226,7 +226,10 @@ misura più 20: il design system nuovo, col codice dell'`AppShell` per la ricerc
 nell'avatar (352 byte), e la foto della persona nella cornice (8); un'eccezione di zr-pm senza contropartita (Decisione
 20570). Dalla `v4.4.0` è sceso di 693 byte, alla misura più 20: nel JS d'ingresso c'è solo l'italiano, e inglese e spagnolo
 sono file a richiesta (Decisione 20618 di zr-pm; «Il precarico della lingua», in fondo), con un tetto ciascuno, la misura
-più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Hanno
+più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Dalla `v4.7.0` è salito di 308 byte, alla misura più 20: il
+design system nuovo (il lotto 0512), col codice dell'`AppShell` e del `Menu` per le impostazioni del workspace, il modulo «Da
+attivare», il numero col suo nome e il fuoco dei menu, che la cornice non usa ancora tutto; un'eccezione di zr-pm come quella
+della `v4.2.0` (Decisione 21046), e quando l'avviso della cornice ridotta esce dal JS d'ingresso il tetto riscende. Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -264,8 +267,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 85,6 KB | 14,2 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 82,4 KB | 13,7 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 86,4 KB | 14,3 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 83,2 KB | 13,9 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -414,6 +417,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.5.1` | la cornice dello staff: il riquadro in fondo alla barra dice il giorno quando la sessione non finisce oggi (#3030), «Sessione al più tardi fino a domani alle 02:00. Ogni azione va nel registro.», o il giorno con la data oltre domani, o per una fine già passata («fino a sabato 7 novembre alle 02:00»); e se il file della lingua non arriva i testi dello staff ripiegano sull'italiano con il resto della cornice, invece di restare nella lingua chiesta (#3031) | niente | niente | S.7 su `staff.html` (`fino` domani alle 02:00) a 1280 e a 390 px, e R.L.3 su `staff.html?lingua=en` e `?lingua=es` |
 | `v4.5.2` | una foto della cornice chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l'accesso, e non cancella quella già ricordata (#3019): zr-core chiede zr-auth `0.12.128`, dove `ConGettone` ricorda il ritorno solo per le navigazioni | `composer update zeiras/zr-core zeiras/zr-auth`: zr-auth sale almeno alla 0.12.128 | niente | dopo un accesso scaduto si torna alla pagina dov'eri, non al file della foto |
 | `v4.6.0` | il design system `ds-1793876570-88a8`, i due lotti del 05/11 (richieste 140-180): componenti nuovi `RadioGroup` (anche `variant="card"` e `layout="grid"`), `ToggleGroup`, `InlineEdit`, `Calendar`; `Checkbox` con aiuto ed errore; token `micro`, `wordmark`, `border-ring`; `Label` `variant="type"`, `FilterBar` `searchLabel` e `searchHint`, `RecordHeader` `statusTone`, `ChartCard` `headingLevel`, `closeLabel` su `Alert`, `Toast`, `Dialog` e `DetailPanel`, `Switch` con `aria-describedby` e `aria-invalid`; l'errore dei campi con `role="alert"`; `Button` che al tocco si prende su 44×44 e va a capo, `Switch` alto 24px | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che misura un pulsante, l'interruttore o il titolo di uno stato vuoto vede le misure nuove | le pagine coi pulsanti, gli interruttori, i segmentati e gli stati vuoti, a 1280 e 390 px |
+| `v4.7.0` | il design system `ds-1793888110-145c`, il lotto 0512 (richieste 2, 3, 7/90, 8, 9, 11, 12/70/35, 18, 61, 72, 78, 93, 95, 96, 105, 123, 128, 163, 181-183): `MentionField` `filter={false}`; `ActivityTimeline` con i tipi `meeting` e `message`, l'esito (`outcome`, `outcomeTone`), i comandi sulla voce (`actions`) e la correzione dove sta (`edit`); `SectionCard` `more`; `DataTable` con «Ordina per» sotto i 720 px, `labels` (`DATATABLE_LABELS`) e `locale`; `AppShell` con «Impostazioni del workspace» (`workspaceSettingsHref`, `onWorkspaceSettings`) e il modulo `off` «Da attivare», che la cornice non usa ancora; `countLabel` su `NavItem`, `Tabs`, `ToggleGroup`, `PageHeader`; `closeLabel` su `Composer`, `KanbanBoard`, `WorkflowBuilder`; `InlineEdit` con l'IME e il tetto in caratteri; `Checkbox` a 44 px al tocco; il pannello della ricerca si chiude quando il fuoco esce dalla ricerca, e un `Menu` rende il fuoco al suo pulsante (il «+» della cornice lo fa ora dal design system) | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che conta i Tab dopo una voce del «+» o del ⋯, o che si aspetta il pannello della ricerca aperto dopo un Tab fuori, vede il fuoco al pulsante e il pannello chiuso | le pagine con tabelle a 390 px, i menu ⋯ e il «+» da tastiera, la ricerca col Tab, le cronologie delle attività |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1068,10 +1072,11 @@ cornice === null ? pagina : (
   mostrano prima che il browser cerchi dove portare il fuoco, e dal campo o dal pannello il Tab arriva alle azioni della barra
   prima del contenuto (#2805: nella `v3.4.0` le saltava); se il fuoco resta nella ricerca si nascondono di nuovo. Dalla `v3.8.1` il fuoco che esce dalla
   ricerca — dal campo o dal suo pannello — verso un altro elemento la chiude, e la parola resta (righe 7 e 90 delle richieste al
-  design system); il fuoco che lascia la finestra no. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
+  design system); il fuoco che lascia la finestra no. Dalla `v4.7.0` lo fa l'`AppShell` del design system (lotto 0512), e il pezzo
+  dei rimedi non lo fa più: prima, a ricerca aperta, mandava un Esc finto al campo. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
-  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. È provvisorio, come i punti
-  sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva il pannello e la barra restano com'erano.
+  che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. Il nascondere le azioni è provvisorio,
+  come i punti sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva la barra resta com'era.
 - **Esc nella ricerca, il cassetto e i menu della barra da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
   il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto i 1024 px) Esc lo chiude anche col
@@ -1111,10 +1116,9 @@ cornice === null ? pagina : (
   un `Dialog` del design system senza dargli il fuoco, subito o più tardi (dopo una richiesta), il fuoco non resta sul «+» dietro
   il velo, che Invio premerebbe: va al dialogo, e quando il dialogo se ne va torna al «+». Un `<dialog>` del browser che la voce
   apre più tardi trova il fuoco sul «+», e alla chiusura glielo rende; il fuoco dentro, all'apertura, lo dà il modulo. Il modulo
-  non deve fare niente altro. Sta nel pezzo della tastiera, ed è provvisorio: quando il `Menu` del design system lo fa da sé
-  (riga 11 delle richieste al design system) si toglie. Il pezzo arriva al primo tasto premuto nella pagina: se non arriva, o se
-  la voce è scelta prima che arrivi — col tasto che lo chiede, o col mouse da chi non ha ancora premuto un tasto —, il fuoco resta
-  alla pagina com'era.
+  non deve fare niente altro. Dalla `v4.7.0` il fuoco al «+» prima della voce lo dà il `Menu` del design system (lotto 0512, riga
+  11 delle richieste al design system), anche prima del primo tasto premuto nella pagina, e il pezzo della tastiera non lo fa più;
+  il fuoco dal «+» al dialogo che non lo prende resta del pezzo della tastiera, che arriva al primo tasto.
 - **Le voci «Presto» fuori dal giro del Tab**: dalla `v3.8.1`, le voci «Presto» della barra laterale e del menu Moduli — che non
   portano da nessuna parte e sono disattivate (`aria-disabled`) — non fermano più il Tab (`tabindex="-1"`), e un lettore di
   schermo le legge «CRM, Presto» e non «CRMPresto»: il nome è quello della voce e lo stato, separati, nella lingua della

@@ -70,6 +70,8 @@ import * as React from 'react';
     gantt: 'M4 4v16M7 7h7M10 12h10M7 17h6'
   };
   var ICON_NAMES = Object.keys(PATHS);
+  /* il numero accanto a un nome: si vede da solo, il lettore di schermo lo sente staccato e col suo nome (richieste 12, 70, 35) */
+  function countParts(n, cls, label) { return [h('span', { key: 'cs', className: 'zr-visually-hidden' }, ', ' + (label || n)), h('span', { key: 'cn', className: cls, 'aria-hidden': true }, n)]; }
 
   function Icon(p) {
     var size = p.size || 20;
@@ -143,9 +145,9 @@ import * as React from 'react';
 
   /* Testi fissi dell'AppShell: tutti sostituibili con la prop labels (it di default) */
   var APPSHELL_LABELS = {
-    soon: 'Presto', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
+    soon: 'Presto', off: 'Da attivare', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
-    workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace',
+    workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
@@ -217,14 +219,14 @@ import * as React from 'react';
     function item(it) {
       var isActive = it.id === active;
       return h('a', {
-        key: it.id, href: it.href || '#', className: cx('zr-nav-item', isActive && 'is-active', it.soon && 'is-soon'),
+        key: it.id, href: it.href || '#', className: cx('zr-nav-item', isActive && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
         'aria-current': isActive ? 'page' : undefined, 'aria-disabled': it.soon ? 'true' : undefined,
         onClick: function (e) { go(it, e); }
       },
         h(Icon, { name: it.icon, size: 18 }),
         h('span', { className: 'zr-nav-label' }, it.label),
-        it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : null,
-        it.count ? h('span', { className: 'zr-count' }, it.count) : null);
+        it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
+        it.count ? countParts(it.count, 'zr-count', it.countLabel) : null);
     }
 
     /* ---- Selettore Azienda › workspace ---- */
@@ -240,6 +242,7 @@ import * as React from 'react';
       var i = list.indexOf(document.activeElement); var n = list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus();
     }
     useEffect(function () { if (pop === 'ws' && wsRef.current) { var a = wsRef.current.querySelector('.zr-ws-item[aria-current]') || wsRef.current.querySelector('.zr-ws-item'); if (a) a.focus({ preventScroll: true }); } }, [pop]);
+    var wsSettings = !!(curWs && (p.workspaceSettingsHref || p.onWorkspaceSettings));
     var wsSwitch = companies.length ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys },
       h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': sid + '-ws', 'aria-label': L.workspaceSwitch + ': ' + (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : ''),
         onClick: function () { setPop(pop === 'ws' ? null : 'ws'); } },
@@ -260,7 +263,10 @@ import * as React from 'react';
                 isCur ? h(Icon, { name: 'check', size: 16 }) : null);
             }));
         }),
-        p.onNewWorkspace ? h('div', { className: 'zr-product-sep', role: 'separator' }) : null,
+        p.onNewWorkspace || wsSettings ? h('div', { className: 'zr-product-sep', role: 'separator' }) : null,
+        wsSettings ? h(p.workspaceSettingsHref ? 'a' : 'button', { type: p.workspaceSettingsHref ? undefined : 'button', href: p.workspaceSettingsHref, className: 'zr-ws-item zr-ws-new',
+          onClick: function (e) { setPop(null); setDrawer(false); if (p.onWorkspaceSettings) p.onWorkspaceSettings(e, curWs ? curWs.slug : undefined, curCompany ? curCompany.id : undefined); } },
+          h(Icon, { name: 'settings', size: 16 }), h('span', { className: 'zr-nav-label' }, L.workspaceSettings)) : null,
         p.onNewWorkspace ? h('button', { type: 'button', className: 'zr-ws-item zr-ws-new', onClick: function () { setPop(null); setDrawer(false); p.onNewWorkspace(curCompany ? curCompany.id : undefined); } },
           h(Icon, { name: 'plus', size: 16 }), h('span', { className: 'zr-nav-label' }, L.newWorkspace)) : null) : null)
       : (p.workspace ? h('span', { className: 'zr-workspace' }, p.workspace) : null);
@@ -281,13 +287,13 @@ import * as React from 'react';
       }, prodGroup.items.map(function (it) {
         var isCur = it.id === current.id;
         return h('a', {
-          key: it.id, href: it.href || '#', className: cx('zr-nav-item', isCur && 'is-active', it.soon && 'is-soon'),
+          key: it.id, href: it.href || '#', className: cx('zr-nav-item', isCur && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
           'aria-current': isCur ? 'true' : undefined, 'aria-disabled': it.soon ? 'true' : undefined,
           onClick: function (e) { if (!it.href) e.preventDefault(); if (isCur) { setOpen(false); return; } go(it, e); }
         },
           h(Icon, { name: it.icon, size: 18 }),
           h('span', { className: 'zr-nav-label' }, it.label),
-          it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
+          it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
       }).reduce(function (acc, el, i) { acc.push(el); var it = prodGroup.items[i]; if (it.home && i < prodGroup.items.length - 1) acc.push(h('div', { key: 'sep', className: 'zr-product-sep', role: 'separator' })); return acc; }, [])) : null) : null;
     var groups = nav.filter(function (g) { return !(prodGroup && g === prodGroup); });
 
@@ -410,7 +416,7 @@ import * as React from 'react';
       h('header', { className: 'zr-top' },
         h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': drawer ? L.closeMenu : L.openMenu, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
           h(Icon, { name: 'menu', size: 20 }), current ? h('span', { className: 'zr-top-product' }, current.label) : null),
-        h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); } } },
+        h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'search' ? null : v; }); } /* il fuoco esce dalla ricerca: il pannello si chiude (richieste 7 e 90) */, onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); } } },
           h('span', { className: 'zr-search-icon' }, h(Icon, { name: 'search', size: 18 })),
           h('input', { ref: inputRef, type: 'search', value: q, placeholder: p.searchPlaceholder || L.searchPlaceholder, 'aria-label': L.search, role: 'combobox', 'aria-autocomplete': 'list',
             'aria-expanded': listOpen ? 'true' : 'false', 'aria-controls': listOpen ? sid + '-results' : undefined, 'aria-activedescendant': listOpen ? sid + '-r' + hi : undefined, 'aria-keyshortcuts': IS_MAC ? 'Meta+K' : 'Control+K', enterKeyHint: onSubmit ? 'search' : undefined,
@@ -594,7 +600,7 @@ import * as React from 'react';
             }),
             h('div', { className: 'zr-composer-row' },
               h(Button, { size: 'sm', onClick: function () { addCard(l.id); } }, 'Aggiungi'),
-              h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': 'Annulla', onClick: function () { setAddingIn(null); setDraft(''); } }))) : null;
+              h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || 'Annulla', onClick: function () { setAddingIn(null); setDraft(''); } }))) : null;
           return h(KanbanColumn, {
             key: l.id, title: l.title, count: l.cards.length, limit: l.limit, isOver: overId === l.id && dragId != null,
             composer: composer, onAdd: function () { setAddingIn(l.id); setDraft(''); },
@@ -1034,11 +1040,15 @@ import * as React from 'react';
     var taken = values.map(function (v) { return v.id; });
     var list = q === null ? [] : (p.suggestions || []).filter(function (s) {
       if (taken.indexOf(s.id) >= 0) return false;
+      if (p.filter === false) return true;
       var hay = [s.name, s.email, s.phone, s.sub].filter(Boolean).join(' ').toLowerCase();
       return !q || hay.indexOf(q) >= 0;
     }).slice(0, p.maxResults || 8);
     var canCreate = !!(p.onCreate || p.createLabel) && q;
     var count = list.length + (canCreate ? 1 : 0);
+    var lk = list.map(function (x) { return x.id; }).join('\n'), pk = useState(lk); /* risultati nuovi (anche dal server, con filter={false}): l'opzione attiva torna la prima */
+    if (pk[0] !== lk) { pk[1](lk); if (active) as[1](0); }
+    if (active >= count && count) active = 0;
     var showList = open && q !== null;
     function setText(t) { if (p.query == null) ts[1](t); var i = t.lastIndexOf('@'); if (p.onQuery) p.onQuery(i >= 0 ? t.slice(i + 1) : null); if (p.open === undefined) os[1](i >= 0); as[1](0); }
     function setValues(v) { if (!ctrlVal) vs[1](v); if (p.onChange) p.onChange(v); }
@@ -1119,7 +1129,7 @@ import * as React from 'react';
       items.map(function (it) {
         var v = typeof it === 'string' ? it : it.value, l = typeof it === 'string' ? it : it.label;
         return h('button', { key: v, type: 'button', role: 'tab', 'aria-selected': v === val, className: cx('zr-seg-item', v === val && 'is-active'),
-          onClick: function () { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); } }, it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, l, it.count != null ? h('span', { className: 'zr-seg-count' }, it.count) : null);
+          onClick: function () { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); } }, it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, l, it.count != null ? countParts(it.count, 'zr-seg-count', it.countLabel) : null);
       }));
   }
 
@@ -1174,7 +1184,7 @@ import * as React from 'react';
           return h('button', { key: obj.value, type: 'button', className: cx('zr-toggle', on && 'is-on'), 'aria-pressed': on, disabled: p.disabled || obj.disabled, 'aria-label': obj['aria-label'], 'aria-describedby': desc, onClick: function () { pick(obj.value); } },
             multi && on && !obj.icon ? h(Icon, { name: 'check', size: 16 }) : obj.icon ? h(Icon, { name: obj.icon, size: 16 }) : null,
             h('span', null, obj.label),
-            obj.count != null ? h('span', { className: 'zr-toggle-count' }, obj.count) : null);
+            obj.count != null ? countParts(obj.count, 'zr-toggle-count', obj.countLabel) : null);
         })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
@@ -1223,7 +1233,22 @@ import * as React from 'react';
         timer.current = setTimeout(function () { if (alive.current) ss[1](function (s) { return s === 'saved' ? 'idle' : s; }); }, 2500);
       }, function (e) { if (alive.current) fail(e && e.message); });
     }
+    /* il tetto in caratteri, non in unità UTF-16 (richiesta 182), come maxlength: dell'inserimento entra ciò che ci sta, il resto del testo non si tocca, e un valore già oltre il tetto si può accorciare */
+    function cap(v, prev, el) {
+      var a = Array.from(v), b = Array.from(prev);
+      if (!p.maxLength || a.length <= p.maxLength || a.length <= b.length) return v;
+      var i = 0, j = 0, end = el && typeof el.selectionEnd === 'number' ? el.selectionEnd : -1;
+      if (end >= 0) j = Math.min(b.length, Array.from(v.slice(end)).length); /* dopo il cursore c'è ciò che c'era dopo l'inserimento */
+      else while (j < b.length && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+      while (i < b.length - j && a[i] === b[i]) i++;
+      var put = a.slice(i, a.length - j).slice(0, Math.max(0, p.maxLength - i - j)), head = a.slice(0, i).concat(put).join('');
+      var out = head + a.slice(a.length - j).join('');
+      if (el) { el.value = out; try { el.setSelectionRange(head.length, head.length); } catch (e) {} } /* il cursore resta dopo ciò che è entrato */
+      return out;
+    }
+    var pre = useRef('');
     function onKey(e) {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return; /* Invio ed Esc dell'IME confermano o annullano la composizione (richiesta 181) */
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (mode.current !== 'saving') { ss[1]('idle'); close(true); } }
       else if (e.key === 'Enter' && (!p.multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); }
     }
@@ -1232,8 +1257,9 @@ import * as React from 'react';
     var body;
     if (editing) {
       var attrs = { ref: fieldRef, id: id, value: draft, className: 'zr-inline-edit-field', 'aria-label': p.label, 'aria-invalid': stato === 'error' || undefined, 'aria-busy': stato === 'saving' || undefined,
-        'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', maxLength: p.maxLength, placeholder: p.placeholder,
-        onChange: function (e) { ds[1](e.target.value); if (stato === 'error') { ss[1]('idle'); ms[1](''); } }, onKeyDown: onKey, onBlur: function () { save(false); } };
+        'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', placeholder: p.placeholder,
+        onChange: function (e) { ds[1](e.nativeEvent.isComposing ? e.target.value : cap(e.target.value, draft, e.target)); if (stato === 'error') { ss[1]('idle'); ms[1](''); } },
+        onCompositionStart: function () { pre.current = draft; }, onCompositionEnd: function (e) { ds[1](cap(e.target.value, pre.current, e.target)); }, onKeyDown: onKey, onBlur: function () { save(false); } };
       body = p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: 'text' }, attrs));
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
@@ -1422,14 +1448,20 @@ import * as React from 'react';
     return h('div', { className: 'zr-page-head' },
       h('div', { className: 'zr-page-head-text' },
         p.overline ? h('span', { className: 'zr-overline' }, p.overline) : null,
-        h('h1', null, p.title, p.count != null ? h('span', { className: 'zr-count zr-page-count' }, fmtNum(p.count)) : null),
+        h('h1', null, p.title, p.count != null ? countParts(fmtNum(p.count), 'zr-count zr-page-count', p.countLabel) : null),
         p.subtitle ? h('p', null, p.subtitle) : null),
       p.actions ? h('div', { className: 'zr-page-actions' }, p.actions) : null);
   }
 
   /* ---------- Data ---------- */
+  var DATATABLE_LABELS = { selected: '{n} selezionati', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente' };
   function DataTable(p) {
     var cols = p.columns || [], rows = p.rows || [];
+    var L = Object.assign({}, DATATABLE_LABELS, p.labels || {});
+    var loc = p.locale, nf = null;
+    if (loc) try { nf = new Intl.NumberFormat(loc); } catch (e) { loc = null; } /* una lingua che il browser non conosce non rompe la tabella: si usa la forma italiana */
+    var num = nf ? function (v) { return nf.format(v); } : fmtNum;
+    function fill(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
     var so = useState(p.defaultSort || null), sort = so[0], setSort = so[1];
     var se = useState([]), sel = se[0], setSel = se[1];
     var pg = useState(0), page = pg[0], setPage = pg[1];
@@ -1438,20 +1470,28 @@ import * as React from 'react';
     if (sort) {
       var c = cols.find(function (x) { return x.key === sort.key; });
       var get = (c && c.sortValue) || function (r) { return r[sort.key]; };
-      sorted.sort(function (a, b) { var x = get(a), y = get(b); var r = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'it'); return sort.dir === 'asc' ? r : -r; });
+      sorted.sort(function (a, b) { var x = get(a), y = get(b); var r = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), loc || 'it'); return sort.dir === 'asc' ? r : -r; });
     }
     var pages = Math.max(1, Math.ceil(sorted.length / size));
     var shown = sorted.slice(page * size, page * size + size);
     var rid = function (r, i) { return r.id != null ? r.id : i; };
     var allOn = shown.length > 0 && shown.every(function (r, i) { return sel.indexOf(rid(r, i)) >= 0; });
+    function all() { var ids = shown.map(rid), n = allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids))); setSel(n); if (p.onSelect) p.onSelect(n); } /* anche «Seleziona tutti» lo dice al modulo, come la casella di una riga */
     function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); if (p.onSelect) p.onSelect(n); }
+    var sortCols = cols.filter(function (c) { return c.sortable !== false; });
+    var sortOpts = (sort ? [] : [{ value: '', label: L.sortNone }]).concat([].concat.apply([], sortCols.map(function (c) {
+      return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label) }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label) }];
+    })));
     return h('div', { className: 'zr-table-wrap' },
-      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, sel.length + ' selezionati'), p.bulkActions || null,
-        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); } }, 'Deseleziona')) : null,
+      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
+        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); if (p.onSelect) p.onSelect([]); } }, L.deselect)) : null,
+      sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
+        onChange: function (e) { var v = e.target.value.split(':'); setSort(v[0] ? { key: v[0], dir: v[1] } : null); setPage(0); } }) : null,
+      p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */
       h('div', { className: 'zr-table-scroll' },
         h('table', { className: 'zr-table' },
           h('thead', null, h('tr', null,
-            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': 'Seleziona tutti', checked: allOn, onChange: function () { var ids = shown.map(rid); setSel(allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids)))); } })) : null,
+            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, onChange: all })) : null,
             cols.map(function (c) {
               var active = sort && sort.key === c.key;
               return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right'), style: c.width ? { width: c.width } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
@@ -1460,14 +1500,14 @@ import * as React from 'react';
           h('tbody', null, shown.length ? shown.map(function (r, i) {
             var id = rid(r, page * size + i), on = sel.indexOf(id) >= 0;
             return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
-              p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': 'Seleziona riga', checked: on, onChange: function () { toggle(id); } })) : null,
+              p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': L.selectRow, checked: on, onChange: function () { toggle(id); } })) : null,
               cols.map(function (c) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' ? c.label : undefined, className: cx(c.align === 'right' && 'is-right') }, c.render ? c.render(r) : r[c.key]); }));
-          }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: 'Nessun risultato', text: 'Prova a cambiare i filtri.' })))))),
+          }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
       pages > 1 ? h('div', { className: 'zr-pager' },
-        h('span', null, (page * size + 1) + '–' + Math.min(sorted.length, page * size + size) + ' di ' + fmtNum(sorted.length)),
+        h('span', null, fill(fill(fill(L.range, '{from}', num(page * size + 1)), '{to}', num(Math.min(sorted.length, page * size + size))), '{total}', num(sorted.length))),
         h('div', null,
-          h(Button, { variant: 'secondary', size: 'sm', icon: 'chevronLeft', 'aria-label': 'Pagina precedente', disabled: page === 0, onClick: function () { setPage(page - 1); } }),
-          h(Button, { variant: 'secondary', size: 'sm', icon: 'chevron', 'aria-label': 'Pagina successiva', disabled: page >= pages - 1, onClick: function () { setPage(page + 1); } }))) : null);
+          h(Button, { variant: 'secondary', size: 'sm', icon: 'chevronLeft', 'aria-label': L.prev, disabled: page === 0, onClick: function () { setPage(page - 1); } }),
+          h(Button, { variant: 'secondary', size: 'sm', icon: 'chevron', 'aria-label': L.next, disabled: page >= pages - 1, onClick: function () { setPage(page + 1); } }))) : null);
   }
 
   function FilterBar(p) {
@@ -1628,7 +1668,10 @@ import * as React from 'react';
       p.actions ? h('div', { className: 'zr-section-card-actions' }, p.actions) : null) : null;
     return h('section', { id: p.id, className: cx('zr-section-card', p.variant === 'standalone' && 'is-standalone', p.className), 'aria-labelledby': p.title ? tid : undefined, 'aria-label': p.title ? undefined : p['aria-label'] },
       head,
-      h('div', { className: 'zr-section-card-body' }, p.children),
+      h('div', { className: 'zr-section-card-body' }, p.children,
+        p.more ? h('div', { className: 'zr-section-card-more' }, p.more.href
+          ? h('a', { className: 'zr-btn zr-btn-ghost zr-btn-sm', href: p.more.href, onClick: p.more.onClick }, h('span', null, p.more.label))
+          : h(Button, { variant: 'ghost', size: 'sm', onClick: p.more.onClick }, p.more.label)) : null),
       p.footer ? h('footer', { className: 'zr-section-card-foot' }, p.footer) : null);
   }
 
@@ -1652,16 +1695,20 @@ import * as React from 'react';
       p.actions ? h('div', { className: 'zr-page-actions' }, p.actions) : null);
   }
 
-  var ACT_ICON = { email: ['mail', 'sky'], call: ['phone', 'pine'], note: ['edit', 'citrus'], deal: ['euro', 'plum'], task: ['checklist', 'neutral'], automation: ['bolt', 'plum'] };
+  var ACT_ICON = { email: ['mail', 'sky'], call: ['phone', 'pine'], meeting: ['users', 'pine'], message: ['message', 'sky'], note: ['edit', 'citrus'], deal: ['euro', 'plum'], task: ['checklist', 'neutral'], automation: ['bolt', 'plum'] };
   function ActivityTimeline(p) {
     return h('ol', { className: 'zr-timeline' }, (p.items || []).map(function (it, i) {
       var ic = ACT_ICON[it.type] || ['info', 'neutral'];
-      return h('li', { key: i },
+      return h('li', { key: it.id != null ? it.id : i },
         h('span', { className: cx('zr-iconbox', 'zr-iconbox-xs', 'zr-label-' + ic[1]) }, h(Icon, { name: ic[0], size: 14 })),
         h('div', { className: 'zr-tl-body' },
           h('div', { className: 'zr-tl-head' }, h('strong', null, it.title), h('time', null, it.time)),
-          it.text ? h('p', null, it.text) : null,
-          it.by ? h('span', { className: 'zr-tl-by' }, it.by) : null));
+          it.outcome ? h('div', { className: 'zr-tl-outcome' }, h(Label, { tone: it.outcomeTone || 'neutral' }, it.outcome)) : null,
+          it.edit ? h('div', { className: 'zr-tl-edit' }, it.edit) : it.text ? h('p', null, it.text) : null,
+          it.by ? h('span', { className: 'zr-tl-by' }, it.by) : null,
+          it.actions && it.actions.length && !it.edit ? h('div', { className: 'zr-tl-actions' }, it.actions.map(function (a, j) {
+            return h(Button, { key: j, variant: a.tone === 'danger' ? 'danger' : 'ghost', size: 'sm', icon: a.icon, disabled: a.disabled, 'aria-label': a.label + ': ' + it.title, onClick: a.onClick }, a.label);
+          })) : null));
     }));
   }
 
@@ -1863,7 +1910,7 @@ import * as React from 'react';
               h('div', { className: 'zr-flow-link' }, h('button', { type: 'button', className: 'zr-flow-add', 'aria-label': 'Aggiungi passo dopo ' + s.title, onClick: function () { insert(i); } }, h(Icon, { name: 'plus', size: 14 }))));
           }), h('li', { className: 'zr-flow-end' }, h('span', null, 'Fine')))),
         current ? h('aside', { className: 'zr-flow-panel' },
-          h('header', { className: 'zr-panel-head' }, h('h2', null, 'Configura passo'), h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': 'Chiudi', onClick: function () { setSel(null); } })),
+          h('header', { className: 'zr-panel-head' }, h('h2', null, 'Configura passo'), h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: function () { setSel(null); } })),
           h('div', { className: 'zr-panel-body zr-stack' },
             h(Field, { label: 'Tipo di passo', options: [{ value: 'action', label: 'Azione' }, { value: 'condition', label: 'Condizione' }, { value: 'delay', label: 'Attesa' }], value: current.type, onChange: function (e) { setSteps(steps.map(function (x) { return x.id === current.id ? Object.assign({}, x, { type: e.target.value }) : x; })); } }),
             h(Field, { label: 'Titolo', value: current.title, onChange: function (e) { setSteps(steps.map(function (x) { return x.id === current.id ? Object.assign({}, x, { title: e.target.value }) : x; })); } }),
@@ -1961,7 +2008,9 @@ import * as React from 'react';
     var W = 240, vw = window.innerWidth || 1024, vh = window.innerHeight || 768;
     var left = Math.max(8, Math.min(p.align === 'end' ? r.right - W : r.left, vw - W - 8));
     var top = r.bottom + 6; if (!p.head && top > vh - 40 * items.length - 16) top = Math.max(8, r.top - 6 - 38 * items.length);
+    function back() { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) p.anchor.focus(); }
     function move(e) {
+      if (e.key === 'Tab') { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) { e.preventDefault(); if (p.onClose) p.onClose(); p.anchor.focus(); } return; } /* richiesta 93: col pulsante che l'ha aperto il fuoco torna lì; senza, il Tab resta del browser o di chi contiene il menu (un Dialog) */
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       e.preventDefault();
       var list = Array.prototype.slice.call(ref.current.querySelectorAll('[role="menuitem"]:not(:disabled)'));
@@ -1972,7 +2021,7 @@ import * as React from 'react';
       items.map(function (it, i) {
         if (it.sep) return h('div', { key: 'sep' + i, className: 'zr-menu-sep', role: 'separator' });
         return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('zr-menu-item', it.danger && 'is-danger'), disabled: it.disabled,
-          onClick: function () { p.onClose && p.onClose(); if (it.onClick) it.onClick(); } },
+          onClick: function () { p.onClose && p.onClose(); back(); if (it.onClick) it.onClick(); } },
           it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, h('span', { className: 'zr-menu-label' }, it.label), it.hint ? h('kbd', { className: 'zr-kbd' }, it.hint) : null);
       }));
   }
@@ -1987,7 +2036,7 @@ import * as React from 'react';
         onKeyDown: function (e) { if (e.key === 'Enter' && !(p.multiline && e.shiftKey)) { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.stopPropagation(); set(''); if (p.onCancel) p.onCancel(); } } }),
       h('div', { className: 'zr-composer-row' },
         h(Button, { size: 'sm', onClick: submit }, p.submitLabel || 'Aggiungi'),
-        h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': 'Annulla', onClick: function () { set(''); if (p.onCancel) p.onCancel(); } })));
+        h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || 'Annulla', onClick: function () { set(''); if (p.onCancel) p.onCancel(); } })));
   }
 
   /* ---------- DetailPanel (P-15: dettaglio nel pannello a destra) ---------- */
@@ -2093,6 +2142,7 @@ export {
   Skeleton,
   PageHeader,
   DataTable,
+  DATATABLE_LABELS,
   FilterBar,
   StatCard,
   ChartCard,

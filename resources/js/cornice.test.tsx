@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, Fragment, useEffect, useLayoutEffect, type ReactElement } from 'react';
+import { act, Fragment, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, expectTypeOf, it, onTestFinished, vi } from 'vitest';
@@ -9002,18 +9002,51 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         expect(document.activeElement).toBe(chiudi());
     });
 
-    it('un `Menu` aperto fuori dal dialogo, accanto, conta come uno dentro: il gestore non interviene e il fuoco resta nel menu (T4.6)', async () => {
+    it('un menu aperto fuori dal dialogo, accanto, conta come uno dentro: il gestore non interviene e il fuoco resta nel menu, anche col `Menu` senza pulsante, che il Tab lo lascia passare (T4.6)', async () => {
         largaAlPiu720(false);
+        const menuChiuso = vi.fn();
         await laPagina(<>
             {ilDialogo(<input id="nome" />)}
-            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={senzaEffetto} />
+            <div className="zr-menu" role="menu"><button type="button" role="menuitem" id="scritto-a-mano">Rinomina</button></div>
         </>);
-        const voce = uno('.zr-menu [role="menuitem"]');
         expect(uno('.zr-dialog .zr-menu')).toBeNull();
 
+        await conIlFuoco(uno('#scritto-a-mano'));
+        expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(document.activeElement).toBe(uno('#scritto-a-mano'));
+
+        // Dal lotto 0512 del design system il `Menu` senza il pulsante che l'ha aperto non ferma il Tab e non si chiude da sé.
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <Menu inline anchor={null} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />
+        </>);
+        const voce = uno('.zr-menu [role="menuitem"]');
         await conIlFuoco(voce);
         expect([await premi('Tab'), await premi('Tab', true)]).toStrictEqual([false, false]);
+        expect(menuChiuso).not.toHaveBeenCalled();
         expect(document.activeElement).toBe(voce);
+    });
+
+    it('un `Menu` aperto da un pulsante accanto al dialogo ferma il Tab da sé: si chiude e rende il fuoco al pulsante, e il gestore non lo porta nel dialogo (T4.6, richiesta 93)', async () => {
+        largaAlPiu720(false);
+        const menuChiuso = vi.fn();
+        function ConIlPulsante() {
+            const [pulsante, conIlPulsante] = useState<HTMLButtonElement | null>(null);
+
+            return <>
+                <button type="button" id="azioni" ref={conIlPulsante}>Azioni</button>
+                {pulsante && <Menu inline anchor={pulsante} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />}
+            </>;
+        }
+        await laPagina(<>
+            {ilDialogo(<input id="nome" />)}
+            <ConIlPulsante />
+        </>);
+
+        await conIlFuoco(uno('.zr-menu [role="menuitem"]'));
+        expect(await premi('Tab', true)).toBe(true);
+        expect(menuChiuso).toHaveBeenCalledTimes(1);
+        expect(document.activeElement).toBe(uno('#azioni'));
     });
 
     it('un `Menu` che sta altrove nella pagina, senza il fuoco, non spegne niente: Tab resta nel dialogo e da fuori entra (T4.6)', async () => {

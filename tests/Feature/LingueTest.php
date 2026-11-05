@@ -779,13 +779,15 @@ function italianoAtteso(): array
  * I testi dell'`AppShell` che la cornice non mostra mai, e che quindi non stanno nelle sue lingue (sprint 104, design system
  * ds-1793812748-4f74): l'invito e il «Premi Invio» della ricerca che parte solo a Invio (`searchOn: 'submit'`, riga 164), che la
  * cornice non chiede. Nelle lingue della cornice, che stanno nel JS d'ingresso, costerebbero 85 byte con gzip; li ha la cornice
- * dello staff, con le sue lingue, quando cerca all'invio (voce #2965).
+ * dello staff, con le sue lingue, quando cerca all'invio (voce #2965). Dal lotto 0512 del design system anche «Da attivare» (`off`,
+ * richiesta 78) e «Impostazioni del workspace» (`workspaceSettings`, richiesta 128): la cornice non segna moduli `off` e non passa
+ * le impostazioni del workspace.
  *
  * @return list<string>
  */
 function testiDellAppShellCheLaCorniceNonUsa(): array
 {
-    return ['searchSubmitHint', 'searchPressEnter'];
+    return ['searchSubmitHint', 'searchPressEnter', 'off', 'workspaceSettings'];
 }
 
 /**

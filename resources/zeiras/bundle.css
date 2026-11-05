@@ -60,6 +60,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-nav-item.is-soon { cursor: default; }
 .zr-nav-item.is-soon:hover { background: transparent; color: var(--ink-muted); }
 .zr-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zr-nav-item.is-off .zr-icon { opacity: .6; }
 .zr-nav-soon { font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 var(--space-1-5); border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); }
 .zr-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 var(--space-1-5); border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); font-size: 12px; line-height: 16px; font-weight: 600; box-sizing: border-box; }
 .zr-count.is-over { background: var(--coral-soft); color: var(--coral); }
@@ -375,6 +376,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 
 .zr-check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; cursor: pointer; position: relative; }
 .zr-check input { position: absolute; left: -3px; top: 50%; opacity: 0; width: 24px; height: 24px; margin: -12px 0 0; cursor: pointer; } /* si prende su 24×24 (richiesta 97) */
+@media (pointer: coarse) { .zr-check { min-height: 44px; } } /* al tocco la riga è alta quanto un dito (richiesta 183) */
 .zr-check-box { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: var(--radius-sm); border: var(--border-strong, 1.5px) solid var(--line-strong); background: var(--surface-raised); color: transparent; box-sizing: border-box; flex: none; }
 .zr-check input:checked + .zr-check-box, .zr-check input:indeterminate + .zr-check-box { background: var(--pine); border-color: var(--pine); color: var(--on-pine); }
 .zr-check input:focus-visible + .zr-check-box { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -563,6 +565,8 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-section-card-sub { margin: 0; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--ink-muted); }
 .zr-section-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .zr-section-card-body { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.zr-section-card-more { display: flex; margin-left: calc(-1 * var(--space-3)); }
+.zr-section-card-more a.zr-btn { text-decoration: none; }
 .zr-section-card-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--line); }
 .zr-panel { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); min-width: 0; }
 .zr-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) var(--space-5) 0; }
@@ -595,6 +599,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-bulk strong { margin-right: var(--space-2); }
 .zr-pager { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted); }
 .zr-pager > div { display: flex; gap: var(--space-1); }
+.zr-table-sortbar, .zr-table-selectall { display: none; }
 .zr-cell-person { display: inline-flex; align-items: center; gap: var(--space-3); }
 .zr-cell-person > span:last-child { display: flex; flex-direction: column; }
 .zr-cell-person small { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
@@ -665,6 +670,9 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-tl-head time { font-size: 12px; color: var(--ink-muted); white-space: nowrap; }
 .zr-tl-body p { margin: 0; font-size: 14px; line-height: 20px; color: var(--ink-muted); }
 .zr-tl-by { font-size: 12px; color: var(--ink-muted); }
+.zr-tl-outcome { display: flex; padding-top: 2px; }
+.zr-tl-edit { padding-top: var(--space-1); }
+.zr-tl-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-left: calc(-1 * var(--space-3)); }
 .zr-dl { margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .zr-dl > div { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-3); font-size: 14px; }
 .zr-dl dt { color: var(--ink-muted); } .zr-dl dd { margin: 0; }
@@ -820,7 +828,8 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 }
 @media (prefers-reduced-motion: reduce) { .zr-side { transition: none; } }
 @media (max-width: 720px) {
-  .zr-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .zr-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); visibility: hidden; }
+  .zr-table-sortbar, .zr-table-selectall { display: flex; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
   .zr-table, .zr-table tbody, .zr-table tr, .zr-table td { display: block; width: 100%; box-sizing: border-box; }
   .zr-table tr { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
   .zr-table td { padding: 2px 0; border: 0; text-align: left; }
@@ -856,6 +865,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-ws-dot { width: 10px; height: 10px; border-radius: var(--radius-pill); flex: none; }
 .zr-ws-new { color: var(--ink-muted); }
 .zr-ws-new:hover { color: var(--ink); }
+a.zr-ws-item { text-decoration: none; }
 
 .zr-search { position: relative; cursor: text; }
 .zr-search-icon { display: inline-flex; color: var(--ink-muted); }
@@ -916,6 +926,9 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 
 @media (max-width: 1023px) {
   .zr-ws-item, .zr-notif-item, .zr-search-item, .zr-menu-item { min-height: 44px; }
+  .zr-top-menu { min-width: 44px; min-height: 44px; justify-content: center; }
+  .zr-notif-tabs .zr-tab { min-height: 44px; }
+  .zr-search input { align-self: stretch; font-size: 16px; }
   .zr-bell, .zr-avatar-btn { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
   .zr-search kbd { display: none; }
 }
