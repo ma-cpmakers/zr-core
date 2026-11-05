@@ -62,6 +62,7 @@
     globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
     sort: 'M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4',
     chevronDown: 'M6 9l6 6 6-6',
+    chevronUp: 'M6 15l6-6 6 6', /* la freccia in su: l'ordine crescente, il «chiudi» di un riquadro aperto (richiesta 152) */
     chevronLeft: 'M15 6l-6 6 6 6',
     check: 'M5 12l5 5 9-10',
     file: 'M6 3h8l5 5v13H6zM14 3v5h5',
@@ -85,19 +86,24 @@
   /* ---------- Button ---------- */
   function Button(p) {
     var v = p.variant || 'primary', s = p.size || 'md';
-    var rest = omit(p, ['variant', 'size', 'icon', 'className', 'children']);
+    var rest = omit(p, ['variant', 'size', 'icon', 'className', 'children', 'busy']);
+    /* busy: l'azione è partita e si aspetta. Resta raggiungibile col fuoco, ma né il clic né l'invio del modulo partono di nuovo (richiesta 99) */
+    if (p.busy) rest = Object.assign(rest, { 'aria-busy': true, 'aria-disabled': true, onClick: function (e) { e.preventDefault(); } });
     return h('button', Object.assign({ type: 'button' }, rest, {
-      className: cx('zr-btn', 'zr-btn-' + v, 'zr-btn-' + s, !p.children && 'zr-btn-icon', p.className)
-    }), p.icon ? h(Icon, { name: p.icon, size: s === 'sm' ? 16 : 18 }) : null, p.children ? h('span', null, p.children) : null);
+      className: cx('zr-btn', 'zr-btn-' + v, 'zr-btn-' + s, !p.children && 'zr-btn-icon', p.busy && 'is-busy', p.className)
+    }), p.busy ? h('span', { className: 'zr-btn-spin', 'aria-hidden': true }) : p.icon ? h(Icon, { name: p.icon, size: s === 'sm' ? 16 : 18 }) : null, p.children ? h('span', null, p.children) : null);
   }
 
   /* ---------- Label ---------- */
   var TONES = ['pine', 'citrus', 'coral', 'sky', 'plum', 'neutral'];
   function Label(p) {
-    var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral';
+    var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral', vid = useId('lbl');
     /* variant="type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte (richiesta 154) */
-    if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
-    return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.className) }, p.children);
+    if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.wrap && 'is-wrap', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
+    /* un'etichetta che si aggiunge («+») o si toglie («×»): il nome del pulsante dice anche quale, col testo dell'etichetta anche quando è un nodo (richiesta 143); wrap: una frase lunga va a capo (richiesta 161) */
+    if (p.onAdd) return h('button', { type: 'button', className: cx('zr-label', 'zr-label-add', p.wrap && 'is-wrap', p.className), onClick: p.onAdd }, h(Icon, { name: 'plus', size: 14 }), h('span', { className: 'zr-visually-hidden' }, (p.addLabel || 'Aggiungi') + ': '), p.children);
+    return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.wrap && 'is-wrap', p.onRemove && 'has-remove', p.className) }, p.onRemove ? h('span', { id: vid + '-t' }, p.children) : p.children,
+      p.onRemove ? h('button', { type: 'button', className: 'zr-label-x', onClick: p.onRemove, 'aria-labelledby': vid + ' ' + vid + '-t' }, h('span', { id: vid, className: 'zr-visually-hidden' }, (p.removeLabel || 'Togli') + ':'), h(Icon, { name: 'close', size: 12 })) : null);
   }
 
   /* ---------- Avatar ---------- */
@@ -483,34 +489,57 @@
   }
 
   /* ---------- KanbanCard ---------- */
+  /* i testi della board nella lingua del modulo; il default è l'italiano (richiesta 149) */
+  var KANBAN_TEXTS = { overdue: 'Scaduta · {date}', checklist: 'Checklist', comments: 'Commenti', wipLimit: 'Limite WIP {n}', overLimit: 'Oltre il limite', listActions: 'Azioni lista {title}', addCard: 'Aggiungi scheda', addList: 'Aggiungi lista', newList: 'Nuova lista', cardTitle: 'Titolo della scheda…', cardTitleLabel: 'Titolo della nuova scheda', add: 'Aggiungi', cancel: 'Annulla', cardActions: 'Azioni rapide', crumbs: 'Percorso', board: 'Board', list: 'Lista', calendar: 'Calendario', filter: 'Filtra', share: 'Condividi' };
+  function kanbanTexts(t) { var o = Object.assign({}, KANBAN_TEXTS); if (t) Object.keys(t).forEach(function (k) { if (t[k] != null) o[k] = t[k]; }); return o; } /* un testo undefined o null resta quello di default */
+  function textOf(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
   function KanbanCard(p) {
+    var T = kanbanTexts(p.texts);
     var cl = p.checklist;
     var done = cl && cl.total > 0 && cl.done >= cl.total;
-    var rest = omit(p, ['title', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className']);
-    return h('article', Object.assign({ tabIndex: 0 }, rest, { className: cx('zr-card', p.dragging && 'is-dragging', p.className) }),
+    var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
+    var acts = p.actions && p.actions.length ? p.actions : null;
+    var rest = omit(p, ['title', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className', 'texts', 'actions', 'actionsLabel']);
+    /* il «⋯» delle azioni rapide: fuori dal Tab, si apre anche dalla scheda con «.», Maiusc+F10 o il tasto Menu (richiesta 157) */
+    if (acts) rest.onKeyDown = function (e) {
+      if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
+      if (p.onKeyDown) p.onKeyDown(e);
+    };
+    /* il menu sta accanto alla scheda, non dentro: un clic su una voce non apre la scheda */
+    var card = h('article', Object.assign({ tabIndex: 0, 'aria-keyshortcuts': acts ? '. Shift+F10' : undefined }, rest, { className: cx('zr-card', p.dragging && 'is-dragging', acts && 'has-actions', p.className) }),
+      acts ? h('button', { ref: btn, type: 'button', tabIndex: -1, draggable: false, className: 'zr-card-actions', 'aria-label': p.actionsLabel || T.cardActions, 'aria-haspopup': 'menu', 'aria-expanded': menu,
+        onMouseDown: function (e) { e.stopPropagation(); }, onClick: function (e) { e.stopPropagation(); kb.current = false; ms[1](!menu); } }, h(Icon, { name: 'more', size: 16 })) : null,
       p.cover ? h('div', { className: cx('zr-card-cover', 'zr-cover-' + p.cover) }) : null,
       p.labels && p.labels.length ? h('div', { className: 'zr-card-labels' }, p.labels.map(function (l, i) { return h(Label, { key: i, tone: l.tone }, l.text); })) : null,
       h('h4', { className: 'zr-card-title' }, p.title),
       (p.due || cl || p.comments || (p.assignees && p.assignees.length)) ? h('div', { className: 'zr-card-meta' },
-        p.due ? h('span', { className: cx('zr-meta', p.overdue && 'is-overdue') }, h(Icon, { name: p.overdue ? 'clock' : 'calendar', size: 14 }), p.overdue ? 'Scaduta · ' + p.due : p.due) : null,
-        cl ? h('span', { className: cx('zr-meta', done && 'is-done'), title: 'Checklist' }, h(Icon, { name: 'checklist', size: 14 }), cl.done + '/' + cl.total) : null,
-        p.comments ? h('span', { className: 'zr-meta', title: 'Commenti' }, h(Icon, { name: 'message', size: 14 }), p.comments) : null,
+        p.due ? h('span', { className: cx('zr-meta', p.overdue && 'is-overdue') }, h(Icon, { name: p.overdue ? 'clock' : 'calendar', size: 14 }), p.overdue ? textOf(T.overdue, '{date}', p.due) : p.due) : null,
+        cl ? h('span', { className: cx('zr-meta', done && 'is-done'), title: T.checklist }, h(Icon, { name: 'checklist', size: 14 }), cl.done + '/' + cl.total) : null,
+        p.comments ? h('span', { className: 'zr-meta', title: T.comments }, h(Icon, { name: 'message', size: 14 }), p.comments) : null,
         p.assignees && p.assignees.length ? h('span', { className: 'zr-card-people' }, h(AvatarStack, { people: p.assignees, max: 3 })) : null) : null);
+    return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: p.actionsLabel || T.cardActions, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card; /* aperto dalla scheda con la tastiera, il fuoco torna alla scheda (dopo quello che il Menu rende al «⋯»), se la voce scelta non l'ha portato altrove */
   }
 
   /* ---------- KanbanColumn ---------- */
   function KanbanColumn(p) {
     var count = p.count != null ? p.count : React.Children.count(p.children);
     var over = p.limit && count > p.limit;
-    var rest = omit(p, ['title', 'count', 'limit', 'children', 'onAdd', 'isOver', 'composer', 'className']);
+    var T = kanbanTexts(p.texts);
+    var rest = omit(p, ['title', 'count', 'limit', 'children', 'onAdd', 'isOver', 'composer', 'className', 'texts']);
     return h('section', Object.assign({}, rest, { className: cx('zr-col', p.isOver && 'is-over', p.className), 'aria-label': p.title }),
       h('header', { className: 'zr-col-head' },
         h('h3', null, p.title),
-        h('span', { className: cx('zr-count', over && 'is-over'), title: p.limit ? 'Limite WIP ' + p.limit : undefined }, p.limit ? count + '/' + p.limit : count),
-        over ? h('span', { className: 'zr-col-warn' }, 'Oltre il limite') : null,
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': 'Azioni lista ' + p.title })),
+        h('span', { className: cx('zr-count', over && 'is-over'), title: p.limit ? textOf(T.wipLimit, '{n}', p.limit) : undefined }, p.limit ? count + '/' + p.limit : count),
+        over ? h('span', { className: 'zr-col-warn' }, T.overLimit) : null,
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': textOf(T.listActions, '{title}', p.title) })),
       h('div', { className: 'zr-col-body' }, p.children),
-      p.composer || h('button', { type: 'button', className: 'zr-col-add', onClick: p.onAdd }, h(Icon, { name: 'plus', size: 16 }), h('span', null, 'Aggiungi scheda')));
+      p.composer || h('button', { type: 'button', className: 'zr-col-add', onClick: p.onAdd }, h(Icon, { name: 'plus', size: 16 }), h('span', null, T.addCard)));
+  }
+
+  /* ---------- AddList: «Aggiungi lista» tratteggiato, anche fuori dalla KanbanBoard (richiesta 148) ---------- */
+  function AddList(p) {
+    var rest = omit(p, ['label', 'className']);
+    return h('button', Object.assign({ type: 'button' }, rest, { className: cx('zr-add-list', p.className) }), h(Icon, { name: 'plus', size: 18 }), h('span', null, p.label || KANBAN_TEXTS.addList));
   }
 
   /* ---------- KanbanBoard ---------- */
@@ -534,7 +563,8 @@
   ];
 
   function KanbanBoard(p) {
-    var st = useState(function () { return JSON.parse(JSON.stringify(p.lists || SAMPLE_LISTS)); });
+    var T = kanbanTexts(p.texts);
+    var st = useState(function () { return (p.lists || SAMPLE_LISTS).map(function (l) { return Object.assign({}, l, { cards: (l.cards || []).map(function (c) { return Object.assign({}, c); }) }); }); }); /* copia che tiene le funzioni delle actions (non JSON) */
     var lists = st[0], setLists = st[1];
     var ov = useState(null), overId = ov[0], setOverId = ov[1];
     var dg = useState(null), dragId = dg[0], setDragId = dg[1];
@@ -567,14 +597,14 @@
     }
     function addList() {
       seq.current += 1;
-      commit(lists.concat([{ id: 'l' + seq.current, title: 'Nuova lista', cards: [] }]));
+      commit(lists.concat([{ id: 'l' + seq.current, title: T.newList, cards: [] }]));
     }
 
-    var views = [['board', 'Board', 'board'], ['list', 'Lista', 'list'], ['calendar', 'Calendario', 'calendar']];
+    var views = [['board', T.board, 'board'], ['list', T.list, 'list'], ['calendar', T.calendar, 'calendar']];
 
     return h('div', { className: 'zr-board' },
       h('header', { className: 'zr-board-head' },
-        p.crumbs === false ? null : h('nav', { className: 'zr-crumbs', 'aria-label': 'Percorso' },
+        p.crumbs === false ? null : h('nav', { className: 'zr-crumbs', 'aria-label': T.crumbs },
           h('a', { href: '#' , onClick: function (e) { e.preventDefault(); } }, p.product || 'Board'),
           h(Icon, { name: 'chevron', size: 14 }),
           h('a', { href: '#', onClick: function (e) { e.preventDefault(); } }, p.folder || 'Corsi 2026'),
@@ -584,8 +614,8 @@
           h('h1', { className: 'zr-board-title' }, p.title || 'Lancio corso Leadership'),
           h('div', { className: 'zr-board-actions' },
             h(AvatarStack, { people: p.members || ['Luciano Castro', 'Giulia Bianchi', 'Marco Neri', 'Costanza Rossi'], max: 3 }),
-            h(Button, { variant: 'secondary', size: 'sm', icon: 'filter' }, 'Filtra'),
-            h(Button, { variant: 'primary', size: 'sm', icon: 'share' }, 'Condividi'))),
+            h(Button, { variant: 'secondary', size: 'sm', icon: 'filter' }, T.filter),
+            h(Button, { variant: 'primary', size: 'sm', icon: 'share' }, T.share))),
         h('div', { className: 'zr-tabs', role: 'tablist' },
           views.map(function (v) {
             return h('button', { key: v[0], type: 'button', role: 'tab', 'aria-selected': view === v[0], className: cx('zr-tab', view === v[0] && 'is-active'), onClick: function () { setView(v[0]); } }, h(Icon, { name: v[2], size: 16 }), v[1]);
@@ -594,21 +624,21 @@
         lists.map(function (l) {
           var composer = addingIn === l.id ? h('div', { className: 'zr-composer' },
             h('textarea', {
-              autoFocus: true, rows: 2, value: draft, placeholder: 'Titolo della scheda…', 'aria-label': 'Titolo della nuova scheda',
+              autoFocus: true, rows: 2, value: draft, placeholder: T.cardTitle, 'aria-label': T.cardTitleLabel,
               onChange: function (e) { setDraft(e.target.value); },
               onKeyDown: function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCard(l.id); } if (e.key === 'Escape') { setAddingIn(null); setDraft(''); } }
             }),
             h('div', { className: 'zr-composer-row' },
-              h(Button, { size: 'sm', onClick: function () { addCard(l.id); } }, 'Aggiungi'),
-              h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || 'Annulla', onClick: function () { setAddingIn(null); setDraft(''); } }))) : null;
+              h(Button, { size: 'sm', onClick: function () { addCard(l.id); } }, T.add),
+              h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || T.cancel, onClick: function () { setAddingIn(null); setDraft(''); } }))) : null;
           return h(KanbanColumn, {
-            key: l.id, title: l.title, count: l.cards.length, limit: l.limit, isOver: overId === l.id && dragId != null,
+            key: l.id, title: l.title, count: l.cards.length, limit: l.limit, isOver: overId === l.id && dragId != null, texts: p.texts,
             composer: composer, onAdd: function () { setAddingIn(l.id); setDraft(''); },
             onDragOver: function (e) { e.preventDefault(); if (overId !== l.id) setOverId(l.id); },
             onDragLeave: function (e) { if (!e.currentTarget.contains(e.relatedTarget)) setOverId(null); },
             onDrop: function (e) { e.preventDefault(); if (dragId) move(dragId, l.id, null); setOverId(null); setDragId(null); }
           }, l.cards.map(function (c) {
-            return h(KanbanCard, Object.assign({ key: c.id }, c, {
+            return h(KanbanCard, Object.assign({ key: c.id, texts: p.texts }, c, {
               draggable: true, dragging: dragId === c.id,
               onDragStart: function (e) { setDragId(c.id); try { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} },
               onDragEnd: function () { setDragId(null); setOverId(null); },
@@ -617,7 +647,7 @@
             }));
           }));
         }),
-        h('button', { type: 'button', className: 'zr-add-list', onClick: addList }, h(Icon, { name: 'plus', size: 18 }), h('span', null, 'Aggiungi lista'))));
+        h(AddList, { label: T.addList, onClick: addList })));
   }
 
   /* ---------- DashboardHome ---------- */
@@ -951,8 +981,16 @@
   function Field(p) {
     var id = useId('fld');
     var as = p.as || (p.options ? 'select' : 'input');
-    var rest = omit(p, ['label', 'hint', 'error', 'as', 'options', 'className', 'icon', 'children', 'required']);
+    var rest = omit(p, ['label', 'hint', 'error', 'as', 'options', 'className', 'icon', 'children', 'required', 'counter']);
     var desc = p.error || p.hint ? id + '-d' : undefined;
+    /* counter: quanti caratteri (per code point, come il server) su quanti, da una soglia in su; al limite lo si annuncia (richiesta 55) */
+    var cnt = p.counter && p.counter.max ? p.counter : null;
+    var cs = useState(function () { return String(p.value != null ? p.value : p.defaultValue != null ? p.defaultValue : ''); });
+    var n = cnt ? Array.from(p.value != null ? String(p.value) : cs[0]).length : 0;
+    var cid = cnt && n >= (cnt.from || 0) ? id + '-c' : undefined;
+    if (cnt) { rest.onChange = function (e) { cs[1](e.target.value); if (p.onChange) p.onChange(e); }; desc = cx(desc, cid) || undefined; }
+    /* non controllato: form.reset() cambia il valore senza onChange, e il contatore lo rilegge dal campo */
+    useEffect(function () { var el = cnt && p.value == null && document.getElementById(id), f = el && el.form; if (!f) return; function back() { setTimeout(function () { cs[1](el.value); }, 0); } f.addEventListener('reset', back); return function () { f.removeEventListener('reset', back); }; }, [!!cnt, p.value == null]);
     var control;
     if (p.children) control = p.children;
     else if (as === 'select') control = h('div', { className: 'zr-select' }, h('select', Object.assign({ id: id, 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined, required: p.required }, rest),
@@ -960,11 +998,15 @@
     else if (as === 'textarea') control = h('textarea', Object.assign({ id: id, rows: 4, 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined, required: p.required }, rest));
     else control = h('div', { className: cx('zr-input', p.icon && 'has-icon') }, p.icon ? h(Icon, { name: p.icon, size: 16 }) : null,
       h('input', Object.assign({ id: id, type: 'text', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined, required: p.required }, rest)));
+    var mid = p.error || p.hint ? id + '-d' : undefined;
+    var msg = p.error ? h('p', { id: mid, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      : p.hint ? h('p', { id: mid, className: 'zr-field-msg' }, p.hint) : null;
     return h('div', { className: cx('zr-field', p.error && 'is-error', p.className) },
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       control,
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
-        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+      cnt ? h('div', { className: 'zr-field-foot' }, msg,
+        cid ? h('span', { id: cid, className: cx('zr-field-count', n === cnt.max && 'is-full', n > cnt.max && 'is-over') }, n + '/' + cnt.max) : null,
+        h('span', { className: 'zr-visually-hidden', 'aria-live': 'polite' }, n >= cnt.max ? (cnt.full || 'Limite raggiunto: {max} caratteri').replace('{max}', function () { return cnt.max; }) : '')) : msg);
   }
 
   /* ---------- MentionField: scegliere un cliente del CRM scrivendo @nome ---------- */
@@ -1125,11 +1167,21 @@
     var items = p.items || [];
     var ctrl = p.value !== undefined;
     var st = useState(p.defaultValue || (items[0] && (items[0].value || items[0]))), val = ctrl ? p.value : st[0];
-    return h('div', { className: cx('zr-seg', p.variant === 'underline' && 'is-underline', p.size === 'sm' && 'is-sm', p.className), role: 'tablist', 'aria-label': p['aria-label'] },
+    var vals = items.map(function (it) { return typeof it === 'string' ? it : it.value; });
+    var stop = vals.indexOf(val) >= 0 ? val : vals[0]; /* una fermata sola del Tab: la linguetta scelta (richieste 151 e 69) */
+    function pick(v) { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); }
+    function keys(e) {
+      var i = vals.indexOf(e.target.getAttribute('data-value')); if (i < 0 || e.altKey || e.ctrlKey || e.metaKey) return; /* Alt+← resta «indietro» del browser */
+      var n = e.key === 'ArrowRight' ? (i + 1) % vals.length : e.key === 'ArrowLeft' ? (i + vals.length - 1) % vals.length : e.key === 'Home' ? 0 : e.key === 'End' ? vals.length - 1 : -1;
+      if (n < 0) return;
+      e.preventDefault(); if (vals[n] !== val) pick(vals[n]);
+      var b = e.currentTarget.querySelectorAll('[role="tab"]')[n]; if (b) b.focus();
+    }
+    return h('div', { className: cx('zr-seg', p.variant === 'underline' && 'is-underline', p.size === 'sm' && 'is-sm', p.className), role: 'tablist', 'aria-label': p['aria-label'], onKeyDown: keys },
       items.map(function (it) {
         var v = typeof it === 'string' ? it : it.value, l = typeof it === 'string' ? it : it.label;
-        return h('button', { key: v, type: 'button', role: 'tab', 'aria-selected': v === val, className: cx('zr-seg-item', v === val && 'is-active'),
-          onClick: function () { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); } }, it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, l, it.count != null ? countParts(it.count, 'zr-seg-count', it.countLabel) : null);
+        return h('button', { key: v, type: 'button', role: 'tab', 'data-value': v, 'aria-selected': v === val, 'aria-controls': it.panelId, id: it.panelId ? it.panelId + '-tab' : undefined, tabIndex: v === stop ? 0 : -1, className: cx('zr-seg-item', v === val && 'is-active'),
+          onClick: function () { pick(v); } }, it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, l, it.count != null ? countParts(it.count, 'zr-seg-count', it.countLabel) : null);
       }));
   }
 
@@ -1152,6 +1204,30 @@
           card ? null : h('span', { className: 'zr-radio-dot', 'aria-hidden': true }),
           card ? h('span', { id: lid, className: 'zr-radio-card-title' }, obj.label) : h('span', { className: 'zr-radio-text' }, h('span', { id: lid }, obj.label), obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null),
           card && obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null);
+      })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- ColorPicker: il colore di un'opzione o di un workspace, fra i toni (richiesta 104) ---------- */
+  var COLOR_NAMES = { pine: 'Verde', citrus: 'Giallo', coral: 'Rosso', sky: 'Blu', plum: 'Viola', neutral: 'Grigio' };
+  function ColorPicker(p) {
+    var id = useId('clr');
+    var tones = (p.tones || ['pine', 'citrus', 'coral', 'sky', 'plum']).filter(function (t) { return TONES.indexOf(t) >= 0; });
+    var names = Object.assign({}, COLOR_NAMES, p.names);
+    var ctrl = p.value !== undefined;
+    var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    var opts = (p.none ? [null] : []).concat(tones); /* null = nessun colore */
+    return h('fieldset', { id: p.id, className: cx('zr-color-picker', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
+      p.label ? h('legend', { className: 'zr-field-label' }, p.label) : null,
+      h('div', { className: 'zr-color-list' }, opts.map(function (t) {
+        var name = t ? names[t] : p.none;
+        return h('label', { key: t || 'none', className: 'zr-color', title: name },
+          h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined,
+            onChange: function () { if (!ctrl) st[1](t); if (p.onChange) p.onChange(t); } }),
+          h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: 'zr-visually-hidden' }, name));
       })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
@@ -1191,17 +1267,20 @@
   }
 
   /* ---------- InlineEdit: un valore che si modifica dove sta — clic, campo, «Salvato» o l'errore (richiesta 142) ---------- */
-  var INLINE_EDIT_LABELS = { edit: 'Modifica', empty: 'Aggiungi', saving: 'Salvataggio…', saved: 'Salvato', error: 'Non salvato. Riprova.', required: 'Il campo non può restare vuoto', keys: 'Invio salva, Esc annulla', keysMultiline: 'Ctrl+Invio salva, Esc annulla' };
+  var INLINE_EDIT_LABELS = { edit: 'Modifica', empty: 'Aggiungi', saving: 'Salvataggio…', saved: 'Salvato', error: 'Non salvato. Riprova.', required: 'Il campo non può restare vuoto', keys: 'Invio salva, Esc annulla', keysMultiline: 'Ctrl+Invio salva, Esc annulla', invalid: 'Il valore non è valido' };
   function InlineEdit(p) {
     var id = useId('ied');
     var L = Object.assign({}, INLINE_EDIT_LABELS, p.labels || {});
     var value = p.value == null ? '' : String(p.value);
+    /* as="select": una scelta fra opzioni, che salva appena scelta; in vista il nome dell'opzione. format: come si vede un valore (una data) (richiesta 184) */
+    var sel = p.as === 'select', opts = (p.options || []).map(function (o) { return typeof o === 'string' ? { value: o, label: o } : o; });
+    function shown(v) { if (sel) { for (var i = 0; i < opts.length; i++) if (opts[i].value === v) return opts[i].label; } return v && p.format ? p.format(v) : v; }
     var ctrl = p.editing !== undefined; /* editing controllato da chi usa il componente («Rinomina» in un menu), con onEditingChange */
     var es = useState(ctrl ? !!p.editing : !!p.defaultEditing), editing = ctrl ? !!p.editing : es[0];
     var ds = useState(value), draft = ds[0];
     var ss = useState('idle'), stato = ss[0]; /* idle · saving · saved · error */
     var ms = useState(''), msg = ms[0];
-    var mode = useRef(editing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false);
+    var mode = useRef(editing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false), ptr = useRef(false);
     useEffect(function () { alive.current = true; return function () { alive.current = false; clearTimeout(timer.current); }; }, []);
     /* aperto o chiuso da fuori: si riparte dal valore, e chiuso da fuori non salva */
     var pe = useState(editing);
@@ -1212,16 +1291,18 @@
     }
     useEffect(function () {
       var first = !mounted.current; mounted.current = true;
-      if (editing && fieldRef.current && (!first || p.autoFocus)) { fieldRef.current.focus(); fieldRef.current.select(); }
+      if (editing && fieldRef.current && (!first || p.autoFocus)) { fieldRef.current.focus(); if (typeof fieldRef.current.select === 'function') fieldRef.current.select(); }
       if (!editing && back.current) { back.current = false; if (viewRef.current) viewRef.current.focus(); }
     }, [editing]);
     function setEditing(v) { if (!ctrl) es[1](v); if (p.onEditingChange) p.onEditingChange(v); }
     function close(focusBack) { mode.current = 'view'; back.current = focusBack; setEditing(false); }
     function start() { if (p.disabled) return; clearTimeout(timer.current); mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); setEditing(true); }
     function fail(m) { mode.current = 'edit'; ss[1]('error'); ms[1](m || L.error); }
-    function save(focusBack) {
+    function save(focusBack, v) {
       if (mode.current !== 'edit') return;
-      var next = p.trim === false ? draft : draft.trim();
+      var src = v != null ? v : draft, next = p.trim === false || sel ? src : src.trim();
+      var vd = fieldRef.current && fieldRef.current.validity; /* un numero, una data o un'email che il browser non accetta: il campo vale "" o il testo com'è, e non si salva; un valore arrivato così e non toccato si lascia */
+      if (vd && (vd.badInput || (vd.typeMismatch && next !== value))) { fail(L.invalid); return; }
       if (next === value || (p.cancelOnEmpty && !next.trim())) { ss[1]('idle'); close(focusBack); return; } /* cancelOnEmpty: il vuoto annulla e torna il valore di prima */
       if (p.required && !next) { fail(L.required); return; }
       var bad = p.validate ? p.validate(next) : null;
@@ -1260,11 +1341,19 @@
         'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', placeholder: p.placeholder,
         onChange: function (e) { ds[1](e.nativeEvent.isComposing ? e.target.value : cap(e.target.value, draft, e.target)); if (stato === 'error') { ss[1]('idle'); ms[1](''); } },
         onCompositionStart: function () { pre.current = draft; }, onCompositionEnd: function (e) { ds[1](cap(e.target.value, pre.current, e.target)); }, onKeyDown: onKey, onBlur: function () { save(false); } };
-      body = p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: 'text' }, attrs));
+      /* la scelta col puntatore salva subito; con la tastiera le frecce la spostano (su Windows e Linux cambiano la select chiusa) e Invio o l'uscita salvano; mentre salva è ferma */
+      var busy = stato === 'saving', known = opts.some(function (o) { return o.value === draft; });
+      body = sel ? h('span', { className: 'zr-inline-edit-select' }, h('select', Object.assign({}, attrs, { readOnly: undefined, placeholder: undefined, onCompositionStart: undefined, onCompositionEnd: undefined, 'aria-disabled': busy || undefined,
+          onPointerDown: function () { ptr.current = true; }, onMouseDown: function (e) { if (busy) e.preventDefault(); },
+          onKeyDown: function (e) { ptr.current = false; if (busy && e.key !== 'Tab') { e.preventDefault(); return; } onKey(e); },
+          onChange: function (e) { if (mode.current !== 'edit') return; ds[1](e.target.value); if (ptr.current) save(true, e.target.value); } }),
+          known ? null : h('option', { value: draft, disabled: true }, draft || p.placeholder || L.empty), /* senza valore, o con uno che non è fra le opzioni, nessuna opzione vera è già scelta */
+          opts.map(function (o) { return h('option', { key: o.value, value: o.value, disabled: o.disabled }, o.label); })), h(Icon, { name: 'chevronDown', size: 16 }))
+        : p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: p.type || 'text' }, attrs));
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
-        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + value : '') },
-        h('span', { className: 'zr-inline-edit-text' }, value || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
+        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + shown(value) : '') },
+        h('span', { className: 'zr-inline-edit-text' }, shown(value) || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
     }
     return h('div', { className: cx('zr-inline-edit', 'is-' + size, editing && 'is-editing', stato === 'error' && 'is-error', p.multiline && 'is-multiline', p.className) },
       body,
@@ -1412,8 +1501,9 @@
       document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); };
     }, [p.open]);
     if (!p.open) return null;
-    return h('div', { className: cx('zr-scrim', p.inline && 'is-inline'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
-      h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
+    /* size="sm": una domanda sì/no resta piccola e al centro anche al telefono (richiesta 53) */
+    return h('div', { className: cx('zr-scrim', p.inline && 'is-inline', p.size === 'sm' && 'is-compact'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
+      h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg', p.size === 'sm' && 'is-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
         h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null),
         p.description ? h('p', { className: 'zr-dialog-desc' }, p.description) : null,
         h('div', { className: 'zr-dialog-body' }, p.children),
@@ -1480,7 +1570,7 @@
     function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); if (p.onSelect) p.onSelect(n); }
     var sortCols = cols.filter(function (c) { return c.sortable !== false; });
     var sortOpts = (sort ? [] : [{ value: '', label: L.sortNone }]).concat([].concat.apply([], sortCols.map(function (c) {
-      return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label) }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label) }];
+      return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label || c.srLabel || '') }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label || c.srLabel || '') }];
     })));
     return h('div', { className: 'zr-table-wrap' },
       p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
@@ -1495,13 +1585,13 @@
             cols.map(function (c) {
               var active = sort && sort.key === c.key;
               return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right'), style: c.width ? { width: c.width } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
-                c.sortable === false ? c.label : h('button', { type: 'button', className: cx('zr-th-sort', active && 'is-active'), onClick: function () { setSort({ key: c.key, dir: active && sort.dir === 'desc' ? 'asc' : 'desc' }); } }, c.label, h(Icon, { name: active ? (sort.dir === 'asc' ? 'trendUp' : 'chevronDown') : 'sort', size: 14 })));
+                c.sortable === false ? (c.label || (c.srLabel ? h('span', { className: 'zr-visually-hidden' }, c.srLabel) : null)) : h('button', { type: 'button', className: cx('zr-th-sort', active && 'is-active'), onClick: function () { setSort({ key: c.key, dir: active && sort.dir === 'desc' ? 'asc' : 'desc' }); } }, c.label || (c.srLabel ? h('span', { className: 'zr-visually-hidden' }, c.srLabel) : null), h(Icon, { name: active ? (sort.dir === 'asc' ? 'chevronUp' : 'chevronDown') : 'sort', size: 14 })));
             }))),
           h('tbody', null, shown.length ? shown.map(function (r, i) {
             var id = rid(r, page * size + i), on = sel.indexOf(id) >= 0;
             return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
               p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': L.selectRow, checked: on, onChange: function () { toggle(id); } })) : null,
-              cols.map(function (c) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' ? c.label : undefined, className: cx(c.align === 'right' && 'is-right') }, c.render ? c.render(r) : r[c.key]); }));
+              cols.map(function (c) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
       pages > 1 ? h('div', { className: 'zr-pager' },
         h('span', null, fill(fill(fill(L.range, '{from}', num(page * size + 1)), '{to}', num(Math.min(sorted.length, page * size + size))), '{total}', num(sorted.length))),
@@ -1515,9 +1605,10 @@
     /* il nome del campo e la frase d'aiuto legata li dà il modulo, nella sua lingua (richieste 173 e 19) */
     var search = p.search !== false ? h('label', { className: 'zr-input has-icon zr-filter-search' }, h(Icon, { name: 'search', size: 16 }),
       h('input', { type: 'search', placeholder: p.searchPlaceholder || 'Cerca…', 'aria-label': p.searchLabel || 'Cerca', 'aria-describedby': p.searchHint ? id + '-h' : undefined, value: p.query, onChange: p.onQuery ? function (e) { p.onQuery(e.target.value); } : undefined })) : null;
-    return h('div', { className: 'zr-filterbar' },
+    /* compact: al telefono i filtri stanno in una riga che scorre e lasciano spazio alle liste (richiesta 51) */
+    return h('div', { className: cx('zr-filterbar', p.compact && 'is-compact') },
       search && p.searchHint ? h('div', { className: 'zr-filter-search-wrap' }, search, h('p', { id: id + '-h', className: 'zr-filter-hint' }, p.searchHint)) : search,
-      p.children,
+      p.compact ? h('div', { className: 'zr-filter-items' }, p.children) : p.children,
       p.actions ? h('div', { className: 'zr-filter-actions' }, p.actions) : null);
   }
 
@@ -1994,13 +2085,13 @@
 
   /* ---------- Menu (P-15: menu contestuali e «+») ---------- */
   function Menu(p) {
-    var ref = useRef(null);
+    var ref = useRef(null), mid = useId('mnu');
     React.useEffect(function () {
       function close(e) { if (ref.current && !ref.current.contains(e.target) && e.target !== p.anchor && !(p.anchor && p.anchor.contains && p.anchor.contains(e.target))) p.onClose(); }
       function key(e) { if (e.key === 'Escape') { e.stopPropagation(); p.onClose(); if (p.anchor && p.anchor.focus) p.anchor.focus(); } }
       var t = setTimeout(function () { document.addEventListener('mousedown', close); }, 0);
       document.addEventListener('keydown', key, true);
-      var first = ref.current && ref.current.querySelector('[role="menuitem"]:not(:disabled)'); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
+      var first = ref.current && (ref.current.querySelector('[role="menuitem"]:not(:disabled):not([aria-disabled="true"])') || ref.current.querySelector('[role="menuitem"]:not(:disabled)')); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
       return function () { clearTimeout(t); document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key, true); };
     }, []);
     var items = p.items || [];
@@ -2009,33 +2100,51 @@
     var left = Math.max(8, Math.min(p.align === 'end' ? r.right - W : r.left, vw - W - 8));
     var top = r.bottom + 6; if (!p.head && top > vh - 40 * items.length - 16) top = Math.max(8, r.top - 6 - 38 * items.length);
     function back() { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) p.anchor.focus(); }
+    /* la stima non conosce le righe del perché (richiesta 83): misurato, il menu che esce in basso va sopra il pulsante */
+    React.useLayoutEffect(function () { var m = ref.current; if (p.inline || p.head || !m) return; var b = m.getBoundingClientRect(), up = r.top - 6 - b.height; if (b.top < r.top) m.style.top = Math.max(8, up) + 'px'; else if (b.bottom > vh - 8 && up >= 8) m.style.top = up + 'px'; }); /* sopra il pulsante il fondo del menu si ferma sopra il pulsante */
     function move(e) {
       if (e.key === 'Tab') { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) { e.preventDefault(); if (p.onClose) p.onClose(); p.anchor.focus(); } return; } /* richiesta 93: col pulsante che l'ha aperto il fuoco torna lì; senza, il Tab resta del browser o di chi contiene il menu (un Dialog) */
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(e.key) < 0) return; /* Home e Fine: la prima e l'ultima voce (richiesta 132) */
       e.preventDefault();
       var list = Array.prototype.slice.call(ref.current.querySelectorAll('[role="menuitem"]:not(:disabled)'));
-      var i = list.indexOf(document.activeElement); var n = list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus();
+      var i = list.indexOf(document.activeElement);
+      var n = e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus();
     }
     return h('div', { ref: ref, className: cx('zr-menu', p.className), role: 'menu', 'aria-label': p.label, style: p.inline ? null : { top: top, left: left }, onKeyDown: move },
       p.head ? h('div', { className: 'zr-menu-head', role: 'presentation' }, p.head) : null,
       items.map(function (it, i) {
         if (it.sep) return h('div', { key: 'sep' + i, className: 'zr-menu-sep', role: 'separator' });
-        return h('button', { key: i, type: 'button', role: 'menuitem', className: cx('zr-menu-item', it.danger && 'is-danger'), disabled: it.disabled,
-          onClick: function () { p.onClose && p.onClose(); back(); if (it.onClick) it.onClick(); } },
+        /* spenta col perché: resta raggiungibile con le frecce e dice perché non si può, a vista e al lettore (richiesta 83) */
+        var why = it.disabled && it.reason, wid = why ? mid + '-r' + i : undefined;
+        var item = h('button', { key: i, type: 'button', role: 'menuitem', className: cx('zr-menu-item', it.danger && 'is-danger', why && 'is-disabled'), disabled: it.disabled && !why, 'aria-disabled': why ? true : undefined, 'aria-describedby': wid,
+          onClick: function () { if (why) return; p.onClose && p.onClose(); back(); if (it.onClick) it.onClick(); } },
           it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, h('span', { className: 'zr-menu-label' }, it.label), it.hint ? h('kbd', { className: 'zr-kbd' }, it.hint) : null);
+        return why ? [item, h('p', { key: 'r' + i, id: wid, className: 'zr-menu-reason', 'aria-hidden': true }, it.reason)] : item;
       }));
   }
 
   /* ---------- Composer (P-15: creazione in linea) ---------- */
   function Composer(p) {
+    var id = useId('cmp');
     var st = useState(p.defaultValue || ''), v = st[0], set = st[1];
-    function submit() { var t = v.trim(); if (!t) { if (p.onCancel) p.onCancel(); return; } if (p.onCreate) p.onCreate(t); set(''); }
-    return h('div', { className: cx('zr-composer', p.className) },
-      h('textarea', { autoFocus: p.autoFocus !== false, rows: p.rows || (p.multiline ? 2 : 1), value: v, placeholder: p.placeholder, maxLength: p.maxLength, 'aria-label': p.label || p.placeholder,
+    var bs = useState(false), busy = bs[0];
+    /* il testo resta finché la creazione non riesce: onCreate che torna false, o una Promise rifiutata o risolta a false, lo lascia nel campo (richiesta 156) */
+    function submit() {
+      var t = v.trim(); if (!t) { if (p.onCancel) p.onCancel(); return; }
+      if (busy) return;
+      var r = p.onCreate ? p.onCreate(t) : undefined; /* riuscita, si svuota solo se nel frattempo non si è scritto altro */
+      if (r === false) return;
+      if (r && typeof r.then === 'function') { bs[1](true); r.then(function (ok) { bs[1](false); if (ok !== false) set(function (cur) { return cur.trim() === t ? '' : cur; }); }, function () { bs[1](false); }); return; }
+      set('');
+    }
+    var eid = p.error ? id + '-e' : undefined;
+    return h('div', { className: cx('zr-composer', p.error && 'is-error', p.className) },
+      h('textarea', { autoFocus: p.autoFocus !== false, rows: p.rows || (p.multiline ? 2 : 1), value: v, placeholder: p.placeholder, maxLength: p.maxLength, 'aria-label': p.label || p.placeholder, 'aria-invalid': p.error ? true : undefined, 'aria-describedby': eid,
         onChange: function (e) { set(p.multiline ? e.target.value : e.target.value.replace(/\n/g, '')); },
         onKeyDown: function (e) { if (e.key === 'Enter' && !(p.multiline && e.shiftKey)) { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.stopPropagation(); set(''); if (p.onCancel) p.onCancel(); } } }),
+      p.error ? h('p', { id: eid, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error) : null,
       h('div', { className: 'zr-composer-row' },
-        h(Button, { size: 'sm', onClick: submit }, p.submitLabel || 'Aggiungi'),
+        h(Button, { size: 'sm', busy: busy, onClick: submit }, p.submitLabel || 'Aggiungi'),
         h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || 'Annulla', onClick: function () { set(''); if (p.onCancel) p.onCancel(); } })));
   }
 
@@ -2095,10 +2204,10 @@
   window.Zeiras = Object.assign(window.Zeiras || {}, {
     Logo: Logo, Button: Button, Label: Label, Avatar: Avatar, AvatarStack: AvatarStack, Icon: Icon,
     AppShell: AppShell, DashboardHome: DashboardHome, ProductTile: ProductTile, ProjectFolder: ProjectFolder,
-    KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard,
+    KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard, AddList: AddList, KANBAN_TEXTS: KANBAN_TEXTS,
     SiteHeader: SiteHeader, Hero: Hero, SectionHeading: SectionHeading, StepList: StepList, AudienceGrid: AudienceGrid,
     PricingCard: PricingCard, FAQ: FAQ, CtaBand: CtaBand, SiteFooter: SiteFooter, LandingPage: LandingPage, LanguageSwitch: LanguageSwitch, SectorGrid: SectorGrid, Breadcrumb: Breadcrumb,
-    ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
+    ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
     ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER

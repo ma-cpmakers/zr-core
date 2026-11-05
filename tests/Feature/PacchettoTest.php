@@ -5550,7 +5550,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.188 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.566 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
     // v3.9.0 (Decisione 18762 di zr-pm): i testi dei codici della ricerca nel pezzo della ricerca, il tetto scende di 123, alla misura più 20.
     'i pesi: i 123 byte della v3.9.0' => ['pesi', 'Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20: i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l\'esito di un\'opportunità) sono usciti dal JS d\'ingresso, nel pezzo della ricerca'],

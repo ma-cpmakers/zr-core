@@ -171,9 +171,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 47,8 KB | 16,8 KB | 63,5 KB | 13,7 KB |
-| la cornice e due componenti per nome | 53,7 KB | 18,7 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 140,8 KB | 45,1 KB | 63,5 KB | 13,7 KB |
+| solo la cornice, dall'ingresso per le app | 48,7 KB | 17,1 KB | 62,9 KB | 13,6 KB |
+| la cornice e due componenti per nome | 55,9 KB | 19,4 KB | 62,9 KB | 13,6 KB |
+| la stessa cornice, dall'ingresso di sempre | 148,7 KB | 47,8 KB | 62,9 KB | 13,6 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -200,7 +200,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.188 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.566 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -229,7 +229,10 @@ sono file a richiesta (Decisione 20618 di zr-pm; «Il precarico della lingua», 
 più 20: 948 byte l'inglese e 1.071 lo spagnolo, con gzip. Dalla `v4.7.0` è salito di 308 byte, alla misura più 20: il
 design system nuovo (il lotto 0512), col codice dell'`AppShell` e del `Menu` per le impostazioni del workspace, il modulo «Da
 attivare», il numero col suo nome e il fuoco dei menu, che la cornice non usa ancora tutto; un'eccezione di zr-pm come quella
-della `v4.2.0` (Decisione 21046), e quando l'avviso della cornice ridotta esce dal JS d'ingresso il tetto riscende. Hanno
+della `v4.2.0` (Decisione 21046), e quando l'avviso della cornice ridotta esce dal JS d'ingresso il tetto riscende. Dalla
+`v4.8.0` è salito di altri 378 byte, alla misura più 20: il lotto 0513 del design system, col codice del `Button` (`busy`), del
+`Menu` (Home, Fine e la voce spenta che dice perché) e l'icona `chevronUp`; un'eccezione di zr-pm come quella della `v4.7.0`,
+con la stessa contropartita: l'avviso della cornice ridotta fuori dal JS d'ingresso (#3055). Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
@@ -267,8 +270,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 86,4 KB | 14,3 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 83,2 KB | 13,9 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 92,0 KB | 15,2 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 88,8 KB | 14,8 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -418,6 +421,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.5.2` | una foto della cornice chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l'accesso, e non cancella quella già ricordata (#3019): zr-core chiede zr-auth `0.12.128`, dove `ConGettone` ricorda il ritorno solo per le navigazioni | `composer update zeiras/zr-core zeiras/zr-auth`: zr-auth sale almeno alla 0.12.128 | niente | dopo un accesso scaduto si torna alla pagina dov'eri, non al file della foto |
 | `v4.6.0` | il design system `ds-1793876570-88a8`, i due lotti del 05/11 (richieste 140-180): componenti nuovi `RadioGroup` (anche `variant="card"` e `layout="grid"`), `ToggleGroup`, `InlineEdit`, `Calendar`; `Checkbox` con aiuto ed errore; token `micro`, `wordmark`, `border-ring`; `Label` `variant="type"`, `FilterBar` `searchLabel` e `searchHint`, `RecordHeader` `statusTone`, `ChartCard` `headingLevel`, `closeLabel` su `Alert`, `Toast`, `Dialog` e `DetailPanel`, `Switch` con `aria-describedby` e `aria-invalid`; l'errore dei campi con `role="alert"`; `Button` che al tocco si prende su 44×44 e va a capo, `Switch` alto 24px | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che misura un pulsante, l'interruttore o il titolo di uno stato vuoto vede le misure nuove | le pagine coi pulsanti, gli interruttori, i segmentati e gli stati vuoti, a 1280 e 390 px |
 | `v4.7.0` | il design system `ds-1793888110-145c`, il lotto 0512 (richieste 2, 3, 7/90, 8, 9, 11, 12/70/35, 18, 61, 72, 78, 93, 95, 96, 105, 123, 128, 163, 181-183): `MentionField` `filter={false}`; `ActivityTimeline` con i tipi `meeting` e `message`, l'esito (`outcome`, `outcomeTone`), i comandi sulla voce (`actions`) e la correzione dove sta (`edit`); `SectionCard` `more`; `DataTable` con «Ordina per» sotto i 720 px, `labels` (`DATATABLE_LABELS`) e `locale`; `AppShell` con «Impostazioni del workspace» (`workspaceSettingsHref`, `onWorkspaceSettings`) e il modulo `off` «Da attivare», che la cornice non usa ancora; `countLabel` su `NavItem`, `Tabs`, `ToggleGroup`, `PageHeader`; `closeLabel` su `Composer`, `KanbanBoard`, `WorkflowBuilder`; `InlineEdit` con l'IME e il tetto in caratteri; `Checkbox` a 44 px al tocco; il pannello della ricerca si chiude quando il fuoco esce dalla ricerca, e un `Menu` rende il fuoco al suo pulsante (il «+» della cornice lo fa ora dal design system) | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che conta i Tab dopo una voce del «+» o del ⋯, o che si aspetta il pannello della ricerca aperto dopo un Tab fuori, vede il fuoco al pulsante e il pannello chiuso | le pagine con tabelle a 390 px, i menu ⋯ e il «+» da tastiera, la ricerca col Tab, le cronologie delle attività |
+| `v4.8.0` | il design system `ds-1793895705-5d03`, il lotto 0513 (richieste 10, 15, 21, 51, 53, 55, 69, 83, 99, 104, 132, 143, 148, 149, 151, 152, 156, 157, 161, 184): `Dialog` `size="sm"` (la domanda sì/no resta una scheda al centro anche al telefono); `FilterBar` `compact`; `ColorPicker` e `COLOR_NAMES` (nuovi); `Button` `busy`; `Composer` con `error` e `onCreate` che, se torna `false` o una Promise rifiutata, lascia il testo; `Menu` con Home e Fine e la voce spenta che dice perché (`reason`); `texts` su `KanbanCard`, `KanbanColumn` e `KanbanBoard` (`KANBAN_TEXTS`), `AddList` (nuovo) e le azioni rapide di una scheda (`actions`); `Tabs` con una sola fermata del Tab e `panelId`; l'icona `chevronUp`, che la `DataTable` usa per il crescente al posto di `trendUp`; `Column.srLabel`; `Label` con `onRemove`, `onAdd` e `wrap`; `Toast` a 44 px al tocco; `Field` `counter`; `InlineEdit` con `type`, `as="select"` e `format`. Il pezzo della tastiera non fa più Home e Fine nel menu del profilo e nel «+»: lo fa il `Menu` | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che si aspetta `trendUp` nell'intestazione di una colonna in ordine crescente vede `chevronUp`, e uno che si aspetta che Home o Fine non muovano il fuoco in un `Menu` della pagina lo vede muovere | le tabelle ordinate, i menu ⋯ e il «+» da tastiera, i dialoghi di conferma a 390 px, le board |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1131,8 +1135,9 @@ cornice === null ? pagina : (
   elemento fuori dal selettore — col Tab, verso la barra laterale che resta nascosta finché il selettore è aperto — lo chiude, e
   resta dove è andato. Fra le voci e il pulsante del selettore, o quando il fuoco lascia la finestra, il selettore resta aperto.
   Home e Fine premuti come primo tasto, prima che arrivi il pezzo della tastiera, fanno scorrere anche la pagina. Dalla
-  `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); un `Menu`
-  della pagina resta com'è, se non sta nella barra in alto: uno che il modulo apre dalle sue azioni lì fa lo stesso. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
+  `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); dalla
+  `v4.8.0` lì, e in ogni `Menu` della pagina, lo fa il `Menu` del design system (lotto 0513, richiesta 132), e il pezzo della
+  tastiera lo tiene solo nel selettore dei workspace. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
   richieste al design system) si toglie.
 - **Le linguette del pannello delle notifiche con le frecce**: dalla `v3.10.0`, nel pannello delle notifiche aperto, col fuoco
   su «Per me» o su «Tutte», la freccia a destra o a sinistra passa all'altra linguetta e la sceglie, Home va alla prima e Fine
