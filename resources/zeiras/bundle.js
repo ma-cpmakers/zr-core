@@ -68,7 +68,8 @@
     file: 'M6 3h8l5 5v13H6zM14 3v5h5',
     form: 'M4 4h16v16H4zM8 9h8M8 13h8M8 17h4',
     target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
-    gantt: 'M4 4v16M7 7h7M10 12h10M7 17h6'
+    gantt: 'M4 4v16M7 7h7M10 12h10M7 17h6',
+    archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4' /* la scatola col coperchio: «Archivia» (richiesta 187) */
   };
   var ICON_NAMES = Object.keys(PATHS);
   /* il numero accanto a un nome: si vede da solo, il lettore di schermo lo sente staccato e col suo nome (richieste 12, 70, 35) */
@@ -97,13 +98,13 @@
   /* ---------- Label ---------- */
   var TONES = ['pine', 'citrus', 'coral', 'sky', 'plum', 'neutral'];
   function Label(p) {
-    var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral', vid = useId('lbl');
+    var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral', vid = useId('lbl'), C = useLabels();
     /* variant="type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte (richiesta 154) */
     if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.wrap && 'is-wrap', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
     /* un'etichetta che si aggiunge («+») o si toglie («×»): il nome del pulsante dice anche quale, col testo dell'etichetta anche quando è un nodo (richiesta 143); wrap: una frase lunga va a capo (richiesta 161) */
-    if (p.onAdd) return h('button', { type: 'button', className: cx('zr-label', 'zr-label-add', p.wrap && 'is-wrap', p.className), onClick: p.onAdd }, h(Icon, { name: 'plus', size: 14 }), h('span', { className: 'zr-visually-hidden' }, (p.addLabel || 'Aggiungi') + ': '), p.children);
+    if (p.onAdd) return h('button', { type: 'button', className: cx('zr-label', 'zr-label-add', p.wrap && 'is-wrap', p.className), onClick: p.onAdd }, h(Icon, { name: 'plus', size: 14 }), h('span', { className: 'zr-visually-hidden' }, (p.addLabel || C.add) + ': '), p.children);
     return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.wrap && 'is-wrap', p.onRemove && 'has-remove', p.className) }, p.onRemove ? h('span', { id: vid + '-t' }, p.children) : p.children,
-      p.onRemove ? h('button', { type: 'button', className: 'zr-label-x', onClick: p.onRemove, 'aria-labelledby': vid + ' ' + vid + '-t' }, h('span', { id: vid, className: 'zr-visually-hidden' }, (p.removeLabel || 'Togli') + ':'), h(Icon, { name: 'close', size: 12 })) : null);
+      p.onRemove ? h('button', { type: 'button', className: 'zr-label-x', onClick: p.onRemove, 'aria-labelledby': vid + ' ' + vid + '-t' }, h('span', { id: vid, className: 'zr-visually-hidden' }, (p.removeLabel || C.remove) + ':'), h(Icon, { name: 'close', size: 12 })) : null);
   }
 
   /* ---------- Avatar ---------- */
@@ -184,6 +185,18 @@
       h('rect', { className: 'zr-logo-b3', x: 38.5, y: 32, width: 29.5, height: 32, rx: 6 }));
     if (p.wordmark === false) return h('span', { className: cx('zr-logo', p.className) }, mark);
     return h('span', { className: cx('zr-logo', p.className) }, mark, h('span', { className: 'zr-wordmark' }, 'Zeiras'));
+  }
+
+  /* La riga di una notifica (P-07): la stessa nel pannello della campanella e in una pagina; con href è un link (richiesta 166) */
+  function NotificationItem(p) {
+    var C = useLabels(), cls = cx('zr-notif-item', p.unread && 'is-unread', p.className);
+    return h(p.href ? 'a' : 'button', p.href ? { href: p.href, className: cls, onClick: p.onClick } : { type: 'button', className: cls, onClick: p.onClick },
+      p.actor ? h(Avatar, { name: p.actor, size: 'sm' }) : h('span', { className: cx('zr-iconbox', 'zr-iconbox-sm', 'zr-label-' + (p.tone || 'neutral')) }, h(Icon, { name: p.icon || 'bell', size: 16 })),
+      h('span', { className: 'zr-notif-text' },
+        h('span', { className: 'zr-notif-title' }, p.title),
+        p.text ? h('span', { className: 'zr-notif-sub' }, p.text) : null,
+        (p.time || p.product) ? h('span', { className: 'zr-notif-meta' }, [p.product, p.time].filter(Boolean).join(' · ')) : null),
+      p.unread ? h('span', { className: 'zr-notif-dot', 'aria-label': p.unreadLabel || C.unread }) : null);
   }
 
   function AppShell(p) {
@@ -355,14 +368,8 @@
     else if (nState === 'error') notifBody = h('div', { className: 'zr-notif-state', role: 'alert' }, h('p', null, L.notificationsError), p.onRetryNotifications ? h(Button, { variant: 'secondary', size: 'sm', icon: 'refresh', onClick: p.onRetryNotifications }, L.retry) : null);
     else if (!shown.length) notifBody = h(EmptyState, { compact: true, icon: 'bell', title: L.notificationsEmpty, text: L.notificationsEmptyText });
     else notifBody = h('ul', { className: 'zr-notif-list' }, shown.map(function (n) {
-      return h('li', { key: n.id },
-        h('button', { type: 'button', className: cx('zr-notif-item', n.unread && 'is-unread'), onClick: function () { setPop(null); if (p.onOpenNotification) p.onOpenNotification(n); } },
-          n.actor ? h(Avatar, { name: n.actor, size: 'sm' }) : h('span', { className: cx('zr-iconbox', 'zr-iconbox-sm', 'zr-label-' + (n.tone || 'neutral')) }, h(Icon, { name: n.icon || 'bell', size: 16 })),
-          h('span', { className: 'zr-notif-text' },
-            h('span', { className: 'zr-notif-title' }, n.title),
-            n.text ? h('span', { className: 'zr-notif-sub' }, n.text) : null,
-            (n.time || n.product) ? h('span', { className: 'zr-notif-meta' }, [n.product, n.time].filter(Boolean).join(' · ')) : null),
-          n.unread ? h('span', { className: 'zr-notif-dot', 'aria-label': L.unread }) : null));
+      return h('li', { key: n.id }, h(NotificationItem, { title: n.title, text: n.text, time: n.time, product: n.product, unread: n.unread, actor: n.actor, icon: n.icon, tone: n.tone, unreadLabel: L.unread,
+        onClick: function () { setPop(null); if (p.onOpenNotification) p.onOpenNotification(n); } }));
     }));
     var notifPanel = pop === 'notif' ? h('div', { ref: notifRef, id: sid + '-notif', className: 'zr-pop zr-notif', role: 'dialog', 'aria-label': L.notifications },
       h('header', { className: 'zr-pop-head' },
@@ -490,7 +497,7 @@
 
   /* ---------- KanbanCard ---------- */
   /* i testi della board nella lingua del modulo; il default è l'italiano (richiesta 149) */
-  var KANBAN_TEXTS = { overdue: 'Scaduta · {date}', checklist: 'Checklist', comments: 'Commenti', wipLimit: 'Limite WIP {n}', overLimit: 'Oltre il limite', listActions: 'Azioni lista {title}', addCard: 'Aggiungi scheda', addList: 'Aggiungi lista', newList: 'Nuova lista', cardTitle: 'Titolo della scheda…', cardTitleLabel: 'Titolo della nuova scheda', add: 'Aggiungi', cancel: 'Annulla', cardActions: 'Azioni rapide', crumbs: 'Percorso', board: 'Board', list: 'Lista', calendar: 'Calendario', filter: 'Filtra', share: 'Condividi' };
+  var KANBAN_TEXTS = { overdue: 'Scaduta · {date}', checklist: 'Checklist', comments: 'Commenti', wipLimit: 'Limite WIP {n}', overLimit: 'Oltre il limite', listActions: 'Azioni lista {title}', addCard: 'Aggiungi scheda', addList: 'Aggiungi lista', newList: 'Nuova lista', cardTitle: 'Titolo della scheda…', cardTitleLabel: 'Titolo della nuova scheda', add: 'Aggiungi', cancel: 'Annulla', cardActions: 'Azioni rapide', vote: 'Vota', unvote: 'Togli il voto', votes: '{n} voti', oneVote: '1 voto', voted: 'hai votato', crumbs: 'Percorso', board: 'Board', list: 'Lista', calendar: 'Calendario', filter: 'Filtra', share: 'Condividi' };
   function kanbanTexts(t) { var o = Object.assign({}, KANBAN_TEXTS); if (t) Object.keys(t).forEach(function (k) { if (t[k] != null) o[k] = t[k]; }); return o; } /* un testo undefined o null resta quello di default */
   function textOf(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
   function KanbanCard(p) {
@@ -499,7 +506,13 @@
     var done = cl && cl.total > 0 && cl.done >= cl.total;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length ? p.actions : null;
-    var rest = omit(p, ['title', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className', 'texts', 'actions', 'actionsLabel']);
+    var rest = omit(p, ['title', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className', 'texts', 'actions', 'actionsLabel', 'votes']);
+    /* il voto anonimo della retrospettiva: quanti e «hai votato», il pulsante premuto; senza onToggle solo il numero (richiesta 170) */
+    var vt = p.votes, vn = vt ? Math.max(0, vt.count || 0) : 0, vs = vt ? (vn === 1 ? T.oneVote : textOf(T.votes, '{n}', String(vn))) : '';
+    var vote = !vt ? null : vt.onToggle ? h('button', { type: 'button', draggable: false, className: 'zr-card-vote', 'aria-pressed': vt.mine ? 'true' : 'false', 'aria-label': T.vote + ': ' + vs, title: vt.mine ? T.unvote : T.vote,
+        onKeyDown: function (e) { if ((e.key === 'Enter' || e.key === ' ') && !e.ctrlKey && !e.metaKey && !e.altKey) { e.stopPropagation(); if (e.repeat) e.preventDefault(); } }, /* Invio e Spazio sono del voto, non della scheda; tenuti premuti non votano a ripetizione. Gli altri tasti passano */
+        onClick: function (e) { e.stopPropagation(); vt.onToggle(); } }, h(Icon, { name: vt.mine ? 'check' : 'chevronUp', size: 14 }), h('span', { 'aria-hidden': true }, vn))
+      : h('span', { className: cx('zr-meta', vt.mine && 'is-voted'), title: vt.mine ? vs + ', ' + T.voted : vs }, h(Icon, { name: vt.mine ? 'check' : 'chevronUp', size: 14 }), h('span', { 'aria-hidden': true }, vn), h('span', { className: 'zr-visually-hidden' }, vt.mine ? vs + ', ' + T.voted : vs));
     /* il «⋯» delle azioni rapide: fuori dal Tab, si apre anche dalla scheda con «.», Maiusc+F10 o il tasto Menu (richiesta 157) */
     if (acts) rest.onKeyDown = function (e) {
       if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
@@ -512,10 +525,11 @@
       p.cover ? h('div', { className: cx('zr-card-cover', 'zr-cover-' + p.cover) }) : null,
       p.labels && p.labels.length ? h('div', { className: 'zr-card-labels' }, p.labels.map(function (l, i) { return h(Label, { key: i, tone: l.tone }, l.text); })) : null,
       h('h4', { className: 'zr-card-title' }, p.title),
-      (p.due || cl || p.comments || (p.assignees && p.assignees.length)) ? h('div', { className: 'zr-card-meta' },
+      (p.due || cl || p.comments || vote || (p.assignees && p.assignees.length)) ? h('div', { className: 'zr-card-meta' },
         p.due ? h('span', { className: cx('zr-meta', p.overdue && 'is-overdue') }, h(Icon, { name: p.overdue ? 'clock' : 'calendar', size: 14 }), p.overdue ? textOf(T.overdue, '{date}', p.due) : p.due) : null,
         cl ? h('span', { className: cx('zr-meta', done && 'is-done'), title: T.checklist }, h(Icon, { name: 'checklist', size: 14 }), cl.done + '/' + cl.total) : null,
         p.comments ? h('span', { className: 'zr-meta', title: T.comments }, h(Icon, { name: 'message', size: 14 }), p.comments) : null,
+        vote,
         p.assignees && p.assignees.length ? h('span', { className: 'zr-card-people' }, h(AvatarStack, { people: p.assignees, max: 3 })) : null) : null);
     return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: p.actionsLabel || T.cardActions, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card; /* aperto dalla scheda con la tastiera, il fuoco torna alla scheda (dopo quello che il Menu rende al «⋯»), se la voce scelta non l'ha portato altrove */
   }
@@ -563,7 +577,10 @@
   ];
 
   function KanbanBoard(p) {
-    var T = kanbanTexts(p.texts);
+    var C = useLabels(), T = kanbanTexts(p.texts);
+    if (!p.texts || p.texts.add == null) T.add = C.add; /* «Aggiungi» e «Annulla» del riquadro di scrittura nella lingua dell'app, se il modulo non li passa (richiesta 186) */
+    if (!p.texts || p.texts.cancel == null) T.cancel = C.cancel;
+    var votes = {}; (p.lists || []).forEach(function (l) { (l.cards || []).forEach(function (c) { if (c.votes) votes[c.id] = c.votes; }); }); /* i voti seguono le liste che il modulo ripassa: la board le copia una volta sola (richiesta 170) */
     var st = useState(function () { return (p.lists || SAMPLE_LISTS).map(function (l) { return Object.assign({}, l, { cards: (l.cards || []).map(function (c) { return Object.assign({}, c); }) }); }); }); /* copia che tiene le funzioni delle actions (non JSON) */
     var lists = st[0], setLists = st[1];
     var ov = useState(null), overId = ov[0], setOverId = ov[1];
@@ -573,7 +590,8 @@
     var vw = useState('board'), view = vw[0], setView = vw[1];
     var seq = useRef(100);
 
-    function commit(next) { setLists(next); if (p.onChange) p.onChange(next); }
+    function withVotes(c) { return p.lists ? Object.assign({}, c, { votes: votes[c.id] }) : c; } /* con le liste del modulo i voti sono i suoi di adesso, non quelli della copia */
+    function commit(next) { setLists(next); if (p.onChange) p.onChange(p.lists ? next.map(function (l) { return Object.assign({}, l, { cards: l.cards.map(withVotes) }); }) : next); }
     function move(cardId, toList, beforeId) {
       var card = null;
       var next = lists.map(function (l) {
@@ -639,11 +657,11 @@
             onDrop: function (e) { e.preventDefault(); if (dragId) move(dragId, l.id, null); setOverId(null); setDragId(null); }
           }, l.cards.map(function (c) {
             return h(KanbanCard, Object.assign({ key: c.id, texts: p.texts }, c, {
-              draggable: true, dragging: dragId === c.id,
+              votes: p.lists ? votes[c.id] : c.votes, draggable: true, dragging: dragId === c.id,
               onDragStart: function (e) { setDragId(c.id); try { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} },
               onDragEnd: function () { setDragId(null); setOverId(null); },
               onDrop: function (e) { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== c.id) move(dragId, l.id, c.id); setOverId(null); setDragId(null); },
-              onClick: p.onOpenCard ? function () { p.onOpenCard(c); } : undefined
+              onClick: p.onOpenCard ? function () { p.onOpenCard(withVotes(c)); } : undefined
             }));
           }));
         }),
@@ -1473,28 +1491,54 @@
     return h('div', { ref: rootRef, className: cx('zr-cal', 'is-' + variant, p.className) }, head, body);
   }
 
+  /* ---------- LabelsProvider ---------- */
+  /* i testi comuni dei componenti (Chiudi, Annulla, Indietro, Aggiungi, Togli) nella lingua dell'app (richiesta 186): la lingua la dà
+     LabelsProvider, altrimenti <html lang> (letto a ogni disegno); una lingua che non c'è prende quella di sopra, poi <html lang>, poi l'inglese (senza nessuna lingua, l'italiano). La prop del
+     componente (closeLabel, backLabel, submitLabel…) vince sempre */
+  var COMMON_LABELS = {
+    it: { close: 'Chiudi', cancel: 'Annulla', back: 'Indietro', add: 'Aggiungi', remove: 'Togli', unread: 'non letta' },
+    en: { close: 'Close', cancel: 'Cancel', back: 'Back', add: 'Add', remove: 'Remove', unread: 'unread' },
+    es: { close: 'Cerrar', cancel: 'Cancelar', back: 'Atrás', add: 'Añadir', remove: 'Quitar', unread: 'no leída' }
+  };
+  var labelsCtx = null; /* creato al primo uso: nessuna chiamata a React mentre il bundle si carica */
+  function labelsContext() { return labelsCtx || (labelsCtx = React.createContext(null)); }
+  function labelsLang(l) { var k = String(l || '').toLowerCase().split('-')[0]; return Object.prototype.hasOwnProperty.call(COMMON_LABELS, k) ? k : null; }
+  function pageLabels(dichiarata) { var l = typeof document !== 'undefined' && document.documentElement.lang; return COMMON_LABELS[labelsLang(l)] || (l || dichiarata ? COMMON_LABELS.en : COMMON_LABELS.it); } /* una lingua dichiarata che non c'è cade sull'inglese, come la cornice; nessuna lingua: l'italiano di sempre */
+  function useLabels() { return React.useContext(labelsContext()) || pageLabels(); }
+  function LabelsProvider(p) {
+    var up = React.useContext(labelsContext()), l = p.labels || {};
+    var base = p.lang ? COMMON_LABELS[labelsLang(p.lang)] || up || pageLabels(true) : up || (p.labels ? pageLabels() : null); /* solo testi: la lingua di <html lang>, riletta a ogni disegno */
+    var value = React.useMemo(function () {
+      if (!base) return null; /* niente lingua e niente testi: i componenti leggono <html lang> */
+      var o = Object.assign({}, base);
+      Object.keys(l).forEach(function (k) { if (l[k] != null) o[k] = l[k]; });
+      return o;
+    }, [base, l.close, l.cancel, l.back, l.add, l.remove, l.unread]);
+    return h(labelsContext().Provider, { value: value }, p.children);
+  }
+
   /* ---------- Feedback ---------- */
   var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };
   function Alert(p) {
-    var tone = p.tone || 'info';
+    var tone = p.tone || 'info', C = useLabels();
     return h('div', { className: cx('zr-alert', 'zr-alert-' + tone, p.className), role: tone === 'danger' ? 'alert' : 'status' },
       h(Icon, { name: TONE_ICON[tone], size: 20 }),
       h('div', { className: 'zr-alert-body' }, p.title ? h('strong', null, p.title) : null, p.children ? h('div', null, p.children) : null),
       p.action || null,
-      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null);
+      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }) : null);
   }
 
   function Toast(p) {
-    var tone = p.tone || 'success';
+    var tone = p.tone || 'success', C = useLabels();
     return h('div', { className: cx('zr-toast', 'zr-toast-' + tone), role: 'status' },
       h(Icon, { name: TONE_ICON[tone], size: 18 }),
       h('span', { className: 'zr-toast-text' }, p.children),
       p.actionLabel ? h('button', { type: 'button', className: 'zr-toast-action', onClick: p.onAction }, p.actionLabel) : null,
-      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
+      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
   }
 
   function Dialog(p) {
-    var id = useId('dlg');
+    var id = useId('dlg'), C = useLabels();
     useEffect(function () {
       if (!p.open) return;
       function k(e) { if (e.key === 'Escape' && p.onClose) p.onClose(); }
@@ -1504,7 +1548,7 @@
     /* size="sm": una domanda sì/no resta piccola e al centro anche al telefono (richiesta 53) */
     return h('div', { className: cx('zr-scrim', p.inline && 'is-inline', p.size === 'sm' && 'is-compact'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
       h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg', p.size === 'sm' && 'is-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
-        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null),
+        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }) : null),
         p.description ? h('p', { className: 'zr-dialog-desc' }, p.description) : null,
         h('div', { className: 'zr-dialog-body' }, p.children),
         p.footer ? h('footer', { className: 'zr-dialog-foot' }, p.footer) : null));
@@ -1807,8 +1851,9 @@
     return h('dl', { className: 'zr-dl' }, (p.items || []).map(function (it) { return h('div', { key: it.label }, h('dt', null, it.label), h('dd', null, it.value)); }));
   }
 
+  function dealMoney(p) { if (p.formatAmount) try { return p.formatAmount(p.amount); } catch (e) {} return fmtMoney(p.amount, p.currency); }
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length && !p.busy ? p.actions : null, name = p.actionsLabel || KANBAN_TEXTS.cardActions;
@@ -1826,7 +1871,7 @@
         p.busy ? h('span', { className: 'zr-btn-spin zr-deal-spin', 'aria-hidden': true }) : p.owner ? h(Avatar, { name: p.owner, size: 'sm' }) : null),
       h('h4', { className: 'zr-card-title' }, p.title),
       h('div', { className: 'zr-deal-foot' },
-        h('strong', { className: 'zr-deal-amount' }, fmtMoney(p.amount, p.currency)),
+        h('strong', { className: 'zr-deal-amount' }, p.amountText != null ? p.amountText : dealMoney(p)), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
           p.age ? h('span', { className: cx('zr-meta', p.age > 14 && 'is-overdue'), title: p.ageTitle || 'Giorni in questa fase' }, h(Icon, { name: 'clock', size: 14 }), p.age + ' ' + (p.ageLabel || 'gg')) : null)));
     return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: name, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card;
@@ -1903,6 +1948,7 @@
       if (r.more) { var col = root.current.querySelector('[data-stage="' + r.more.replace(/["\\]/g, '') + '"]'), cs = col ? col.querySelectorAll('[data-deal-id]') : []; var t = cs[r.n] || cs[cs.length - 1]; if (t) t.focus(); }
     });
     var cy = p.currency || 'EUR';
+    function money(v, round) { if (p.formatAmount) try { return p.formatAmount(v); } catch (e) {} return fmtMoney(round ? Math.round(v) : v, cy); } /* totali e ponderati scritti dal modulo, nella sua valuta e lingua (richiesta 190); se la sua funzione sbaglia, come prima */
     function stageTitle(id) { var s = cur.current.filter(function (x) { return x.id === id; })[0]; return s ? s.title : ''; }
     function told(k, deal, id) { return textOf(textOf(L[k], '{deal}', deal.title), '{stage}', stageTitle(id)); }
     /* spostare: trascinando, o con «Sposta in…» dal «⋯». onMove può fermarlo: false lo ferma prima, una Promise rifiutata o risolta a false riporta la scheda dov'era */
@@ -1941,7 +1987,7 @@
     var T = p.totals || {};
     var total = T.open != null ? T.open + adj.current.open : openStages.reduce(function (a, s) { return add(a, sumOf(s)); }, 0);
     var weighted = T.weighted != null ? T.weighted + adj.current.weighted : openStages.reduce(function (a, s) { return add(a, weightOf(s)); }, 0);
-    var sub = [total != null ? L.open + ' ' + fmtMoney(total, cy) : null, weighted != null ? L.weighted + ' ' + fmtMoney(Math.round(weighted), cy) : null].filter(Boolean).join(' · ');
+    var sub = [total != null ? L.open + ' ' + money(total) : null, weighted != null ? L.weighted + ' ' + money(weighted, true) : null].filter(Boolean).join(' · ');
     /* più pipeline (piano Team): il menu accanto alle azioni, solo se ce n'è più d'una */
     var pls = p.pipelines || [], pl = pls.filter(function (x) { return x.id === p.pipelineId; })[0] || pls[0];
     var plPick = pls.length > 1 ? h('button', { key: 'p', ref: plBtn, type: 'button', className: 'zr-btn zr-btn-secondary zr-btn-sm zr-deal-pipeline', 'aria-haspopup': 'menu', 'aria-expanded': plMenu, 'aria-label': L.pipeline + ': ' + pl.name, onClick: function () { pm[1](!plMenu); } },
@@ -1960,15 +2006,15 @@
           onDragOver: function (e) { e.preventDefault(); if (over !== s.id) setOver(s.id); },
           onDrop: function (e) { e.preventDefault(); if (drag) move(drag, s.id); setDrag(null); setOver(null); },
           composer: h('div', { className: 'zr-col-sums' },
-            sum != null ? h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, fmtMoney(sum, cy))) : null,
-            k === 'open' && wsum != null ? h('div', { className: cx('zr-col-sum', sum != null && 'is-sub') }, h('span', null, L.stageWeighted), h('strong', null, fmtMoney(Math.round(wsum), cy))) : null,
+            sum != null ? h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, money(sum))) : null,
+            k === 'open' && wsum != null ? h('div', { className: cx('zr-col-sum', sum != null && 'is-sub') }, h('span', null, L.stageWeighted), h('strong', null, money(wsum, true))) : null,
             k !== 'open' && p.onSeeAll ? h(Button, { variant: 'ghost', size: 'sm', className: 'zr-col-see', onClick: function () { p.onSeeAll(s.id); } }, L.seeAll) : null) },
           s.deals.map(function (d) {
             var acts = (p.onOpen ? [{ label: L.openDeal, onClick: function () { p.onOpen(d); } }, { sep: true }] : []).concat(stages.filter(function (x) { return x.id !== s.id; }).map(function (x) { return { label: textOf(L.moveTo, '{stage}', x.title), onClick: function () { move(d.id, x.id, true); } }; }));
             var extra = p.dealActions ? p.dealActions(d) || [] : [];
             if (extra.length) acts = acts.concat([{ sep: true }], extra);
             /* la scheda non è un role="button": dentro c'è il «⋯», che deve restare raggiungibile; «Apri» sta anche nel menu */
-            return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cy, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
+            return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
               draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
               onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
               onKeyDown: p.onOpen ? function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onOpen(d); } } : undefined })); }).concat(more ? [more] : []));
@@ -2090,6 +2136,7 @@
     { id: 's6', type: 'action', title: 'Sposta in pipeline: Qualificato', icon: 'euro' }
   ];
   function WorkflowBuilder(p) {
+    var C = useLabels();
     var st = useState(function () { return (p.steps || SAMPLE_FLOW).slice(); }), steps = st[0], setSteps = st[1];
     var se = useState(p.defaultSelected || null), sel = se[0], setSel = se[1];
     var on = useState(p.active !== false), active = on[0], setActive = on[1];
@@ -2111,7 +2158,7 @@
               h('div', { className: 'zr-flow-link' }, h('button', { type: 'button', className: 'zr-flow-add', 'aria-label': 'Aggiungi passo dopo ' + s.title, onClick: function () { insert(i); } }, h(Icon, { name: 'plus', size: 14 }))));
           }), h('li', { className: 'zr-flow-end' }, h('span', null, 'Fine')))),
         current ? h('aside', { className: 'zr-flow-panel' },
-          h('header', { className: 'zr-panel-head' }, h('h2', null, 'Configura passo'), h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: function () { setSel(null); } })),
+          h('header', { className: 'zr-panel-head' }, h('h2', null, 'Configura passo'), h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || C.close, onClick: function () { setSel(null); } })),
           h('div', { className: 'zr-panel-body zr-stack' },
             h(Field, { label: 'Tipo di passo', options: [{ value: 'action', label: 'Azione' }, { value: 'condition', label: 'Condizione' }, { value: 'delay', label: 'Attesa' }], value: current.type, onChange: function (e) { setSteps(steps.map(function (x) { return x.id === current.id ? Object.assign({}, x, { type: e.target.value }) : x; })); } }),
             h(Field, { label: 'Titolo', value: current.title, onChange: function (e) { setSteps(steps.map(function (x) { return x.id === current.id ? Object.assign({}, x, { title: e.target.value }) : x; })); } }),
@@ -2236,7 +2283,7 @@
 
   /* ---------- Composer (P-15: creazione in linea) ---------- */
   function Composer(p) {
-    var id = useId('cmp');
+    var id = useId('cmp'), C = useLabels();
     var st = useState(p.defaultValue || ''), v = st[0], set = st[1];
     var bs = useState(false), busy = bs[0];
     /* il testo resta finché la creazione non riesce: onCreate che torna false, o una Promise rifiutata o risolta a false, lo lascia nel campo (richiesta 156) */
@@ -2255,15 +2302,15 @@
         onKeyDown: function (e) { if (e.key === 'Enter' && !(p.multiline && e.shiftKey)) { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.stopPropagation(); set(''); if (p.onCancel) p.onCancel(); } } }),
       p.error ? h('p', { id: eid, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error) : null,
       h('div', { className: 'zr-composer-row' },
-        h(Button, { size: 'sm', busy: busy, onClick: submit }, p.submitLabel || 'Aggiungi'),
-        h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || 'Annulla', onClick: function () { set(''); if (p.onCancel) p.onCancel(); } })));
+        h(Button, { size: 'sm', busy: busy, onClick: submit }, p.submitLabel || C.add),
+        h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || C.cancel, onClick: function () { set(''); if (p.onCancel) p.onCancel(); } })));
   }
 
   /* ---------- DetailPanel (P-15: dettaglio nel pannello a destra) ---------- */
   var PANEL_FULL = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, il pannello copre la pagina */
   var FOCUSABLE = ['a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])', 'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]'].map(function (s) { return s + ':not([tabindex="-1"])'; }).join(', ');
   function DetailPanel(p) {
-    var ref = useRef(null), last = useRef(p); last.current = p;
+    var ref = useRef(null), last = useRef(p), C = useLabels(); last.current = p;
     var mqRef = useRef(undefined); if (mqRef.current === undefined) mqRef.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PANEL_FULL) : null;
     var mq = mqRef.current;
     var fullSt = useState(mq ? mq.matches : false), full = fullSt[0], setFull = fullSt[1];
@@ -2296,18 +2343,21 @@
     }, []);
     /* il Tab resta dentro quando il pannello è modale */
     function trap(e) {
-      if (!modal || e.key !== 'Tab' || !ref.current || document.querySelector('.zr-scrim, dialog[open]')) return; /* un dialogo aperto sopra tiene lui il Tab */
+      if (!modal || e.key !== 'Tab' || e.defaultPrevented || !ref.current || document.querySelector('.zr-scrim, dialog[open]')) return; /* un dialogo aperto sopra tiene lui il Tab */
       var els = Array.prototype.filter.call(ref.current.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; });
       if (!els.length) { e.preventDefault(); ref.current.focus(); return; }
       var first = els[0], lastEl = els[els.length - 1], a = document.activeElement;
       if (e.shiftKey && (a === first || a === ref.current)) { e.preventDefault(); lastEl.focus(); }
       else if (!e.shiftKey && a === lastEl) { e.preventDefault(); first.focus(); }
     }
+    var hasActs = p.actions != null && p.actions !== false && !(Array.isArray(p.actions) && !p.actions.some(Boolean));
+    var closeBtn = h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose });
     return h('aside', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
       h('header', { className: 'zr-detail-head' },
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || 'Indietro'),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || C.back),
         h('div', { className: 'zr-detail-ctx' }, p.head),
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose })),
+        hasActs ? h('div', { className: 'zr-detail-actions' }, p.actions) : null, /* le azioni del pannello a destra, con la chiusura (richiesta 191): la ✕ resta al suo posto, non si rimonta */
+        closeBtn),
       h('div', { className: 'zr-detail-body' }, p.children),
       p.foot ? h('footer', { className: 'zr-detail-foot' }, p.foot) : null);
   }
@@ -2321,6 +2371,6 @@
     ICON_NAMES: ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
-    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
+    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
   });
 })();

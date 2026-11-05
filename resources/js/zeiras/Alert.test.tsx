@@ -23,7 +23,7 @@ describe('il modulo dell\'Alert è quello che il bundle genera (voce 3055)', () 
     it('rigenerato in memoria dal bundle il file è uguale, carattere per carattere; non importa stili: i suoi restano in zeiras.css', () => {
         expect(NEL_GRUPPO).toStrictEqual(['Alert']);
         expect(aParte(leggi(bundle), 'Alert', dividiIlCss(bundleCss))).toBe(generato);
-        expect(generato.split('\n').filter((riga) => riga.startsWith('import '))).toStrictEqual(["import * as React from 'react';", "import { Button, Icon } from './componenti';"]);
+        expect(generato.split('\n').filter((riga) => riga.startsWith('import '))).toStrictEqual(["import * as React from 'react';", "import { Button, Icon, useLabels } from './componenti';"]);
     });
 
     it('porta la funzione e le sue tre righe private, nell\'ordine del bundle, e niente del Toast né del commento del gruppo', () => {

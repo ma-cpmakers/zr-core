@@ -180,6 +180,12 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-meta { display: inline-flex; align-items: center; gap: var(--space-1); }
 .zr-meta.is-overdue { color: var(--coral); background: var(--coral-soft); padding: 2px var(--space-1-5); border-radius: var(--radius-sm); font-weight: 600; }
 .zr-meta.is-done { color: var(--pine); font-weight: 600; }
+.zr-card-vote { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); min-width: 24px; height: 24px; padding: 0 var(--space-2); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--surface-raised); color: var(--ink-muted); font: inherit; cursor: pointer; } /* il voto della retrospettiva (richiesta 170) */
+.zr-card-vote:hover { background: var(--surface-sunken); color: var(--ink); }
+.zr-card-vote[aria-pressed="true"], .zr-meta.is-voted { border-color: var(--pine); background: var(--pine-soft); color: var(--pine); font-weight: 600; }
+.zr-meta.is-voted { padding: 0 var(--space-1-5); border-radius: var(--radius-pill); }
+.zr-card-vote:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .zr-card-vote::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); } }
 .zr-card-people { margin-left: auto; }
 
 .zr-composer { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -849,6 +855,8 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-detail-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); border-bottom: 1px solid var(--line); }
 .zr-detail-ctx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); }
 .zr-detail-back { display: none; }
+.zr-detail-actions { flex: none; display: flex; align-items: center; gap: var(--space-1); } /* le azioni del pannello accanto alla ✕ (richiesta 191) */
+.zr-detail-actions + .zr-detail-close { margin-left: calc(var(--space-1) - var(--space-3)); }
 .zr-detail-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5); }
 .zr-detail-body > * { flex: none; }
 .zr-detail-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--line); background: var(--surface); }
@@ -970,6 +978,7 @@ a.zr-ws-item { text-decoration: none; }
 .zr-notif-list { list-style: none; margin: 0; padding: var(--space-1); }
 .zr-notif-item { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-3); border: 0; border-radius: var(--radius-sm); background: transparent; font: inherit; text-align: left; cursor: pointer; transition: background-color .15s; }
 .zr-notif-item:hover { background: var(--surface-sunken); }
+a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none; } /* la riga come link, in una pagina (richiesta 166) */
 .zr-notif-item .zr-iconbox-sm { width: 32px; height: 32px; flex: none; }
 .zr-notif-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .zr-notif-title { font-size: 14px; line-height: 20px; color: var(--ink); overflow-wrap: anywhere; }
