@@ -190,6 +190,29 @@ it('senza sessione risponde la guardia di zr-auth, prima della rotta: verso l\'i
     Http::assertNothingSent();
 });
 
+it('senza sessione la foto chiesta da un `<img>` non diventa la pagina di ritorno dopo l\'accesso; chiesta come una pagina sì: il caso vede la differenza (sprint 109 · T1.1, #3019)', function () {
+    Http::fake(['*' => fotoDelBackoffice()]);
+    $comeUnImg = ['Sec-Fetch-Dest' => 'image', 'Accept' => 'image/avif,image/webp,image/*,*/*;q=0.8'];
+
+    chiediLaFoto($comeUnImg)->assertRedirect();
+    $ritornoDellImg = (string) session('url.intended');
+
+    chiediLaFoto(['Sec-Fetch-Dest' => 'document', 'Accept' => 'text/html'])->assertRedirect();
+
+    expect($ritornoDellImg)->not->toContain('cornice/foto')
+        ->and((string) session('url.intended'))->toContain('cornice/foto');
+    Http::assertNothingSent();
+});
+
+it('senza sessione la foto chiesta da un `<img>` lascia com\'è il ritorno già ricordato (sprint 109 · T1.2, #3019)', function () {
+    Http::fake(['*' => fotoDelBackoffice()]);
+    session()->put('url.intended', 'http://localhost/board/progetti?vista=elenco');
+
+    chiediLaFoto(['Sec-Fetch-Dest' => 'image', 'Accept' => 'image/*'])->assertRedirect();
+
+    expect(session('url.intended'))->toBe('http://localhost/board/progetti?vista=elenco');
+});
+
 it('la rotta risponde a una GET senza `Persona` e senza `X-Zr-Persona`, come la manda un `<img>`, e anche senza un workspace (sprint 99 · T1.5)', function (bool $conWorkspace) {
     sessioneAMano($conWorkspace ? WORKSPACE_DELLA_FOTO : null);
     Http::fake(['*' => fotoDelBackoffice()]);

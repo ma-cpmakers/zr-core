@@ -137,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.120 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function () {
+it('composer.json chiede zr-auth ^0.12.128 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -155,7 +155,9 @@ it('composer.json chiede zr-auth ^0.12.120 e nessuna minore più vecchia, e la C
     // quella (Decisione 13268 di zr-pm; sprint 55 · T1.4). Dalla `v2.19.0` dalla 0.12.41: le rotte della cornice escono da
     // `SoloDallaPersona`, che c'è da quella, e i due giri le provano con l'interruttore acceso (nota 13633; sprint 59 · T1.4).
     // Dalla `v4.1.0` dalla 0.12.120: la rotta della foto legge il file con `Api::immagine`, che c'è da quella (sprint 99 · T1.6).
-    expect($vincolo)->toBe('^0.12.120')
+    // Dalla `v4.5.2` dalla 0.12.128: `ConGettone` ricorda il ritorno solo per le navigazioni, e la foto chiesta da un `<img>` a
+    // sessione scaduta non diventa la pagina di ritorno (#3019; sprint 109 · T1.3). Il giro «minima» la installa: FotoTest lo prova.
+    expect($vincolo)->toBe('^0.12.128')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
@@ -1649,21 +1651,24 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.120, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.128, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
     // Ogni vincolo 0.12 che il testo dice, intero: `^0.12.4` è anche l'inizio di `^0.12.41`.
     $vincoli = fn (string $t): array => preg_match_all('/\^0\.12\.\d+/', $t, $trovati) > 0 ? $trovati[0] : [];
 
-    expect($vincoli($testo))->toBe(['^0.12.120'])
+    expect($vincoli($testo))->toBe(['^0.12.128'])
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and($vincoli(str_replace('^0.12.120', '^0.12.41', $testo)))->toBe(['^0.12.41']);
+        ->and($vincoli(str_replace('^0.12.128', '^0.12.120', $testo)))->toBe(['^0.12.120']);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.120, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.128, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` parte dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella (decisioni di zr-pm).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` parte dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm).'))->toBe(1)
+        ->and(str_contains($claude, 'dalla `v4.1.0` parte dalla 0.12.120'))->toBe(false)
+        // Anche il README dice il perché del vincolo nuovo (rilievo della revisione della PR #169).
+        ->and(substr_count($readme, 'Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l\'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia zr-core alla `v4.5.1`.'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v2.19.0` parte dalla 0.12.41'))->toBe(false)
         ->and(str_contains($claude, 'dalla `v2.16.0` parte dalla 0.12.31'))->toBe(false)
         ->and(str_contains($claude, 'parte dalla 0.12.4:'))->toBe(false)
