@@ -63,7 +63,9 @@ afterAll(() => {
     rmSync(radice, { recursive: true, force: true });
 });
 
-describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartella col `#` nel percorso (sprint 25 · T6, R3)', () => {
+// Ogni caso lancia il comando fino a tre volte, poco meno di un secondo l'una: col lotto 0514 (bundle più grande) un runner lento
+// ha passato i 5 secondi di vitest (PR 176, giro «ultima»: 37 s per il file, contro i 21 del giro «minima»). Il tetto è per caso.
+describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartella col `#` nel percorso (sprint 25 · T6, R3)', { timeout: 20_000 }, () => {
     it('`--controlla` col file che il bundle genera: esce 0 e dice quanti nomi esporta', () => {
         const esito = comando(['--controlla']);
 

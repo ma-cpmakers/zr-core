@@ -1808,15 +1808,28 @@ import * as React from 'react';
   }
 
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
-    return h('article', Object.assign({ tabIndex: 0 }, rest, { className: cx('zr-card zr-deal', p.dragging && 'is-dragging', p.className) }),
-      h('div', { className: 'zr-deal-top' }, p.company ? h('span', { className: 'zr-deal-company' }, cIcon ? h(Icon, { name: cIcon, size: 14 }) : null, p.company) : h('span', null), p.owner ? h(Avatar, { name: p.owner, size: 'sm' }) : null),
+    var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
+    var acts = p.actions && p.actions.length && !p.busy ? p.actions : null, name = p.actionsLabel || KANBAN_TEXTS.cardActions;
+    /* il «⋯» delle azioni, come in KanbanCard (richiesta 157): fuori dal Tab, dalla scheda con «.», Maiusc+F10 o il tasto Menu; al tocco su 44 px (richiesta 1) */
+    if (acts) rest.onKeyDown = function (e) {
+      if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
+      if (p.onKeyDown) p.onKeyDown(e);
+    };
+    /* busy: lo spostamento aspetta il modulo; la scheda si vede occupata e non si trascina */
+    if (p.busy) rest = Object.assign(rest, { 'aria-busy': true, draggable: false });
+    var card = h('article', Object.assign({ tabIndex: 0, 'aria-keyshortcuts': acts ? '. Shift+F10' : undefined }, rest, { className: cx('zr-card zr-deal', p.dragging && 'is-dragging', acts && 'has-actions', acts && !p.owner && 'is-ownerless', p.busy && 'is-busy', p.className) }),
+      acts ? h('button', { ref: btn, type: 'button', tabIndex: -1, draggable: false, className: 'zr-card-actions', 'aria-label': name, 'aria-haspopup': 'menu', 'aria-expanded': menu,
+        onMouseDown: function (e) { e.stopPropagation(); }, onClick: function (e) { e.stopPropagation(); kb.current = false; ms[1](!menu); } }, h(Icon, { name: 'more', size: 16 })) : null,
+      h('div', { className: 'zr-deal-top' }, p.company ? h('span', { className: 'zr-deal-company' }, cIcon ? h(Icon, { name: cIcon, size: 14 }) : null, p.company) : h('span', null),
+        p.busy ? h('span', { className: 'zr-btn-spin zr-deal-spin', 'aria-hidden': true }) : p.owner ? h(Avatar, { name: p.owner, size: 'sm' }) : null),
       h('h4', { className: 'zr-card-title' }, p.title),
       h('div', { className: 'zr-deal-foot' },
         h('strong', { className: 'zr-deal-amount' }, fmtMoney(p.amount, p.currency)),
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
           p.age ? h('span', { className: cx('zr-meta', p.age > 14 && 'is-overdue'), title: p.ageTitle || 'Giorni in questa fase' }, h(Icon, { name: 'clock', size: 14 }), p.age + ' ' + (p.ageLabel || 'gg')) : null)));
+    return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: name, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card;
   }
 
   var SAMPLE_STAGES = [
@@ -1826,42 +1839,139 @@ import * as React from 'react';
     { id: 'neg', title: 'Negoziazione', deals: [{ id: 'd6', title: 'Academy aziendale', company: 'Orion Spa', amount: 26000, owner: 'Marco Neri', probability: 75, age: 7 }] },
     { id: 'won', title: 'Vinto', deals: [{ id: 'd7', title: 'Workshop Agile', company: 'Blu Digital', amount: 2900, owner: 'Luciano Castro', probability: 100, age: 1 }] }
   ];
+  /* sposta una trattativa nella fase `to`, alla posizione `at` (in fondo se -1); numero e totali passati dal modulo seguono lo spostamento (richiesta 1) */
+  function dealMove(list, id, to, at, put) {
+    var deal = null, from = null;
+    if (!list.some(function (s) { return s.id === to; })) return list;
+    var n = list.map(function (s) { var ds = s.deals.filter(function (d) { if (d.id === id) { deal = d; from = s.id; return false; } return true; }); return ds.length === s.deals.length ? s : Object.assign({}, s, { deals: ds }); });
+    if (!deal || from === to) return list;
+    var x = put || deal, a = x.amount || 0, w = a * (x.probability || 0) / 100;
+    function shift(s, k) { var o = Object.assign({}, s); if (o.count != null) o.count += k; if (o.total != null) o.total += k * a; if (o.weighted != null) o.weighted += k * w; return o; }
+    return n.map(function (s) {
+      if (s.id === from) return shift(s, -1);
+      if (s.id !== to) return s;
+      var o = shift(s, 1), ds = s.deals.slice(); if (at >= 0 && at < ds.length) ds.splice(at, 0, x); else ds.push(x); o.deals = ds; return o;
+    });
+  }
+  function dealStageOf(list, id) { var r = null; list.forEach(function (s) { s.deals.forEach(function (d, i) { if (d.id === id) r = { stage: s.id, index: i, deal: d }; }); }); return r; }
   function DealPipeline(p) {
     var st = useState(function () { return JSON.parse(JSON.stringify(p.stages || SAMPLE_STAGES)); }), stages = st[0], setStages = st[1];
+    var cur = useRef(stages); cur.current = stages;
     var dg = useState(null), drag = dg[0], setDrag = dg[1];
-    var lastStages = useRef(null);
+    var ov = useState(null), over = ov[0], setOver = ov[1];
+    var pd = useState({}), busy = pd[0], setBusy = pd[1], pend = useRef({});
+    var lv = useState(''), said = lv[0], setSaid = lv[1];
+    var pm = useState(false), plMenu = pm[0], plBtn = useRef(null);
+    var root = useRef(null), refocus = useRef(null), lastStages = useRef(null), live = useRef(true);
+    var adj = useRef({ open: 0, weighted: 0 }), lastTotals = useRef(undefined);
+    var L = Object.assign({ overline: 'CRM', title: 'Pipeline vendite', open: 'Aperte', weighted: 'Ponderate', filter: 'Filtra', newDeal: 'Nuova trattativa', total: 'Totale', stageWeighted: 'Ponderato', more: 'Mostra altre', seeAll: 'Vedi tutte', openDeal: 'Apri', moveTo: 'Sposta in {stage}', moved: '{deal} spostata in {stage}', back: '{deal} resta in {stage}', dealActions: 'Azioni rapide', pipeline: 'Pipeline' }, p.labels || {});
+    React.useEffect(function () { live.current = true; return function () { live.current = false; }; }, []);
+    function kindOf(s) { return s.kind || (s.id === 'won' ? 'won' : s.id === 'lost' ? 'lost' : 'open'); }
+    function set(n) { cur.current = n; setStages(n); }
+    /* lo stesso testo detto due volte si sente due volte */
+    function say(x) { setSaid(function (v) { return v === x ? x + '\u00a0' : x; }); }
+    /* quanto cambiano aperte e ponderate della testa se la trattativa passa da una fase all'altra */
+    function delta(list, deal, from, to) {
+      var k = {}; list.forEach(function (s) { k[s.id] = kindOf(s); });
+      var g = (k[to] === 'open' ? 1 : 0) - (k[from] === 'open' ? 1 : 0), a = deal.amount || 0;
+      return { open: g * a, weighted: g * a * (deal.probability || 0) / 100 };
+    }
+    function bump(d, k) { adj.current = { open: adj.current.open + k * d.open, weighted: adj.current.weighted + k * d.weighted }; }
+    function keep() { var a = document.activeElement; if (!a || !root.current || !root.current.contains(a)) return null; var m = a.getAttribute('data-more'); return { el: a, id: a.getAttribute('data-deal-id'), more: m, n: m ? (cur.current.filter(function (s) { return s.id === m; })[0] || { deals: [] }).deals.length : 0 }; }
+    /* stages controllata: il modulo la rinnova (anche ogni 20 s); gli spostamenti che aspettano il modulo restano dove sono, e il fuoco resta dov'era (richiesta 1) */
     React.useEffect(function () {
       if (!p.stages) return;
       var j = JSON.stringify(p.stages);
       if (lastStages.current === null) { lastStages.current = j; return; }
-      if (j !== lastStages.current) { lastStages.current = j; setStages(JSON.parse(j)); }
+      if (j === lastStages.current) return;
+      lastStages.current = j;
+      var n = JSON.parse(j);
+      Object.keys(pend.current).forEach(function (id) { var w = dealStageOf(n, id), to = pend.current[id].to; if (w && w.stage !== to) n = dealMove(n, id, to, -1, Object.assign({}, w.deal, { age: 0 })); });
+      /* il fuoco chiesto da uno spostamento (il modulo che rimanda onChange come stages) vale per le fasi nuove; altrimenti si tiene dov'è */
+      var k = keep(); if (k) refocus.current = k; if (refocus.current) refocus.current.for = n; set(n);
     }, [p.stages]);
-    var cur = p.currency || 'EUR';
-    var ov = useState(null), over = ov[0], setOver = ov[1];
-    function move(id, to) {
-      var deal; var n = stages.map(function (s) { return Object.assign({}, s, { deals: s.deals.filter(function (d) { if (d.id === id) { deal = d; return false; } return true; }) }); });
-      if (!deal) return; n = n.map(function (s) { return s.id === to ? Object.assign({}, s, { deals: s.deals.concat([Object.assign({}, deal, { age: 0 })]) }) : s; });
-      setStages(n); if (p.onChange) p.onChange(n);
+    /* i totali della testa dal modulo: le correzioni degli spostamenti valgono finché non arrivano totali nuovi; da lì restano solo quelle degli spostamenti che aspettano ancora il modulo */
+    var tj = JSON.stringify(p.totals || null);
+    if (lastTotals.current !== tj) { if (lastTotals.current !== undefined) { adj.current = { open: 0, weighted: 0 }; Object.keys(pend.current).forEach(function (id) { bump(pend.current[id].d, 1); }); } lastTotals.current = tj; }
+    React.useEffect(function () {
+      var r = refocus.current; if (!r || !root.current || r.for && r.for !== stages) return; refocus.current = null; /* aspetta il disegno con le fasi per cui è stato chiesto */
+      var a = document.activeElement; if (a && a !== document.body && document.contains(a)) return;
+      if (r.el && document.contains(r.el)) { r.el.focus(); return; }
+      var cards = Array.prototype.slice.call(root.current.querySelectorAll('[data-deal-id]'));
+      if (r.id) { cards.forEach(function (el) { if (el.getAttribute('data-deal-id') === r.id) el.focus(); }); return; }
+      /* «Mostra altre» sparito con l'ultima pagina: il fuoco va alla prima scheda arrivata, o all'ultima della fase */
+      if (r.more) { var col = root.current.querySelector('[data-stage="' + r.more.replace(/["\\]/g, '') + '"]'), cs = col ? col.querySelectorAll('[data-deal-id]') : []; var t = cs[r.n] || cs[cs.length - 1]; if (t) t.focus(); }
+    });
+    var cy = p.currency || 'EUR';
+    function stageTitle(id) { var s = cur.current.filter(function (x) { return x.id === id; })[0]; return s ? s.title : ''; }
+    function told(k, deal, id) { return textOf(textOf(L[k], '{deal}', deal.title), '{stage}', stageTitle(id)); }
+    /* spostare: trascinando, o con «Sposta in…» dal «⋯». onMove può fermarlo: false lo ferma prima, una Promise rifiutata o risolta a false riporta la scheda dov'era */
+    function move(id, to, keys) {
+      var w = dealStageOf(cur.current, id);
+      if (!w || w.stage === to || pend.current[id] || !cur.current.some(function (s) { return s.id === to; })) return;
+      var r; if (p.onMove) { try { r = p.onMove(w.deal, to, w.stage); } catch (e) { r = false; } }
+      if (r === false) { if (keys) say(told('back', w.deal, w.stage)); return; }
+      var d = delta(cur.current, w.deal, w.stage, to);
+      var n = dealMove(cur.current, id, to, -1, Object.assign({}, w.deal, { age: 0 }));
+      if (keys) refocus.current = { id: id, for: n };
+      bump(d, 1); set(n); if (p.onChange) p.onChange(n);
+      if (keys) say(told('moved', w.deal, to));
+      if (!r || typeof r.then !== 'function') return;
+      pend.current[id] = { to: to, d: d }; setBusy(Object.assign({}, pend.current));
+      function end(ok) {
+        if (!live.current) return; /* smontata nel frattempo (un'altra pipeline): niente più onChange */
+        delete pend.current[id]; setBusy(Object.assign({}, pend.current));
+        if (ok !== false) return;
+        var now = dealStageOf(cur.current, id); if (!now) return;
+        var a = document.activeElement, mine = !a || a === document.body || a.getAttribute('data-deal-id') === id;
+        var m = dealMove(cur.current, id, w.stage, w.index, Object.assign({}, now.deal, { age: w.deal.age }));
+        if (m === cur.current) return;
+        if (mine) refocus.current = { id: id, for: m };
+        bump(delta(cur.current, now.deal, now.stage, w.stage), 1); set(m); if (p.onChange) p.onChange(m);
+        if (mine || keys) say(told('back', w.deal, w.stage));
+      }
+      r.then(end, function () { end(false); });
     }
-    var L = Object.assign({ overline: 'CRM', title: 'Pipeline vendite', open: 'Aperte', weighted: 'Ponderate', filter: 'Filtra', newDeal: 'Nuova trattativa', total: 'Totale' }, p.labels || {});
-    function kindOf(s) { return s.kind || (s.id === 'won' ? 'won' : s.id === 'lost' ? 'lost' : 'open'); }
+    /* un numero che non si conosce non si mostra: con una parte delle trattative (hasMore, count) la somma di quelle caricate sarebbe sbagliata */
+    function partial(s) { return s.hasMore || s.count != null && s.count !== s.deals.length; }
+    function sumOf(s) { return s.total != null ? s.total : partial(s) ? null : s.deals.reduce(function (b, d) { return b + (d.amount || 0); }, 0); }
+    function weightOf(s) { return s.weighted != null ? s.weighted : partial(s) ? null : s.deals.reduce(function (b, d) { return b + (d.amount || 0) * (d.probability || 0) / 100; }, 0); }
+    function add(a, b) { return a == null || b == null ? null : a + b; }
     var openStages = stages.filter(function (s) { return kindOf(s) === 'open'; });
-    var total = openStages.reduce(function (a, s) { return a + s.deals.reduce(function (b, d) { return b + d.amount; }, 0); }, 0);
-    var weighted = openStages.reduce(function (a, s) { return a + s.deals.reduce(function (b, d) { return b + d.amount * (d.probability || 0) / 100; }, 0); }, 0);
-    return h('div', { className: 'zr-board' },
+    var T = p.totals || {};
+    var total = T.open != null ? T.open + adj.current.open : openStages.reduce(function (a, s) { return add(a, sumOf(s)); }, 0);
+    var weighted = T.weighted != null ? T.weighted + adj.current.weighted : openStages.reduce(function (a, s) { return add(a, weightOf(s)); }, 0);
+    var sub = [total != null ? L.open + ' ' + fmtMoney(total, cy) : null, weighted != null ? L.weighted + ' ' + fmtMoney(Math.round(weighted), cy) : null].filter(Boolean).join(' · ');
+    /* più pipeline (piano Team): il menu accanto alle azioni, solo se ce n'è più d'una */
+    var pls = p.pipelines || [], pl = pls.filter(function (x) { return x.id === p.pipelineId; })[0] || pls[0];
+    var plPick = pls.length > 1 ? h('button', { key: 'p', ref: plBtn, type: 'button', className: 'zr-btn zr-btn-secondary zr-btn-sm zr-deal-pipeline', 'aria-haspopup': 'menu', 'aria-expanded': plMenu, 'aria-label': L.pipeline + ': ' + pl.name, onClick: function () { pm[1](!plMenu); } },
+      h('span', null, pl.name), h(Icon, { name: 'chevronDown', size: 16 })) : null;
+    var actions = [plPick, h(Button, { key: 'f', variant: 'secondary', size: 'sm', icon: 'filter', onClick: p.onFilter }, L.filter), h(Button, { key: 'n', size: 'sm', icon: 'plus', onClick: p.onNew }, L.newDeal)];
+    return h('div', { ref: root, className: 'zr-board' },
       h('div', { className: 'zr-board-head zr-board-head-plain' },
-        h(PageHeader, { overline: L.overline, title: p.title || L.title, subtitle: L.open + ' ' + fmtMoney(total, cur) + ' · ' + L.weighted + ' ' + fmtMoney(Math.round(weighted), cur),
-          actions: [h(Button, { key: 'f', variant: 'secondary', size: 'sm', icon: 'filter', onClick: p.onFilter }, L.filter), h(Button, { key: 'n', size: 'sm', icon: 'plus', onClick: p.onNew }, L.newDeal)] })),
+        h(PageHeader, { overline: L.overline, title: p.title || L.title, subtitle: sub || undefined, actions: actions })),
+      plMenu && plPick ? h(Menu, { anchor: plBtn.current, align: 'end', label: L.pipeline, onClose: function () { pm[1](false); },
+        items: pls.map(function (x) { return { label: x.name, checked: x.id === pl.id, onClick: function () { if (x.id !== pl.id && p.onPipeline) p.onPipeline(x.id); } }; }) }) : null,
+      h('span', { className: 'zr-visually-hidden', 'aria-live': 'polite' }, said),
       h('div', { className: 'zr-lanes' }, stages.map(function (s) {
-        var sum = s.deals.reduce(function (a, d) { return a + d.amount; }, 0);
-        return h(KanbanColumn, { key: s.id, title: s.title, count: s.deals.length, isOver: over === s.id && drag, className: kindOf(s) === 'won' ? 'is-won' : undefined,
+        var k = kindOf(s), sum = sumOf(s), wsum = weightOf(s);
+        var more = s.hasMore && p.onMore ? h(Button, { key: 'more', variant: 'ghost', size: 'sm', className: 'zr-col-more', 'data-more': s.id, busy: !!s.loadingMore, onClick: function () { p.onMore(s.id); } }, L.more) : null;
+        return h(KanbanColumn, { key: s.id, 'data-stage': s.id, title: s.title, count: s.count != null ? s.count : s.hasMore ? s.deals.length + '+' : s.deals.length, isOver: over === s.id && drag, className: k === 'won' ? 'is-won' : undefined,
           onDragOver: function (e) { e.preventDefault(); if (over !== s.id) setOver(s.id); },
           onDrop: function (e) { e.preventDefault(); if (drag) move(drag, s.id); setDrag(null); setOver(null); },
-          composer: h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, fmtMoney(sum, cur))) },
-          s.deals.map(function (d) { return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cur, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
-            onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
-            onKeyDown: p.onOpen ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.onOpen(d); } } : undefined,
-            role: p.onOpen ? 'button' : undefined, 'aria-label': p.onOpen ? d.title : undefined })); }));
+          composer: h('div', { className: 'zr-col-sums' },
+            sum != null ? h('div', { className: 'zr-col-sum' }, h('span', null, L.total), h('strong', null, fmtMoney(sum, cy))) : null,
+            k === 'open' && wsum != null ? h('div', { className: cx('zr-col-sum', sum != null && 'is-sub') }, h('span', null, L.stageWeighted), h('strong', null, fmtMoney(Math.round(wsum), cy))) : null,
+            k !== 'open' && p.onSeeAll ? h(Button, { variant: 'ghost', size: 'sm', className: 'zr-col-see', onClick: function () { p.onSeeAll(s.id); } }, L.seeAll) : null) },
+          s.deals.map(function (d) {
+            var acts = (p.onOpen ? [{ label: L.openDeal, onClick: function () { p.onOpen(d); } }, { sep: true }] : []).concat(stages.filter(function (x) { return x.id !== s.id; }).map(function (x) { return { label: textOf(L.moveTo, '{stage}', x.title), onClick: function () { move(d.id, x.id, true); } }; }));
+            var extra = p.dealActions ? p.dealActions(d) || [] : [];
+            if (extra.length) acts = acts.concat([{ sep: true }], extra);
+            /* la scheda non è un role="button": dentro c'è il «⋯», che deve restare raggiungibile; «Apri» sta anche nel menu */
+            return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cy, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
+              draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
+              onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
+              onKeyDown: p.onOpen ? function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onOpen(d); } } : undefined })); }).concat(more ? [more] : []));
       })));
   }
 
@@ -2091,7 +2201,7 @@ import * as React from 'react';
       function key(e) { if (e.key === 'Escape') { e.stopPropagation(); p.onClose(); if (p.anchor && p.anchor.focus) p.anchor.focus(); } }
       var t = setTimeout(function () { document.addEventListener('mousedown', close); }, 0);
       document.addEventListener('keydown', key, true);
-      var first = ref.current && (ref.current.querySelector('[role="menuitem"]:not(:disabled):not([aria-disabled="true"])') || ref.current.querySelector('[role="menuitem"]:not(:disabled)')); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
+      var first = ref.current && (ref.current.querySelector('[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])') || ref.current.querySelector('[role^="menuitem"]:not(:disabled)')); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
       return function () { clearTimeout(t); document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key, true); };
     }, []);
     var items = p.items || [];
@@ -2106,7 +2216,7 @@ import * as React from 'react';
       if (e.key === 'Tab') { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) { e.preventDefault(); if (p.onClose) p.onClose(); p.anchor.focus(); } return; } /* richiesta 93: col pulsante che l'ha aperto il fuoco torna lì; senza, il Tab resta del browser o di chi contiene il menu (un Dialog) */
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(e.key) < 0) return; /* Home e Fine: la prima e l'ultima voce (richiesta 132) */
       e.preventDefault();
-      var list = Array.prototype.slice.call(ref.current.querySelectorAll('[role="menuitem"]:not(:disabled)'));
+      var list = Array.prototype.slice.call(ref.current.querySelectorAll('[role^="menuitem"]:not(:disabled)'));
       var i = list.indexOf(document.activeElement);
       var n = e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus();
     }
@@ -2116,9 +2226,10 @@ import * as React from 'react';
         if (it.sep) return h('div', { key: 'sep' + i, className: 'zr-menu-sep', role: 'separator' });
         /* spenta col perché: resta raggiungibile con le frecce e dice perché non si può, a vista e al lettore (richiesta 83) */
         var why = it.disabled && it.reason, wid = why ? mid + '-r' + i : undefined;
-        var item = h('button', { key: i, type: 'button', role: 'menuitem', className: cx('zr-menu-item', it.danger && 'is-danger', why && 'is-disabled'), disabled: it.disabled && !why, 'aria-disabled': why ? true : undefined, 'aria-describedby': wid,
+        var pick = typeof it.checked === 'boolean'; /* una scelta fra più (la pipeline, la vista): menuitemradio con aria-checked e il segno (richiesta 1) */
+        var item = h('button', { key: i, type: 'button', role: pick ? 'menuitemradio' : 'menuitem', 'aria-checked': pick ? it.checked : undefined, className: cx('zr-menu-item', it.danger && 'is-danger', why && 'is-disabled'), disabled: it.disabled && !why, 'aria-disabled': why ? true : undefined, 'aria-describedby': wid,
           onClick: function () { if (why) return; p.onClose && p.onClose(); back(); if (it.onClick) it.onClick(); } },
-          it.icon ? h(Icon, { name: it.icon, size: 16 }) : null, h('span', { className: 'zr-menu-label' }, it.label), it.hint ? h('kbd', { className: 'zr-kbd' }, it.hint) : null);
+          it.icon ? h(Icon, { name: it.icon, size: 16 }) : pick ? (it.checked ? h(Icon, { name: 'check', size: 16 }) : h('span', { className: 'zr-menu-check', 'aria-hidden': true })) : null, h('span', { className: 'zr-menu-label' }, it.label), it.hint ? h('kbd', { className: 'zr-kbd' }, it.hint) : null);
         return why ? [item, h('p', { key: 'r' + i, id: wid, className: 'zr-menu-reason', 'aria-hidden': true }, it.reason)] : item;
       }));
   }
