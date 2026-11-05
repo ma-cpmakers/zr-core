@@ -5034,8 +5034,8 @@ function ingressoJs(string $file): string
 it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
     $zip = fileDelloZipDiHead();
     // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi, dalla `v3.2.0` (sprint 72 · T1.5) quello di
-    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css.
-    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/AddressField.d.ts'];
+    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css, dalla `v4.8.1` (#3055) il modulo dell'Alert.
+    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/Alert.js', 'resources/js/zeiras/Alert.d.ts', 'resources/js/zeiras/AddressField.d.ts'];
     $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
 
     expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
@@ -5550,12 +5550,14 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.566 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 17.456 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // v4.8.1 (#3055, Decisione 21220): l'Alert nel pezzo degli avvisi, il tetto scende di 110, alla misura più 20.
+    'i pesi: i 110 byte della v4.8.1' => ['pesi', 'Dalla `v4.8.1` è sceso di 110 byte, alla misura più 20: l\'Alert del design system, che la cornice usa solo per l\'avviso della cornice ridotta, arriva col pezzo degli avvisi, dal suo modulo'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
     // v3.9.0 (Decisione 18762 di zr-pm): i testi dei codici della ricerca nel pezzo della ricerca, il tetto scende di 123, alla misura più 20.
     'i pesi: i 123 byte della v3.9.0' => ['pesi', 'Dalla `v3.9.0` è sceso di 123 byte, alla misura più 20: i testi dei codici nella seconda riga di un risultato della ricerca (i ruoli di un membro, l\'esito di un\'opportunità) sono usciti dal JS d\'ingresso, nel pezzo della ricerca'],
     'i pesi: i 404 byte della v3.7.0' => ['pesi', 'Dalla `v3.7.0` è sceso di 404 byte: i testi dei due avvisi della cornice ridotta sono usciti dal JS d\'ingresso, nel pezzo a richiesta degli avvisi'],
-    'i pesi: il settimo' => ['pesi', 'Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi (circa 0,8 KB con gzip)'],
+    'i pesi: il settimo' => ['pesi', 'Il settimo, dalla `v3.7.0`, è il pezzo degli avvisi (circa 0,8 KB con gzip, circa 1,1 KB dalla `v4.8.1`)'],
     'i pesi: i 17 byte della v3.2.3' => ['pesi', 'Dalla `v3.2.3` sono 17 byte in più: un modulo spento non si mostra nel menu Moduli a chi non può attivarlo'],
     'i pesi: i 456 byte della v3.0.0' => ['pesi', 'Dalla `v3.0.0` è sceso di 456 byte: le righe del registro che dicono dove si apre ogni notifica, e la funzione che le legge, sono uscite dal JS d\'ingresso e stanno nel pezzo della campanella'],
     // Patch v2.25.2 (voce #2394): +18 byte, eccezione di zr-pm (Decisione 15823).
@@ -5566,7 +5568,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la ricerca, dalla `v3.7.0` 778 gli avvisi (la misura più 20) e dalla `v3.8.0` 1.201 la tastiera'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).
