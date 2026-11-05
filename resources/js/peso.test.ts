@@ -550,9 +550,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     });
 
     // Sprint 74 · T1.6 (voce 2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
-    // scrive il pezzo della campanella, non il JS d'ingresso.
+    // scrive il pezzo della campanella, non il JS d'ingresso. Dal lotto del 05/11 anche il Calendar del design system usa `weekday`:
+    // nell'ingresso di sempre, che porta tutti i componenti, ci sono le sue volte e nessuna in più.
     it.each(app)('«%s»: la data delle notifiche non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 74 · T1.6)', (_nome, costruita) => {
-        expect(volte(costruita().js, 'weekday')).toBe(0);
+        const tutti = costruita === app[2][1];
+        const delCalendar = tutti ? volte(readFileSync(delRepo('resources/js/zeiras/componenti.js'), 'utf8'), 'weekday') : 0;
+
+        expect(delCalendar > 0).toBe(tutti);
+        expect(volte(costruita().js, 'weekday')).toBe(delCalendar);
         expect(costruita().pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA)).map((pezzo) => volte(pezzo, 'weekday'))).toStrictEqual([1]);
     });
 

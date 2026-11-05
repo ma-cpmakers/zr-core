@@ -52,11 +52,12 @@ una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i 
 ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
 zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
 
-**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dieci stili di `tokens.json` — `display-xl`,
-`display`, `heading-1`, `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`, `overline` —, coi nomi
+**Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dodici stili di `tokens.json` — `display-xl`,
+`display`, `heading-1`, `wordmark` (il nome nel logo), `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`,
+`overline`, `micro` (le iniziali dell'avatar piccolo e il numero sulla campanella) —, coi nomi
 del tema di Tailwind 4: per ognuno `--text-<stile>` (la misura), `--text-<stile>--line-height`, `--text-<stile>--font-weight` e,
-nei quattro che la hanno (`display-xl`, `display`, `heading-1`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non
-sta nello stile: i primi tre sono del gruppo Display, col carattere `--font-display`; gli altri sette del gruppo Testo, con
+nei cinque che la hanno (`display-xl`, `display`, `heading-1`, `wordmark`, `overline`), `--text-<stile>--letter-spacing`. Il carattere non
+sta nello stile: i primi quattro sono del gruppo Display, col carattere `--font-display`; gli altri otto del gruppo Testo, con
 `--font-sans`. Con Tailwind 4 un modulo li porta nel tema per nome, con le due famiglie, e scrive `text-heading-1 font-display`
 invece di `text-[26px] leading-[32px] font-[650] tracking-[-0.01em]`:
 
@@ -171,8 +172,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 46,6 KB | 16,5 KB | 63,5 KB | 13,7 KB |
-| la cornice e due componenti per nome | 49,9 KB | 17,6 KB | 63,5 KB | 13,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 124,5 KB | 40,5 KB | 63,5 KB | 13,7 KB |
+| la cornice e due componenti per nome | 50,4 KB | 17,8 KB | 63,5 KB | 13,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 136,9 KB | 44,3 KB | 63,5 KB | 13,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -263,8 +264,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 72,7 KB | 12,2 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 69,5 KB | 11,8 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 85,6 KB | 14,2 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 82,4 KB | 13,7 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -412,6 +413,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.5.0` | la cornice dello staff ha due prop nuove, facoltative (#2989): `ruolo` (già tradotto dal modulo) e `sessioneFinoA` (una data ISO) mettono nel riquadro in fondo alla barra «Superadmin · 2FA» e «Sessione al più tardi fino alle 18:30. Ogni azione va nel registro.»; senza, il riquadro resta com'era | niente: le due prop si passano quando il modulo le ha | niente | S.6 su `staff.html` (`ruolo` e `fino`), a 1280 e a 390 px |
 | `v4.5.1` | la cornice dello staff: il riquadro in fondo alla barra dice il giorno quando la sessione non finisce oggi (#3030), «Sessione al più tardi fino a domani alle 02:00. Ogni azione va nel registro.», o il giorno con la data oltre domani, o per una fine già passata («fino a sabato 7 novembre alle 02:00»); e se il file della lingua non arriva i testi dello staff ripiegano sull'italiano con il resto della cornice, invece di restare nella lingua chiesta (#3031) | niente | niente | S.7 su `staff.html` (`fino` domani alle 02:00) a 1280 e a 390 px, e R.L.3 su `staff.html?lingua=en` e `?lingua=es` |
 | `v4.5.2` | una foto della cornice chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l'accesso, e non cancella quella già ricordata (#3019): zr-core chiede zr-auth `0.12.128`, dove `ConGettone` ricorda il ritorno solo per le navigazioni | `composer update zeiras/zr-core zeiras/zr-auth`: zr-auth sale almeno alla 0.12.128 | niente | dopo un accesso scaduto si torna alla pagina dov'eri, non al file della foto |
+| `v4.6.0` | il design system `ds-1793876570-88a8`, i due lotti del 05/11 (richieste 140-180): componenti nuovi `RadioGroup` (anche `variant="card"` e `layout="grid"`), `ToggleGroup`, `InlineEdit`, `Calendar`; `Checkbox` con aiuto ed errore; token `micro`, `wordmark`, `border-ring`; `Label` `variant="type"`, `FilterBar` `searchLabel` e `searchHint`, `RecordHeader` `statusTone`, `ChartCard` `headingLevel`, `closeLabel` su `Alert`, `Toast`, `Dialog` e `DetailPanel`, `Switch` con `aria-describedby` e `aria-invalid`; l'errore dei campi con `role="alert"`; `Button` che al tocco si prende su 44×44 e va a capo, `Switch` alto 24px | `composer update zeiras/zr-core`, poi la build | niente: nomi, props e default di prima restano; un caso che misura un pulsante, l'interruttore o il titolo di uno stato vuoto vede le misure nuove | le pagine coi pulsanti, gli interruttori, i segmentati e gli stati vuoti, a 1280 e 390 px |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

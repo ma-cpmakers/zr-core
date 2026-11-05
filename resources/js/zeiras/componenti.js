@@ -93,6 +93,8 @@ import * as React from 'react';
   var TONES = ['pine', 'citrus', 'coral', 'sky', 'plum', 'neutral'];
   function Label(p) {
     var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral';
+    /* variant="type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte (richiesta 154) */
+    if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
     return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.className) }, p.children);
   }
 
@@ -420,7 +422,7 @@ import * as React from 'react';
           h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + L.unread : ''),
             'aria-expanded': pop === 'notif' ? 'true' : 'false', 'aria-controls': sid + '-notif',
             onClick: function () { var next = pop === 'notif' ? null : 'notif'; setPop(next); if (next && p.onNotificationsOpen) p.onNotificationsOpen(); } },
-            h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: 'zr-bell-count', 'aria-hidden': 'true' }, unreadText) : null),
+            h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: cx('zr-bell-count', unreadText.length > 2 && 'is-wide'), 'aria-hidden': 'true' }, unreadText) : null),
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
             onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user, src: p.userPhoto })),
           notifPanel,
@@ -955,7 +957,7 @@ import * as React from 'react';
     return h('div', { className: cx('zr-field', p.error && 'is-error', p.className) },
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       control,
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
@@ -1013,7 +1015,7 @@ import * as React from 'react';
           }),
           !list.length ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null,
           p.attribution !== false ? h('li', { className: 'zr-address-attr', role: 'presentation', 'aria-hidden': true }, L.attribution) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : h('p', { id: desc, className: cx('zr-field-msg', place && 'zr-address-ok') }, status || p.hint || L.hint));
   }
 
@@ -1078,25 +1080,32 @@ import * as React from 'react';
           h('span', { className: 'zr-mention-plus', 'aria-hidden': true }, h(Icon, { name: 'plus', size: 16 })),
           h('span', { className: 'zr-mention-opt-text' }, h('strong', null, (p.createLabel || L.create).replace('{q}', text.slice(at + 1).trim())))) : null,
         !count ? h('li', { className: 'zr-mention-empty', role: 'option', 'aria-disabled': true }, L.empty) : null) : null),
-      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
         : p.hint !== false ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint || L.hint) : null);
   }
 
   function Checkbox(p) {
-    var rest = omit(p, ['label', 'className', 'indeterminate']);
+    var id = useId('chk');
+    var rest = omit(p, ['label', 'className', 'indeterminate', 'hint', 'error']);
     var ref = useRef(null);
     useEffect(function () { if (ref.current) ref.current.indeterminate = !!p.indeterminate; });
-    return h('label', { className: cx('zr-check', p.className) },
-      h('input', Object.assign({ type: 'checkbox', ref: ref }, rest)),
+    var desc = p.error || p.hint ? id + '-d' : undefined; /* aiuto ed errore sotto, come Field (richiesta 144) */
+    var wrap = 'hint' in p || 'error' in p; /* dalle props passate, non dal valore: l'errore che sparisce non rimonta la casella */
+    var box = h('label', { className: cx('zr-check', p.error && 'is-error', !wrap && p.className) },
+      h('input', Object.assign({ type: 'checkbox', ref: ref, 'aria-describedby': desc, 'aria-invalid': p.error ? true : undefined }, rest)),
       h('span', { className: 'zr-check-box', 'aria-hidden': true }, h(Icon, { name: p.indeterminate ? 'close' : 'check', size: 14 })),
       p.label ? h('span', null, p.label) : null);
+    if (!wrap) return box;
+    return h('div', { className: cx('zr-check-field', p.className) }, box,
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
   function Switch(p) {
     var ctrl = p.checked !== undefined;
     var st = useState(!!p.defaultChecked), on = ctrl ? p.checked : st[0];
     var off = p['aria-disabled'] === true || p['aria-disabled'] === 'true'; /* spento ma raggiungibile: tiene il fuoco */
-    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, className: cx('zr-switch', on && 'is-on', p.className),
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, 'aria-describedby': p['aria-describedby'], 'aria-invalid': p['aria-invalid'], className: cx('zr-switch', on && 'is-on', p.className),
       onClick: function () { if (off) return; if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } },
       h('span', { className: 'zr-switch-track', 'aria-hidden': true }, h('span', { className: 'zr-switch-thumb' })),
       p.label ? h('span', { className: 'zr-switch-label' }, p.label) : null);
@@ -1114,6 +1123,241 @@ import * as React from 'react';
       }));
   }
 
+  /* ---------- RadioGroup: una scelta fra poche, tutte in vista (richiesta 89) ---------- */
+  function RadioGroup(p) {
+    var id = useId('rad');
+    var opts = p.options || [];
+    var ctrl = p.value !== undefined;
+    var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    var card = p.variant === 'card'; /* ogni scelta un riquadro col titolo e la descrizione, anche in griglia (richiesta 177) */
+    return h('fieldset', { id: p.id, className: cx('zr-radio-group', p.orientation === 'horizontal' && !card && 'is-horizontal', card && 'is-card', card && p.layout === 'grid' && 'is-grid', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
+      p.label ? h('legend', { className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
+      h('div', { className: 'zr-radio-list' }, opts.map(function (o, i) {
+        var obj = typeof o === 'string' ? { value: o, label: o } : o;
+        var hid = obj.hint ? id + '-h' + i : undefined, lid = id + '-l' + i; /* il nome è solo l'etichetta: l'aiuto, che sta nella stessa label, è la descrizione */
+        return h('label', { key: obj.value, className: cx(card ? 'zr-radio-card' : 'zr-radio', obj.disabled && 'is-disabled') },
+          h('input', { type: 'radio', name: p.name || id, value: obj.value, checked: obj.value === val, disabled: obj.disabled, required: p.required, 'aria-invalid': p.error ? true : undefined, 'aria-labelledby': lid, 'aria-describedby': cx(hid, desc) || undefined,
+            onChange: function () { if (!ctrl) st[1](obj.value); if (p.onChange) p.onChange(obj.value); } }),
+          card ? null : h('span', { className: 'zr-radio-dot', 'aria-hidden': true }),
+          card ? h('span', { id: lid, className: 'zr-radio-card-title' }, obj.label) : h('span', { className: 'zr-radio-text' }, h('span', { id: lid }, obj.label), obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null),
+          card && obj.hint ? h('span', { id: hid, className: 'zr-radio-hint' }, obj.hint) : null);
+      })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- ToggleGroup: scelte a pulsanti con lo stato premuto, una o più (richiesta 141) ---------- */
+  function ToggleGroup(p) {
+    var id = useId('tgl');
+    var opts = p.options || [];
+    var multi = !!p.multiple;
+    var ctrl = p.value !== undefined;
+    var st = useState(p.defaultValue !== undefined ? p.defaultValue : (multi ? [] : null)), val = ctrl ? p.value : st[0];
+    function isOn(v) { return multi ? (val || []).indexOf(v) >= 0 : val === v; }
+    function pick(v) {
+      var next;
+      if (multi) { var cur = val || []; next = cur.indexOf(v) >= 0 ? cur.filter(function (x) { return x !== v; }) : cur.concat([v]); }
+      else if (val === v) { if (!p.allowEmpty) return; next = null; }
+      else next = v;
+      if (!ctrl) st[1](next);
+      if (p.onChange) p.onChange(next);
+    }
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    return h('div', { id: p.id, className: cx('zr-toggle-field', p.className) },
+      p.label ? h('span', { id: id + '-l', className: 'zr-field-label' }, p.label) : null,
+      h('div', { role: 'group', className: cx('zr-toggle-group', multi && 'is-multi', p.size === 'sm' && 'is-sm', p.layout === 'grid' && 'is-grid', p.error && 'is-error'),
+        'aria-labelledby': p.label ? id + '-l' : undefined, 'aria-label': p.label ? undefined : p['aria-label'], 'aria-describedby': desc },
+        opts.map(function (o) {
+          var obj = typeof o === 'string' ? { value: o, label: o } : o;
+          var on = isOn(obj.value);
+          return h('button', { key: obj.value, type: 'button', className: cx('zr-toggle', on && 'is-on'), 'aria-pressed': on, disabled: p.disabled || obj.disabled, 'aria-label': obj['aria-label'], 'aria-describedby': desc, onClick: function () { pick(obj.value); } },
+            multi && on && !obj.icon ? h(Icon, { name: 'check', size: 16 }) : obj.icon ? h(Icon, { name: obj.icon, size: 16 }) : null,
+            h('span', null, obj.label),
+            obj.count != null ? h('span', { className: 'zr-toggle-count' }, obj.count) : null);
+        })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
+  /* ---------- InlineEdit: un valore che si modifica dove sta — clic, campo, «Salvato» o l'errore (richiesta 142) ---------- */
+  var INLINE_EDIT_LABELS = { edit: 'Modifica', empty: 'Aggiungi', saving: 'Salvataggio…', saved: 'Salvato', error: 'Non salvato. Riprova.', required: 'Il campo non può restare vuoto', keys: 'Invio salva, Esc annulla', keysMultiline: 'Ctrl+Invio salva, Esc annulla' };
+  function InlineEdit(p) {
+    var id = useId('ied');
+    var L = Object.assign({}, INLINE_EDIT_LABELS, p.labels || {});
+    var value = p.value == null ? '' : String(p.value);
+    var ctrl = p.editing !== undefined; /* editing controllato da chi usa il componente («Rinomina» in un menu), con onEditingChange */
+    var es = useState(ctrl ? !!p.editing : !!p.defaultEditing), editing = ctrl ? !!p.editing : es[0];
+    var ds = useState(value), draft = ds[0];
+    var ss = useState('idle'), stato = ss[0]; /* idle · saving · saved · error */
+    var ms = useState(''), msg = ms[0];
+    var mode = useRef(editing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false);
+    useEffect(function () { alive.current = true; return function () { alive.current = false; clearTimeout(timer.current); }; }, []);
+    /* aperto o chiuso da fuori: si riparte dal valore, e chiuso da fuori non salva */
+    var pe = useState(editing);
+    if (pe[0] !== editing) {
+      pe[1](editing);
+      if (editing && mode.current === 'view') { mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); }
+      else if (!editing && mode.current === 'edit') { mode.current = 'view'; ss[1]('idle'); ms[1](''); }
+    }
+    useEffect(function () {
+      var first = !mounted.current; mounted.current = true;
+      if (editing && fieldRef.current && (!first || p.autoFocus)) { fieldRef.current.focus(); fieldRef.current.select(); }
+      if (!editing && back.current) { back.current = false; if (viewRef.current) viewRef.current.focus(); }
+    }, [editing]);
+    function setEditing(v) { if (!ctrl) es[1](v); if (p.onEditingChange) p.onEditingChange(v); }
+    function close(focusBack) { mode.current = 'view'; back.current = focusBack; setEditing(false); }
+    function start() { if (p.disabled) return; clearTimeout(timer.current); mode.current = 'edit'; ds[1](value); ss[1]('idle'); ms[1](''); setEditing(true); }
+    function fail(m) { mode.current = 'edit'; ss[1]('error'); ms[1](m || L.error); }
+    function save(focusBack) {
+      if (mode.current !== 'edit') return;
+      var next = p.trim === false ? draft : draft.trim();
+      if (next === value || (p.cancelOnEmpty && !next.trim())) { ss[1]('idle'); close(focusBack); return; } /* cancelOnEmpty: il vuoto annulla e torna il valore di prima */
+      if (p.required && !next) { fail(L.required); return; }
+      var bad = p.validate ? p.validate(next) : null;
+      if (bad) { fail(bad); return; }
+      mode.current = 'saving'; ss[1]('saving'); ms[1]('');
+      Promise.resolve().then(function () { return p.onSave ? p.onSave(next) : undefined; }).then(function () {
+        if (!alive.current) return;
+        close(focusBack && document.activeElement === fieldRef.current); ss[1]('saved'); /* il fuoco torna solo se è ancora nel campo */
+        timer.current = setTimeout(function () { if (alive.current) ss[1](function (s) { return s === 'saved' ? 'idle' : s; }); }, 2500);
+      }, function (e) { if (alive.current) fail(e && e.message); });
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (mode.current !== 'saving') { ss[1]('idle'); close(true); } }
+      else if (e.key === 'Enter' && (!p.multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); save(true); }
+    }
+    var size = p.size === 'title' ? 'title' : 'body';
+    var errId = id + '-e', keysId = id + '-k';
+    var body;
+    if (editing) {
+      var attrs = { ref: fieldRef, id: id, value: draft, className: 'zr-inline-edit-field', 'aria-label': p.label, 'aria-invalid': stato === 'error' || undefined, 'aria-busy': stato === 'saving' || undefined,
+        'aria-describedby': cx(stato === 'error' && errId, keysId), readOnly: stato === 'saving', maxLength: p.maxLength, placeholder: p.placeholder,
+        onChange: function (e) { ds[1](e.target.value); if (stato === 'error') { ss[1]('idle'); ms[1](''); } }, onKeyDown: onKey, onBlur: function () { save(false); } };
+      body = p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: 'text' }, attrs));
+    } else {
+      body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
+        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + value : '') },
+        h('span', { className: 'zr-inline-edit-text' }, value || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
+    }
+    return h('div', { className: cx('zr-inline-edit', 'is-' + size, editing && 'is-editing', stato === 'error' && 'is-error', p.multiline && 'is-multiline', p.className) },
+      body,
+      editing && stato === 'error' ? h('p', { id: errId, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), msg) : null,
+      editing ? h('p', { id: keysId, className: 'zr-inline-edit-keys' }, p.multiline ? L.keysMultiline : L.keys) : null,
+      h('p', { className: cx('zr-inline-edit-status', stato === 'saved' && 'is-saved'), role: 'status' },
+        stato === 'saving' ? L.saving : stato === 'saved' ? [h(Icon, { key: 'i', name: 'check', size: 14 }), h('span', { key: 't' }, L.saved)] : null));
+  }
+
+  /* ---------- Calendar: scegliere un giorno, il mese con gli eventi, la settimana al telefono (richiesta 140) ---------- */
+  var CALENDAR_LABELS = { prevMonth: 'Mese precedente', nextMonth: 'Mese successivo', prevWeek: 'Settimana precedente', nextWeek: 'Settimana successiva', marked: 'disponibile',
+    events: function (n) { return n === 1 ? '1 evento' : n + ' eventi'; }, more: function (n) { return '+' + n + ' altri'; } };
+  var DAY_MS = 86400000;
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoOfT(t) { var d = new Date(t); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+  function tOfIso(iso) { var a = String(iso).split('-'); return Date.UTC(+a[0], +a[1] - 1, +(a[2] || 1)); }
+  function addMonths(iso, n) {
+    var a = iso.split('-'), y = +a[0], m = +a[1] - 1 + n, d = +a[2];
+    var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return isoOfT(Date.UTC(y, m, Math.min(d, last)));
+  }
+  function localTodayIso() { var n = new Date(); return n.getFullYear() + '-' + pad2(n.getMonth() + 1) + '-' + pad2(n.getDate()); }
+  function Calendar(p) {
+    var id = useId('cal');
+    var loc = p.locale || 'it-IT';
+    var L = Object.assign({}, CALENDAR_LABELS, p.labels || {});
+    var variant = p.variant === 'month' || p.variant === 'week' ? p.variant : 'picker';
+    var today = p.today || localTodayIso();
+    var ctrl = p.value !== undefined;
+    var vs = useState(p.defaultValue || null), sel = ctrl ? p.value : vs[0];
+    var cs = useState(sel || (p.defaultMonth ? p.defaultMonth + '-01' : today)), cursor = cs[0];
+    var moveFocus = useRef(false), rootRef = useRef(null);
+    useEffect(function () { if (ctrl && p.value) cs[1](p.value); }, [p.value]);
+    var wk = p.weekStartsOn != null ? p.weekStartsOn : 1;
+    var dow = function (t) { return (new Date(t).getUTCDay() - wk + 7) % 7; };
+    var ct = tOfIso(cursor);
+    var from, n;
+    if (variant === 'week') { from = ct - dow(ct) * DAY_MS; n = 7; }
+    else {
+      var first = tOfIso(cursor.slice(0, 7) + '-01');
+      var days = new Date(Date.UTC(new Date(first).getUTCFullYear(), new Date(first).getUTCMonth() + 1, 0)).getUTCDate();
+      from = first - dow(first) * DAY_MS;
+      n = variant === 'picker' ? 42 : Math.ceil((dow(first) + days) / 7) * 7;
+    }
+    var fromIso = isoOfT(from), toIso = isoOfT(from + (n - 1) * DAY_MS);
+    var month = cursor.slice(0, 7);
+    useEffect(function () { if (p.onRangeChange) p.onRangeChange({ from: fromIso, to: toIso }); }, [fromIso, toIso]);
+    useEffect(function () {
+      if (!moveFocus.current || !rootRef.current) return;
+      moveFocus.current = false;
+      var b = rootRef.current.querySelector('[data-iso="' + cursor + '"]'); if (b) b.focus();
+    }, [cursor]);
+    var fmt = function (o) { return new Intl.DateTimeFormat(loc, Object.assign({ timeZone: 'UTC' }, o)); };
+    var fLong = fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), fWdS = fmt({ weekday: 'short' }), fWdL = fmt({ weekday: 'long' });
+    var titleText = fmt({ month: 'long', year: 'numeric' }).format(ct);
+    titleText = titleText.charAt(0).toLocaleUpperCase(loc) + titleText.slice(1);
+    var marked = p.marked || [];
+    var evs = {}; (p.events || []).forEach(function (e) { (evs[e.date] = evs[e.date] || []).push(e); });
+    function off(iso) { return (p.min && iso < p.min) || (p.max && iso > p.max) || (p.isDisabled ? !!p.isDisabled(iso) : false); }
+    function choose(iso) { if (off(iso)) return; moveFocus.current = iso !== cursor; cs[1](iso); if (!ctrl) vs[1](iso); if (p.onChange) p.onChange(iso); }
+    function go(iso, focus) { if (iso === cursor) return; moveFocus.current = !!focus; cs[1](iso); }
+    function shift(k) { go(variant === 'week' ? isoOfT(ct + k * 7 * DAY_MS) : addMonths(cursor, k), false); }
+    function onKey(e) {
+      var k = e.key, t = null;
+      if (k === 'ArrowLeft') t = isoOfT(ct - DAY_MS);
+      else if (k === 'ArrowRight') t = isoOfT(ct + DAY_MS);
+      else if (k === 'ArrowUp' && variant !== 'week') t = isoOfT(ct - 7 * DAY_MS);
+      else if (k === 'ArrowDown' && variant !== 'week') t = isoOfT(ct + 7 * DAY_MS);
+      else if (k === 'Home') t = isoOfT(ct - dow(ct) * DAY_MS);
+      else if (k === 'End') t = isoOfT(ct + (6 - dow(ct)) * DAY_MS);
+      else if (k === 'PageUp') t = variant === 'week' ? isoOfT(ct - 7 * DAY_MS) : addMonths(cursor, e.shiftKey ? -12 : -1);
+      else if (k === 'PageDown') t = variant === 'week' ? isoOfT(ct + 7 * DAY_MS) : addMonths(cursor, e.shiftKey ? 12 : 1);
+      if (t) { e.preventDefault(); go(t, true); }
+    }
+    function dayButton(iso, t, extra) {
+      var dis = off(iso), list = evs[iso] || [], isMarked = marked.indexOf(iso) >= 0;
+      var name = fLong.format(t) + (isMarked ? ', ' + L.marked : '') + (list.length ? ', ' + L.events(list.length) : '');
+      return h('button', { type: 'button', 'data-iso': iso, tabIndex: iso === cursor ? 0 : -1, className: cx('zr-cal-day', iso === sel && 'is-selected', iso === today && 'is-today', dis && 'is-disabled', isMarked && 'is-marked'),
+        'aria-label': name, 'aria-current': iso === today ? 'date' : undefined, 'aria-disabled': dis ? 'true' : undefined, 'aria-pressed': variant === 'week' ? iso === sel : undefined,
+        onFocus: function () { if (iso !== cursor && (variant === 'week' || iso.slice(0, 7) === month)) cs[1](iso); }, /* le frecce ripartono dal giorno col fuoco; un giorno di un altro mese cambia mese solo al clic */ onClick: function () { choose(iso); } }, extra, h('span', { className: 'zr-cal-num' }, new Date(t).getUTCDate()), isMarked ? h('span', { className: 'zr-cal-dot', 'aria-hidden': true }) : null);
+    }
+    var titleId = id + '-t';
+    var head = h('div', { className: 'zr-cal-head' },
+      h('div', { id: titleId, className: 'zr-cal-title', 'aria-live': 'polite' }, titleText),
+      h('div', { className: 'zr-cal-nav' },
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', 'aria-label': variant === 'week' ? L.prevWeek : L.prevMonth, onClick: function () { shift(-1); } }),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'chevron', 'aria-label': variant === 'week' ? L.nextWeek : L.nextMonth, onClick: function () { shift(1); } })));
+    var body;
+    if (variant === 'week') {
+      body = h('div', { role: 'group', 'aria-labelledby': titleId, className: 'zr-cal-week', onKeyDown: onKey },
+        Array.from({ length: 7 }, function (_, i) {
+          var t = from + i * DAY_MS, iso = isoOfT(t);
+          return h('div', { key: iso, className: 'zr-cal-week-cell' }, dayButton(iso, t, h('span', { className: 'zr-cal-wd', 'aria-hidden': true }, fWdS.format(t))));
+        }));
+    } else {
+      var rows = [];
+      for (var r = 0; r < n / 7; r++) {
+        rows.push(h('tr', { key: r }, Array.from({ length: 7 }, function (_, i) {
+          var t = from + (r * 7 + i) * DAY_MS, iso = isoOfT(t), out = iso.slice(0, 7) !== month, list = evs[iso] || [];
+          var max = p.maxEvents || 3, shown = list.length > max ? list.slice(0, max - 1) : list;
+          return h('td', { key: iso, role: 'gridcell', 'aria-selected': iso === sel, className: cx('zr-cal-cell', out && 'is-outside') },
+            dayButton(iso, t),
+            variant === 'month' && list.length ? h('ul', { className: 'zr-cal-evs' },
+              shown.map(function (e, k) {
+                var tone = TONES.indexOf(e.tone) >= 0 ? e.tone : 'pine';
+                return h('li', { key: e.id || k }, p.onEventClick
+                  ? h('button', { type: 'button', tabIndex: iso === cursor ? 0 : -1, className: cx('zr-cal-ev', 'zr-cal-ev-' + tone), onClick: function () { p.onEventClick(e); } }, e.label)
+                  : h('span', { className: cx('zr-cal-ev', 'zr-cal-ev-' + tone) }, e.label));
+              }),
+              list.length > shown.length ? h('li', { key: 'more' }, h('button', { type: 'button', tabIndex: iso === cursor ? 0 : -1, className: 'zr-cal-more', onClick: function () { if (p.onMore) p.onMore(iso); else choose(iso); } }, L.more(list.length - shown.length))) : null) : null);
+        })));
+      }
+      body = h('table', { role: 'grid', 'aria-labelledby': titleId, className: 'zr-cal-grid', onKeyDown: onKey },
+        h('thead', null, h('tr', null, Array.from({ length: 7 }, function (_, i) { var t = from + i * DAY_MS; return h('th', { key: i, scope: 'col', abbr: fWdL.format(t) }, fWdS.format(t)); }))),
+        h('tbody', null, rows));
+    }
+    return h('div', { ref: rootRef, className: cx('zr-cal', 'is-' + variant, p.className) }, head, body);
+  }
+
   /* ---------- Feedback ---------- */
   var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };
   function Alert(p) {
@@ -1122,7 +1366,7 @@ import * as React from 'react';
       h(Icon, { name: TONE_ICON[tone], size: 20 }),
       h('div', { className: 'zr-alert-body' }, p.title ? h('strong', null, p.title) : null, p.children ? h('div', null, p.children) : null),
       p.action || null,
-      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': 'Chiudi', onClick: p.onClose }) : null);
+      p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null);
   }
 
   function Toast(p) {
@@ -1131,7 +1375,7 @@ import * as React from 'react';
       h(Icon, { name: TONE_ICON[tone], size: 18 }),
       h('span', { className: 'zr-toast-text' }, p.children),
       p.actionLabel ? h('button', { type: 'button', className: 'zr-toast-action', onClick: p.onAction }, p.actionLabel) : null,
-      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': 'Chiudi', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
+      p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
   }
 
   function Dialog(p) {
@@ -1144,7 +1388,7 @@ import * as React from 'react';
     if (!p.open) return null;
     return h('div', { className: cx('zr-scrim', p.inline && 'is-inline'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
       h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
-        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': 'Chiudi', onClick: p.onClose }) : null),
+        h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose }) : null),
         p.description ? h('p', { className: 'zr-dialog-desc' }, p.description) : null,
         h('div', { className: 'zr-dialog-body' }, p.children),
         p.footer ? h('footer', { className: 'zr-dialog-foot' }, p.footer) : null));
@@ -1227,9 +1471,12 @@ import * as React from 'react';
   }
 
   function FilterBar(p) {
+    var id = useId('flt');
+    /* il nome del campo e la frase d'aiuto legata li dà il modulo, nella sua lingua (richieste 173 e 19) */
+    var search = p.search !== false ? h('label', { className: 'zr-input has-icon zr-filter-search' }, h(Icon, { name: 'search', size: 16 }),
+      h('input', { type: 'search', placeholder: p.searchPlaceholder || 'Cerca…', 'aria-label': p.searchLabel || 'Cerca', 'aria-describedby': p.searchHint ? id + '-h' : undefined, value: p.query, onChange: p.onQuery ? function (e) { p.onQuery(e.target.value); } : undefined })) : null;
     return h('div', { className: 'zr-filterbar' },
-      p.search !== false ? h('label', { className: 'zr-input has-icon zr-filter-search' }, h(Icon, { name: 'search', size: 16 }),
-        h('input', { type: 'search', placeholder: p.searchPlaceholder || 'Cerca…', 'aria-label': 'Cerca', value: p.query, onChange: p.onQuery ? function (e) { p.onQuery(e.target.value); } : undefined })) : null,
+      search && p.searchHint ? h('div', { className: 'zr-filter-search-wrap' }, search, h('p', { id: id + '-h', className: 'zr-filter-hint' }, p.searchHint)) : search,
       p.children,
       p.actions ? h('div', { className: 'zr-filter-actions' }, p.actions) : null);
   }
@@ -1387,7 +1634,7 @@ import * as React from 'react';
 
   function ChartCard(p) {
     return h('section', { className: cx('zr-panel', p.className) },
-      h('header', { className: 'zr-panel-head' }, h('div', null, h('h2', null, p.title), p.subtitle ? h('p', null, p.subtitle) : null), p.actions ? h('div', { className: 'zr-panel-actions' }, p.actions) : null),
+      h('header', { className: 'zr-panel-head' }, h('div', null, h(p.headingLevel === 3 ? 'h3' : p.headingLevel === 4 ? 'h4' : 'h2', null, p.title), p.subtitle ? h('p', null, p.subtitle) : null), p.actions ? h('div', { className: 'zr-panel-actions' }, p.actions) : null),
       h('div', { className: 'zr-panel-body' }, p.children));
   }
 
@@ -1399,7 +1646,7 @@ import * as React from 'react';
     return h('header', { className: 'zr-record' },
       h(Avatar, { name: p.name, size: 'lg' }),
       h('div', { className: 'zr-record-main' },
-        h('div', { className: 'zr-record-title' }, h('h1', null, p.name), p.status ? h(StatusLabel, { status: p.status }) : null),
+        h('div', { className: 'zr-record-title' }, h('h1', null, p.name), p.status ? h(StatusLabel, { status: p.status, tone: p.statusTone }) : null), /* statusTone come tone nelle liste (richiesta 174) */
         p.subtitle ? h('p', null, p.subtitle) : null,
         p.meta ? h('ul', { className: 'zr-record-meta' }, p.meta.map(function (m) { return h('li', { key: m.text }, h(Icon, { name: m.icon, size: 14 }), m.href ? h('a', { href: m.href }, m.text) : m.text); })) : null),
       p.actions ? h('div', { className: 'zr-page-actions' }, p.actions) : null);
@@ -1791,7 +2038,7 @@ import * as React from 'react';
       h('header', { className: 'zr-detail-head' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || 'Indietro'),
         h('div', { className: 'zr-detail-ctx' }, p.head),
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': 'Chiudi', onClick: p.onClose })),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || 'Chiudi', onClick: p.onClose })),
       h('div', { className: 'zr-detail-body' }, p.children),
       p.foot ? h('footer', { className: 'zr-detail-foot' }, p.foot) : null);
   }
@@ -1830,6 +2077,12 @@ export {
   AddressField,
   ADDRESS_LABELS,
   Checkbox,
+  RadioGroup,
+  ToggleGroup,
+  InlineEdit,
+  INLINE_EDIT_LABELS,
+  Calendar,
+  CALENDAR_LABELS,
   Switch,
   Tabs,
   Alert,

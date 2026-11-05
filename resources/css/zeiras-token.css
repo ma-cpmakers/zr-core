@@ -74,6 +74,7 @@
     --z-dialog: 60;
     --z-toast: 80;
     --border-strong: 1.5px;
+    --border-ring: 2px;
     --font-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
     --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --text-display-xl: 56px;
@@ -88,6 +89,10 @@
     --text-heading-1--line-height: 32px;
     --text-heading-1--font-weight: 650;
     --text-heading-1--letter-spacing: -0.01em;
+    --text-wordmark: 24px;
+    --text-wordmark--line-height: 28px;
+    --text-wordmark--font-weight: 750;
+    --text-wordmark--letter-spacing: -0.02em;
     --text-heading-2: 18px;
     --text-heading-2--line-height: 26px;
     --text-heading-2--font-weight: 600;
@@ -110,4 +115,7 @@
     --text-overline--line-height: 16px;
     --text-overline--font-weight: 600;
     --text-overline--letter-spacing: 0.06em;
+    --text-micro: 10px;
+    --text-micro--line-height: 16px;
+    --text-micro--font-weight: 700;
 }
