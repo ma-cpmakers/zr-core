@@ -9,7 +9,6 @@ import { CorniceDelCliente, type CorniceDelClienteProps, type DatiDelCliente } f
 import { CorniceDelloStaff } from './staff';
 import { testi } from './lingue';
 import { nelWorkspace, registro } from './registro';
-import * as rimedi from './rimedi';
 import clienteInglese from '../lingue/cliente/en.json';
 import clienteSpagnolo from '../lingue/cliente/es.json';
 import clienteItaliano from '../lingue/cliente/it.json';
@@ -193,19 +192,14 @@ describe('la cornice del cliente', () => {
         expect(tutti('.zr-notif li')).toEqual([]);
     });
 
-    it('T2.4 la cornice ha la classe che nasconde il campo della ricerca, e scrivere nel campo non chiama niente', async () => {
+    // Dalla `v4.18.0` la ricerca non c'è: `search={false}` dell'`AppShell` (richiesta 201, lotto 0518), senza la classe e il CSS di zr-core.
+    it('T2.4 nella barra in alto non c\'è il campo della ricerca, né una classe della cornice sulla `zr-shell`; campanella e profilo ci sono', async () => {
         await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci} />);
 
-        expect(uno('.zr-shell')?.classList.contains('zr-cornice-del-cliente')).toBe(true);
-        const campo = uno('.zr-top .zr-search input') as HTMLInputElement;
-        await act(async () => {
-            campo.value = 'fattura';
-            campo.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-        expect(uno('.zr-search-panel [role="status"] .zr-visually-hidden')).toBeNull();
+        expect([uno('.zr-top .zr-search'), uno('.zr-shell')?.className, tutti('.zr-top-actions > .zr-bell, .zr-top-actions > .zr-avatar-btn').length]).toStrictEqual([null, 'zr-shell', 2]);
     });
 
-    it('T2.4 Ctrl+K non apre la ricerca nascosta, che al telefono nasconderebbe campanella e profilo; smontata la cornice del cliente, Ctrl+K torna a chi c\'è', async () => {
+    it('T2.4 Ctrl+K non apre una ricerca, che non c\'è; smontata la cornice del cliente, Ctrl+K torna a chi c\'è', async () => {
         const ctrlK = () => act(async () => void document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true })));
         await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci} />);
         await ctrlK();
@@ -225,12 +219,10 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-search.is-open')).toBeNull();
     });
 
-    it('T2.4 il CSS del cliente nasconde il campo della ricerca solo dentro la cornice del cliente', () => {
+    it('T2.4 il CSS del cliente è vuoto: resta perché chi lo importa non si rompa, fino alla prossima versione maggiore (v4.18.0)', () => {
         const foglio = readFileSync(resolve(process.cwd(), 'resources/css/cliente.css'), 'utf8');
-        const regole = [...foglio.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selettore, dichiarazioni]) => [selettore!.trim(), dichiarazioni!.replace(/\s+/g, ' ').trim()]);
 
-        // Dalla v4.13.1 anche campanella e profilo a destra: senza il campo, che spingeva, scivolavano a sinistra (CL.4 della UAT).
-        expect(regole).toEqual([['.zr-cornice-del-cliente .zr-top .zr-search', 'display: none;'], ['.zr-cornice-del-cliente .zr-top-actions', 'margin-left: auto;']]);
+        expect(foglio.replace(/\/\*[\s\S]*?\*\//g, '').trim()).toBe('');
     });
 
     it.each([
@@ -291,24 +283,21 @@ describe('la cornice del cliente', () => {
 });
 
 describe('tastiera e salto della cornice del cliente', () => {
-    it('«Salta al contenuto» sta prima della cornice e porta il fuoco al contenuto della pagina', async () => {
+    it('«Salta al contenuto» è il link dell\'`AppShell`, nella lingua della cornice, e porta il fuoco al contenuto della pagina', async () => {
         await mostra(<CorniceDelCliente dati={{ ...dati, lingua: 'es' }} nav={nav} onLogout={esci}><p>La pagina</p></CorniceDelCliente>);
 
-        const salto = contenitore.firstElementChild?.querySelector('button');
-        expect(salto?.textContent).toBe(testi('es').skipToContent);
-        expect(contenitore.firstElementChild?.nextElementSibling?.classList.contains('zr-shell')).toBe(true);
+        const salto = uno('.zr-shell > a.zr-skip') as HTMLElement;
+        expect([salto?.textContent, contenitore.firstElementChild?.classList.contains('zr-shell')]).toStrictEqual([testi('es').skipToContent, true]);
 
-        await clic(salto!);
+        await clic(salto);
         expect(document.activeElement).toBe(uno('main.zr-main'));
     });
 
-    it('i rimedi di tastiera arrivano come per la Cornice: con la naviga del modulo e il nome dei risultati nella sua lingua', async () => {
-        const via = vi.spyOn(rimedi, 'via');
+    it('i rimedi di tastiera arrivano come per la Cornice, e i clic sulla barra passano dalla `naviga` del modulo', async () => {
         const naviga = vi.fn();
         await mostra(<CorniceDelCliente dati={{ ...dati, lingua: 'en' }} nav={nav} naviga={naviga} onLogout={esci} />);
         await act(() => vi.dynamicImportSettled());
 
-        expect(via).toHaveBeenCalledWith(naviga, testi('en').searchResults);
         // Il nome del contenuto e i clic sulla barra laterale sono dell'`AppShell` dalla `v4.17.0` (righe 30, 27 e 98): coi testi e la `naviga` della cornice.
         const voce = document.querySelector<HTMLAnchorElement>('.zr-shell > .zr-side a.zr-nav-item[href]:not([href="#"])')!;
         voce.setAttribute('href', `${location.origin}/uat`);

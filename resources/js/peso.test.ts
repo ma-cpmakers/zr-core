@@ -153,8 +153,13 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * v4.17.0: 18.589, 420 in più (sì di zr-pm-07 del 06/11, Decisione 22019, la misura + 20, senza altra contropartita): il lotto 0517
  * del design system (`navigate`, la zona viva dell'avviso, il contenuto nel giro del Tab, il singolare, `onNotificationsClose`)
  * porta l'ingresso a 18.627; i rimedi delle righe 6, 13, 14, 27, 29, 30 e 98, che l'AppShell ora fa da sé, tolti: 18.569 misurati.
+ *
+ * v4.18.0: 19.136, 547 in più (sì di zr-pm-07 del 06/11, Decisione 22074, la misura + 20): il lotto 0518 del design system (il
+ * salto al contenuto, il caricamento dal tasto, il numero sceso detto, la zona del numero dei risultati e altre dodici righe
+ * nell'AppShell), coi rimedi delle righe 5, 46 e 56 tolti dall'ingresso: 19.116 misurati. La contropartita sta nei pezzi a
+ * richiesta: rimedi, tastiera e ricerca scendono alla loro misura più 20.
  */
-const TETTO_DELL_INGRESSO = 18_589;
+const TETTO_DELL_INGRESSO = 19_136;
 /** I tetti dei file delle lingue a richiesta, con gzip (dalla `v4.4.0`, la misura + 20): 928 e 1.051 byte misurati. */
 const TETTI_DELLE_LINGUE = { en: 948, es: 1_071 };
 /**
@@ -170,8 +175,8 @@ const DELLE_DESTINAZIONI = 'com.zeiras.crm.pipeline.creata';
 const DELLA_RICERCA = '/cornice/ricerca';
 /** Ciò che nel codice costruito c'è solo nel pezzo degli avvisi della cornice ridotta (dalla `v3.7.0`): il titolo inglese di uno dei due. */
 const DEGLI_AVVISI = 'Zeiras is not responding';
-/** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera: il contorno della fermata del pannello della ricerca (dalla `v4.17.0`, quando l'`AppShell` ha il suo `MutationObserver`). */
-const DEI_RIMEDI = 'outline:2px solid var(--focus)';
+/** Ciò che nel codice costruito c'è solo nei rimedi provvisori di tastiera: il gradino del velo di un dialogo sopra il pannello (dalla `v4.18.0`, quando l'`AppShell` dà da sé il contorno della fermata del pannello della ricerca). */
+const DEI_RIMEDI = 'calc(var(--z-dialog) + 2)';
 /** Ciò che nel codice costruito c'è solo nei rimedi della sola tastiera (dalla `v3.8.0`): l'ordine di due fermate del Tab. */
 const DELLA_TASTIERA = 'compareDocumentPosition';
 /** Ciò che nel codice costruito c'è solo nella barra minima di chi non ha i dati della cornice (sprint 68 · T1). */
@@ -624,9 +629,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
     // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
     // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 18.589 byte: il tetto della v4.17.0 (+420, la misura più 20, il lotto 0517 del design system coi rimedi delle righe 6, 13, 14, 27, 29, 30 e 98 tolti: sì di zr-pm del 06/11, Decisione 22019), e prima quello della v4.11.0 (+247, la misura più 20, il design system 1793914149-8632 con «Il mio spazio» nell\'AppShell: sì di zr-pm del 05/11), e prima quello della v4.10.0 (+411, la misura più 20, i lotti 0515 e 0516 del design system: sì di zr-pm del 05/11), e prima quello della v4.9.0 (+55, la misura più 20, il lotto 0514 del design system: sì di zr-pm del 05/11), e prima quello della v4.8.1 (−110, la misura più 20, l\'Alert nel pezzo degli avvisi: voce 3055, Decisione 21220), e prima quello della v4.8.0 (+378, la misura più 20, il lotto 0513 del design system: sì di zr-pm del 05/11), e prima quello della v4.7.0 (+308, la misura più 20, il lotto 0512 del design system: Decisione 21046), e prima quello della v4.4.0 (−693, la misura più 20, inglese e spagnolo fuori dall\'ingresso: Decisione 20618), e prima quello della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 19.136 byte: il tetto della v4.18.0 (+547, la misura più 20, il lotto 0518 del design system coi rimedi delle righe 5, 46 e 56 tolti: Decisione 22074), e prima quello della v4.17.0 (+420, la misura più 20, il lotto 0517 del design system coi rimedi delle righe 6, 13, 14, 27, 29, 30 e 98 tolti: sì di zr-pm del 06/11, Decisione 22019), e prima quello della v4.11.0 (+247, la misura più 20, il design system 1793914149-8632 con «Il mio spazio» nell\'AppShell: sì di zr-pm del 05/11), e prima quello della v4.10.0 (+411, la misura più 20, i lotti 0515 e 0516 del design system: sì di zr-pm del 05/11), e prima quello della v4.9.0 (+55, la misura più 20, il lotto 0514 del design system: sì di zr-pm del 05/11), e prima quello della v4.8.1 (−110, la misura più 20, l\'Alert nel pezzo degli avvisi: voce 3055, Decisione 21220), e prima quello della v4.8.0 (+378, la misura più 20, il lotto 0513 del design system: sì di zr-pm del 05/11), e prima quello della v4.7.0 (+308, la misura più 20, il lotto 0512 del design system: Decisione 21046), e prima quello della v4.4.0 (−693, la misura più 20, inglese e spagnolo fuori dall\'ingresso: Decisione 20618), e prima quello della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
-        expect(TETTO_DELL_INGRESSO).toBe(18_589);
+        expect(TETTO_DELL_INGRESSO).toBe(19_136);
     });
 
     // Sprint 106 · T4.1 (voce 3015): i file delle lingue a richiesta hanno un tetto ciascuno, la misura più 20.
@@ -658,17 +663,17 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
     });
 
-    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 18.589 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 18.169 byte, di 17.922 byte, di 17.511 byte, di 17.456 byte, di 17.566 byte, di 17.188 byte, di 16.880 byte, di 17.573 byte, di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730; sprint 106 · T4.1; voce 3055)', (file) => {
+    it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 19.136 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 18.589 byte, di 18.169 byte, di 17.922 byte, di 17.511 byte, di 17.456 byte, di 17.566 byte, di 17.188 byte, di 16.880 byte, di 17.573 byte, di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730; sprint 106 · T4.1; voce 3055)', (file) => {
         const testo = readFileSync(delRepo(file), 'utf8');
 
         // «32 byte» da soli, non dentro un altro numero.
         expect(volte(testo, '17.478')).toBe(file === 'README.md' ? 1 : 0);
-        expect([volte(testo, '18.589 byte') > 0, volte(testo, '18.169 byte'), volte(testo, '17.922 byte'), volte(testo, '17.511 byte'), volte(testo, '17.456 byte'), volte(testo, '17.566 byte'), volte(testo, '17.188 byte'), volte(testo, '16.880 byte'), volte(testo, '17.573 byte'), volte(testo, '17.213 byte'), volte(testo, '17.336 byte'), volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect([volte(testo, '19.136 byte') > 0, volte(testo, '18.589 byte'), volte(testo, '18.169 byte'), volte(testo, '17.922 byte'), volte(testo, '17.511 byte'), volte(testo, '17.456 byte'), volte(testo, '17.566 byte'), volte(testo, '17.188 byte'), volte(testo, '16.880 byte'), volte(testo, '17.573 byte'), volte(testo, '17.213 byte'), volte(testo, '17.336 byte'), volte(testo, '17.675'), volte(testo, '17.650'), volte(testo, '17.575'), volte(testo, '17.495'), volte(testo, '17.490'), volte(testo, '17.934'), volte(testo, '17.918'), volte(testo, '17.911'), volte(testo, '17.900'), volte(testo, '17.875'), volte(testo, '17.826'), volte(testo, '17.819'), volte(testo, '17.789'), volte(testo, '18.229'), volte(testo, '18.554'), volte(testo, '18.486'), volte(testo, '18.449'), volte(testo, '18.432'), volte(testo, '18.464'), [...testo.matchAll(/(?<![\d.])32 byte/g)].length]).toStrictEqual([true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     // Sprint 74 · T2.7 (voce 2549): +532 per le risorse di Bookings, i loro testi nelle tre lingue e la data della prenotazione,
     // tutti nel pezzo e non nel JS d'ingresso.
-    it('il pezzo della ricerca pesa, con gzip, al più 1.867 byte: la misura della v3.10.0, con la zona che dice quanti risultati, più 20; prima quella della v3.9.0, coi testi dei codici dei risultati, più 20, e prima quella della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7; Decisione 18762; voce 2801)', () => {
+    it('il pezzo della ricerca pesa, con gzip, al più 1.797 byte: la misura della v4.18.0, con la zona del numero dell\'AppShell, più 20; prima 1.867 byte: la misura della v3.10.0, con la zona che dice quanti risultati, più 20; prima quella della v3.9.0, coi testi dei codici dei risultati, più 20, e prima quella della v3.6.0, con le prenotazioni e i calendari di Bookings, e le impronte della v3.8.0 più 20 (sprint 42 · T2.5; voce 2549 T2.7; Decisione 18762; voce 2801)', () => {
         const [ricerca = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_RICERCA));
 
         expect(ricerca).not.toBe('');
@@ -676,8 +681,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // v3.8.0 (zr-pm, 26/10/2026): 1.541 col pezzo della tastiera, ancora solo le impronte nuove dei nomi dei pezzi; il tetto è la
         // misura più 20. v3.9.0 (Decisione 18762 di zr-pm): 1.688 coi testi dei codici dei risultati, che erano nel JS d'ingresso
         // (−130 lì, +148 qui): l'ingresso si carica sempre, la ricerca solo quando serve. v3.10.0 (zr-pm-07, opzione A per T7,
-        // voce 2801): 1.847 misurati con la zona che dice quanti risultati e i suoi testi, più 20.
-        expect(gzip(ricerca)).toBeLessThanOrEqual(1_867);
+        // voce 2801): 1.847 misurati con la zona che dice quanti risultati e i suoi testi, più 20. v4.18.0 (Decisione 22074): la zona è
+        // dell'`AppShell` (richiesta 134), qui restano il suo testo e la parola che nel campo non c'è più, che non parte (voce 2062): 1.777 misurati, più 20.
+        expect(gzip(ricerca)).toBeLessThanOrEqual(1_797);
     });
 
     // v3.9.0 (Decisione 18762): i testi dei codici della seconda riga di un risultato, in tutte e tre le lingue, stanno nel pezzo
@@ -762,7 +768,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_330);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 2,0 KB (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.507 byte, la misura della v4.18.0 più 20 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -788,11 +794,12 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // v3.14.3: un dialogo senza niente che prenda il fuoco lo prende su di sé (misura del 01/11: 2.055; tetto 2.058, Decisione 19428).
         // v4.13.2 (voce #3329): il clic di «Apri il menu» che porta il fuoco nel cassetto passa qui dal pezzo della tastiera, che col
         // primo tasto Invio arrivava dopo il clic (misura del 06/11: 2.006 prima, 2.077 dopo, +71; la tastiera scende di 31; tetto 2.097, la misura più 20,
-        // sì di zr-pm-07 del 06/11).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(2_097);
+        // sì di zr-pm-07 del 06/11). v4.18.0 (Decisione 22074): le righe 87, 109, 110, 122, 124, 129 e 130 le fa l'`AppShell`, e i loro
+        // rimedi sono tolti: 1.487 misurati, più 20.
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_507);
     });
 
-    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
+    it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
         const [tastiera = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_TASTIERA));
 
         expect(tastiera).not.toBe('');
@@ -800,7 +807,8 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // rimedi, con `ripeti` per i tasti premuti prima che il pezzo arrivi: 1.181 byte, e il tetto è la misura più 20.
         // v3.14.1 (sprint 89, zr-pm 01/11/2026): Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina, 1.999 byte con le forme
         // del pezzo unificate (revisione della PR #150: in ascolto sulla radice, senza Alt); il tetto è il massimo della Decisione 18611.
-        expect(gzip(tastiera)).toBeLessThanOrEqual(2_000);
+        // v4.18.0 (Decisione 22074): le righe 47, 48, 131, 133 e 135 le fa l'`AppShell`, e i loro rimedi sono tolti: 1.556 misurati, più 20.
+        expect(gzip(tastiera)).toBeLessThanOrEqual(1_576);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
@@ -943,18 +951,4 @@ describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS
         expect(gzip(barra)).toBeLessThanOrEqual(420);
     });
 
-});
-
-// Sprint 69 · T3.3 (voce #2033). Il gestore dei clic sul percorso (`naviga`, voce #2722) sta nel pezzo dei rimedi, che la cornice
-// chiede a cornice montata: nel JS d'ingresso non c'è il suo codice. Quello della barra laterale, fino alla `v4.16`, era lì
-// anche lui; dalla `v4.17.0` è `navigate` dell'`AppShell` (righe 27 e 98).
-describe('il gestore dei clic sul percorso sta nel pezzo dei rimedi, mai nel JS d\'ingresso (sprint 69 · T3.3)', () => {
-    const DEL_GESTORE = '.zr-crumbbar a[href]';
-
-    it('nell\'app che prende solo la cornice e in quella che prende il layout non c\'è nel JS d\'ingresso; sta in un pezzo a richiesta solo, quello dei rimedi', () => {
-        for (const costruita of [soloCornice, conIlLayout]) {
-            expect(volte(costruita.js, DEL_GESTORE)).toBe(0);
-            expect(costruita.pezzi.filter((pezzo) => pezzo.includes(DEL_GESTORE)).map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([true]);
-        }
-    });
 });

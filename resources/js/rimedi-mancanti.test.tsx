@@ -45,7 +45,8 @@ it('se il pezzo dei rimedi di tastiera non arriva la cornice c\'è lo stesso, la
     });
 
     expect(contenitore.querySelector('.zr-notif')).not.toBeNull();
-    expect(document.activeElement).toBe(campanella);
+    // Il fuoco entra nel pannello, sulla linguetta scelta: lo fa l'`AppShell` dalla `v4.18.0` (richiesta 87), senza il pezzo.
+    expect(document.activeElement).toBe(contenitore.querySelector('.zr-notif-tabs [role="tab"][aria-selected="true"]'));
     expect(rifiutate).toStrictEqual([]);
     expect(console.error).not.toHaveBeenCalled();
 
@@ -55,10 +56,10 @@ it('se il pezzo dei rimedi di tastiera non arriva la cornice c\'è lo stesso, la
     process.off('unhandledRejection', nonGestite);
 });
 
-// Sprint 69 · T3.3 (voce #2033). Fino alla `v4.16` il gestore dei clic sulla barra laterale stava nel pezzo dei rimedi; dalla
-// `v4.17.0` è dell'`AppShell` (`navigate`, righe 27 e 98), e senza il pezzo un clic sulla barra passa lo stesso da `naviga`. Nel
-// pezzo resta quello del percorso (#2722): senza, un clic sul percorso resta del browser.
-it('senza il pezzo dei rimedi un clic su una voce della barra laterale passa da `naviga`, e uno sul percorso resta del browser (sprint 69 · T3.3; righe 27 e 98)', async () => {
+// Sprint 69 · T3.3 (voce #2033). Fino alla `v4.16` il gestore dei clic sulla barra laterale stava nel pezzo dei rimedi, e fino alla
+// `v4.17` quello del percorso (#2722); dalla `v4.17.0` e dalla `v4.18.0` sono dell'`AppShell` (`navigate`, righe 27, 98 e 130), e senza
+// il pezzo un clic sulla barra e uno sul percorso passano lo stesso da `naviga`.
+it('senza il pezzo dei rimedi un clic su una voce della barra laterale e uno sul percorso passano da `naviga` (sprint 69 · T3.3; righe 27, 98 e 130)', async () => {
     const naviga = vi.fn();
     const contenitore = document.createElement('div');
     document.body.append(contenitore);
@@ -77,13 +78,15 @@ it('senza il pezzo dei rimedi un clic su una voce della barra laterale passa da 
         evento.preventDefault();
     };
     window.addEventListener('click', alla);
-    collegamento?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
-    contenitore.querySelector('.zr-crumbbar a[href]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    act(() => {
+        collegamento?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+        contenitore.querySelector('.zr-crumbbar a[href]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
     window.removeEventListener('click', alla);
 
     expect(collegamento).toBeDefined();
-    expect(visti).toStrictEqual([true, false]);
-    expect(naviga.mock.calls).toStrictEqual([[`${location.origin}/uat`]]);
+    expect(visti).toStrictEqual([true, true]);
+    expect(naviga.mock.calls).toStrictEqual([[`${location.origin}/uat`], [`${location.origin}/uat/board`]]);
 
     await act(async () => radice.unmount());
     contenitore.remove();

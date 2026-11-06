@@ -144,7 +144,7 @@
     var photo = p.src && failed !== p.src ? p.src : null; /* senza foto, o se non si carica: le iniziali */
     return h('span', {
       className: cx('zr-avatar', 'zr-avatar-' + size, 'zr-label-' + (p.tone || toneFor(p.name)), photo && 'has-photo', p.className),
-      title: p.name, role: 'img', 'aria-label': p.name
+      title: p.decorative ? undefined : p.name, role: p.decorative ? undefined : 'img', 'aria-label': p.decorative ? undefined : p.name, 'aria-hidden': p.decorative ? 'true' : undefined /* decorative: il nome è già accanto (richiesta 109) */
     }, initials(p.name), photo ? h('img', { className: 'zr-avatar-img', src: photo, alt: '', onError: function () { setFailed(photo); } }) : null);
   }
   function AvatarStack(p) {
@@ -179,12 +179,12 @@
     personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
-    searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
-    notifications: 'Notifiche', unread: 'non lette', unreadOne: 'non letta', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
+    searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca', searchCount: 'Risultati: {n}',
+    notifications: 'Notifiche', unread: 'non lette', unreadOne: 'non letta', unreadNone: 'Nessuna notifica non letta', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
     notificationsEmpty: 'Nessuna notifica', notificationsEmptyText: 'Ti avviseremo qui quando qualcuno ti menziona o ti assegna qualcosa.',
     notificationsError: 'Non riusciamo a caricare le notifiche.', retry: 'Riprova', loading: 'Caricamento',
     account: 'Il tuo account', profile: 'Profilo', accountSettings: 'Impostazioni', plan: 'Piano', company: 'Azienda', logout: 'Esci',
-    crumbs: 'Percorso', mainContent: 'Contenuto'
+    crumbs: 'Percorso', mainContent: 'Contenuto', skipToContent: 'Salta al contenuto'
   };
   var IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 
@@ -245,6 +245,15 @@
   }
 
   var SHELL_FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+  /* ciò che scorre entra nel giro del Tab finché dentro niente prende il fuoco; un tabindex che ha già resta (richieste 30 e 129) */
+  function scrollStop(el, ifScrolls) { /* ifScrolls: la fermata solo finché il contenuto non ci sta (richiesta 129) */
+    var mine = false;
+    function fix() { var want = !el.querySelector(SHELL_FOCUSABLE) && (!ifScrolls || el.scrollHeight > el.clientHeight); if (!want && mine && el.ownerDocument.activeElement !== el) { el.removeAttribute('tabindex'); mine = false; } else if (want && !mine && !el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); mine = true; } }
+    fix(); var mo = new MutationObserver(fix); mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'disabled', 'tabindex', 'contenteditable'] });
+    el.addEventListener('blur', fix); /* la fermata non cade sotto il fuoco: si toglie quando il fuoco se ne va */
+    var ro = ifScrolls && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fix) : null; if (ro) ro.observe(el);
+    return function () { mo.disconnect(); el.removeEventListener('blur', fix); if (ro) ro.disconnect(); if (mine) el.removeAttribute('tabindex'); };
+  }
   function AppShell(p) {
     var L = Object.assign({}, APPSHELL_LABELS, p.labels);
     var nav = p.nav || DEFAULT_NAV;
@@ -265,11 +274,13 @@
     var sid = ids.current;
 
     useEffect(function () { if (!drawer) return; function k(e) { if (e.key === 'Escape' && !document.querySelector('.zr-scrim') && !pop) setDrawer(false); } document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, [drawer, pop]);
-    /* Ctrl+K / Cmd+K apre la ricerca da ogni pagina */
+    /* Ctrl+K / Cmd+K apre la ricerca da ogni pagina; con search={false} la ricerca non c'è e il tasto resta della pagina (richiesta 201) */
+    var noSearch = p.search === false;
     useEffect(function () {
+      if (noSearch) return;
       function k(e) { if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setDrawer(false); setPop('search'); if (inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } } }
       document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); };
-    }, []);
+    }, [noSearch]);
     useEffect(function () { return function () { clearTimeout(timer.current); }; }, []);
     useOutside(pop === 'ws', [wsRef], function () { setPop(null); });
     useOutside(pop === 'notif', [notifRef, bellRef], function () { setPop(null); });
@@ -307,15 +318,15 @@
     else if (!curCompany && companies.length) { curCompany = companies[0]; curWs = (curCompany.workspaces || [])[0] || null; }
     function wsKeys(e) {
       if (e.key === 'Escape') { e.stopPropagation(); setPop(null); if (wsBtn.current) wsBtn.current.focus(); return; }
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+      var list = Array.prototype.slice.call(wsRef.current.querySelectorAll('.zr-ws-item')); if (!list.length) return;
       e.preventDefault();
-      var list = Array.prototype.slice.call(wsRef.current.querySelectorAll('.zr-ws-item'));
-      var i = list.indexOf(document.activeElement); var n = list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus();
+      var i = list.indexOf(document.activeElement); var n = e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]; if (n) n.focus(); /* Home e Fine: la prima e l'ultima voce (richiesta 48) */
     }
     useEffect(function () { if (pop === 'ws' && wsRef.current) { var a = wsRef.current.querySelector('.zr-ws-item[aria-current]') || wsRef.current.querySelector('.zr-ws-item'); if (a) a.focus({ preventScroll: true }); } }, [pop]);
     var wsSettings = !!(curWs && (p.workspaceSettingsHref || p.onWorkspaceSettings));
     var personalName = personal ? (personal.label || L.personal) : '';
-    var wsSwitch = (companies.length || personal) ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys },
+    var wsSwitch = (companies.length || personal) ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys, onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'ws' ? null : v; }); } /* il fuoco esce verso un altro elemento: il selettore si chiude (richiesta 48) */ },
       h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': sid + '-ws', 'aria-label': L.workspaceSwitch + ': ' + (onPersonal ? L.personalGroup + ' › ' + personalName : (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : '')),
         onClick: function () { setPop(pop === 'ws' ? null : 'ws'); } },
         onPersonal ? h('span', { className: 'zr-iconbox zr-iconbox-sm zr-label-pine zr-ws-me', 'aria-hidden': 'true' }, h(Icon, { name: 'user', size: 16 })) : null,
@@ -379,7 +390,9 @@
 
     /* ---- Ricerca ---- */
     var results = p.searchResults || [];
-    var sState = p.searchState || 'ready';
+    /* fra il tasto e onSearch (300 ms) la ricerca è già in caricamento: non «Nessun risultato» per la parola nuova né i risultati della vecchia (richiesta 46) */
+    var pendSt = useState(false), pending = pendSt[0], setPending = pendSt[1];
+    var sState = pending && q.trim().length >= 2 ? 'loading' : p.searchState || 'ready';
     var showPanel = pop === 'search';
     var onSubmit = p.searchOn === 'submit'; /* la ricerca parte solo con Invio */
     var askedSt = useState(null), asked = askedSt[0], setAsked = askedSt[1];
@@ -387,15 +400,15 @@
     function runSearch(v) {
       setQ(v); setHi(0); setPop('search');
       clearTimeout(timer.current);
-      if (!onSubmit && v.trim().length >= 2 && p.onSearch) timer.current = setTimeout(function () { p.onSearch(v.trim()); }, 300);
+      var go = !onSubmit && v.trim().length >= 2 && p.onSearch; setPending(!!go);
+      if (go) timer.current = setTimeout(function () { setPending(false); p.onSearch(v.trim()); }, 300);
     }
     function pick(r) { if (!r) return; setPop(null); if (inputRef.current) inputRef.current.blur(); if (p.onSelectResult) p.onSelectResult(r); }
     function searchKeys(e) {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setPop(null); e.currentTarget.blur(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); if (showPanel) { e.stopPropagation(); setPop(null); } return; } /* il fuoco resta nel campo, con la parola (richiesta 47); a pannello chiuso Esc arriva alla pagina, e il campo non si svuota */
       if (onSubmit && e.key === 'Enter' && q.trim().length >= 2 && (q.trim() !== asked || sState === 'error' || (sState === 'ready' && !results.length))) { e.preventDefault(); setAsked(q.trim()); setHi(0); setPop('search'); if (p.onSearch) p.onSearch(q.trim()); return; }
-      if (!showPanel || q.trim().length < 2 || !results.length || (onSubmit && (q.trim() !== asked || sState !== 'ready'))) return;
-      if (e.key === 'ArrowDown') { e.preventDefault(); setHi((hi + 1) % results.length); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((hi + results.length - 1) % results.length); }
+      if (!showPanel || q.trim().length < 2 || !results.length || sState !== 'ready' || (onSubmit && q.trim() !== asked)) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); var n = (hi + (e.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length; arrowed.current = n; setHi(n); }
       else if (e.key === 'Enter') { e.preventDefault(); pick(results[hi]); }
     }
     var qOk = q.trim().length >= 2;
@@ -417,12 +430,30 @@
       });
       panelBody = h('div', { id: sid + '-results', role: 'listbox', 'aria-label': L.searchResults }, rows);
     }
+    /* con le frecce l'opzione attiva scorre in vista, quanto basta; il mouse non fa scorrere (richiesta 135): scorre solo l'opzione che la freccia ha scelto, e una freccia che non la cambia (un risultato solo) non lascia il segno al mouse */
+    var arrowed = useRef(null);
+    useEffect(function () { var t = arrowed.current; arrowed.current = null; if (t !== hi) return; var o = document.getElementById(sid + '-r' + hi); var pn = o && o.closest('.zr-search-panel'); if (pn && hi === 0) pn.scrollTop = 0; else if (o) o.scrollIntoView({ block: 'nearest' }); }, [hi]); /* la prima: il pannello in cima, col suo gruppo */
     var listOpen = showPanel && qOk && sState === 'ready' && results.length > 0 && !(onSubmit && q.trim() !== asked);
+    /* quanti risultati, in una zona viva sempre montata: vuota mentre cerca, così lo stesso numero si dice di nuovo (richiesta 134) */
+    var countText = listOpen ? (L.searchCount || '').replace('{n}', function () { return results.length; }) : '';
 
     /* ---- Notifiche ---- */
     var notes = p.notifications || [];
     var nState = p.notificationsState || 'ready';
     var unread = p.unreadCount != null ? p.unreadCount : notes.filter(function (n) { return n.unread; }).length;
+    /* la zona viva delle notifiche: dice l'ultimo dei due che cambia, notificationsNotice (richiesta 14) o il numero sceso (richiesta 56) */
+    var liveSt = useState([p.notificationsNotice || '', 'notice']), live = liveSt[0], setLive = liveSt[1];
+    /* il numero che scende entro 10 s da un clic su una notifica non letta si dice col numero vero; un cambio per altro toglie ciò che aveva detto (richiesta 56) */
+    var readClick = useRef(0), prevUnread = useRef(unread);
+    useEffect(function () {
+      var before = prevUnread.current; prevUnread.current = unread; if (unread === before) return;
+      var fresh = readClick.current && Date.now() - readClick.current < 10000; if (unread < before) readClick.current = 0; /* una notifica nuova in mezzo non consuma il clic */
+      if (fresh && unread < before) setLive([unread ? L.notifications + ', ' + unread + ' ' + (unread === 1 ? L.unreadOne : L.unread) : L.unreadNone, 'count']);
+      else setLive(function (v) { return v[1] === 'count' ? ['', ''] : v; });
+    }, [unread]);
+    useEffect(function () { setLive([p.notificationsNotice || '', 'notice']); }, [p.notificationsNotice]); /* dopo quello del numero: se cambiano insieme vince l'avviso */
+    /* aperto il pannello, il fuoco entra sulla linguetta scelta: una volta, qualunque cosa cambi dentro dopo (richiesta 87) */
+    useEffect(function () { if (pop === 'notif' && notifRef.current) { var t = notifRef.current.querySelector('[role="tab"][aria-selected="true"]'); if (t) t.focus({ preventScroll: true }); } }, [pop]);
     var shown = tab === 'me' ? notes.filter(function (n) { return n.forMe !== false; }) : notes;
     var notifBody;
     if (nState === 'loading') notifBody = h('div', { className: 'zr-notif-state', role: 'status' }, h('span', { className: 'zr-visually-hidden' }, L.loading), h(Skeleton, { lines: 4 }));
@@ -430,16 +461,21 @@
     else if (!shown.length) notifBody = h(EmptyState, { compact: true, icon: 'bell', title: L.notificationsEmpty, text: L.notificationsEmptyText });
     else notifBody = h('ul', { className: 'zr-notif-list' }, shown.map(function (n) {
       return h('li', { key: n.id }, h(NotificationItem, { title: n.title, text: n.text, time: n.time, product: n.product, unread: n.unread, actor: n.actor, icon: n.icon, tone: n.tone, unreadLabel: L.unreadOne,
-        onClick: function () { setPop(null); if (p.onOpenNotification) p.onOpenNotification(n); } }));
+        onClick: function () { if (n.unread) readClick.current = Date.now(); setPop(null); if (p.onOpenNotification) p.onOpenNotification(n); } }));
     }));
     var notifPanel = pop === 'notif' ? h('div', { ref: notifRef, id: sid + '-notif', className: 'zr-pop zr-notif', role: 'dialog', 'aria-label': L.notifications },
-      h('header', { className: 'zr-pop-head' },
+      h('div', { className: 'zr-pop-head' }, /* testa e piede del pannello non sono punti di riferimento (richiesta 124) */
         h('h2', null, L.notifications, unread ? h('span', { className: 'zr-count' }, unread) : null),
-        unread && p.onMarkAllRead ? h(Button, { variant: 'ghost', size: 'sm', onClick: p.onMarkAllRead }, L.markAllRead) : null),
-      h('div', { className: 'zr-notif-tabs', role: 'tablist' },
-        [['me', L.forMe], ['all', L.all]].map(function (t) { return h('button', { key: t[0], type: 'button', role: 'tab', 'aria-selected': tab === t[0] ? 'true' : 'false', className: cx('zr-tab', tab === t[0] && 'is-active'), onClick: function () { setTab(t[0]); } }, t[1]); })),
-      h('div', { className: 'zr-pop-body' }, notifBody),
-      p.onAllNotifications ? h('footer', { className: 'zr-pop-foot' }, h(Button, { variant: 'secondary', size: 'sm', icon: 'arrow', onClick: function () { setPop(null); p.onAllNotifications(); } }, L.seeAll)) : null) : null;
+        unread && p.onMarkAllRead ? h(Button, { variant: 'ghost', size: 'sm', onClick: function () { readClick.current = 0; p.onMarkAllRead(); } }, L.markAllRead) : null),
+      /* le linguette: una fermata del Tab sola, frecce (in giro), Home e Fine scelgono; con Alt, Ctrl o Meta restano del browser; legate al pannello (richiesta 133) */
+      h('div', { className: 'zr-notif-tabs', role: 'tablist', onKeyDown: function (e) {
+        var keys = ['me', 'all'], at = keys.indexOf(tab), to = { ArrowRight: at + 1, ArrowLeft: at + keys.length - 1, Home: 0, End: keys.length - 1 }[e.key];
+        if (to === undefined || e.altKey || e.ctrlKey || e.metaKey || !e.target.closest('[role="tab"]')) return;
+        e.preventDefault(); to = to % keys.length; setTab(keys[to]); var b = e.currentTarget.querySelectorAll('[role="tab"]')[to]; if (b) b.focus();
+      } },
+        [['me', L.forMe], ['all', L.all]].map(function (t) { return h('button', { key: t[0], id: sid + '-tab-' + t[0], type: 'button', role: 'tab', 'aria-selected': tab === t[0] ? 'true' : 'false', 'aria-controls': sid + '-notif-panel', tabIndex: tab === t[0] ? 0 : -1, className: cx('zr-tab', tab === t[0] && 'is-active'), onClick: function () { setTab(t[0]); } }, t[1]); })),
+      h('div', { className: 'zr-pop-body', id: sid + '-notif-panel', role: 'tabpanel', 'aria-labelledby': sid + '-tab-' + tab }, notifBody),
+      p.onAllNotifications ? h('div', { className: 'zr-pop-foot' }, h(Button, { variant: 'secondary', size: 'sm', icon: 'arrow', onClick: function () { setPop(null); p.onAllNotifications(); } }, L.seeAll)) : null) : null;
 
     /* ---- Menu del profilo ---- */
     function acc(id) { return function () { setPop(null); if (p.onAccount) p.onAccount(id); }; }
@@ -458,23 +494,32 @@
         var last = i === p.crumbs.length - 1;
         return [i ? h(Icon, { key: 'i' + i, name: 'chevron', size: 14 }) : null,
           last ? h('span', { key: 'c' + i, 'aria-current': 'page' }, c.label)
-            : h('a', { key: 'c' + i, href: c.href || '#', onClick: function (e) { if (!c.href) e.preventDefault(); if (p.onCrumb) p.onCrumb(c, i); } }, c.label)];
+            : h('a', { key: 'c' + i, href: c.href || '#', onClick: function (e) { if (!c.href) e.preventDefault(); if (p.onCrumb) p.onCrumb(c, i, e); if (c.href && spa(e)) { e.preventDefault(); p.navigate(e.currentTarget.href); } } /* onCrumb con l'evento, poi navigate come la sidebar (richiesta 130) */ }, c.label)];
       })) : null;
 
     var settingsItem = { id: 'settings', label: L.settings, icon: 'settings', href: p.settingsHref };
+    /* la barra dietro il selettore o il menu Moduli, e il piede, sono attenuati e inert (richiesta 110): l'attributo da un effetto, che React 18 non scrive inert */
+    var behind = open || pop === 'ws', navRef = useRef(null), footRef = useRef(null);
+    useEffect(function () { [navRef.current, footRef.current].forEach(function (el) { if (el) { if (behind) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } }); }, [behind]);
     /* l'area che scorre (il main, o col percorso il suo corpo; flush non scorre) è nel giro del Tab quando dentro niente prende il fuoco: chi usa la tastiera la fa scorrere (richiesta 30) */
     var hasCrumbs = !!crumbs;
     useEffect(function () {
       var m = mainRef.current; var el = m && (p.flush ? null : hasCrumbs ? m.querySelector(':scope > .zr-main-body') : m); if (!el) return;
-      var mine = false;
-      function fix() { var has = el.querySelector(SHELL_FOCUSABLE); if (has && mine) { el.removeAttribute('tabindex'); mine = false; } else if (!has && !mine && !el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); mine = true; } }
-      fix(); var mo = new MutationObserver(fix); mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'disabled', 'tabindex', 'contenteditable'] });
-      return function () { mo.disconnect(); if (mine) el.removeAttribute('tabindex'); };
+      return scrollStop(el);
     }, [p.flush, hasCrumbs]);
+    /* il pannello della ricerca, quando scorre, lo stesso: col fuoco su di lui la tastiera lo fa scorrere (richiesta 129) */
+    useEffect(function () { var el = showPanel && searchRef.current && searchRef.current.querySelector(':scope > .zr-search-panel'); if (el) return scrollStop(el, true); }, [showPanel]);
+    /* «Salta al contenuto» porta il fuoco al main: tabindex -1 solo per il salto, tolto quando il fuoco se ne va; un tabindex che ha già resta (richiesta 5) */
+    function skipToMain(e) {
+      e.preventDefault(); var m = mainRef.current; if (!m) return;
+      if (!m.hasAttribute('tabindex')) { var off = function () { if (m.ownerDocument.activeElement !== m) { m.removeAttribute('tabindex'); m.removeEventListener('blur', off); } }; m.setAttribute('tabindex', '-1'); m.addEventListener('blur', off); }
+      m.focus();
+    }
     var kbd = IS_MAC ? '⌘K' : 'Ctrl K';
     var unreadText = unread > 99 ? '99+' : String(unread);
 
     return h('div', { className: cx('zr-shell', drawer && 'is-drawer', p.className) },
+      h('a', { className: 'zr-btn zr-btn-secondary zr-btn-sm zr-skip', href: '#' + sid + '-main', onClick: skipToMain }, L.skipToContent),
       drawer ? h('div', { className: 'zr-side-scrim', 'aria-hidden': 'true', onClick: function () { setDrawer(false); setPop(null); } }) : null,
       h('aside', { className: cx('zr-side', drawer && 'is-open'), id: sid + '-side', 'aria-label': L.nav },
         h('div', { className: cx('zr-brand', 'zr-brand-v2', p.create && 'has-create') },
@@ -485,27 +530,28 @@
           wsSwitch),
         createAt ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
-        h('nav', { className: cx('zr-nav', (open || pop === 'ws') && 'is-dimmed'), 'aria-hidden': open || pop === 'ws' ? 'true' : undefined },
+        h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-hidden': behind ? 'true' : undefined },
           groups.map(function (g) {
             return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || (g.group === 'Prodotti' || g.group === 'Moduli')) && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),
               g.items.map(item));
           })),
-        h('div', { className: 'zr-side-foot' },
+        h('div', { ref: footRef, className: cx('zr-side-foot', behind && 'is-dimmed') },
           p.settings === false ? null : item(settingsItem),
           p.plan === false ? null : h('div', { className: 'zr-plan' },
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
-      h('header', { className: 'zr-top' },
+      h('header', { className: cx('zr-top', noSearch && 'no-search') },
         h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': drawer ? L.closeMenu : L.openMenu, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
           h(Icon, { name: 'menu', size: 20 }), current ? h('span', { className: 'zr-top-product' }, current.label) : null),
-        h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'search' ? null : v; }); } /* il fuoco esce dalla ricerca: il pannello si chiude (richieste 7 e 90) */, onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); } } },
+        noSearch ? null : h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'search' ? null : v; }); } /* il fuoco esce dalla ricerca: il pannello si chiude (richieste 7 e 90) */, onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); setPop('search'); } } /* anche col fuoco già nel campo, chiuso con Esc: il tocco sull'icona lo riapre */ },
           h('span', { className: 'zr-search-icon' }, h(Icon, { name: 'search', size: 18 })),
           h('input', { ref: inputRef, type: 'search', value: q, placeholder: p.searchPlaceholder || L.searchPlaceholder, 'aria-label': L.search, role: 'combobox', 'aria-autocomplete': 'list',
             'aria-expanded': listOpen ? 'true' : 'false', 'aria-controls': listOpen ? sid + '-results' : undefined, 'aria-activedescendant': listOpen ? sid + '-r' + hi : undefined, 'aria-keyshortcuts': IS_MAC ? 'Meta+K' : 'Control+K', enterKeyHint: onSubmit ? 'search' : undefined,
-            onFocus: function () { setPop('search'); }, onChange: function (e) { runSearch(e.target.value); }, onKeyDown: searchKeys }),
+            onFocus: function () { setPop('search'); }, onClick: function () { setPop('search'); } /* chiuso con Esc il fuoco resta: il clic lo riapre (richiesta 47) */, onChange: function (e) { runSearch(e.target.value); }, onKeyDown: searchKeys }),
           h('kbd', null, kbd),
-          showPanel ? h('div', { className: 'zr-search-panel' }, panelBody) : null),
+          h('div', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, countText),
+          showPanel ? h('div', { className: 'zr-search-panel', role: 'group', 'aria-label': L.searchResults, onKeyDown: function (e) { if (e.key === 'Escape' && e.target === e.currentTarget) { e.preventDefault(); e.stopPropagation(); if (inputRef.current) inputRef.current.focus(); setPop(null); } } /* Esc dal pannello: si chiude e il fuoco torna al campo (richiesta 131) */ }, panelBody) : null),
         h('div', { className: 'zr-top-actions' },
           p.actions || null,
           h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + (unread === 1 ? L.unreadOne : L.unread) : ''),
@@ -515,11 +561,11 @@
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
             onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user, src: p.userPhoto })),
           notifPanel,
-          h('div', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, p.notificationsNotice || ''), /* l'avviso letto ad alta voce, sempre montato (richiesta 14) */
+          h('div', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, live[0]), /* l'avviso letto ad alta voce, sempre montato (richiesta 14), o il numero sceso (richiesta 56) */
           pop === 'profile' ? h(Menu, { anchor: avatarRef.current, inline: true, label: L.account, items: profileItems, className: 'zr-profile-menu',
-        head: h('div', { className: 'zr-profile-head' }, h(Avatar, { name: user, src: p.userPhoto }), h('span', null, h('strong', null, user), p.email ? h('span', null, p.email) : null, p.planName ? h('span', null, p.planName) : null)),
+        head: h('div', { className: 'zr-profile-head' }, h(Avatar, { name: user, src: p.userPhoto, decorative: true }), h('span', null, h('strong', null, user), p.email ? h('span', null, p.email) : null, p.planName ? h('span', null, p.planName) : null)),
         onClose: function () { setPop(null); } }) : null)),
-      h('main', { ref: mainRef, className: cx('zr-main', p.flush && 'is-flush', crumbs && 'has-crumbs'), 'aria-label': L.mainContent },
+      h('main', { ref: mainRef, id: sid + '-main', className: cx('zr-main', p.flush && 'is-flush', crumbs && 'has-crumbs'), 'aria-label': L.mainContent },
         crumbs ? [h('div', { key: 'cb', className: 'zr-crumbbar' }, crumbs), h('div', { key: 'body', className: 'zr-main-body' }, p.children)] : p.children));
   }
 

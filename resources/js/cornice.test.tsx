@@ -2839,8 +2839,8 @@ describe('il pannello delle notifiche', () => {
             return allaLettura(id);
         });
     };
-    /** L'avviso della cornice per il lettore di schermo: nella zona viva dell'`AppShell` (`notificationsNotice`, dalla `v4.17.0`). */
-    const avviso = () => uno('.zr-shell [role="status"][aria-live="polite"]');
+    /** L'avviso per il lettore di schermo: nella zona viva delle notifiche dell'`AppShell`, accanto alla campanella (`notificationsNotice` e, dalla `v4.18.0`, il numero sceso). */
+    const avviso = () => uno('.zr-shell .zr-top-actions > [role="status"][aria-live="polite"]');
     const detto = () => avviso()?.textContent ?? null;
     /** Apre la campanella e fa clic sulla notifica in quella posizione: il pannello si chiude. */
     const apre = async (indice: number) => {
@@ -3252,7 +3252,9 @@ describe('il pannello delle notifiche', () => {
         expect([campanella(), detto()]).toStrictEqual([sullaCampanella, dalLettore]);
     });
 
-    it('i dati della visita arrivano prima della risposta della lettura e la contano già letta: alla risposta il numero non scende un\'altra volta, e l\'avviso tace (review della PR #44, R1)', async () => {
+    // Dalla `v4.18.0` il numero sceso lo dice l'`AppShell` (richiesta 56): scende entro 10 secondi dal clic, coi dati della visita, e lo
+    // dice; prima la cornice taceva, perché non era sceso per la lettura.
+    it('i dati della visita arrivano prima della risposta della lettura e la contano già letta: alla risposta il numero non scende un\'altra volta, e l\'avviso dice il numero vero (review della PR #44, R1)', async () => {
         const lettura = inAttesa();
         vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire, lettoIl: alSecondo(5) }], () => lettura.promessa));
         const pagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
@@ -3264,7 +3266,7 @@ describe('il pannello delle notifiche', () => {
         expect(campanella()).toBe('2');
 
         await lettura.arriva(segnata('uat-n69', alSecondo(8)));
-        expect([campanella(), detto()]).toStrictEqual(['2', '']);
+        expect([campanella(), detto()]).toStrictEqual(['2', 'Notifiche, 2 non lette']);
     });
 
     // Sprint 23 · T2 (voce #1742, S1). L'elenco del clic può essere più vecchio dei dati del clic: il pannello è rimasto aperto
@@ -3462,7 +3464,7 @@ describe('il pannello delle notifiche', () => {
 
         // Al caricamento c'è già, nell'`AppShell`, con la classe del design system per ciò che non si vede: ed è vuoto.
         expect([avviso()?.tagName, avviso()?.className, detto()]).toStrictEqual(['DIV', 'zr-visually-hidden', '']);
-        expect(tutti('[role="status"]')).toHaveLength(1);
+        expect(tutti('.zr-top-actions [role="status"]')).toHaveLength(1);
 
         // Vuoto anche con l'elenco arrivato, e con la lettura in volo.
         await apre(0);
@@ -4942,16 +4944,19 @@ describe('la ricerca', () => {
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
-    it('nel freno dopo un 429 un tasto non mette la ricerca in caricamento: resta l\'errore (voce 2062 · T4.3)', async () => {
+    // Dalla `v4.18.0` il caricamento dal tasto è dell'`AppShell` (richiesta 46), per i 300 ms che aspetta: poi la cornice, frenata,
+    // torna all'errore senza chiedere niente.
+    it('nel freno dopo un 429 una parola nuova non parte: chiamata la cornice, resta l\'errore (voce 2062 · T4.3)', async () => {
         const frenata = { ok: false, status: 429, headers: new Headers({ 'Retry-After': '30' }), json: async () => ({ errore: 'troppe_richieste' }) } as unknown as Response;
         vi.stubGlobal('fetch', vi.fn(async () => frenata));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('ua');
         expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
 
-        await batti('uat');
+        await scrivi('uat');
         expect(testoDelPannello()).toContain('La ricerca non ha risposto.');
         expect(inCaricamento()).toBeUndefined();
+        expect(fetch).toHaveBeenCalledTimes(1);
     });
 
     it('sotto i 2 caratteri un tasto lascia l\'invito, e tornati alla parola di prima ci sono i suoi risultati: il caricamento non resta (voce 2062 · T4.3)', async () => {
@@ -5001,14 +5006,12 @@ describe('la ricerca', () => {
         expect(titoli()).toStrictEqual(['Risultato di «ua»']);
     });
 
-    it('smontata, la cornice toglie dalla finestra l\'ascolto del tasto che vi aveva messo (voce 2062 · l\'ascolto del tasto)', async () => {
+    // Dalla `v4.18.0` il caricamento dal tasto è dell'`AppShell` (richiesta 46): la cornice non ascolta più i tasti sulla finestra.
+    it('la cornice non mette sulla finestra un ascolto del tasto, né montata né smontata (voce 2062 · l\'ascolto del tasto)', async () => {
         const messi = vi.spyOn(window, 'addEventListener');
-        const tolti = vi.spyOn(window, 'removeEventListener');
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
-        const delTasto = messi.mock.calls.filter(([evento]) => evento === 'input').map(([, ascolto]) => ascolto);
-        expect(delTasto).toHaveLength(1);
         await act(async () => radice.unmount());
-        expect(tolti.mock.calls.filter(([evento, ascolto]) => evento === 'input' && ascolto === delTasto[0])).toHaveLength(1);
+        expect(messi.mock.calls.filter(([evento]) => evento === 'input')).toHaveLength(0);
     });
 
     it.each([
@@ -6141,7 +6144,8 @@ describe('la ricerca', () => {
             expect(titoli()).toStrictEqual(['Risultato di «lancio q4»']);
         });
 
-        it('mentre la ricerca è frenata un tasto non mostra il caricamento: lo stato resta l\'errore, sia nei 300 ms dopo il tasto sia quando l\'`AppShell` chiama la cornice (sprint 26 · T4.4)', async () => {
+        // Dalla `v4.18.0` nei 300 ms dopo il tasto il caricamento lo mostra l'`AppShell` (richiesta 46).
+        it('mentre la ricerca è frenata una parola nuova non parte: quando l\'`AppShell` chiama la cornice lo stato torna l\'errore, e resta (sprint 26 · T4.4)', async () => {
             const fetchFinto = primaPoiTrova(frenata('5'));
             vi.stubGlobal('fetch', fetchFinto);
             await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
@@ -6155,7 +6159,7 @@ describe('la ricerca', () => {
                 campo.dispatchEvent(new Event('input', { bubbles: true }));
                 await vi.advanceTimersByTimeAsync(299);
             });
-            expect(visto()).toStrictEqual([[errore], undefined, 0]);
+            expect([inCaricamento(), righe().length]).toStrictEqual(['Sto cercando…', 0]);
             // Il millisecondo in cui l'`AppShell` chiama `onSearch`, senza lasciar passare altro.
             await act(async () => {
                 vi.advanceTimersByTime(1);
@@ -6390,8 +6394,9 @@ describe('la ricerca', () => {
 
     // Sprint 78 · T8 (voce 2799): le frecce nel campo muovono l'opzione attiva, ma il pannello non scorreva e dopo le prime righe
     // l'attiva era fuori vista. jsdom non scorre (né ha `scrollIntoView`): qui si guarda che l'attiva sia chiesta in vista, dopo ogni
-    // freccia; lo scorrimento vero lo prova `scripts/uat-cornice.mjs` (V.1-V.2), in Chromium.
-    it('T8.1-T8.2 dopo ogni freccia giù o su nel campo l\'opzione attiva è chiesta in vista, quanto basta; un altro tasto non la chiede (voce 2799)', async () => {
+    // freccia; lo scorrimento vero lo prova `scripts/uat-cornice.mjs` (V.1-V.2), in Chromium. Dalla `v4.18.0` lo fa l'`AppShell`
+    // (richiesta 135): tornando alla prima riga porta in cima il pannello, col suo gruppo, invece di chiederla in vista.
+    it('T8.1-T8.2 dopo ogni freccia giù o su nel campo l\'opzione attiva è chiesta in vista, quanto basta (la prima porta in cima il pannello); un altro tasto non la chiede (voce 2799)', async () => {
         const inVista = vi.fn();
         const diPrima = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
         Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: inVista });
@@ -6416,7 +6421,7 @@ describe('la ricerca', () => {
             await premi('ArrowUp');
             await premi('a');
 
-            expect(chiamate()).toStrictEqual([1, 2, 0, 2].map((riga) => [riga, [{ block: 'nearest' }]]));
+            expect(chiamate()).toStrictEqual([1, 2, 2].map((riga) => [riga, [{ block: 'nearest' }]]));
             expect(uno('.zr-search .is-active')).toBe(righe()[2]);
         } finally {
             if (diPrima) {
@@ -6458,9 +6463,10 @@ describe('la ricerca', () => {
         }
     });
 
-    // Sprint 78 · T7 (voce 2801): la zona `role="status"` dell'`AppShell` c'è solo mentre si cerca, e i risultati la tolgono. Il
-    // pezzo della ricerca tiene una zona sua nel documento, che a ricerca finita dice quanti risultati ci sono (zr-pm, opzione A).
-    const zonaDelNumero = () => [...document.querySelectorAll('body > p[role="status"].zr-visually-hidden')];
+    // Sprint 78 · T7 (voce 2801): a ricerca finita una zona viva dice quanti risultati ci sono. Fino alla `v4.17` era una zona di
+    // zr-core, figlia di `body`; dalla `v4.18.0` è quella dell'`AppShell` sotto il campo (richiesta 134), col testo che la cornice
+    // le dà (`searchCount`, nel pezzo della ricerca).
+    const zonaDelNumero = () => tutti('.zr-top > .zr-search > [role="status"][aria-live="polite"]');
 
     it('T7.1 a ricerca finita la zona di stato dice quanti risultati mostra; resta nel documento, si svuota quando parte una ricerca e cambia testo quando arrivano i risultati (voce 2801)', async () => {
         const ua = inAttesaDellaRicerca();
@@ -6493,19 +6499,15 @@ describe('la ricerca', () => {
         expect([righe().length, zonaDelNumero().map((zona) => zona.textContent)]).toStrictEqual([1, [atteso]]);
     });
 
-    it('a ricerca senza risultati la zona dice zero, e un altro giro della cornice con lo stesso numero non la riscrive (voce 2801)', async () => {
+    it('a ricerca senza risultati la zona del numero tace: «Nessun risultato» lo dice il pannello, e un altro giro della cornice non cambia niente (voce 2801)', async () => {
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(trovati([]))));
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
         await scrivi('uat');
-        const zona = zonaDelNumero()[0]!;
-        const testo = zona.firstChild;
-        expect([zona.textContent, testoDelPannello().startsWith('Nessun risultato per')]).toStrictEqual(['Risultati: 0', true]);
+        expect([zonaDelNumero().map((zona) => zona.textContent), testoDelPannello().startsWith('Nessun risultato per')]).toStrictEqual([[''], true]);
 
         // Un altro giro della cornice, con la stessa ricerca: la pagina che cambia dentro.
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Un'altra pagina</p></Cornice>);
-        expect(testoDelPannello().startsWith('Nessun risultato per')).toBe(true);
-
-        expect(zona.firstChild).toBe(testo);
+        expect([zonaDelNumero().map((zona) => zona.textContent), testoDelPannello().startsWith('Nessun risultato per')]).toStrictEqual([[''], true]);
     });
 });
 
@@ -7464,7 +7466,7 @@ describe('chi non ha accettato i documenti legali', () => {
             return risposta({ data: { id: 'uat-n69', letta: true } });
         });
         vi.stubGlobal('fetch', fetchFinto);
-        const detto = () => uno('.zr-shell [role="status"][aria-live="polite"]')?.textContent;
+        const detto = () => uno('.zr-shell .zr-top-actions > [role="status"][aria-live="polite"]')?.textContent;
         const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
         const conQuelNumero = { ...diSempre, non_lette: nonLette };
         await mostra(laPagina(conQuelNumero));
@@ -7615,32 +7617,15 @@ describe('chi non ha accettato i documenti legali', () => {
 });
 
 // Sprint 28 · T4 (voce #1828; `Decisione:` 11310 di zr-pm). Da tastiera il primo elemento della cornice è «Salta al
-// contenuto»: un pulsante del design system davanti all'`AppShell`, che non si vede finché non ha il fuoco e che porta il
-// fuoco al `main`. È provvisorio: l'`AppShell` non ne ha uno suo, e quando lo porta questo si toglie. In questo DOM il Tab non
-// c'è: l'ordine è quello del documento, e Invio e Spazio sono quelli di un `<button>` vero (li prova la UAT).
+// contenuto», che porta il fuoco al `main`. Dalla `v4.18.0` è il link dell'`AppShell` (richiesta 5 al design system, lotto 0518):
+// la cornice gli dà il testo nella sua lingua, e il pulsante che zr-core metteva davanti non c'è più. In questo DOM il Tab non
+// c'è: l'ordine è quello del documento (il resto lo prova la UAT).
 describe('«Salta al contenuto»', () => {
     const ridotti: DatiDellaCornice = { ...dati, prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true };
     const prendonoIlFuoco = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    /** Il contenitore del pulsante: il primo elemento che la `Cornice` scrive. */
-    const ilSalto = () => contenitore.firstElementChild as HTMLElement;
-    const pulsante = () => ilSalto().querySelector('button') as HTMLButtonElement;
-    const laPagina = (lingua = 'it', figli: ReactElement = <button type="button" id="della-pagina">Nuova scheda</button>, dellaCornice = dati) => (
-        <Cornice dati={{ ...dellaCornice, lingua }} onLogout={esciSenzaEffetto}>{figli}</Cornice>
+    const laPagina = (lingua = 'it', dellaCornice = dati) => (
+        <Cornice dati={{ ...dellaCornice, lingua }} onLogout={esciSenzaEffetto}><button type="button" id="della-pagina">Nuova scheda</button></Cornice>
     );
-    const conIlFuoco = async (elemento: HTMLElement) => act(async () => elemento.focus());
-    /**
-     * La cornice in pagina, e il salto com'è senza il rimedio del contenuto (`rimedi.ts`, #2394): prima che il pezzo arrivi, o se
-     * non arriva. Arrivato, il pezzo dà al `main` un `tabindex` suo, e il salto lo trova già: è il caso del `tabindex` che il
-     * `main` ha già, e il rimedio ha i suoi casi più avanti.
-     */
-    const mostraSenzaRimedio = async (pagina: ReactElement) => {
-        await mostra(pagina);
-        await act(async () => {
-            await vi.dynamicImportSettled();
-        });
-        uno('main.zr-main')?.removeAttribute('tabindex');
-        uno('main.zr-main')?.removeAttribute('aria-label');
-    };
 
     it.each([
         ['it', 'Salta al contenuto'],
@@ -7648,191 +7633,27 @@ describe('«Salta al contenuto»', () => {
         ['es', 'Saltar al contenido'],
         // Una lingua che zr-core non ha: l'inglese.
         ['de', 'Skip to content'],
-    ])('con la lingua "%s" è il primo elemento che prende il fuoco, prima della barra laterale e della barra in alto, e dice «%s» (T4.1)', async (lingua, testo) => {
-        await mostraSenzaRimedio(laPagina(lingua));
+    ])('con la lingua "%s" è il primo elemento che prende il fuoco, il link dell\'`AppShell`, e dice «%s»; zr-core non ne mette un altro (T4.1)', async (lingua, testo) => {
+        await mostra(laPagina(lingua));
 
         const primo = contenitore.querySelector(prendonoIlFuoco);
-        expect(primo).toBe(pulsante());
+        expect(primo?.matches('.zr-shell > a.zr-skip')).toBe(true);
         expect(primo?.textContent).toBe(testo);
-        // Prima di tutto ciò che è dell'`AppShell`: la barra laterale, la barra in alto, il contenuto.
-        expect(['.zr-nav', '.zr-top', 'main'].map((selettore) => Boolean(ilSalto().compareDocumentPosition(uno(selettore) as Node) & Node.DOCUMENT_POSITION_FOLLOWING))).toStrictEqual([true, true, true]);
-        expect(ilSalto().contains(uno('main'))).toBe(false);
-    });
-
-    it('senza il fuoco non si vede: il contenitore ha la classe del design system che nasconde, e nessuno stile suo; è il `Button` del design system, secondario e piccolo (T4.2)', async () => {
-        await mostraSenzaRimedio(laPagina());
-
-        expect([ilSalto().className, ilSalto().getAttribute('style')]).toStrictEqual(['zr-visually-hidden', null]);
-        expect([pulsante().className, pulsante().type]).toStrictEqual(['zr-btn zr-btn-secondary zr-btn-sm', 'button']);
-    });
-
-    it('col fuoco si vede, in alto a sinistra sopra la cornice, coi soli token; quando il fuoco va altrove torna nascosto (T4.2)', async () => {
-        await mostraSenzaRimedio(laPagina());
-
-        await conIlFuoco(pulsante());
-        expect(document.activeElement).toBe(pulsante());
-        expect(ilSalto().className).toBe('');
-        const stile = ilSalto().style;
-        expect([stile.position, stile.top, stile.left, stile.zIndex]).toStrictEqual(['fixed', 'var(--space-2)', 'var(--space-2)', 'var(--z-toast)']);
-        // Nessun valore che non sia un token: una misura o un numero scritti a mano non ci sono.
-        expect(ilSalto().getAttribute('style')).not.toMatch(/\d(px|rem|em|%)|z-index:\s*\d/);
-
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect([ilSalto().className, ilSalto().getAttribute('style')]).toStrictEqual(['zr-visually-hidden', null]);
+        expect(contenitore.firstElementChild?.matches('.zr-shell')).toBe(true);
+        expect(tutti('.zr-skip')).toHaveLength(1);
     });
 
     it.each<[caso: string, dellaCornice: DatiDellaCornice]>([
         ['coi dati di sempre', dati],
         ['nello stato ridotto', ridotti],
-    ])('%s un clic sul pulsante porta il fuoco al `main` dell\'`AppShell`, e ciò che viene dopo nel documento è della pagina, non della cornice; il pulsante torna nascosto (T4.3, T4.4)', async (_caso, dellaCornice) => {
-        await mostraSenzaRimedio(laPagina('it', undefined, dellaCornice));
-        const main = uno('main') as HTMLElement;
-        // Il `main` è dell'`AppShell`: prima del salto la cornice non gli ha scritto niente.
-        expect([main.getAttribute('tabindex'), main.id, main.getAttribute('style')]).toStrictEqual([null, '', null]);
+    ])('%s un clic sul link porta il fuoco al `main` dell\'`AppShell` senza cambiare l\'indirizzo (T4.3, T4.4)', async (_caso, dellaCornice) => {
+        await mostra(laPagina('it', dellaCornice));
+        const prima = location.href;
 
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
+        await act(async () => (uno('.zr-skip') as HTMLElement).click());
 
-        expect(document.activeElement).toBe(main);
-        expect([main.getAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual(['-1', '', null, 'zr-main']);
-        expect(ilSalto().className).toBe('zr-visually-hidden');
-        // Dal `main` il Tab va al primo elemento che prende il fuoco dopo di lui: è dentro il `main`, ed è della pagina.
-        const dopo = [...contenitore.querySelectorAll<HTMLElement>(prendonoIlFuoco)].find((elemento) => Boolean(main.compareDocumentPosition(elemento) & Node.DOCUMENT_POSITION_FOLLOWING));
-        expect([main.contains(dopo ?? null), dopo?.closest('.zr-nav, .zr-top') ?? null]).toStrictEqual([true, null]);
-        expect(main.contains(uno('#della-pagina'))).toBe(true);
-    });
-
-    it('il salto si rifà: ogni volta il `main` prende il fuoco col suo `tabindex`, e lo perde quando il fuoco va altrove (T4.3; lettura della PR #61, R4)', async () => {
-        await mostraSenzaRimedio(laPagina());
-
-        for (const _volta of [1, 2]) {
-            await conIlFuoco(pulsante());
-            // Il fuoco ha lasciato il `main`: l'attributo del salto di prima non c'è più.
-            expect(uno('main')?.hasAttribute('tabindex')).toBe(false);
-            await act(async () => pulsante().click());
-            expect(document.activeElement).toBe(uno('main'));
-            expect(uno('main')?.getAttribute('tabindex')).toBe('-1');
-        }
-    });
-
-    // Lettura della PR #61, R4. Col `tabindex` lasciato sul `main`, dopo un salto ogni clic su un punto della pagina che non
-    // prende il fuoco lo darebbe al `main`: il Tab dopo ripartirebbe dal primo elemento del contenuto e non dal punto del clic.
-    it('il `tabindex` sta sul `main` solo finché ha il fuoco: quando il fuoco passa a un elemento della pagina il `main` torna com\'era, senza attributi della cornice (lettura della PR #61, R4)', async () => {
-        await mostraSenzaRimedio(laPagina());
-        const main = uno('main') as HTMLElement;
-
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
-        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
-
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect([main.hasAttribute('tabindex'), main.id, main.getAttribute('style'), main.className]).toStrictEqual([false, '', null, 'zr-main']);
-    });
-
-    // Seconda lettura della PR #61, N5. Il `blur` arriva al `main` anche quando è la finestra a perdere il fuoco, e lì il `main`
-    // resta l'elemento attivo: senza l'attributo, al ritorno non terrebbe più il fuoco, e il Tab dopo rifarebbe la barra.
-    it('un `blur` che arriva al `main` mentre è ancora l\'elemento attivo non toglie il `tabindex`; lo toglie quello di quando il fuoco passa altrove (seconda lettura della PR #61, N5)', async () => {
-        await mostraSenzaRimedio(laPagina());
-        const main = uno('main') as HTMLElement;
-
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
-        await act(async () => {
-            main.dispatchEvent(new FocusEvent('blur'));
-        });
-        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '-1']);
-
-        // Il gestore non è andato via col primo `blur`.
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect(main.hasAttribute('tabindex')).toBe(false);
-    });
-
-    it('quando il fuoco ha lasciato il `main` il gestore del salto non c\'è più: un `tabindex` che il modulo gli dà dopo resta (seconda lettura della PR #61, N5)', async () => {
-        await mostraSenzaRimedio(laPagina());
-        const main = uno('main') as HTMLElement;
-
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect(main.hasAttribute('tabindex')).toBe(false);
-
-        main.setAttribute('tabindex', '0');
-        await conIlFuoco(main);
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect(main.getAttribute('tabindex')).toBe('0');
-    });
-
-    it('un `tabindex` che il `main` ha già non è della cornice: il salto non lo cambia e non lo toglie (lettura della PR #61, R4)', async () => {
-        await mostraSenzaRimedio(laPagina());
-        const main = uno('main') as HTMLElement;
-        main.setAttribute('tabindex', '0');
-
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
-        expect([document.activeElement, main.getAttribute('tabindex')]).toStrictEqual([main, '0']);
-
-        await conIlFuoco(uno('#della-pagina') as HTMLElement);
-        expect(main.getAttribute('tabindex')).toBe('0');
-    });
-
-    // Lettura della PR #61, R3. Il `main` è quello dell'`AppShell` accanto al pulsante, non il primo del documento: un
-    // frontend può avere un `main` suo, prima della cornice o intorno a lei.
-    it.each<[caso: string, metti: (delFrontend: HTMLElement) => void, togli: (delFrontend: HTMLElement) => void]>([
-        ['prima della cornice', (delFrontend) => document.body.prepend(delFrontend), (delFrontend) => delFrontend.remove()],
-        ['intorno alla cornice', (delFrontend) => { contenitore.replaceWith(delFrontend); delFrontend.append(contenitore); }, (delFrontend) => delFrontend.replaceWith(contenitore)],
-    ])('con un `main` del frontend %s il salto porta il fuoco al `main` dell\'`AppShell`, e a quello del frontend non scrive niente (lettura della PR #61, R3)', async (_caso, metti, togli) => {
-        const delFrontend = document.createElement('main');
-        metti(delFrontend);
-        try {
-            await mostraSenzaRimedio(laPagina());
-            const main = uno('main.zr-main') as HTMLElement;
-            // Il caso non è vuoto: il primo `main` del documento è quello del frontend.
-            expect(document.querySelector('main')).toBe(delFrontend);
-
-            await conIlFuoco(pulsante());
-            await act(async () => pulsante().click());
-
-            expect(document.activeElement).toBe(main);
-            expect([main.getAttribute('tabindex'), delFrontend.hasAttribute('tabindex')]).toStrictEqual(['-1', false]);
-        } finally {
-            togli(delFrontend);
-        }
-    });
-
-    it('senza un `AppShell` accanto al pulsante il salto non fa niente: non cerca un altro `main` nel documento (lettura della PR #61, R3)', async () => {
-        const delFrontend = document.createElement('main');
-        document.body.prepend(delFrontend);
-        try {
-            await mostraSenzaRimedio(laPagina());
-            uno('.zr-shell')?.classList.remove('zr-shell');
-
-            await conIlFuoco(pulsante());
-            await act(async () => pulsante().click());
-
-            expect(document.activeElement).toBe(pulsante());
-            expect([delFrontend.hasAttribute('tabindex'), uno('main.zr-main')?.hasAttribute('tabindex')]).toStrictEqual([false, false]);
-        } finally {
-            delFrontend.remove();
-        }
-    });
-
-    it('con una pagina senza niente che prende il fuoco il fuoco sta comunque sul `main` (T4.4)', async () => {
-        await mostraSenzaRimedio(laPagina('it', <p>Niente da fare qui.</p>, ridotti));
-
-        await conIlFuoco(pulsante());
-        await act(async () => pulsante().click());
-
-        expect(document.activeElement).toBe(uno('main'));
-        expect(uno('main')?.textContent).toContain('Niente da fare qui.');
-    });
-
-    // Dalla `v4.17.0` la regione degli avvisi è quella dell'`AppShell` (`notificationsNotice`, riga 14): la cornice è il salto e
-    // l'`AppShell`, e niente dopo.
-    it('la regione degli avvisi sta nell\'`AppShell`, e dopo il salto c\'è solo lei (T4.1; riga 14)', async () => {
-        await mostra(laPagina());
-
-        expect([contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['zr-shell', 2]);
-        expect(contenitore.lastElementChild?.querySelectorAll('[role="status"][aria-live="polite"].zr-visually-hidden')).toHaveLength(1);
+        expect(document.activeElement).toBe(uno('main.zr-main'));
+        expect(location.href).toBe(prima);
     });
 });
 
@@ -9859,7 +9680,10 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
             evento.preventDefault();
         };
         window.addEventListener('click', alla);
-        collegamento.dispatchEvent(resto.evento);
+        // Dentro `act`: il clic su una voce cambia lo stato dell'`AppShell` (dalla `v4.17.0` è suo, `navigate`).
+        act(() => {
+            collegamento.dispatchEvent(resto.evento);
+        });
         window.removeEventListener('click', alla);
 
         return resto;
@@ -10116,7 +9940,7 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
 
     it('2394.2 «Salta al contenuto» porta il fuoco al `main` che è già una fermata, e non gli cambia il `tabindex`', async () => {
         await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
-        const salto = contenitore.firstElementChild?.querySelector('button') as HTMLButtonElement;
+        const salto = uno('.zr-skip') as HTMLElement;
 
         await act(async () => salto.focus());
         await act(async () => salto.click());
@@ -10187,7 +10011,7 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         expect(main()?.getAttribute('aria-label')).toBe('Contenuto');
 
         await laCornice(<Cornice dati={{ ...dati, lingua: 'en' }} onLogout={esciSenzaEffetto} />);
-        expect([uno('.zr-visually-hidden button')?.textContent, main()?.getAttribute('aria-label')]).toStrictEqual(['Skip to content', 'Content']);
+        expect([uno('.zr-skip')?.textContent, main()?.getAttribute('aria-label')]).toStrictEqual(['Skip to content', 'Content']);
     });
 
     // Dalla `v4.17.0` (riga 30) il contorno del fuoco lo dà il CSS del design system, solo alla fermata e solo col fuoco da tastiera:
@@ -10196,7 +10020,7 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
         const css = readFileSync(resolve(process.cwd(), 'resources/css/zeiras.css'), 'utf8');
 
-        expect(css).toContain('.zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }');
+        expect(css).toContain('.zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible, .zr-search-panel[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }');
         await act(async () => (main() as HTMLElement).focus());
         expect([document.activeElement === main(), main()?.hasAttribute('style')]).toStrictEqual([true, false]);
     });
@@ -10211,7 +10035,8 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         });
         await conLaTastiera();
     };
-    const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => uno(selettore)?.getAttribute('role') ?? null);
+    /** Testa e piede del pannello e la barra in alto: l'elemento e il ruolo scritto. Dalla `v4.18.0` testa e piede sono `div` dell'`AppShell` (richiesta 124). */
+    const ruoli = () => ['.zr-notif .zr-pop-head', '.zr-notif .zr-pop-foot', '.zr-top'].map((selettore) => [uno(selettore)?.localName, uno(selettore)?.getAttribute('role') ?? null]);
     const largaAlPiu720 = (stretta: boolean) => vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: stretta && domanda === '(max-width: 720px)', ...ascoltoFinto }));
     const azioni = () => uno('.zr-top > .zr-top-actions');
     const campo = () => uno('.zr-top .zr-search input') as HTMLInputElement;
@@ -10221,13 +10046,13 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         await prossimoGiro();
     });
 
-    it('T1.1 col pannello aperto testa e piede hanno `role="none"`; la barra in alto resta un banner', async () => {
+    it('T1.1 col pannello aperto testa e piede non sono punti di riferimento: due `div` senza ruolo; la barra in alto resta un banner', async () => {
         await laCornice();
 
         await clic(uno('.zr-bell'));
 
         expect(uno('.zr-notif .zr-pop-foot')).not.toBeNull();
-        expect(ruoli()).toStrictEqual(['none', 'none', null]);
+        expect(ruoli()).toStrictEqual([['div', null], ['div', null], ['header', null]]);
     });
 
     it('T1.1 un `header` e un `footer` con le stesse classi fuori dal pannello dell\'`AppShell` non si toccano', async () => {
@@ -10247,7 +10072,7 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         document.querySelectorAll('.zr-notif').forEach((estraneo) => estraneo.remove());
     });
 
-    it('T1.2 chiuso e riaperto il pannello, testa e piede hanno di nuovo `role="none"`', async () => {
+    it('T1.2 chiuso e riaperto il pannello, testa e piede non sono di nuovo punti di riferimento', async () => {
         await laCornice();
         await clic(uno('.zr-bell'));
         await clic(uno('.zr-bell'));
@@ -10255,7 +10080,7 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
 
         await clic(uno('.zr-bell'));
 
-        expect(ruoli()).toStrictEqual(['none', 'none', null]);
+        expect(ruoli()).toStrictEqual([['div', null], ['div', null], ['header', null]]);
     });
 
     it('T2.1 a 720 px o meno, col fuoco nel campo della ricerca, campanella e profilo non si vedono', async () => {
@@ -10397,8 +10222,9 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
 });
 
 // Sprint 74 · T7 (voce #2720, dalla UAT di #2625 di zr-board): il pannello della ricerca scorre e dentro niente prende il fuoco
-// (il fuoco resta nel campo, che ha `aria-activedescendant`): axe dà `scrollable-region-focusable`. Rimedio provvisorio, come
-// per il contenuto (#2394).
+// (il fuoco resta nel campo, che ha `aria-activedescendant`): axe dà `scrollable-region-focusable`. Dalla `v4.18.0` lo fa
+// l'`AppShell` (richieste 129 e 131, lotto 0518): la fermata c'è finché il pannello scorre, e jsdom non scorre, quindi qui il
+// pannello è più alto di quanto si vede.
 describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint 74, voce 2720)', () => {
     // I 300 ms che l'`AppShell` aspetta dopo l'ultimo tasto passano quando lo dice il test.
     beforeEach(() => {
@@ -10411,6 +10237,7 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
 
     const laCornice = async (lingua = 'it') => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: 'UAT Lancio' }], workspace: dati.workspace.slug })));
+        vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(500);
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
         await act(async () => {
             await vi.dynamicImportSettled();
@@ -10443,20 +10270,6 @@ describe('il pannello della ricerca è una fermata del Tab, col suo nome (sprint
         await cerca();
 
         expect(fermata()).toStrictEqual(['0', 'group', nome]);
-    });
-
-    it('T7.2 col fuoco da tastiera il pannello ha il contorno del design system, coi soli token sull\'elemento; quando il fuoco esce non l\'ha più', async () => {
-        await laCornice();
-        await cerca();
-        const matches = Element.prototype.matches;
-        vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
-            return selettore === ':focus-visible' || matches.call(this, selettore);
-        });
-
-        await act(async () => pannello()?.focus());
-        expect([pannello()?.style.outlineOffset, pannello()?.style.cssText.includes('var(--focus)')]).toStrictEqual(['-2px', true]);
-        await act(async () => (uno('.zr-search input') as HTMLElement).focus());
-        expect(pannello()?.getAttribute('style')).toBe('');
     });
 
     it('T7.3 un elemento della pagina con la classe del pannello non si tocca', async () => {
