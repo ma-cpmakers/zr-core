@@ -152,6 +152,18 @@ it('col 403 accettazione_richiesta dà la persona della sessione, senza foto e s
     ])->and(chiamateDelCliente())->toBe(['/v1/io']);
 });
 
+it('col 403 accettazione_richiesta sulle aziende, dopo io.mostra, dà anche lì i dati ridotti (sprint 110 · T1.4, revisione R9)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io/aziende' => accettazioneRichiesta()]);
+
+    $dati = Cornice::datiDelCliente();
+
+    expect($dati['accettazione_richiesta'] ?? null)->toBeTrue()
+        ->and($dati['aziende'] ?? null)->toBe([])
+        ->and($dati['persona'] ?? [])->not->toHaveKey('foto')
+        ->and(chiamateDelCliente())->toContain('/v1/io/aziende');
+});
+
 it('ogni altro errore del backoffice arriva a chi chiama com\'è (sprint 110 · T1.4)', function (mixed $risposta, string $classe) {
     sessioneAMano(null);
     backofficeDelCliente(['/v1/io' => $risposta]);

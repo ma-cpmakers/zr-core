@@ -2599,8 +2599,9 @@ dalla `v4.13.0` anche su `cliente.html`, con `--cliente` (vedi «La cornice del 
 
 Dalla `v4.13.0` (#3319, per «Il mio spazio» di zr-home, #3317) il pacchetto ha una terza cornice, `CorniceDelCliente`, per chi
 entra in Zeiras come cliente di un'azienda e non ha un workspace suo: le pagine `/spazio/*` di zr-home, con la sessione
-dell'accesso (design `zr-account--il-mio-spazio`). Come quella dello staff è l'`AppShell` del design system, e non chiama
-nessuna rotta della cornice; i dati li dà la parte server, con `Cornice::datiDelCliente()`:
+dell'accesso (design `zr-account--il-mio-spazio`). Come quella dello staff è l'`AppShell` del design system; delle rotte della
+cornice usa solo quella della foto (`/cornice/foto`, quando `persona.foto` c'è), che risponde anche senza workspace: il modulo
+registra le rotte della cornice come per la `Cornice`. I dati li dà la parte server, con `Cornice::datiDelCliente()`:
 
 ```php
 use Zeiras\Core\Cornice;
@@ -2615,7 +2616,9 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
   `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
-  com'è.
+  com'è. La lingua di `dati.lingua` è quella del profilo appena letto: senza un workspace `Cornice::lingua()` non rilegge
+  io.mostra, quindi il modulo che mette la lingua della pagina in un middleware, sulle pagine «Il mio spazio», la prende dalla
+  sessione dopo `Cornice::datiDelCliente()`, o la cornice e la pagina possono essere in due lingue dopo un cambio nel profilo.
 
 ```tsx
 import { CorniceDelCliente, type DatiDelCliente } from '../../vendor/zeiras/zr-core/resources/js/app';
@@ -2635,15 +2638,17 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CS
 ```
 
 - **Il selettore** dice «Come cliente › Il mio spazio», attivo; sotto, le aziende di `dati.aziende` coi loro workspace, e un
-  workspace si apre alla sua Dashboard (`naviga`). Con `nuovoWorkspace` in fondo c'è «Crea il tuo workspace», che porta lì. Niente
-  riquadro del piano, niente menu Moduli, niente «+».
+  workspace si apre alla sua Dashboard (`naviga`). Con `nuovoWorkspace`, in fondo, «Crea il tuo workspace» per chi non ha aziende,
+  e «Nuovo workspace» se una delle sue aziende lo permette (`nuovo_workspace`): a chi è solo membro no. Tutti e due portano a
+  `nuovoWorkspace`. Niente riquadro del piano, niente menu Moduli, niente «+».
 - **La barra**: solo le voci di `nav`, tutte del modulo (coi gruppi, `active`, `onNavigate`; con `active={null}` nessuna), il
-  percorso (`crumbs`, `onCrumb`), `actions` e `flush` come nella `Cornice`.
+  percorso (`crumbs`, `onCrumb`), `actions` e `flush` come nella `Cornice`. In fondo l'`AppShell` mette da sé «Impostazioni», che
+  arriva a `onNavigate` come `settings`, come nella `Cornice`.
 - **Il menu del profilo del cliente** è Profilo, Impostazioni, una linea ed «Esci»: Profilo e Impostazioni sono le pagine di account della
   Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo).
 - **La ricerca non si vede**: per chi è solo cliente il backoffice non ne ha una, e una ricerca finta non si mostra (zr-pm,
   06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
-  build la porterebbe nel CSS di ogni app. Ctrl/Cmd+K non apre niente. È provvisorio: il CSS si toglie quando l'`AppShell` avrà
+  build la porterebbe nel CSS di ogni app. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
   la prop che non mostra la ricerca (richiesta 201 al design system).
 - **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), le
   sue notifiche da cliente con zr-backoffice #3323. Fino ad allora la campanella resta, vuota, col testo del cliente («Qui

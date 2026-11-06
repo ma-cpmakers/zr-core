@@ -157,6 +157,18 @@ describe('la cornice del cliente', () => {
         expect(naviga).toHaveBeenCalledWith('/spazio/nuovo-workspace');
     });
 
+    it('T2.3 con le aziende in fondo al selettore c\'è un workspace nuovo solo se una di quelle lo permette (`nuovo_workspace`): a chi è solo membro no (revisione R5)', async () => {
+        const naviga = vi.fn();
+        await mostra(<CorniceDelCliente dati={conAziende} nav={nav} nuovoWorkspace="/spazio/nuovo-workspace" naviga={naviga} onLogout={esci} />);
+        await clic(uno('.zr-ws-switch'));
+        expect(uno('.zr-ws-new')).toBeNull();
+
+        await mostra(<CorniceDelCliente key="permette" dati={{ ...conAziende, aziende: [{ ...conAziende.aziende[0]!, nuovo_workspace: true }] }} nav={nav} nuovoWorkspace="/spazio/nuovo-workspace" naviga={naviga} onLogout={esci} />);
+        await clic(uno('.zr-ws-switch'));
+        await clic(uno('.zr-ws-new'));
+        expect(naviga).toHaveBeenCalledWith('/spazio/nuovo-workspace');
+    });
+
     it('T2.3 con le aziende il selettore ha anche quelle, coi loro workspace e i loro toni; un workspace porta alla Dashboard di quel workspace; lo spazio resta attivo', async () => {
         const naviga = vi.fn();
         await mostra(<CorniceDelCliente dati={conAziende} nav={nav} naviga={naviga} onLogout={esci} />);
@@ -202,6 +214,15 @@ describe('la cornice del cliente', () => {
         await mostra(<CorniceDelloStaff lingua="it" persona={persona} onLogout={esci} />);
         await ctrlK();
         expect(uno('.zr-search.is-open')).not.toBeNull();
+    });
+
+    it('T2.4 Ctrl+K dentro la pagina arriva a chi lo ascolta nella pagina (un editor che inserisce un link), e la ricerca resta chiusa (revisione R2)', async () => {
+        const ascolto = vi.fn();
+        await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci}><input id="nella-pagina" onKeyDown={ascolto} /></CorniceDelCliente>);
+
+        await act(async () => void uno('#nella-pagina')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true })));
+        expect(ascolto).toHaveBeenCalledTimes(1);
+        expect(uno('.zr-search.is-open')).toBeNull();
     });
 
     it('T2.4 il CSS del cliente nasconde il campo della ricerca solo dentro la cornice del cliente', () => {

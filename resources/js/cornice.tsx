@@ -170,7 +170,7 @@ const dashboard = registro.find((voce) => voce.id === 'home')!;
  * dare una voce proprio con quell'id. È fatto di soli trattini, perché una voce la cornice non la vede: «Impostazioni», che
  * l'`AppShell` mette da sé in fondo alla barra, e il suo id è una parola.
  */
-function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
+export function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
     const presi = new Set(gruppi.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)));
     let id = '-';
     while (presi.has(id)) {
