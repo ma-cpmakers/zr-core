@@ -2,7 +2,6 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
@@ -15,7 +14,7 @@ use Zeiras\Core\Cornice;
 // `impersonificazione`: i dati della cornice la portano in `assistenza`, letta una volta per sessione, e per ogni altra sessione la
 // chiave non c'è. Gli aiuti (backoffice(), ioMostra(), marketing(), richiesteA(), nonRisponde()) vengono da CorniceDatiTest.php e
 // CorniceInDueDatiTest.php. Il caso col finto di zr-auth prova la forma vera: il finto dell'assistenza c'è dalla 0.12.139, e il vincolo
-// parte da quella.
+// parte da quella (dalla v4.24.0 dalla 0.12.141, che scambia il codice dell'«Accedi come» solo da un POST).
 
 /**
  * La risposta di accessi.corrente.mostra per la sessione dei test: `impersonificazione` null per un accesso qualunque, la forma
@@ -205,15 +204,12 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
     $codice = Api::staff($gettone)->post("/v1/staff/utenti/{$anna['id']}/impersonificazioni", ['app' => 'pm'])['data']['codice'];
 
     // Il codice lo scambia solo il client dell'app (`board` per `pm`), come nel modulo della board. Dalla 0.12.141 di zr-auth
-    // (#3386) il ricevitore lo scambia solo da un POST del pannello dello staff, con un 303 (la rotta
-    // `zr-auth.ricevitore.assistenza`, registrata solo da lì); prima da un GET, con un 302.
+    // (#3386) il ricevitore lo scambia solo da un POST del pannello dello staff, con un 303. Fino alla v4.23.0 il caso provava
+    // anche il GET con un 302 delle patch di prima; dalla v4.24.0 il vincolo parte dalla 0.12.141 e il ramo è tolto (Decisione
+    // 22413; sprint 117 · T2.2).
     config(['zr-auth.cliente' => 'board']);
-    if (Route::has('zr-auth.ricevitore.assistenza')) {
-        $this->withHeaders(['Sec-Fetch-Site' => 'same-site', 'Origin' => config('zr-auth.admin')])
-            ->post('/ingresso/ritorno', ['codice' => $codice])->assertStatus(303);
-    } else {
-        $this->get('/ingresso/ritorno?'.http_build_query(['codice' => $codice]))->assertStatus(302);
-    }
+    $this->withHeaders(['Sec-Fetch-Site' => 'same-site', 'Origin' => config('zr-auth.admin')])
+        ->post('/ingresso/ritorno', ['codice' => $codice])->assertStatus(303);
 
     expect(Sessione::workspace()['slug'] ?? null)->toBe($studio['slug']);
     $dati = Cornice::dati();

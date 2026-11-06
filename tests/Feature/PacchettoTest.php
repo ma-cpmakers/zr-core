@@ -137,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.139 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
+it('composer.json chiede zr-auth ^0.12.141 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3; sprint 117 · T2.1)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -159,7 +159,10 @@ it('composer.json chiede zr-auth ^0.12.139 e nessuna minore più vecchia, e la C
     // sessione scaduta non diventa la pagina di ritorno (#3019; sprint 109 · T1.3). Il giro «minima» la installa: FotoTest lo prova.
     // Dalla `v4.22.0` dalla 0.12.139: ogni pagina con la cornice legge accessi.corrente.mostra, e il backoffice finto di zr-auth lo
     // conosce da quella (revisione dello sprint 115, R2): CorniceAssistenzaTest lo prova col finto nei due giri.
-    expect($vincolo)->toBe('^0.12.139')
+    // Dalla `v4.24.0` dalla 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST del pannello dello staff, e
+    // un modulo con una zr-auth più vecchia non riceve più l'assistenza quando zr-superadmin passa al POST (Decisione 22413;
+    // sprint 117 · T2.1). CorniceAssistenzaTest prova il POST nei due giri.
+    expect($vincolo)->toBe('^0.12.141')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])

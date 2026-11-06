@@ -535,7 +535,7 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.139` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.141` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
@@ -549,7 +549,9 @@ zr-core alla `v4.0.0`. Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un 
 di ritorno dopo l'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia
 zr-core alla `v4.5.1`. Dalla `v4.22.0` serve la 0.12.139: ogni pagina con la cornice legge
 `accessi.corrente.mostra`, e il backoffice finto di zr-auth, nei test di un modulo, lo conosce da quella; con una più vecchia Composer
-lascia zr-core alla `v4.21.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+lascia zr-core alla `v4.21.0`. Dalla `v4.24.0` serve la 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST
+del pannello dello staff, e un modulo con una zr-auth più vecchia non riceve più l'assistenza quando il pannello passa al POST;
+con una più vecchia Composer lascia zr-core alla `v4.23.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
