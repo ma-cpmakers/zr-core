@@ -242,12 +242,13 @@ it('linguaDelCliente() non lancia: davanti a un guasto del backoffice dà la lin
     backofficeDelCliente(['/v1/io' => $risposta]);
 
     expect(Cornice::linguaDelCliente())->toBe('en');
-    $classe === null ? Log::shouldNotHaveReceived('warning') : Log::shouldHaveReceived('warning')->once();
     if ($classe === null) {
         expect(Cornice::datiDelCliente()['accettazione_richiesta'] ?? null)->toBeTrue();
     } else {
         expect(fn () => Cornice::datiDelCliente())->toThrow($classe);
     }
+    // Un avviso solo, quello di linguaDelCliente(): la datiDelCliente() dopo non ne scrive (R1 della revisione).
+    $classe === null ? Log::shouldNotHaveReceived('warning') : Log::shouldHaveReceived('warning')->once();
     expect(chiamateDelCliente())->toBe(['/v1/io']);
 })->with([
     'un 503 col suo codice' => [fn () => Http::response(['codice' => 'servizio_non_disponibile', 'status' => 503], 503), ErroreApi::class],
