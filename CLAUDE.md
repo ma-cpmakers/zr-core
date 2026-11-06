@@ -79,7 +79,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
   che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), le variabili dei token rigenerate e confrontate (`npm run token -- --controlla`, dalla `v3.13.0`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
-- `zeiras/zr-auth` `^0.12.139`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
+- `zeiras/zr-auth` `^0.12.141`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:
   la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12). Una minore nuova entra in `composer.json` e nella matrice di
   `ci.yml` insieme; il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice
@@ -89,7 +89,8 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   `Api::immagine`, che c'è da quella; dalla `v4.5.2` dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le
   navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm); dalla
   `v4.22.0` parte dalla 0.12.139, perché ogni pagina con la cornice legge `accessi.corrente.mostra` e il backoffice finto di
-  zr-auth, nei test dei moduli, lo conosce da quella (revisione dello sprint 115).
+  zr-auth, nei test dei moduli, lo conosce da quella (revisione dello sprint 115); dalla `v4.24.0` dalla 0.12.141, perché il
+  codice dell'«Accedi come» arriva al modulo solo da un POST del pannello dello staff (Decisione 22413).
 - `favicon.ico` e `apple-touch-icon.png` (`resources/favicon/`) escono da `npm run favicon`, dalla favicon del design system
   (`resources/zeiras/logos/zeiras-favicon.svg`): non si ritoccano a mano, e a un riallineamento che cambia la favicon si
   rigenerano nello stesso commit.
@@ -141,9 +142,9 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.21.0` (la 218, il Registro delle Imprese nel SiteFooter,
-   caricata da sola: Decisione 22288); il resto del lotto 0522 (58, 16, 116, 4, 28, 136, 219) al sì di Luciano, in una versione sua; la 206 (tema) dopo zr-home #2780; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
-   schermate fuori flusso si sistemano nel prossimo giro di Bookings. #2909 (la fascia di assistenza) esce quando zr-backoffice ha
-   `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 117 aperto (#3413, `v4.24.0`: `form-action` per una
+   pagina con nome e zr-auth dalla 0.12.141, Decisioni 22412-22413); uscita la `v4.23.0` (la campanella del cliente, #3398). Il lotto
+   0522 (58, 16, 116, 4, 28, 136, 219) al sì di Luciano, col numero libero (Decisione 22430); la 206 (tema) dopo zr-home #2780;
+   #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)

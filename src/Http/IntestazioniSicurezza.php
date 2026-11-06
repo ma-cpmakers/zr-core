@@ -17,8 +17,9 @@ use Throwable;
  *
  * La CSP è quella di tutti, più ciò che un modulo aggiunge per sempre (`zr-core.csp`) e ciò che una pagina aggiunge per sé (un
  * insieme di `zr-core.csp_pagine`, chiesto per nome con perLaPagina). Un modulo e una pagina aggiungono sorgenti, e solo a sei
- * direttive: non tolgono niente e non toccano le altre. Una sorgente è `'self'` oppure un'origine `https://` scritta per
- * intero. Tutto il resto è scartato, mai aggiustato: il ramo sicuro è la CSP più stretta.
+ * direttive: non tolgono niente e non toccano le altre. Una pagina, e lei sola, aggiunge sorgenti anche a `form-action`: la
+ * pagina che manda il suo modulo a un altro host lo dichiara per sé, e le altre restano a `'self'`. Una sorgente è `'self'`
+ * oppure un'origine `https://` scritta per intero. Tutto il resto è scartato, mai aggiustato: il ramo sicuro è la CSP più stretta.
  *
  * `frame-src` nella CSP di tutti non c'è: finché nessuno la scrive le cornici seguono `default-src`, e dalla prima sorgente
  * vale solo ciò che è scritto lì — chi incornicia anche la propria origine scrive anche `'self'`. La classe non lo aggiunge
@@ -38,8 +39,11 @@ final class IntestazioniSicurezza
     /** L'ordine delle direttive nell'intestazione: una che la CSP di tutti non ha (`frame-src`) prende il suo posto qui. */
     private const ORDINE = ['default-src', 'script-src', 'style-src', 'img-src', 'font-src', 'connect-src', 'frame-src', 'object-src', 'base-uri', 'form-action', 'frame-ancestors'];
 
-    /** Le sole direttive a cui un modulo o una pagina aggiungono sorgenti. Le altre sono uguali per tutti. */
+    /** Le direttive a cui aggiungono sorgenti sia il modulo sia una pagina; a SOLO_PER_UNA_PAGINA la pagina sola. Le altre sono uguali per tutti. */
     private const ESTENDIBILI = ['script-src', 'style-src', 'img-src', 'font-src', 'connect-src', 'frame-src'];
+
+    /** Le direttive a cui aggiunge sorgenti solo una pagina, chiesta per nome: mai il modulo per sempre (dalla v4.24.0). */
+    private const SOLO_PER_UNA_PAGINA = ['form-action'];
 
     /** L'attributo della richiesta su cui una pagina scrive il nome del suo insieme di sorgenti (perLaPagina). */
     private const PAGINA = 'zr-core.csp-pagina';
@@ -215,7 +219,9 @@ final class IntestazioniSicurezza
             }
             foreach ($aggiunte as $nome => $sorgenti) {
                 $dove = $diChi.', '.self::ritaglio((string) $nome).': ';
-                if (! in_array($nome, self::ESTENDIBILI, true)) {
+                if ($diChi === 'modulo' && in_array($nome, self::SOLO_PER_UNA_PAGINA, true)) {
+                    $scartate[] = $dove.'si allarga solo per una pagina con nome';
+                } elseif (! in_array($nome, self::ESTENDIBILI, true) && ! in_array($nome, self::SOLO_PER_UNA_PAGINA, true)) {
                     $scartate[] = $dove.'a questa direttiva non si aggiungono sorgenti';
                 } elseif (! is_array($sorgenti)) {
                     $scartate[] = $dove.'le sorgenti non sono una lista ('.get_debug_type($sorgenti).')';

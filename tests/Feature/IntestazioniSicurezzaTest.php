@@ -54,7 +54,7 @@ function aggiunteNonAmmesse(): array
         ['script-src', "https://a.example.com\n"], ['script-src', "https://a.example.com\r\nX-Altro: 1"], ['script-src', 'https://a.example.com *'],
         ['script-src', ''], ['script-src', 7], ['script-src', null], ['script-src', ['https://a.example.com']],
         ['default-src', 'https://example.com'], ['object-src', "'self'"], ['base-uri', 'https://example.com'],
-        ['form-action', 'https://example.com'], ['frame-ancestors', 'https://example.com'], ['frame-ancestors', "'self'"],
+        ['form-action', 'http://example.com'], ['frame-ancestors', 'https://example.com'], ['frame-ancestors', "'self'"],
         ['worker-src', 'https://example.com'], ['script-src-elem', 'https://example.com'], ['report-uri', 'https://example.com'],
         ['sandbox', "'self'"], ['upgrade-insecure-requests', "'self'"], ['', 'https://example.com'], ['script-src; default-src', 'https://example.com'],
         // Indirizzi IP, porte che non esistono, punycode, nomi smisurati.
@@ -201,7 +201,8 @@ it('non entrano nemmeno: un jolly senza schema, un indirizzo IP, uno spazio o un
     'una lettera non ASCII' => 'https://à.example.com',
 ]);
 
-it('una direttiva fuori dalle sei a cui si aggiunge non cambia e non compare, nemmeno con una sorgente ammessa; quella accanto, che si può estendere, entra (sprint 16 · T1.3)', function (string $direttiva) {
+it('una direttiva fuori dalle sei a cui si aggiunge non cambia e non compare, nemmeno con una sorgente ammessa; quella accanto, che si può estendere, entra (sprint 16 · T1.3; sprint 117 · T1.5: anche per la pagina che allarga form-action)', function (string $direttiva) {
+    // Fino alla v4.23.0 c'era anche form-action: dalla v4.24.0 la pagina la allarga, e la provano i casi dello sprint 117.
     foreach (["'self'", 'https://a.example.com'] as $sorgente) {
         [$csp, $scartate] = IntestazioniSicurezza::componi([$direttiva => [$sorgente]]);
         expect($csp)->toBe(CSP_DI_TUTTI)->and($scartate)->toHaveCount(1);
@@ -212,7 +213,11 @@ it('una direttiva fuori dalle sei a cui si aggiunge non cambia e non compare, ne
 
     [$csp, $scartate] = IntestazioniSicurezza::componi([$direttiva => ['https://a.example.com'], 'img-src' => ['https://a.example.com']]);
     expect($csp)->toBe(cspDiTuttiCon("img-src 'self'", "img-src 'self' https://a.example.com"))->and($scartate)->toHaveCount(1);
-})->with(['default-src', 'object-src', 'base-uri', 'form-action', 'frame-ancestors', 'worker-src']);
+
+    // La pagina che allarga form-action non apre per questo la direttiva accanto (revisione dello sprint 117, R2).
+    [$csp, $scartate] = IntestazioniSicurezza::componi([], [$direttiva => ['https://a.example.com'], 'form-action' => ['https://a.example.com']]);
+    expect($csp)->toBe(cspDiTuttiCon("form-action 'self'", "form-action 'self' https://a.example.com"))->and($scartate)->toHaveCount(1);
+})->with(['default-src', 'object-src', 'base-uri', 'frame-ancestors', 'worker-src']);
 
 it('ognuna delle sei direttive che si estendono prende un\'origine ammessa al suo posto, dal modulo e dalla pagina (sprint 16 · T1.3)', function (string $direttiva, string $prima, string $dopo) {
     $attesa = cspDiTuttiCon($prima, $dopo);
@@ -1046,4 +1051,81 @@ it('un oggetto che lancia mentre lo si legge come testo è scartato come gli alt
 })->with([
     'da solo' => [[new CspCheLancia], [CSP_PIU_STRETTA, CSP_DI_TUTTI]],
     'accanto a una valida' => [['sandbox', new CspCheLancia], ['sandbox', CSP_PIU_STRETTA, CSP_DI_TUTTI]],
+]);
+
+// Sprint 117 · T1 (voce #3413; Decisioni 22412 e 22413 di zr-pm). `form-action` si allarga per una pagina sola, quella che
+// chiede il suo insieme per nome: la pagina di zr-superadmin che consegna l'«Accedi come» manda il suo modulo agli host dei
+// moduli. Il modulo non la allarga mai per sempre, e le sorgenti sono quelle di sempre: `'self'` o un'origine https://.
+// Fino alla v4.23.0 `form-action` era chiusa anche per la pagina: la riga 33 delle aggiunte non ammesse provava
+// `https://example.com`, e il caso delle direttive che non si estendono la elencava.
+
+/** Gli host a cui la pagina dell'«Accedi come» manda il suo modulo, come in config/assistenza.php di zr-superadmin. */
+const AGGIUNTE_DELL_ASSISTENZA = ['form-action' => ['https://board.example.com', 'https://crm.example.com']];
+
+it('una pagina allarga form-action con le sue origini, dopo \'self\' e una volta sola (sprint 117 · T1.1)', function () {
+    [$csp, $scartate] = IntestazioniSicurezza::componi([], AGGIUNTE_DELL_ASSISTENZA);
+    [$conSelf, $scartateConSelf] = IntestazioniSicurezza::componi(AGGIUNTE_DI_HOME, ['form-action' => ['https://board.example.com', "'self'", 'https://board.example.com']]);
+
+    expect($csp)->toBe(cspDiTuttiCon("form-action 'self'", "form-action 'self' https://board.example.com https://crm.example.com"))
+        ->and($scartate)->toBe([])
+        ->and($conSelf)->toBe(cspDiTuttiCon("form-action 'self'", "form-action 'self' https://board.example.com"))
+        ->and($scartateConSelf)->toBe([]);
+});
+
+it('la pagina che chiede il suo insieme risponde con form-action allargata; le altre, anche quella che chiede un altro insieme, con form-action \'self\' (sprint 117 · T1.1, T1.2)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    config(['zr-core.csp' => AGGIUNTE_DI_HOME, 'zr-core.csp_pagine' => ['turnstile' => AGGIUNTE_DI_TURNSTILE, 'consegna_assistenza' => AGGIUNTE_DELL_ASSISTENZA]]);
+    Route::get('/prova/accedi-come', function () {
+        IntestazioniSicurezza::perLaPagina('consegna_assistenza');
+
+        return 'accedi come';
+    });
+
+    expect($this->get('/prova/accedi-come')->assertOk()->headers->all('Content-Security-Policy'))
+        ->toBe([str_replace("form-action 'self'", "form-action 'self' https://board.example.com https://crm.example.com", CSP_DI_HOME)])
+        ->and($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
+        ->and($this->get('/prova/registrati')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE]);
+});
+
+it('il modulo non allarga form-action per sempre: la sorgente è scartata, col suo motivo, e la CSP resta quella di prima (sprint 117 · T1.3)', function (string $sorgente) {
+    [$csp, $scartate] = IntestazioniSicurezza::componi(['form-action' => [$sorgente]]);
+    [$conHome, $scartateConHome] = IntestazioniSicurezza::componi([...AGGIUNTE_DI_HOME, 'form-action' => [$sorgente]], AGGIUNTE_DI_TURNSTILE);
+
+    expect($csp)->toBe(CSP_DI_TUTTI)
+        ->and($scartate)->toBe(['modulo, form-action: si allarga solo per una pagina con nome'])
+        ->and($conHome)->toBe(CSP_DI_HOME_CON_TURNSTILE)
+        ->and($scartateConHome)->toBe(['modulo, form-action: si allarga solo per una pagina con nome']);
+})->with(['https://board.example.com', "'self'"]);
+
+it('dal middleware, form-action in zr-core.csp non arriva su nessuna risposta, e ogni risposta lascia l\'avviso col suo motivo (sprint 117 · T1.3; revisione, R1)', function () {
+    primoDeiGlobali();
+    rotteDiProva();
+    logInMemoria();
+    config(['zr-core.csp' => [...AGGIUNTE_DI_HOME, ...AGGIUNTE_DELL_ASSISTENZA], 'zr-core.csp_pagine' => ['turnstile' => AGGIUNTE_DI_TURNSTILE]]);
+
+    expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
+        ->and($this->get('/prova/registrati')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE])
+        ->and(avvisiNelLog())->toHaveCount(2)
+        ->and(avvisiNelLog()[0])->toContain('modulo, form-action: si allarga solo per una pagina con nome')->not->toContain('example.com')
+        ->and(avvisiNelLog()[1])->toBe(avvisiNelLog()[0]);
+});
+
+it('in form-action di una pagina entrano solo \'self\' e le origini https:// scritte per intero: il resto è scartato e la CSP resta quella di tutti (sprint 117 · T1.4)', function (string $sorgente) {
+    [$csp, $scartate] = IntestazioniSicurezza::componi([], ['form-action' => [$sorgente]]);
+
+    expect($csp)->toBe(CSP_DI_TUTTI)
+        ->and($scartate)->toHaveCount(1)
+        ->and($scartate[0])->toStartWith('pagina, form-action: sorgente non ammessa «');
+})->with([
+    'http' => 'http://board.example.com',
+    'il jolly' => '*',
+    'uno schema intero' => 'https:',
+    'un sottodominio qualunque' => 'https://*.example.com',
+    'un percorso' => 'https://board.example.com/ingresso/ritorno',
+    'unsafe-inline' => "'unsafe-inline'",
+    'none' => "'none'",
+    'data' => 'data:',
+    'un indirizzo IP' => 'https://10.0.0.5',
+    'maiuscole' => 'HTTPS://BOARD.EXAMPLE.COM',
 ]);

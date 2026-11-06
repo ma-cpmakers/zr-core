@@ -470,6 +470,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.21.0` | il design system `ds-1793981459-3e66`, la richiesta 218 (decisa da Luciano, caricata da sola): `SiteFooter` e `Zeiras.PUBLISHER` con l'ufficio del Registro delle Imprese dopo il capitale sociale, «Registro delle Imprese: Arezzo-Siena n. 02453920510» (art. 2250 c.c.); `company.registry` e `company.registryNumber` per un altro titolare, `labels.registry` e `labels.registryNo` per le etichette. Un titolare che passa un'altra P. IVA senza `registry` non eredita l'ufficio di Zeiras | `composer update zeiras/zr-core`, poi la build; zr-sito può togliere la riga del Registro scritta da sé, se ce l'ha | i test del frontend che leggono la riga societaria del piè: dopo il capitale c'è la riga del Registro delle Imprese | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 | `v4.22.0` | l'assistenza (#2909): quando lo staff entra con «Accedi come», i dati della cornice portano `assistenza` (la persona assistita e `sola_lettura`, da `accessi.corrente.mostra`), sopra la pagina c'è la fascia di assistenza col pulsante «Termina l'assistenza» (`onLogout`), e la campanella mostra senza scrivere: niente «Segna tutte come lette», una notifica aperta non si segna letta, e il 403 `azione_non_consentita_in_assistenza` alla lettura apre lo stesso la risorsa. Per ogni altra sessione niente cambia | `composer update zeiras/zr-core zeiras/zr-auth` (serve zr-auth 0.12.139), poi la build | ogni pagina con la cornice legge anche `GET /v1/accessi/corrente`: il backoffice finto di zr-auth lo conosce dalla 0.12.139; un finto scritto a mano (`Http::fake`) risponde con `{data: {accesso_id, scade_il, impersonificazione: null}}`, e un caso che conta le richieste al backoffice ne conta una in più. Per una sessione che non è di assistenza le chiavi dei dati e la cornice sono quelle di prima | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html`; `layout.html?assistenza=1` e `?assistenza=lettura` |
 | `v4.23.0` | la campanella del cliente (#3398): nella `CorniceDelCliente` il numero delle notifiche da cliente non lette (`non_lette` nei dati di `Cornice::datiDelCliente()`), l'elenco all'apertura con l'azienda sotto il titolo, il clic che le segna lette e apre la prenotazione in «Il mio spazio» (`https://app.zeiras.com/spazio/prenotazioni/<id>`), «Segna tutte come lette»; le rotte `cornice/cliente/notifiche` col gettone dell'accesso; i titoli dei quattro tipi da cliente di Bookings (`bookings.cliente.prenotazione.*`) nelle tre lingue e la loro riga nella voce `home` del registro. E il design system `ds-1793997272-d6e5`, la richiesta 84: in `KanbanColumn` una scheda per lista nel giro del Tab, ↑ ↓ Home Fine fra le schede, ← → alla lista accanto (`KanbanTexts.cardKeys`). Per la `Cornice` e la `CorniceDelloStaff` niente cambia | `composer update zeiras/zr-core`, poi la build | zr-home: la campanella apre `/spazio/prenotazioni/{id}` (zr-home #274), che deve esserci; un caso che conta le chiavi dei dati del cliente ne trova una in più, `non_lette`, e un caso che conta le rotte della cornice tre in più | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (con le notifiche da cliente; `?notifiche=0` senza) |
+| `v4.24.0` | `form-action` si allarga per una pagina sola: un insieme di `csp_pagine` chiesto con `perLaPagina` aggiunge origini https:// anche a `form-action` (zr-superadmin #2942, la pagina che consegna l'«Accedi come» col POST); in `zr-core.csp` resta scartata, e le altre pagine restano a `'self'`. zr-auth dalla 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST del pannello dello staff (Decisioni 22412 e 22413). Per una CSP che non scrive `form-action` in un insieme niente cambia | `composer update zeiras/zr-core zeiras/zr-auth`, prima che zr-superadmin passi al POST: un modulo con una zr-auth più vecchia non riceve più l'assistenza | un caso che prova il ritorno dell'«Accedi come» con un GET: dalla 0.12.141 è un POST con 303 | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (la CSP di tutti invariata) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -535,7 +536,7 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.139` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.141` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
@@ -549,7 +550,9 @@ zr-core alla `v4.0.0`. Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un 
 di ritorno dopo l'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia
 zr-core alla `v4.5.1`. Dalla `v4.22.0` serve la 0.12.139: ogni pagina con la cornice legge
 `accessi.corrente.mostra`, e il backoffice finto di zr-auth, nei test di un modulo, lo conosce da quella; con una più vecchia Composer
-lascia zr-core alla `v4.21.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+lascia zr-core alla `v4.21.0`. Dalla `v4.24.0` serve la 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST
+del pannello dello staff, e un modulo con una zr-auth più vecchia non riceve più l'assistenza quando il pannello passa al POST;
+con una più vecchia Composer lascia zr-core alla `v4.23.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
@@ -2978,6 +2981,7 @@ return [
 
 - **Le direttive**: si aggiungono sorgenti a sei direttive sole — `script-src`, `style-src`, `img-src`, `font-src`,
   `connect-src`, `frame-src`. Un modulo e una pagina aggiungono: non tolgono niente e non toccano le altre direttive.
+  Una pagina, e lei sola, aggiunge sorgenti anche a `form-action` (dalla `v4.24.0`): vedi «Per una pagina sola».
   Con un'eccezione, `frame-src`, l'unica delle sei che la CSP di tutti non ha: finché nessuno la scrive le cornici seguono
   `default-src`, cioè la sola origine del modulo; dalla prima sorgente vale solo ciò che è scritto lì. Chi incornicia
   anche la propria origine scrive anche `'self'` in `frame-src`: senza, quelle cornici non si caricano più, e nel log non
@@ -3007,6 +3011,20 @@ IntestazioniSicurezza::perLaPagina('turnstile');
 Il controller dice solo il nome di un insieme di `csp_pagine`: le origini stanno nella configurazione. Il nome si scrive nel
 codice, e non si prende mai dalla richiesta. Vale per la risposta a quella richiesta sola; chiamata due volte, vale l'ultimo
 nome. Un nome che la configurazione non dichiara non aggiunge niente, e lascia un avviso nel log.
+
+**`form-action` per una pagina sola** (dalla `v4.24.0`, Decisione 22412). Un insieme di `csp_pagine` aggiunge sorgenti anche a
+`form-action`, oltre alle sei direttive di sempre: è la pagina che manda il suo modulo a un altro host, come quella di
+zr-superadmin che consegna l'«Accedi come» col POST agli host dei moduli. Le sorgenti sono quelle di sempre, `'self'` o
+un'origine `https://` scritta per intero (niente `http:`, jolly, sottodomini con `*`, percorsi), ed escono dopo `'self'`, che
+la CSP di tutti ha già. Le altre pagine restano a `form-action 'self'`. In `csp`, per sempre, `form-action` è scartata, con un
+avviso nel log: un modulo non la allarga su ogni risposta. Chromium applica `form-action` anche ai rimandi che seguono
+l'invio: se l'host che riceve il modulo rimanda a un altro host, anche quello va nell'insieme.
+
+```php
+'csp_pagine' => [
+    'consegna_assistenza' => ['form-action' => ['https://board.example.com', 'https://crm.example.com']],
+],
+```
 
 **Con Inertia la CSP è del documento.** Il browser applica la CSP della risposta che ha caricato il documento, e una visita
 di Inertia cambia la pagina senza ricaricarlo: la CSP resta quella di prima. Per questo una pagina con sorgenti sue si apre
