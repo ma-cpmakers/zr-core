@@ -833,6 +833,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     it('`resources/js/frasi` esporta le funzioni per le pagine, e solo quelle (dalla v3.0.0 quattro, con `destinazioneDellaNotifica`), con le frasi di ogni lingua (sprint 33 · T1.1; sprint 70 · T1.3)', () => {
         expect(ingressoDelleFrasi.esporta).toStrictEqual(PER_LE_PAGINE);
+        // v4.20.0 (lettura della PR, R2): le letture stanno nel pezzo della campanella e prendono il trasporto da `chiamate.ts`,
+        // non da `servizi.ts`, che porterebbe qui il pezzo della ricerca: l'ingresso delle frasi non ha pezzi a richiesta.
+        expect(ingressoDelleFrasi.pezzi).toStrictEqual([]);
         expect(Object.values(FRASI).filter((frase) => !ingressoDelleFrasi.js.includes(frase))).toStrictEqual([]);
     });
 });

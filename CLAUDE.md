@@ -140,7 +140,7 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 
 ## Progetto sulla board
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.20.0` (lotti 0520 e 0521: menu Moduli e Menu, DataTable per il CRM,
-   tetto 19.282, le letture nel pezzo della campanella); poi la pagina per il sì di Luciano: REA e telefono del sito, «Completa la prenotazione entro 30 minuti» di Bookings, 207-210 nel design di Board; la 206 (tema) dopo zr-home #2780; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
+   tetto 19.282, le letture nel pezzo della campanella); poi nel prossimo lotto la riga «Registro delle Imprese» del SiteFooter e del design del sito (zr-pm 06/11, da caricare: è una decisione di Luciano); la 206 (tema) dopo zr-home #2780; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
    schermate fuori flusso si sistemano nel prossimo giro di Bookings. #2909 (la fascia di assistenza) esce quando zr-backoffice ha
    `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
