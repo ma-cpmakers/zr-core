@@ -95,9 +95,10 @@ function avatarFuoriDalMenu(aggiunto: Node): void {
 }
 
 /**
- * Sotto 720 px la ricerca aperta — col fuoco nel campo, o coi risultati — copre la barra in alto, e la campanella e il profilo
- * restano bersagli coperti a metà (axe `target-size`): finché la ricerca la copre, le azioni della barra non si vedono e non
- * prendono il fuoco, e tornano appena si chiude. Dove `matchMedia` non c'è non si nasconde niente (voce #2627). Al Tab si
+ * Sotto 720 px la ricerca aperta copre la barra in alto, e la campanella e il profilo restano bersagli coperti a metà (axe
+ * `target-size`): finché la ricerca la copre, le azioni della barra non si vedono e non prendono il fuoco, e tornano appena si
+ * chiude. Dal lotto 0518 la copre solo `.is-open`: chiusa con Esc, il fuoco resta nel campo, che è l'icona, e le azioni tornano
+ * col pannello che esce (lettura della PR #187, R1). Dove `matchMedia` non c'è non si nasconde niente (voce #2627). Al Tab si
  * mostrano prima che il browser cerchi dove portare il fuoco, perché dalla ricerca arrivi a loro e non al contenuto (#2805): se
  * il fuoco resta nella ricerca, all'uscita o al tasto dopo si nascondono di nuovo.
  */
@@ -106,7 +107,7 @@ function azioniSottoLaRicerca(tasto?: KeyboardEvent): void {
     const azioni = ricerca?.parentElement?.querySelector<HTMLElement>(':scope > .zr-top-actions');
 
     if (azioni) {
-        azioni.style.visibility = self.matchMedia?.('(max-width: 720px)').matches && (ricerca?.contains(document.activeElement) || ricerca?.matches('.is-open')) && tasto?.key != 'Tab' ? 'hidden' : '';
+        azioni.style.visibility = self.matchMedia?.('(max-width: 720px)').matches && ricerca?.matches('.is-open') && tasto?.key != 'Tab' ? 'hidden' : '';
     }
 }
 

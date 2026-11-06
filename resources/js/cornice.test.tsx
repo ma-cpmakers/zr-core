@@ -10107,14 +10107,14 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
     });
 
     it.each<[string, () => Promise<void>]>([
-        // Dalla v3.10.0 (sprint 78 · T2, voce 2800) dopo Esc il fuoco resta nel campo, che sotto 720 px copre ancora la barra:
-        // campanella e profilo tornano quando il campo lo lascia.
+        // Dopo Esc il fuoco resta nel campo (richiesta 47). Dalla v4.18.0 il campo chiuso è l'icona col contorno e non copre più
+        // la barra (lotto 0518: il campo largo solo con `.is-open`): campanella e profilo tornano col pannello che esce, col
+        // fuoco ancora nel campo (lettura della PR #187, R1).
         ['Esc', async () => act(async () => {
             campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            campo().dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
             await prossimoGiro();
-            expect([document.activeElement, azioni()?.style.visibility]).toStrictEqual([campo(), 'hidden']);
-            campo().blur();
-            await prossimoGiro();
+            expect(document.activeElement).toBe(campo());
         })],
         // Il clic fuori chiude la ricerca col `mousedown` dell'`AppShell`, che lo ascolta dal giro dopo l'apertura, e toglie il
         // fuoco al campo, come in un browser.
@@ -10169,23 +10169,30 @@ describe('il pannello delle notifiche senza punti di riferimento, e la barra in 
         expect(uno('.zr-top .zr-search')?.classList.contains('is-open')).toBe(true);
     });
 
-    it('T2.3 chiusa la ricerca col fuoco ancora nel campo, la ricerca copre ancora la barra; quando il campo perde il fuoco campanella e profilo tornano', async () => {
+    // Lettura della PR #187, R1: fino alla v4.17.0 il campo col fuoco copriva la barra anche a ricerca chiusa
+    // (`.zr-search:focus-within`), e le azioni restavano nascoste finché il fuoco non lo lasciava. Dal lotto 0518 la copre solo la
+    // ricerca aperta: chiusa con Esc, campanella e profilo tornano col fuoco ancora nel campo, e riaperta col tasto dopo si
+    // nascondono di nuovo.
+    it('T2.3 chiusa la ricerca col fuoco ancora nel campo, campanella e profilo tornano; riaperta, si nascondono di nuovo', async () => {
         largaAlPiu720(true);
         await laCornice();
         await nelCampo();
         await act(async () => {
-            await prossimoGiro();
-            uno('.zr-main')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            campo().dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
             await prossimoGiro();
         });
-        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), azioni()?.style.visibility]).toStrictEqual([false, 'hidden']);
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), document.activeElement, azioni()?.style.visibility]).toStrictEqual([false, campo(), '']);
 
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(campo(), 'uat');
         await act(async () => {
-            campo().blur();
+            campo().dispatchEvent(new KeyboardEvent('keydown', { key: 't', bubbles: true }));
+            campo().dispatchEvent(new Event('input', { bubbles: true }));
+            campo().dispatchEvent(new KeyboardEvent('keyup', { key: 't', bubbles: true }));
             await prossimoGiro();
         });
 
-        expect(azioni()?.style.visibility).toBe('');
+        expect([uno('.zr-top .zr-search')?.classList.contains('is-open'), azioni()?.style.visibility]).toStrictEqual([true, 'hidden']);
     });
 
     // Sprint 78 · T1 (voce 2805, regressione della v3.4.0): col fuoco nella ricerca le azioni erano nascoste, e il Tab saltava

@@ -844,7 +844,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     }
     // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
     // — al più `TETTO_DEL_FRENO` secondi dopo (`ricerca.ts`) — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
-    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo non mostra il caricamento, e nemmeno «Nessun
+    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo mostra il caricamento solo per i 300 ms in cui
+    // l'`AppShell` aspetta prima di chiedere (dalla v4.18.0 il caricamento dal tasto è suo), poi torna l'errore; mai «Nessun
     // risultato» per una parola che non è partita (dopo lo stato ridotto, che la ricerca la dimentica). Il freno è della
     // persona, non di una richiesta: vale anche quando il 429 è di una richiesta che non è più l'ultima, e allora quella in
     // volo è annullata e non è più di nessuno, così la sua risposta non entra nello stato. Allo scadere non parte niente da
