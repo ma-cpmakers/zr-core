@@ -87,6 +87,9 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
     // della lingua della pagina è quello del dato da cui viene la lingua.
     const piuRecente = subito && subito.persona.email && suo?.persona && lui(suo.persona) === lui(subito.persona) && segno(suo?.lingua_il)! < segno(subito.lingua_il)! && { lingua: subito.lingua, lingua_il: subito.lingua_il };
     const pagina = intera ?? (subito ? { prodotti: [], ...subito, ...(suo ?? { in_attesa: true }), ...(suo && (piuRecente || { lingua_il: suo.lingua_il })) } : undefined);
+    // `assistenza` (dalla `v4.22.0`) è la sola chiave che `subito` può portare e `dopo` no: con `dopo` vale la sua, e un `dopo` che non
+    // ce l'ha non è un'assistenza — chi è entrato dopo la fine dell'assistenza non vede la fascia di quella (revisione dello sprint 115).
+    if (pagina && pagina !== intera && suo && !suo.assistenza) delete pagina.assistenza;
 
     // Chi la cornice mostra sta qui, sopra la `key` del workspace: sotto, quando il workspace cambia la cornice si rifà e non
     // lo sa più. È chi ha il segno più avanti (quello della sessione, o quello della lettura nei dati interi), e non torna mai

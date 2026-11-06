@@ -1344,6 +1344,24 @@ describe('la cornice in due dati, sotto il layout', () => {
         expect(document.body.textContent).not.toContain(dati.persona.nome);
     });
 
+    // Sprint 115 (voce 2909, revisione del codice R1): `assistenza` è la sola chiave che `subito` può portare e `dopo` no. Col
+    // `dopo` di chi è entrato dopo la fine dell'assistenza la fascia non resta: l'assistenza si prende solo da `dopo`.
+    it('un `subito` con l\'assistenza e il `dopo` più recente di chi è entrato poi, senza: nessuna fascia; con l\'assistenza nel `dopo` la fascia c\'è (sprint 115 · T3.3)', async () => {
+        const anna = { persona: { nome: 'Anna', cognome: 'Bianchi', email: 'anna@example.com' }, sola_lettura: false };
+        const fascia = async () => {
+            await act(() => vi.dynamicImportSettled());
+            return document.body.textContent?.includes('Stai usando Zeiras come Anna Bianchi');
+        };
+        const diAnna = { ...subito, sessione_il: '2026-10-13T08:00:05.000000Z', assistenza: anna };
+        const lettoDopo = { ...dopo, aziende, lingua: 'it', persona: altra, workspace: subito.workspace, sessione_il: '2026-10-13T08:00:06.000000Z' };
+
+        await inDue({ subito: diAnna, dopo: { ...lettoDopo, assistenza: anna } }, <PaginaA key="1" />);
+        expect(await fascia()).toBe(true);
+
+        await inDue({ subito: diAnna, dopo: lettoDopo }, <PaginaA key="1" />);
+        expect(await fascia()).toBe(false);
+    });
+
     // Sprint 43 · T4 (voce 2052): con la stessa persona vale la lingua del dato più recente. Chi cambia lingua e rilegge il solo
     // `subito` ha i testi della cornice nella lingua nuova da subito, senza aspettare che `dopo` sia riletto: da `subito` passa
     // la sola lingua, e moduli, workspace e numero delle notifiche restano quelli del `dopo` che c'è.

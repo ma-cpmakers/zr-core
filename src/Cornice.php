@@ -124,7 +124,7 @@ final class Cornice
      *
      * Dalla `v4.22.0` (#2909), se il gettone è di assistenza — lo staff è entrato con «Accedi come» (zr-backoffice #2914) —, dopo il
      * segno c'è `assistenza`: la persona assistita (nome, cognome o null, email) e `sola_lettura`, da accessi.corrente.mostra (GET
-     * /v1/accessi/corrente), letta col gettone della persona una volta per accesso e tenuta nella sessione (`assistenza()`). Per
+     * /v1/accessi/corrente), letta col gettone del workspace una volta per sessione e tenuta nella sessione (`assistenza()`). Per
      * ogni altro gettone la chiave non c'è, nemmeno null. Né l'id dell'assistenza né chi la fa escono. La lettura è l'ultima, dopo
      * le aziende; dopo il 403 `accettazione_richiesta` non parte, e i dati ridotti portano l'assistenza solo se è già stata letta,
      * prima di `accettazione_richiesta`. Una risposta che la cornice non sa leggere è BackofficeNonRisponde, mai «non è
@@ -954,7 +954,10 @@ final class Cornice
     }
 
     /**
-     * accessi.corrente.mostra (GET /v1/accessi/corrente), col gettone della persona: `impersonificazione` è null per ogni gettone che
+     * accessi.corrente.mostra (GET /v1/accessi/corrente), col gettone del workspace, quello con cui il modulo scrive: è quello che
+     * dice se c'è un'assistenza. Il gettone dell'accesso no: se nel browser c'era già una sessione della stessa persona, zr-auth lo
+     * tiene accanto a quello dell'assistenza (`Sessione::entra`), e con lui la risposta sarebbe «non è un'assistenza» mentre lo
+     * staff scrive a nome della persona (revisione di sicurezza dello sprint 115). `impersonificazione` è null per ogni gettone che
      * non è di assistenza; per l'assistenza la persona assistita, mai chi la fa, e `sola_lettura`. Se ne prendono nome, cognome (un
      * testo, o null), email e `sola_lettura`; l'id e la scadenza no. Una risposta senza `impersonificazione`, o con una che non ha
      * quella forma (nome o email che non sono testi non vuoti, `sola_lettura` che non è un booleano), è BackofficeNonRisponde.
@@ -964,7 +967,7 @@ final class Cornice
     private static function accessoCorrente(): ?array
     {
         $rotta = 'GET /v1/accessi/corrente';
-        $corrente = Api::persona()->get('/v1/accessi/corrente')['data'] ?? null;
+        $corrente = Api::workspace()->get('/v1/accessi/corrente')['data'] ?? null;
 
         if (! is_array($corrente) || ! array_key_exists('impersonificazione', $corrente)) {
             throw new BackofficeNonRisponde("La risposta di {$rotta} non porta `impersonificazione`.");

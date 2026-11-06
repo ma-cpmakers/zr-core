@@ -312,7 +312,8 @@ tue: in assistenza il backoffice può rifiutare una tua chiamata che scrive col 
 `assistenza` nei dati della cornice. Il dettaglio sta nel README, «La cornice», al punto «L'assistenza».
 
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
-backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
+backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Dalla `v4.22.0` ogni pagina con la cornice legge anche
+`/v1/accessi/corrente`: un finto scritto a mano risponde con `impersonificazione: null`, e chi conta le richieste ne conta una in più. Due chiamate nella stessa
 richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
 
 **In due dati**, dalla `v2.1.0`: se non vuoi che la pagina aspetti il backoffice prima del primo disegno, dai al layout

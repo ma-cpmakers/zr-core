@@ -1,6 +1,5 @@
 <?php
 
-use Composer\InstalledVersions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Zeiras\Auth\Api;
@@ -12,9 +11,10 @@ use Zeiras\Core\Cornice;
 
 // Sprint 115 · T1 (voce #2909, Decisione 22190). Quando lo staff entra in un modulo con «Accedi come» (zr-backoffice #2914,
 // zr-auth 0.12.139) il gettone è di assistenza, e accessi.corrente.mostra (GET /v1/accessi/corrente) dà la persona assistita in
-// `impersonificazione`: i dati della cornice la portano in `assistenza`, letta una volta per accesso, e per ogni altra sessione la
+// `impersonificazione`: i dati della cornice la portano in `assistenza`, letta una volta per sessione, e per ogni altra sessione la
 // chiave non c'è. Gli aiuti (backoffice(), ioMostra(), marketing(), richiesteA(), nonRisponde()) vengono da CorniceDatiTest.php e
-// CorniceInDueDatiTest.php. Il caso col finto di zr-auth prova la forma vera: il finto dell'assistenza c'è dalla 0.12.139.
+// CorniceInDueDatiTest.php. Il caso col finto di zr-auth prova la forma vera: il finto dell'assistenza c'è dalla 0.12.139, e il vincolo
+// parte da quella.
 
 /**
  * La risposta di accessi.corrente.mostra per la sessione dei test: `impersonificazione` null per un accesso qualunque, la forma
@@ -26,15 +26,6 @@ use Zeiras\Core\Cornice;
 function accessoCorrente(?array $impersonificazione = null): array
 {
     return ['data' => ['accesso_id' => 'uat-accesso', 'scade_il' => now()->addHours(4)->toIso8601String(), 'impersonificazione' => $impersonificazione]];
-}
-
-/**
- * Il finto di zr-auth ha l'«Accedi come» dalla 0.12.139; il vincolo del pacchetto parte da più giù, perché il codice della cornice
- * non usa niente di nuovo (Api::persona()->get): nel giro della CI con la patch più bassa il caso col finto si salta.
- */
-function fintoDellAssistenza(): bool
-{
-    return version_compare(ltrim((string) InstalledVersions::getPrettyVersion('zeiras/zr-auth'), 'v'), '0.12.139', '>=');
 }
 
 /** @return array<string, mixed> l'impersonificazione di Anna Bianchi, come la dà il backoffice */
@@ -98,7 +89,7 @@ it('con una sessione che non è un\'assistenza la chiave `assistenza` non c\'è,
         ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
 });
 
-it('accessi.corrente.mostra si chiama una volta per accesso, col gettone della persona: due pagine, una chiamata; subito() e la cornice ridotta portano l\'assistenza già letta senza chiamare (sprint 115 · T1.3)', function () {
+it('accessi.corrente.mostra si chiama una volta per accesso, col gettone del workspace: due pagine, una chiamata; subito() e la cornice ridotta portano l\'assistenza già letta senza chiamare (sprint 115 · T1.3)', function () {
     $gettoni = sessioneAMano(marketing());
     backoffice(['/v1/accessi/corrente' => accessoCorrente(annaAssistita(true))]);
 
@@ -108,7 +99,7 @@ it('accessi.corrente.mostra si chiama una volta per accesso, col gettone della p
     $ridotta = Cornice::ridotta();
 
     expect(richiesteA('/v1/accessi/corrente'))->toHaveCount(1)
-        ->and(richiesteA('/v1/accessi/corrente')->first()->hasHeader('Authorization', 'Bearer '.$gettoni['accesso']))->toBeTrue()
+        ->and(richiesteA('/v1/accessi/corrente')->first()->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue()
         ->and(array_keys($subito))->toBe(['lingua', 'persona', 'workspace', 'sessione_il', 'lingua_il', 'assistenza'])
         ->and($subito['assistenza']['sola_lettura'])->toBeTrue()
         ->and($ridotta['assistenza']['persona']['email'])->toBe('anna@example.com');
@@ -193,14 +184,18 @@ it('una risposta di accessi.corrente.mostra che la cornice non sa leggere, un 5x
     'la connessione che cade' => [fn () => nonRisponde(0, null)],
 ]);
 
-it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra col codice senza state, e i dati portano la persona assistita, non quella dello staff (sprint 115 · T1.1, T1.3)', function () {
+it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra col codice senza state, e i dati portano la persona assistita, non quella dello staff, anche con una sessione della stessa persona già aperta nel browser (sprint 115 · T1.1, T1.3; revisione di sicurezza)', function (bool $giaDentro) {
     config(['zr-auth.cliente' => BackofficeFinto::CLIENTE, 'zr-auth.segreto' => BackofficeFinto::SEGRETO_DEL_CLIENTE]);
     $finto = BackofficeFinto::attiva()->ritorno('pm', 'https://localhost/ingresso/ritorno');
     $anna = $finto->persona('anna@example.com', 'una password di prova lunga', nome: 'Anna');
     $studio = $finto->workspace('Studio', $anna);
     $finto->attivaApp($studio, 'pm');
-    // Lo staff assiste solo chi è già entrato almeno una volta.
-    Api::senzaGettone()->post('/v1/accessi', ['email' => 'anna@example.com', 'password' => 'una password di prova lunga']);
+    // Lo staff assiste solo chi è già entrato almeno una volta. Con `$giaDentro` quell'accesso è la sessione del browser: zr-auth
+    // ne tiene il gettone accanto a quello dell'assistenza, e accessi.corrente.mostra con quello direbbe «non è un'assistenza».
+    $accesso = Api::senzaGettone()->post('/v1/accessi', ['email' => 'anna@example.com', 'password' => 'una password di prova lunga'])['data'];
+    if ($giaDentro) {
+        Sessione::apri($accesso);
+    }
     // Lo staff entra solo con un'email dei domini dello staff, che il finto conosce.
     $sara = $finto->persona('staff-di-prova@castroandpartners.com', 'una password di prova lunga', nome: 'Sara');
     $staff = $finto->staffDi($sara, 'supporto', true);
@@ -218,7 +213,7 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
 
     expect($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => $anna['cognome'], 'email' => 'anna@example.com'], 'sola_lettura' => true])
         ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
-})->skip(fn () => ! fintoDellAssistenza(), 'il finto dell\'«Accedi come» c\'è dalla zr-auth 0.12.139');
+})->with(['senza una sessione di prima' => [false], 'con la sessione della persona già aperta' => [true]]);
 
 it('in assistenza il backoffice nega le letture con 403 `azione_non_consentita_in_assistenza`: le due rotte che segnano lette rispondono 403 con quel codice, non un guasto (sprint 115 · T2.3)', function (string $metodo, string $indirizzo, array $corpo) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
