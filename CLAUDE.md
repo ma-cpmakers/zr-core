@@ -139,8 +139,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.20.0` (lotti 0520 e 0521: menu Moduli e Menu, DataTable per il CRM,
-   tetto 19.282, le letture nel pezzo della campanella); poi nel prossimo lotto la riga «Registro delle Imprese» del SiteFooter e del design del sito (zr-pm 06/11, da caricare: è una decisione di Luciano); la 206 (tema) dopo zr-home #2780; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.21.0` (la 218, il Registro delle Imprese nel SiteFooter,
+   caricata da sola: Decisione 22288); il resto del lotto 0522 (58, 16, 116, 4, 28, 136, 219) al sì di Luciano, in una versione sua; la 206 (tema) dopo zr-home #2780; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
    schermate fuori flusso si sistemano nel prossimo giro di Bookings. #2909 (la fascia di assistenza) esce quando zr-backoffice ha
    `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
