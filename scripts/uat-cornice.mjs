@@ -1496,7 +1496,7 @@ async function ilCliente(page, larghezza) {
         const azioni = document.querySelector('.zr-shell .zr-top-actions')?.getBoundingClientRect();
         return barra && azioni ? Math.round(barra.right - azioni.right) : null;
     });
-    scrivi(posto !== null && posto <= 32 ? '✅' : '❌', `${id}.4`, `a ${larghezza} px campanella e profilo stanno a destra della barra in alto`, `distanza dal bordo destro: ${posto} px`);
+    scrivi(posto !== null && posto >= 0 && posto <= 32 ? '✅' : '❌', `${id}.4`, `a ${larghezza} px campanella e profilo stanno a destra della barra in alto`, `distanza dal bordo destro: ${posto} px`);
     await page.evaluate(() => document.activeElement?.blur());
     if (larghezza <= 720) {
         return;

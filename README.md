@@ -246,7 +246,7 @@ delle notifiche (`NotificationItem`) e `Label`; un'eccezione
 di zr-pm. Dalla `v4.11.0` è salito di 247 byte, alla misura più 20: il design system con «Il mio spazio», lo spazio cliente
 di zr-account, dentro l'`AppShell`, che la cornice non usa ancora ma il cui codice entra lo stesso; un sì di zr-pm senza
 contropartita. Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.058 i rimedi, 1.867 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.097 i rimedi, 1.867 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
@@ -255,7 +255,9 @@ una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un le
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
 sta nel pezzo che si carica sempre perché un dialogo si apre anche col mouse (un'eccezione di zr-pm per l'accessibilità,
 Decisione 19411: se un rimedio stretto libera byte, il tetto riscende). Nella `v3.14.3` di altri 10, a 2.058: un dialogo
-senza niente che prenda il fuoco, un «Attendi», lo prende su di sé (Decisione 19428). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
+senza niente che prenda il fuoco, un «Attendi», lo prende su di sé (Decisione 19428). Nella `v4.13.2` di altri 39, a 2.097, la misura più 20: il clic di «Apri il menu» che
+porta il fuoco nel cassetto, passato qui dal pezzo della tastiera, che col primo tasto Invio arrivava dopo il clic (#3329; la
+tastiera scende di 31 byte; sì di zr-pm-07). Quello della ricerca era di 1.004 byte, ed è salito di 534 nella `v3.6.0`: 532 per le prenotazioni e i calendari
 di Bookings, coi loro testi nelle tre lingue e la data della prenotazione (un'eccezione di zr-pm: la misura vera), e 2 per
 le impronte nuove dei nomi dei pezzi, col codice uguale, e di altri 23 nella `v3.8.0`: 3 per le impronte nuove dei nomi dei
 pezzi, ancora col codice uguale, e 20 di margine (zr-pm), e di altri 147 nella `v3.9.0`, alla misura più 20: i testi dei
@@ -442,6 +444,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.12.0` | il titolo e la destinazione del Gate deciso di Project Management (`board.gate.deciso`, «Gate deciso»): un clic apre il Gate, che è una scheda (`/c/{id}`) | niente | un caso che apre quella notifica e si aspetta la pagina delle notifiche trova il Gate | la notifica del Gate deciso col suo titolo, e un clic apre il Gate |
 | `v4.13.0` | la cornice del cliente, `CorniceDelCliente` coi dati di `Cornice::datiDelCliente()` (#3319): l'`AppShell` per «Il mio spazio» di zr-home, con la sessione dell'accesso anche senza workspace, coi testi suoi in `resources/lingue/cliente/` e la ricerca nascosta da `resources/css/cliente.css`; le aziende da cliente e la campanella aspettano zr-backoffice #3320 e #3323, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice del cliente») | niente per chi monta la `Cornice`; zr-home monta `CorniceDelCliente` nelle pagine `/spazio/*` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.1-CL.3) |
 | `v4.13.1` | nella cornice del cliente campanella e profilo restano a destra della barra in alto: senza il campo della ricerca scivolavano a sinistra, accanto alla barra laterale (`resources/css/cliente.css`) | niente: il modulo importa già `cliente.css` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.4) |
+| `v4.13.2` | sotto i 1024 px, con Invio come primo tasto della pagina su «Apri il menu», il fuoco entra nella prima voce del cassetto come con ogni altro tasto prima (#3329, K390.5): il clic lo ascolta il pezzo dei rimedi e non più quello della tastiera | niente | niente | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (K390.5) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1108,7 +1111,7 @@ cornice === null ? pagina : (
   (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra (profilo, campanella, «+», Moduli)
   o il selettore aperti, Esc chiude prima quelli e il cassetto resta; dalla `v3.12.0` resta anche con un Esc dato in un `<dialog>`
   del browser o già gestito dalla pagina (`preventDefault`): si chiude solo il dialogo (riga 136, #2826). Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
-  sul pulsante), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
+  sul pulsante), anche quando Invio è il primo tasto della pagina (dalla `v4.13.2`, #3329), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
   (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga a 1024 px o più col cassetto aperto, dove il pulsante non
   si vede, il Tab torna del browser. Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono
   quando il fuoco va — col Tab — a un elemento che non è il loro pulsante né un menu o un pannello della cornice, e il fuoco
@@ -2665,7 +2668,8 @@ e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le 
 e profilo a destra a 1280 e a 390 px). Prima del tag zr-core lo
 lancia su `cliente.html` in italiano, inglese e spagnolo, e su `cliente.html?aziende=1&nuovo=1`. Nella `v4.13.0` lì una riga è ❌,
 K390.5: con Invio come primo tasto su «Apri il menu» il fuoco resta sul pulsante e non entra nel cassetto. È un difetto che c'era
-già, del pezzo che ascolta il clic del pulsante, non di questa cornice, e lo corregge #3329.
+già, del pezzo che ascolta il clic del pulsante, non di questa cornice, e lo corregge #3329: dalla `v4.13.2` il clic lo
+ascolta il pezzo dei rimedi, che c'è prima di ogni tasto, e K390.5 è ✅ su tutte e tre le pagine.
 
 ### Il Toast della cornice
 

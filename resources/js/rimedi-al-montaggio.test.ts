@@ -56,3 +56,22 @@ it('sotto i 1024 px il menu a cassetto aperto ha `role="dialog"` senza un tasto,
 
     expect([...aperto, lato.getAttribute('role'), tastiera.chiesto]).toStrictEqual(['dialog', null, null, 0]);
 });
+
+it('aperto con Invio o con lo spazio — il clic senza `detail` — prima che arrivi il pezzo della tastiera, come quando Invio è il primo tasto della pagina, il menu a cassetto dà il fuoco alla sua prima voce che lo prende, non a una «Presto»; col mouse il fuoco resta su «Apri il menu» (voce 3329, K390.5)', async () => {
+    document.body.innerHTML = '<div class="zr-shell"><aside class="zr-side"><nav><a class="zr-nav-item is-soon" href="#"><span>CRM</span><span>Presto</span></a><a class="zr-nav-item" href="/">Dashboard</a></nav></aside><main><div class="zr-top"><button class="zr-top-menu" aria-expanded="false">Apri il menu</button></div></main></div>';
+    await import('./rimedi');
+    await cambiato();
+
+    const menu = document.querySelector<HTMLButtonElement>('.zr-top-menu')!;
+    const premi = async (detail: number) => {
+        menu.focus();
+        menu.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+        await cambiato();
+
+        return [menu.getAttribute('aria-expanded'), document.activeElement?.textContent];
+    };
+
+    menu.addEventListener('click', () => menu.setAttribute('aria-expanded', String(menu.getAttribute('aria-expanded') === 'false')));
+
+    expect([await premi(0), await premi(0), await premi(1), tastiera.chiesto]).toStrictEqual([['true', 'Dashboard'], ['false', 'Apri il menu'], ['true', 'Apri il menu'], 0]);
+});

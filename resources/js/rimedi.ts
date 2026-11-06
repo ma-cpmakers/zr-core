@@ -190,6 +190,19 @@ function clicSullaBarra(clic: MouseEvent): void {
     }
 }
 
+/**
+ * Il menu a cassetto (sotto i 1024 px) aperto con la tastiera lasciava il fuoco su «Apri il menu» (#2806): aperto con Invio o
+ * con lo spazio — il clic della tastiera, senza `detail` — il fuoco va alla prima voce che lo prende (una «Presto» no); col mouse
+ * resta sul pulsante. Sta qui e non nel pezzo di tastiera (#3329): il primo tasto chiede quel pezzo, e il clic di un Invio
+ * premuto per primo arrivava prima di lui. Il Tab che gira nel cassetto aperto resta del pezzo di tastiera. Provvisorio, finché
+ * l'`AppShell` non lo fa da sé (#2341).
+ */
+function apertoIlCassetto(clic: MouseEvent): void {
+    if (!clic.detail && (clic.target as Element).closest?.('.zr-shell .zr-top-menu')) {
+        setTimeout(() => document.querySelector('.zr-shell .zr-top-menu[aria-expanded="true"]') && [...document.querySelector('.zr-shell > .zr-side')?.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO) ?? []].some((voce) => voce.tabIndex >= 0 && (voce.focus(), document.activeElement === voce)));
+    }
+}
+
 /** Le fermate che il rimedio ha dato, al contenuto (0) e al pannello della ricerca (1): si spostano quando cambia ciò che scorre, e si tolgono quando non servono più. */
 const fermate: (Element | null)[] = [null, null];
 
@@ -318,6 +331,7 @@ function primoTasto(tasto: KeyboardEvent): void {
 
 addEventListener('keydown', primoTasto);
 document.addEventListener('click', clicSullaBarra);
+document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('click', sceltoUnRisultato, true);
 document.addEventListener('keydown', sceltoUnRisultato, true);
 document.addEventListener('focusin', contorno);
