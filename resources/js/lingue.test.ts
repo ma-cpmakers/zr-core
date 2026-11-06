@@ -154,10 +154,10 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
         expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 58 (dallo sprint 74 anche i tre di Bookings, i due promemoria
-        // delle scadenze, quello delle To-do e l'invito accettato; dallo sprint 79 i due degli sprint), in ogni lingua, anche con un
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 59 (dallo sprint 74 anche i tre di Bookings, i due promemoria
+        // delle scadenze, quello delle To-do e l'invito accettato; dallo sprint 79 i due degli sprint; dalla v4.12.0 il Gate deciso), in ogni lingua, anche con un
         // file che ne ha uno in più.
-        expect(tipiCheHa(frasiInglesi)).toHaveLength(58);
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(59);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -178,16 +178,16 @@ describe('le lingue della cornice', () => {
         ['it', frasiItaliane, 'Nuova scheda'],
         ['es', frasiSpagnole, 'Nueva tarjeta'],
         ['en', frasiInglesi, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 58 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2; sprint 79 · T1.1)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 59 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2; sprint 79 · T1.1)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(58);
+        expect(tipiConosciuti).toHaveLength(59);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 58 titoli sono 58 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 59 titoli sono 59 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(58);
+        expect(new Set(titoli).size).toBe(59);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -426,6 +426,20 @@ describe('le lingue della cornice', () => {
 
         expect(tipi.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(titoli);
         expect(titoli).not.toContain(diRipiego[lingua]);
+        expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
+    });
+
+    // v4.12.0 (#2791, zr-board-6b): il Gate deciso ha un titolo solo, senza l'esito; i titoli per esito sono un lavoro a parte.
+    it.each<[lingua: 'it' | 'en' | 'es', titolo: string]>([
+        ['it', 'Gate deciso'],
+        ['en', 'Gate decided'],
+        ['es', 'Gate decidido'],
+    ])('con la lingua "%s", titoloDellaNotifica dà a `board.gate.deciso` il titolo «%s»; il tipo col prefisso, un pezzo del tipo e un esito dopo il tipo restano col titolo di ripiego (v4.12.0)', async (lingua, titolo) => {
+        const { titoloDellaNotifica } = await import('./frasi');
+        const cheNonConosce = ['com.zeiras.board.gate.deciso', 'board.gate', 'gate.deciso', 'board.gate.deciso.approvato', 'BOARD.GATE.DECISO'];
+
+        expect(titoloDellaNotifica('board.gate.deciso', lingua)).toBe(titolo);
+        expect(titolo).not.toBe(diRipiego[lingua]);
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });
 
@@ -818,7 +832,8 @@ describe('rigaDellaNotifica', () => {
     /** Sprint 74 · T1: i tre tipi di Bookings, che non hanno frasi con `{who}` (l'ospite non è un membro): le loro frasi, con la data, le prova «le notifiche di Bookings, con la data». */
     const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata'];
     /** Sprint 74: il promemoria di una To-do e le due scadenze di una scheda non hanno chi (le manda il backoffice da sé): niente frasi con `{who}`. */
-    const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi'];
+    /** v4.12.0: nemmeno il Gate deciso, che ha un titolo solo. */
+    const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso'];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */
     const coiNomiIsolati = (titolo: string, ...nomi: string[]) => [...new Set(nomi)].reduce((testo, nome) => testo.replaceAll(nome, () => `\u{2068}${nome}\u{2069}`), titolo);
@@ -909,7 +924,7 @@ describe('rigaDellaNotifica', () => {
         const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS, ...SENZA_CHI]);
         const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(conUnTitolo).toHaveLength(58);
+        expect(conUnTitolo).toHaveLength(59);
         expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
@@ -1125,7 +1140,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             }
             expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
         }
-        expect(tipi).toHaveLength(58 + 4);
+        expect(tipi).toHaveLength(59 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
                 expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);

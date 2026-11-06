@@ -2147,12 +2147,12 @@ it('`idsDellaNotifica()` dà `[]`, senza eccezioni, per una notifica che non ha 
 ]);
 
 // v3.6.1 (zr-backoffice-55, dal giro del 27/10/2026 i `dati` portano l'`id`): le scadenze di una scheda e il promemoria di una
-// To-do danno al browser l'`id` della scheda o della To-do, e nient'altro dei `dati`.
-it('`idsDellaNotifica()` dà alle scadenze di una scheda e al promemoria di una To-do il solo `id` (v3.6.1)', function (string $tipo) {
+// To-do danno al browser l'`id` della scheda o della To-do, e nient'altro dei `dati`; dalla v4.12.0 anche il Gate deciso.
+it('`idsDellaNotifica()` dà alle scadenze di una scheda, al promemoria di una To-do e al Gate deciso il solo `id` (v3.6.1, v4.12.0)', function (string $tipo) {
     expect(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, ['id' => 'uat-1', 'board_id' => 'uat-b', 'scade_il' => '2026-10-28']))->toBe(['id' => 'uat-1'])
         ->and(NotificheDellaCornice::idsDellaNotifica('pm', $tipo, ['board_id' => 'uat-b']))->toBe([])
         ->and(NotificheDellaCornice::idsDellaNotifica('crm', $tipo, ['id' => 'uat-1']))->toBe([]);
-})->with(['board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.todo.promemoria']);
+})->with(['board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.todo.promemoria', 'board.gate.deciso']);
 
 it('`idsDellaNotifica()` lascia passare un id solo con la forma di un id — lettere, cifre, `-` e `_`, da 1 a 64 —, e lo dà com\'è (sprint 22 · T7.2)', function (string $id) {
     expect(NotificheDellaCornice::idsDellaNotifica('crm', 'com.zeiras.crm.persona.creata', ['id' => $id]))->toBe(['id' => $id])

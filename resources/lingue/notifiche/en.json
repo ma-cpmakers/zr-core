@@ -56,6 +56,7 @@
     "notificationTitle.board.todo.promemoria": "Reminder: you have something to do",
     "notificationTitle.board.scheda.scade_domani": "A card is due tomorrow",
     "notificationTitle.board.scheda.scade_oggi": "A card is due today",
+    "notificationTitle.board.gate.deciso": "Gate decided",
     "notificationTitle.io.invito.accettato": "Your invitation was accepted",
     "notificationTitleWhoWhat.com.zeiras.board.cartella.creata": "{who} created the area “{what}”",
     "notificationTitleWhoWhat.com.zeiras.board.cartella.modificata": "{who} changed the area “{what}”",

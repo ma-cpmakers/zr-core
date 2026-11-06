@@ -526,8 +526,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
         ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
         // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
-        // promemoria di una To-do.
-        ->and(count($righe['pm']) + count($righe['crm']))->toBe(31)
+        // promemoria di una To-do; dalla v4.12.0 trentadue: il Gate deciso.
+        ->and(count($righe['pm']) + count($righe['crm']))->toBe(32)
         ->and(count($righe['home']))->toBe(1)
         // Sprint 74 · T1.3: e le tre di Bookings.
         ->and(count($righe['bookings']))->toBe(3);
@@ -668,6 +668,8 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             // v3.6.1 (zr-backoffice-55): le scadenze di una scheda aprono la scheda, il promemoria di una To-do la To-do.
             ['tipo' => 'board.scheda.scade_domani', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.scheda.scade_oggi', 'percorso' => '/c/{id}'],
+            // v4.12.0 (#2791, zr-board-6b): il Gate deciso apre il Gate, che è una scheda.
+            ['tipo' => 'board.gate.deciso', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.todo.promemoria', 'percorso' => '/todo?todo={id}'],
         ])
         ->and($voci[0]['notifiche'] ?? null)->toBe([['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri']])

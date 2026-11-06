@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 50,3 KB | 17,7 KB | 63,6 KB | 13,9 KB |
-| la cornice e due componenti per nome | 57,5 KB | 20,0 KB | 63,6 KB | 13,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 161,1 KB | 51,8 KB | 63,6 KB | 13,9 KB |
+| solo la cornice, dall'ingresso per le app | 50,3 KB | 17,7 KB | 63,8 KB | 14,0 KB |
+| la cornice e due componenti per nome | 57,5 KB | 20,0 KB | 63,8 KB | 14,0 KB |
+| la stessa cornice, dall'ingresso di sempre | 161,1 KB | 51,8 KB | 63,8 KB | 14,0 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -439,6 +439,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.9.0` | il design system `ds-1793904392-2019`, il lotto 0514 (richieste 1 e 185): `DealPipeline` per la lavagna del CRM, con numero, totale e ponderato di fase e della testa dal modulo (`count`, `total`, `weighted`, `totals`), il ponderato sotto il totale delle fasi aperte, «Mostra altre» (`hasMore`, `loadingMore`, `onMore`), «Vedi tutte» su vinta e persa (`onSeeAll`), il «⋯» di ogni scheda con «Sposta in…» e le voci del modulo (`dealActions`), `onMove` che può fermare o riportare indietro uno spostamento, più pipeline (`pipelines`, `pipelineId`, `onPipeline`); `DealCard` `actions` e `busy`; `Menu` con le voci di una scelta (`checked`, `menuitemradio`); al tocco campo di testo e select alti 44 px. Il JS d'ingresso sale di 55 byte, tetto 17.511 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative e stessi default; senza di loro la `DealPipeline` cambia solo per il ponderato sotto il totale delle fasi aperte e per il «⋯» sulle schede, e un caso che misura un campo di testo o una select al tocco vede 44 px | la lavagna delle trattative, i form a 390 px al tocco |
 | `v4.10.0` | il design system `ds-1793913087-6ea4`, i lotti 0515 e 0516 (richieste 186, 170, 166, 68, 187, 191, 190, 188): i testi comuni dei componenti nella lingua dell'app (`LabelsProvider`, `useLabels`, `COMMON_LABELS`: la ✕ di `Dialog`, `Toast`, `Alert`, `DetailPanel`, «Annulla», «Aggiungi», «Indietro», «Togli», «non letta»; senza `LabelsProvider` seguono `<html lang>`, una lingua che il design system non ha cade sull'inglese, una pagina senza lingua resta in italiano; la prop del componente vince sempre); `KanbanCard` `votes`, il voto della retrospettiva; `NotificationItem`, la riga di una notifica, la stessa del pannello della campanella; `DealCard` `amountText`; `DealPipeline` e `DealCard` `formatAmount`; `DetailPanel` `actions`, le azioni accanto alla ✕; l'icona `archive`. Il JS d'ingresso sale di 411 byte, tetto 17.922 | `composer update zeiras/zr-core`, poi la build | in italiano niente: props nuove facoltative e stessi default. In una pagina con `<html lang="en">` o `"es"` la ✕ e gli altri testi comuni passano a quella lingua anche senza toccare il modulo: un caso che cerca «Chiudi» su una pagina inglese o spagnola trova «Close» o «Cerrar» | i dialoghi, i toast e il pannello di dettaglio in inglese e spagnolo |
 | `v4.11.0` | il design system `ds-1793914149-8632`: lo spazio cliente di zr-account nell'`AppShell` (`personal`, «Il mio spazio» in cima al selettore nel gruppo «Come cliente», il selettore anche per chi è solo cliente con «Crea il tuo workspace», `plan={false}`) e `AppointmentItem`, la riga di un appuntamento. La cornice non passa `personal`: i suoi tre testi non stanno nelle lingue della cornice. Il JS d'ingresso sale di 247 byte, tetto 18.169 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative, senza tutto resta com'era | `AppointmentItem` e `personal` per chi fa lo spazio cliente o gli appuntamenti |
+| `v4.12.0` | il titolo e la destinazione del Gate deciso di Project Management (`board.gate.deciso`, «Gate deciso»): un clic apre il Gate, che è una scheda (`/c/{id}`) | niente | un caso che apre quella notifica e si aspetta la pagina delle notifiche trova il Gate | la notifica del Gate deciso col suo titolo, e un clic apre il Gate |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1345,9 +1346,12 @@ cornice === null ? pagina : (
   destinazione: un clic apre la pagina delle notifiche. Dalla `v3.11.0` hanno un titolo i due tipi di evento degli sprint
   di Project Management che il contratto ha dal 27/10/2026: `com.zeiras.board.sprint.creato`, «Sprint creato», e
   `com.zeiras.board.sprint.modificato`, «Sprint modificato», anche quando uno sprint parte o si chiude; con chi l'ha fatto
-  «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint». Con loro i titoli sono 58: 40 tipi di evento e
+  «Marta Rossi ha creato uno sprint» e «Marta Rossi ha cambiato uno sprint». Con loro i titoli erano 58: 40 tipi di evento e
   i diciotto che non sono eventi. Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche. Gli altri tipi
-  di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Nel repo di zr-core la copia
+  di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Dalla `v4.12.0` ha un titolo
+  anche il Gate deciso di Project Management, «Gate deciso» (`board.gate.deciso`), che non è un evento: senza chi l'ha
+  fatto e senza l'esito, che il titolo non dice ancora. Un clic apre il Gate, che è una scheda (`/c/{id}`). Con lui i titoli
+  sono 59: 40 tipi di evento e i diciannove che non sono eventi. Nel repo di zr-core la copia
   dei tipi di evento del contratto e l'elenco di quelli che non arrivano mai alla campanella, con la fonte nel backoffice,
   stanno in `tests/contratto/x-eventi.json`: un caso fallisce se un tipo non ha né un titolo né un posto nell'elenco, o se
   la copia non ha più l'impronta dei tipi del contratto (sha256 dei tipi in ordine), e prima di ogni tag
@@ -1944,7 +1948,8 @@ scheda nuova, modificata (`com.zeiras.board.scheda.creata`, `com.zeiras.board.sc
 (`board.commento.menzione`), con `/c/{id}` anche lei: l'id è quello della scheda, e `commento_id`, che i `dati` portano,
 non è nel percorso. Dalla `v3.6.1` Project Management ha anche le scadenze di una scheda (`board.scheda.scade_domani`,
 `board.scheda.scade_oggi`), con `/c/{id}`, e il promemoria di una To-do (`board.todo.promemoria`), con `/todo?todo={id}`:
-un percorso può finire con un parametro, uno, col suo segnaposto. E la voce della Dashboard, `home`, la prima del file,
+un percorso può finire con un parametro, uno, col suo segnaposto. Dalla `v4.12.0` anche il Gate deciso
+(`board.gate.deciso`), con `/c/{id}`: il Gate è una scheda. E la voce della Dashboard, `home`, la prima del file,
 ha l'invito accettato (`io.invito.accettato`), con `/impostazioni/membri`: una notifica senza app (`app: null`) si cerca
 lì, e l'app `home` non c'è. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
 (`crm.acquisto.scoperto`), con `/contatti/{persona_id}`: apre il contatto, e l'`id` dell'acquisto, che i `dati` portano,

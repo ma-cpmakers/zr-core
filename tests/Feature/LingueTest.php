@@ -177,12 +177,13 @@ function tipiDiNotificaDelContratto(): array
  * Dalla v3.2.2 anche quella del CRM sulla modifica che un cliente chiede dal link di un preventivo: non è un evento.
  * Dalla v3.5.0 anche quella di Project Management sulle schede rimaste senza assegnatario: non è un evento.
  * Dalla v3.6.0 anche le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l'invito accettato.
+ * Dalla v4.12.0 anche quella di Project Management sul Gate deciso.
  *
  * @return list<string>
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti()), ...array_keys(titoloDellaNotificaDelGateDeciso())];
 }
 
 /**
@@ -412,6 +413,20 @@ function titoliDiPromemoriaScadenzeEInviti(): array
         'board.scheda.scade_domani' => ['it' => 'Una scheda scade domani', 'en' => 'A card is due tomorrow', 'es' => 'Una tarjeta vence mañana'],
         'board.scheda.scade_oggi' => ['it' => 'Una scheda scade oggi', 'en' => 'A card is due today', 'es' => 'Una tarjeta vence hoy'],
         'io.invito.accettato' => ['it' => 'Il tuo invito è stato accettato', 'en' => 'Your invitation was accepted', 'es' => 'Tu invitación fue aceptada'],
+    ];
+}
+
+/**
+ * Il titolo della notifica di Project Management quando un Gate è deciso (#2791, zr-auth v0.12.132), con le parole di zr-board:
+ * uno per tipo, senza chi e senza l'esito — i titoli per esito vogliono l'esito nella risposta della rotta, e sono un lavoro a
+ * parte. Non è un evento: il `tipo` arriva senza `com.zeiras.` davanti. Scritto qui, non letto dai file delle lingue (v4.12.0).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoloDellaNotificaDelGateDeciso(): array
+{
+    return [
+        'board.gate.deciso' => ['it' => 'Gate deciso', 'en' => 'Gate decided', 'es' => 'Gate decidido'],
     ];
 }
 
@@ -980,14 +995,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 58 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciotto che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda e l\'invito accettato —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 59 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciannove che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato e il Gate deciso —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(40)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(58)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(59)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1315,6 +1330,25 @@ it('il promemoria di una To-do, le due scadenze di una scheda e l\'invito accett
         ->and($testi)->not->toHaveKey('notificationTitleWho.board.todo.promemoria')
         ->and($testi)->not->toHaveKey('notificationTitleWho.board.scheda.scade_oggi')
         ->and($testi['notificationTitleWho.io.invito.accettato'] ?? null)->toBe(frasiDelleNotificheConChi()['io.invito.accettato']['chi'][$codice]);
+})->with(['it', 'en', 'es']);
+
+// v4.12.0 (#2791, zr-board-6b): il Gate deciso ha un titolo solo, senza chi e senza l'esito; il clic apre il Gate, che è una scheda.
+it('la notifica del Gate deciso ha il titolo della tabella nella lingua, sotto il tipo com\'è nel backoffice, senza `com.zeiras.` davanti: il tipo col prefisso, un pezzo del tipo e un titolo per esito restano senza titolo, non è un tipo di evento del contratto, non ha la frase con chi, e il titolo non è quello di ripiego né quello di un altro tipo (v4.12.0)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoloDellaNotificaDelGateDeciso();
+    $titolo = $testi['notificationTitle.board.gate.deciso'] ?? null;
+    $deiTitoli = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitle'), ARRAY_FILTER_USE_KEY);
+
+    expect(array_keys($tabella))->toBe(['board.gate.deciso'])
+        ->and($titolo)->toBe($tabella['board.gate.deciso'][$codice])
+        ->and(array_key_exists('notificationTitle.com.zeiras.board.gate.deciso', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.board.gate', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.board.gate.deciso.approvato', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitleWho.board.gate.deciso', $testi))->toBe(false)
+        ->and(tipiDiNotificaDelContratto())->not->toContain('board.gate.deciso')
+        ->and($titolo)->not->toBe($testi['notificationTitle'] ?? null)
+        // Un titolo suo: nessun'altra notifica si chiama così.
+        ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.gate.deciso']);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -1790,7 +1824,8 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     // ospite, non un membro, e il titolo non lo nomina mai, nemmeno se il backoffice ne mandasse il nome: le loro frasi sono
     // quelle con la data, senza chi (frasiDelleNotificheSenzaChiConLaData(), frasiDelleNotificheConLaSolaData()).
     // v3.6.0: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che il backoffice manda da sé, senza chi.
-    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi']));
+    // v4.12.0: nemmeno il Gate deciso, che ha un titolo solo.
+    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso']));
     sort($conLeFrasi);
     sort($conUnTitolo);
 
