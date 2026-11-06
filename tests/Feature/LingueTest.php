@@ -431,6 +431,22 @@ function titoloDellaNotificaDelGateDeciso(): array
     ];
 }
 
+/**
+ * I titoli della notifica del Gate deciso per esito (v4.16.0, sprint 114 · T2, #3302), con le parole di zr-board (`gate.esito.*`):
+ * la chiave è `notificationTitleOutcome.<tipo>.<esito>`, e senza l'esito, o con uno che non è qui, resta il titolo del tipo.
+ * Scritti qui, non letti dai file delle lingue.
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelGatePerEsito(): array
+{
+    return [
+        'notificationTitleOutcome.board.gate.deciso.approvato' => ['it' => 'Gate approvato', 'en' => 'Gate approved', 'es' => 'Gate aprobado'],
+        'notificationTitleOutcome.board.gate.deciso.con_prescrizioni' => ['it' => 'Gate approvato con prescrizioni', 'en' => 'Gate approved with prescriptions', 'es' => 'Gate aprobado con prescripciones'],
+        'notificationTitleOutcome.board.gate.deciso.respinto' => ['it' => 'Gate respinto', 'en' => 'Gate rejected', 'es' => 'Gate rechazado'],
+    ];
+}
+
 /** @return list<string> le chiavi dei titoli delle notifiche: `notificationTitle.<tipo>`, una per ogni tipo che ha un titolo */
 function chiaviDeiTitoliDelleNotifiche(): array
 {
@@ -841,7 +857,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
-        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...array_keys(frasiSottoIlTitolo()), ...$prodotti, ...tipiDiRisorsa(),
+        ...chiaviDeiTitoliDelleNotifiche(), ...chiaviDelleFrasiConChi(), ...array_keys(frasiSottoIlTitolo()), ...array_keys(titoliDelGatePerEsito()), ...$prodotti, ...tipiDiRisorsa(),
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDiRisorsa()),
         // Sprint 74 · T2.5 (voce 2549): delle risorse di resources/registro/ricerca.json le lingue della cornice hanno il solo nome da elenco.
         ...array_map(fn (string $tipo): string => "searchSource.$tipo", tipiDellaRicerca()),
@@ -1331,6 +1347,15 @@ it('il promemoria di una To-do, le due scadenze di una scheda e l\'invito accett
         ->and($testi)->not->toHaveKey('notificationTitleWho.board.todo.promemoria')
         ->and($testi)->not->toHaveKey('notificationTitleWho.board.scheda.scade_oggi')
         ->and($testi['notificationTitleWho.io.invito.accettato'] ?? null)->toBe(frasiDelleNotificheConChi()['io.invito.accettato']['chi'][$codice]);
+})->with(['it', 'en', 'es']);
+
+// v4.16.0 (sprint 114 · T2.1, #3302): il Gate deciso ha anche un titolo per esito, nella lingua, e ognuno è suo.
+it('la notifica del Gate deciso ha, per ognuno dei tre esiti, il titolo della tabella nella lingua, diverso da quello del tipo e dagli altri (sprint 114 · T2.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDelGatePerEsito();
+
+    expect(array_map(fn (string $chiave) => $testi[$chiave] ?? null, array_keys($tabella)))->toBe(array_column($tabella, $codice))
+        ->and(array_unique([...array_column($tabella, $codice), $testi['notificationTitle.board.gate.deciso'] ?? null]))->toHaveCount(4);
 })->with(['it', 'en', 'es']);
 
 // v4.12.0 (#2791, zr-board-6b): il Gate deciso ha un titolo solo, senza chi e senza l'esito; il clic apre il Gate, che è una scheda.
