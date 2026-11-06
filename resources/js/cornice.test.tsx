@@ -2684,18 +2684,21 @@ describe('il pannello delle notifiche', () => {
         const righe = Object.entries(righeDelleNotifiche).flatMap(([app, delProdotto]) => delProdotto.map(({ tipo, percorso }) => ({ app, tipo, percorso })));
         const elenco = righe.map(({ app, tipo, percorso }, indice) => ({
             // v3.6.1: le righe della Dashboard sono di notifiche che non vengono da un'app (`app: null`).
-            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: app === 'home' ? null : app, tipo,
+            // Sprint 116 · T2.2: le quattro da cliente di Bookings stanno nella voce della Dashboard, ma vengono da Bookings
+            // (`app: 'bookings'`), che non le ha: nella cornice di un workspace non si aprono, e il clic apre la pagina delle notifiche.
+            id: `uat-n${100 + indice}`, creata_il: '2026-10-06T11:55:00Z', letta: false, app: tipo.startsWith('bookings.cliente.') ? 'bookings' : app === 'home' ? null : app, tipo,
             ids: Object.fromEntries([...percorso.matchAll(/\{([a-z_]+)\}/g)].map(([, chiave = '']) => [chiave, `uat-${chiave.replace('_', '-')}`])),
         }));
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
         // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
-        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso.
-        expect(righe).toHaveLength(36);
-        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, percorso }) =>
-            `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`));
-        // E ogni clic l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id.
-        expect(vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(indirizzo)).filter((indirizzo) => indirizzo.endsWith('/lettura'))).toStrictEqual(elenco.map(({ id }) => `/cornice/notifiche/${id}/lettura`));
+        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso. Sprint 116 · T2.2: le quattro da cliente.
+        expect(righe).toHaveLength(40);
+        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, tipo, percorso }) => (tipo.startsWith('bookings.cliente.') ? paginaDelleNotifiche :
+            `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`)));
+        // E ogni clic che apre la risorsa l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id; le
+        // quattro da cliente, che aprono la pagina delle notifiche, no.
+        expect(vi.mocked(fetch).mock.calls.map(([indirizzo]) => String(indirizzo)).filter((indirizzo) => indirizzo.endsWith('/lettura'))).toStrictEqual(elenco.flatMap(({ id, tipo }) => (tipo.startsWith('bookings.cliente.') ? [] : [`/cornice/notifiche/${id}/lettura`])));
     });
 
     // Sprint 21 · T5 (voce #1706): una vista salvata è di Project Management, che nel registro non ha destinazioni. Gli id

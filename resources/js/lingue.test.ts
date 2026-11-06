@@ -154,10 +154,10 @@ describe('le lingue della cornice', () => {
         // Gli altri titoli restano in spagnolo, e il ripiego pure: è un testo della cornice, non una frase.
         expect(f['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Tarjeta modificada');
         expect(testi('es').notificationTitle).toBe('Novedades en el workspace');
-        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 59 (dallo sprint 74 anche i tre di Bookings, i due promemoria
-        // delle scadenze, quello delle To-do e l'invito accettato; dallo sprint 79 i due degli sprint; dalla v4.12.0 il Gate deciso), in ogni lingua, anche con un
+        // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 63 (dallo sprint 74 anche i tre di Bookings, i due promemoria
+        // delle scadenze, quello delle To-do e l'invito accettato; dallo sprint 79 i due degli sprint; dalla v4.12.0 il Gate deciso; dallo sprint 116 le quattro da cliente di Bookings), in ogni lingua, anche con un
         // file che ne ha uno in più.
-        expect(tipiCheHa(frasiInglesi)).toHaveLength(59);
+        expect(tipiCheHa(frasiInglesi)).toHaveLength(63);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('zz'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -178,16 +178,16 @@ describe('le lingue della cornice', () => {
         ['it', frasiItaliane, 'Nuova scheda'],
         ['es', frasiSpagnole, 'Nueva tarjeta'],
         ['en', frasiInglesi, 'New card'],
-    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 59 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2; sprint 79 · T1.1)', async (lingua, file, dellaSchedaCreata) => {
+    ])('titoloDellaNotifica, dall\'ingresso del pacchetto, con la lingua "%s" dà per ognuno dei 63 tipi che zr-core conosce il titolo che ha nel file di quella lingua, mai quello di ripiego (sprint 16 · T5.1; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v3.2.2; sprint 79 · T1.1)', async (lingua, file, dellaSchedaCreata) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const titoli = tipiConosciuti.map((tipo) => titoloDellaNotifica(tipo, lingua));
 
-        expect(tipiConosciuti).toHaveLength(59);
+        expect(tipiConosciuti).toHaveLength(63);
         expect(titoli).toStrictEqual(tipiConosciuti.map((tipo) => file[`notificationTitle.${tipo}`]));
         expect(titoloDellaNotifica('com.zeiras.board.scheda.creata', lingua)).toBe(dellaSchedaCreata);
-        // Nessun tipo conosciuto esce col titolo di ripiego, e i 59 titoli sono 59 testi diversi.
+        // Nessun tipo conosciuto esce col titolo di ripiego, e i 63 titoli sono 63 testi diversi.
         expect(titoli).not.toContain(diRipiego[lingua]);
-        expect(new Set(titoli).size).toBe(59);
+        expect(new Set(titoli).size).toBe(63);
     });
 
     // Sprint 21 · T2 (voce #1641): i sette tipi del CRM che il contratto ha. La tabella è quella della voce, scritta qui e non
@@ -895,7 +895,8 @@ describe('rigaDellaNotifica', () => {
     };
     const SU_UN_APP = 'com.zeiras.app.modificata';
     /** Sprint 74 · T1: i tre tipi di Bookings, che non hanno frasi con `{who}` (l'ospite non è un membro): le loro frasi, con la data, le prova «le notifiche di Bookings, con la data». */
-    const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata'];
+    /** Sprint 116 · T2: e le quattro da cliente, che hanno anche loro le sole frasi con la data (le prova «le notifiche da cliente di Bookings»). */
+    const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata', ...['confermata', 'spostata', 'annullata', 'promemoria'].map((fine) => `bookings.cliente.prenotazione.${fine}`)];
     /** Sprint 74: il promemoria di una To-do e le due scadenze di una scheda non hanno chi (le manda il backoffice da sé): niente frasi con `{who}`. */
     /** v4.12.0: nemmeno il Gate deciso, che ha un titolo solo. */
     const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso'];
@@ -989,7 +990,7 @@ describe('rigaDellaNotifica', () => {
         const conLeFrasi = new Set([...frasi.map(([tipo]) => tipo), SU_UN_APP, ...DI_BOOKINGS, ...SENZA_CHI]);
         const conUnTitolo = Object.keys(frasiInglesi).flatMap((chiave) => (chiave.startsWith('notificationTitle.') ? [chiave.slice('notificationTitle.'.length)] : []));
 
-        expect(conUnTitolo).toHaveLength(59);
+        expect(conUnTitolo).toHaveLength(63);
         expect(conUnTitolo.filter((tipo) => !conLeFrasi.has(tipo))).toStrictEqual([]);
         for (const [lingua, file] of lingueDiPartenza) {
             for (const tipo of ['com.zeiras.board.scheda.spostata', 'com.zeiras.board.scheda', 'scheda.modificata', '', undefined, null, 7]) {
@@ -1205,7 +1206,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
             }
             expect([tipo, titoloDellaNotifica(tipo, lingua), titoloConLeFrasi(caricate, tipo, lingua)]).toStrictEqual([tipo, titolo, titolo]);
         }
-        expect(tipi).toHaveLength(59 + 4);
+        expect(tipi).toHaveLength(63 + 4);
         for (const tipo of tipi) {
             for (const notifica of [{ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, { tipo, autore_nome: 'Giulia Bianchi' }, { tipo, risorsa_nome: 'Lancio corso' }]) {
                 expect([tipo, rigaConLeFrasi(caricate, notifica, lingua)]).toStrictEqual([tipo, rigaDellaNotifica(notifica, lingua)]);
@@ -1832,6 +1833,51 @@ describe('le notifiche di Bookings, con la data', () => {
         const { 'notificationTitleWhatWhen.bookings.prenotazione.creata': _tolta, ...frasi } = frasiItaliane as FrasiDelleNotifiche;
         expect(rigaConLeFrasi(frasi, prenotazione('creata', ROMA), 'it')).toStrictEqual({ titolo: 'Nuova prenotazione, \u2068mer 4 nov, 10:00\u2069', sotto: 'Personal training' });
         expect(rigaConLeFrasi(frasiItaliane, prenotazione('creata', ROMA, 'Corso {when} {what}'), 'it').titolo).toBe('Nuova prenotazione: \u2068Corso {when} {what}\u2069, \u2068mer 4 nov, 10:00\u2069');
+    });
+});
+
+// Sprint 116 · T2 (voce #3398). Le quattro notifiche da cliente di Bookings (contratto 8e80fafb, #3323): la prenotazione di chi
+// è cliente di un'azienda confermata, spostata, annullata, e il suo promemoria. Le legge chi ha prenotato, non lo staff: le
+// parole sono sue («la tua prenotazione»), e nessun titolo è quello di un altro tipo, nemmeno dei tre di Bookings dello staff.
+// Come quelli, col servizio (`risorsa_nome`) e la data, o con la sola data quando il servizio non c'è.
+describe('le notifiche da cliente di Bookings', () => {
+    const frasiDi = { it: frasiItaliane, en: frasiInglesi, es: frasiSpagnole } as Record<string, FrasiDelleNotifiche>;
+    const ROMA = { il: '2026-11-04T09:00:00Z', fuso: 'Europe/Rome' };
+    const daCliente = (fine: string, quando?: unknown, risorsa_nome: unknown = 'Personal training') => ({ tipo: `bookings.cliente.prenotazione.${fine}`, autore_nome: null, risorsa_nome, quando });
+    const conLaData = (titolo: string, data: string) => `${titolo.replace('Personal training', '⁨Personal training⁩')}⁨${data}⁩`;
+    const riga = (fine: string, lingua: string, quando?: unknown, risorsa_nome?: unknown) => rigaConLeFrasi(frasiDi[lingua]!, daCliente(fine, quando, risorsa_nome), lingua);
+
+    it.each([
+        ['it', 'confermata', 'La tua prenotazione è confermata', 'La tua prenotazione è confermata: Personal training, ', 'La tua prenotazione è confermata, ', 'mer 4 nov, 10:00'],
+        ['it', 'spostata', 'La tua prenotazione è stata spostata', 'La tua prenotazione è stata spostata: Personal training, a ', 'La tua prenotazione è stata spostata a ', 'mer 4 nov, 10:00'],
+        ['it', 'annullata', 'La tua prenotazione è stata annullata', 'La tua prenotazione è stata annullata: Personal training, ', 'La tua prenotazione è stata annullata, ', 'mer 4 nov, 10:00'],
+        ['it', 'promemoria', 'Promemoria della tua prenotazione', 'Promemoria: Personal training, ', 'Promemoria: la tua prenotazione, ', 'mer 4 nov, 10:00'],
+        ['en', 'confermata', 'Your booking is confirmed', 'Your booking is confirmed: Personal training, ', 'Your booking is confirmed, ', 'Wed, Nov 4, 10:00 AM'],
+        ['en', 'spostata', 'Your booking was moved', 'Your booking was moved: Personal training, to ', 'Your booking was moved to ', 'Wed, Nov 4, 10:00 AM'],
+        ['en', 'annullata', 'Your booking was cancelled', 'Your booking was cancelled: Personal training, ', 'Your booking was cancelled, ', 'Wed, Nov 4, 10:00 AM'],
+        ['en', 'promemoria', 'Booking reminder', 'Reminder: Personal training, ', 'Reminder: your booking, ', 'Wed, Nov 4, 10:00 AM'],
+        ['es', 'confermata', 'Tu reserva está confirmada', 'Tu reserva está confirmada: Personal training, ', 'Tu reserva está confirmada, ', 'mié, 4 nov, 10:00'],
+        ['es', 'spostata', 'Tu reserva ha sido movida', 'Tu reserva ha sido movida: Personal training, al ', 'Tu reserva ha sido movida al ', 'mié, 4 nov, 10:00'],
+        ['es', 'annullata', 'Tu reserva ha sido cancelada', 'Tu reserva ha sido cancelada: Personal training, ', 'Tu reserva ha sido cancelada, ', 'mié, 4 nov, 10:00'],
+        ['es', 'promemoria', 'Recordatorio de tu reserva', 'Recordatorio: Personal training, ', 'Recordatorio: tu reserva, ', 'mié, 4 nov, 10:00'],
+    ])('in "%s" la notifica da cliente `.%s` ha il titolo suo, col servizio e la data, con la sola data, o senza data (sprint 116 · T2.1)', (lingua, fine, delTipo, colServizio, soloData, aRoma) => {
+        expect(riga(fine, lingua, ROMA)).toStrictEqual({ titolo: conLaData(colServizio, aRoma) });
+        expect(riga(fine, lingua, ROMA, null)).toStrictEqual({ titolo: conLaData(soloData, aRoma) });
+        expect(riga(fine, lingua)).toStrictEqual({ titolo: delTipo, sotto: 'Personal training' });
+        expect(riga(fine, lingua, undefined, null)).toStrictEqual({ titolo: delTipo });
+    });
+
+    it.each(['it', 'en', 'es'])('in "%s" i quattro titoli da cliente sono diversi fra loro e da quello di ogni altro tipo, i tre di Bookings dello staff compresi (sprint 116 · T2.1)', (lingua) => {
+        const frasi = frasiDi[lingua] as Record<string, string>;
+        const daCliente = ['confermata', 'spostata', 'annullata', 'promemoria'].map((fine) => `bookings.cliente.prenotazione.${fine}`);
+        for (const forma of ['notificationTitle', 'notificationTitleWhatWhen', 'notificationTitleWhen']) {
+            const loro = daCliente.map((tipo) => frasi[`${forma}.${tipo}`]);
+            const altri = Object.entries(frasi).flatMap(([chiave, testo]) => (chiave.startsWith(`${forma}.`) && !daCliente.includes(chiave.slice(forma.length + 1)) ? [testo] : []));
+            expect([forma, loro.every((testo) => typeof testo === 'string' && testo.trim() !== '')]).toStrictEqual([forma, true]);
+            expect([forma, new Set(loro).size]).toStrictEqual([forma, 4]);
+            expect([forma, loro.filter((testo) => altri.includes(testo!))]).toStrictEqual([forma, []]);
+        }
+        expect(daCliente.map((tipo) => frasi[`notificationTitle.${tipo}`])).not.toContain(frasi['notificationTitle']);
     });
 });
 

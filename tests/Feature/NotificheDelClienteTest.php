@@ -134,6 +134,19 @@ it('gli `ids` ci sono solo per una notifica che il backoffice dice da cliente, c
     'il numero 1' => [notificaDaCliente('uat-n1', ['spazio_cliente' => 1])],
 ]);
 
+// Sprint 116 · T2.2. Col registro del pacchetto, non con quello di prova: le quattro notifiche da cliente portano il solo `id`
+// della prenotazione, il segnaposto di `/spazio/prenotazioni/{id}` nella voce della Dashboard; calendario e pagina restano fuori.
+it('col registro del pacchetto le quattro notifiche da cliente di Bookings portano negli `ids` il solo `id` della prenotazione (sprint 116 · T2.2)', function (string $fine) {
+    sessioneAMano(null);
+    Http::fake(['*' => Http::response(['data' => [notificaDaCliente('uat-n1', ['tipo' => "bookings.cliente.prenotazione.$fine"])], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/cliente/notifiche'))->assertOk();
+
+    expect($risposta->json('data.0.tipo'))->toBe("bookings.cliente.prenotazione.$fine")
+        ->and($risposta->json('data.0.ids'))->toBe(['id' => 'uat-prenotazione-1'])
+        ->and($risposta->getContent())->not->toContain('uat-calendario-segno')->not->toContain('uat-pagina-segno');
+})->with(['confermata', 'spostata', 'annullata', 'promemoria']);
+
 it('`azienda` è `workspace_nome` quando è un testo, altrimenti null, e la notifica passa lo stesso (sprint 116 · T1.1)', function (array $notifica) {
     sessioneAMano(null);
     registroColCliente();

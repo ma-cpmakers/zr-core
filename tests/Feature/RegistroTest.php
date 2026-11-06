@@ -528,7 +528,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
         // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
         // promemoria di una To-do; dalla v4.12.0 trentadue: il Gate deciso.
         ->and(count($righe['pm']) + count($righe['crm']))->toBe(32)
-        ->and(count($righe['home']))->toBe(1)
+        // Sprint 116 · T2.2: con l'invito accettato le quattro da cliente di Bookings, che aprono «Il mio spazio».
+        ->and(count($righe['home']))->toBe(5)
         // Sprint 74 · T1.3: e le tre di Bookings.
         ->and(count($righe['bookings']))->toBe(3);
 });
@@ -546,6 +547,19 @@ it('nel registro le notifiche di Bookings sono tre, col tipo intero, e aprono tu
             ['tipo' => 'bookings.prenotazione.spostata', 'percorso' => '/prenotazioni/{id}'],
             ['tipo' => 'bookings.prenotazione.annullata', 'percorso' => '/prenotazioni/{id}'],
         ]);
+});
+
+// Sprint 116 · T2.2 (voce #3398). Le quattro notifiche da cliente di Bookings aprono la prenotazione in «Il mio spazio» di
+// zr-home: stanno nella voce della Dashboard, non in quella di Bookings, e il percorso chiede il solo `id`.
+it('nel registro le quattro notifiche da cliente di Bookings stanno nella voce della Dashboard, dopo l\'invito accettato, e aprono `/spazio/prenotazioni/{id}`; Bookings non le ha (sprint 116 · T2.2)', function () {
+    $voci = registroDeiProdotti();
+    $daCliente = array_map(fn (string $fine) => ['tipo' => "bookings.cliente.prenotazione.$fine", 'percorso' => '/spazio/prenotazioni/{id}'], ['confermata', 'spostata', 'annullata', 'promemoria']);
+
+    expect(problemiDelRegistro($voci))->toBe([])
+        ->and($voci[0]['id'])->toBe('home')
+        ->and($voci[0]['indirizzo'])->toBe('https://app.zeiras.com')
+        ->and($voci[0]['notifiche'] ?? null)->toBe([['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri'], ...$daCliente])
+        ->and(array_filter(array_column($voci[3]['notifiche'] ?? [], 'tipo'), fn (string $tipo) => str_contains($tipo, '.cliente.')))->toBe([]);
 });
 
 it('il tipo `IdDiProdotto` di registro.ts elenca i prodotti del registro: tsc chiede all\'inglese il nome di ognuno (T7.1)', function () {
@@ -672,7 +686,7 @@ it('nel registro le notifiche di Project Management che aprono la loro risorsa s
             ['tipo' => 'board.gate.deciso', 'percorso' => '/c/{id}'],
             ['tipo' => 'board.todo.promemoria', 'percorso' => '/todo?todo={id}'],
         ])
-        ->and($voci[0]['notifiche'] ?? null)->toBe([['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri']])
+        ->and($voci[0]['notifiche'][0] ?? null)->toBe(['tipo' => 'io.invito.accettato', 'percorso' => '/impostazioni/membri'])
         ->and($voci[1]['indirizzo'])->toBe('https://board.zeiras.com')
         ->and($voci[2]['notifiche'] ?? [])->toHaveCount(24);
 });

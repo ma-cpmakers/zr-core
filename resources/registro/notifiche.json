@@ -1,6 +1,10 @@
 {
     "home": [
-        { "tipo": "io.invito.accettato", "percorso": "/impostazioni/membri" }
+        { "tipo": "io.invito.accettato", "percorso": "/impostazioni/membri" },
+        { "tipo": "bookings.cliente.prenotazione.confermata", "percorso": "/spazio/prenotazioni/{id}" },
+        { "tipo": "bookings.cliente.prenotazione.spostata", "percorso": "/spazio/prenotazioni/{id}" },
+        { "tipo": "bookings.cliente.prenotazione.annullata", "percorso": "/spazio/prenotazioni/{id}" },
+        { "tipo": "bookings.cliente.prenotazione.promemoria", "percorso": "/spazio/prenotazioni/{id}" }
     ],
     "pm": [
         { "tipo": "com.zeiras.board.scheda.creata", "percorso": "/c/{id}" },
