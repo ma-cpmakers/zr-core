@@ -6,7 +6,6 @@ import * as dallIngressoDelleApp from './app';
 import { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';
 import { testi } from './lingue';
 import { registro } from './registro';
-import * as rimedi from './rimedi';
 import type { ShellSearchResult } from '../zeiras/index';
 import staffInglese from '../lingue/staff/en.json';
 import staffSpagnolo from '../lingue/staff/es.json';
@@ -384,11 +383,11 @@ describe('la ricerca della cornice dello staff', () => {
         expect(uno('.zr-search-panel [role="status"] span')?.textContent).toBe(dellaLingua.searchEmptyText);
     });
 
-    // Sprint 100 (voce #2986, Decisione 20345): come la `Cornice` (#2801), una zona fuori dalla cornice, figlia di `body`, dice al
-    // lettore di schermo quanti risultati ha trovato la ricerca. uat-cornice la cercava anche nello staff (Q.1) e non c'era.
-    const zone = () => [...document.querySelectorAll<HTMLElement>('body > p[role="status"]')];
+    // Sprint 100 (voce #2986, Decisione 20345): come la `Cornice` (#2801), una zona viva dice al lettore di schermo quanti risultati
+    // ha trovato la ricerca. Dalla `v4.18.0` è quella dell'`AppShell` sotto il campo (richiesta 134), col testo dello staff.
+    const zone = () => [...document.querySelectorAll<HTMLElement>('.zr-top > .zr-search > [role="status"][aria-live="polite"]')];
 
-    it('T1.1 a ricerca finita una zona role=status figlia di body, nascosta alla vista, dice quante righe ha il pannello; si svuota a ogni ricerca che parte; smontata la cornice non c\'è più', async () => {
+    it('T1.1 a ricerca finita la zona viva dell\'`AppShell`, nascosta alla vista, dice quante righe ha il pannello; si svuota a ogni ricerca che parte, e tace senza risultati; smontata la cornice non c\'è più', async () => {
         const prima = inAttesa();
         const seconda = inAttesa();
         const cerca = vi.fn((parola: string, _segnale: AbortSignal) => (parola === 'an' ? prima.promessa : seconda.promessa));
@@ -406,7 +405,7 @@ describe('la ricerca della cornice dello staff', () => {
         await scrivi('ann');
         expect(zone().map((zona) => zona.textContent)).toEqual(['']);
         await seconda.arriva([]);
-        expect(zone().map((zona) => zona.textContent)).toEqual([staffItaliano.searchCount.replace('{n}', '0')]);
+        expect(zone().map((zona) => zona.textContent)).toEqual(['']);
 
         await act(async () => radice.render(<p>Altro</p>));
         expect(zone()).toHaveLength(0);
@@ -549,24 +548,21 @@ describe('la ricerca della cornice dello staff', () => {
 });
 
 describe('tastiera e salto della cornice dello staff', () => {
-    it('T3.1 «Salta al contenuto» sta prima della cornice e porta il fuoco al contenuto della pagina', async () => {
+    it('T3.1 «Salta al contenuto» è il link dell\'`AppShell`, nella lingua della cornice, e porta il fuoco al contenuto della pagina', async () => {
         await mostra(<CorniceDelloStaff lingua="es" persona={staff} nav={nav} onLogout={esci}><p>La pagina</p></CorniceDelloStaff>);
 
-        const salto = contenitore.firstElementChild?.querySelector('button');
-        expect(salto?.textContent).toBe(testi('es').skipToContent);
-        expect(contenitore.firstElementChild?.nextElementSibling?.classList.contains('zr-shell')).toBe(true);
+        const salto = uno('.zr-shell > a.zr-skip') as HTMLElement;
+        expect([salto?.textContent, contenitore.firstElementChild?.classList.contains('zr-shell')]).toStrictEqual([testi('es').skipToContent, true]);
 
-        await clic(salto!);
+        await clic(salto);
         expect(document.activeElement).toBe(uno('main.zr-main'));
     });
 
-    it('T3.1 i rimedi di tastiera arrivano come per la Cornice: con la naviga dello staff e il nome dei risultati nella sua lingua', async () => {
-        const via = vi.spyOn(rimedi, 'via');
+    it('T3.1 i rimedi di tastiera arrivano come per la Cornice, e i clic sulla barra passano dalla `naviga` dello staff', async () => {
         const naviga = vi.fn();
         await mostra(<CorniceDelloStaff lingua="en" persona={staff} nav={[{ ...nav[0]!, items: nav[0]!.items.map((voce) => ({ ...voce, href: `/${voce.id}` })) }]} naviga={naviga} onLogout={esci} />);
         await act(() => vi.dynamicImportSettled());
 
-        expect(via).toHaveBeenCalledWith(naviga, testi('en').searchResults);
         // Il nome del contenuto e i clic sulla barra laterale sono dell'`AppShell` dalla `v4.17.0` (righe 30, 27 e 98): coi testi e la `naviga` della cornice.
         const voce = document.querySelector<HTMLAnchorElement>('.zr-shell > .zr-side a.zr-nav-item[href]:not([href="#"])')!;
         voce.setAttribute('href', `${location.origin}/uat`);

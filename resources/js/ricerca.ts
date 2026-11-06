@@ -172,31 +172,15 @@ function perGruppo(risultati: ShellSearchResult[]): ShellSearchResult[] {
     return [...risultati].sort((primo, secondo) => gruppi.indexOf(primo.group) - gruppi.indexOf(secondo.group));
 }
 
-/**
- * La zona che dice a un lettore di schermo quanti risultati ha trovato la ricerca, «Risultati: 12» nella lingua dei testi
- * (#2801). Quella dell'`AppShell` (`role="status"`) c'è solo mentre cerca, e i risultati la tolgono: una zona che nasce col testo
- * dentro non si legge. Questa resta nel documento, nascosta alla vista, e si svuota a ogni ricerca che parte, così lo stesso
- * numero si dice di nuovo. Provvisoria: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design
- * system) si toglie.
- */
-let quanti: HTMLElement | undefined;
+/** «Risultati: {n}» nella lingua dei testi: l'`AppShell` lo dice nella sua zona viva (dalla `v4.18.0`, richiesta 134; prima, #2801, una zona di zr-core). */
+export const quantiRisultati = (lingua: string, t: TestiDellaCornice): string => testiPerLaRiga(lingua, t)['searchCount']!;
 
 /**
  * Le righe dell'`AppShell` per i risultati arrivati, nel workspace di cui sono (`slug`): solo quelli che il registro conosce, i
- * gruppi vicini; e quante sono, nella zona qui sopra, che cambia testo solo quando il numero cambia.
+ * gruppi vicini.
  */
 export function risultatiDellaRicerca(risultati: RisultatoDellaRicerca[], lingua: string, t: TestiDellaCornice, slug: string) {
-    const righe = perGruppo(risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, slug) ?? []));
-    const testo = testiPerLaRiga(lingua, t)['searchCount']!.replace('{n}', `${righe.length}`);
-
-    if (!quanti?.isConnected) {
-        document.body.insertAdjacentHTML('beforeend', '<p role="status" class="zr-visually-hidden">');
-        quanti = document.body.lastElementChild as HTMLElement;
-    }
-    if (quanti.textContent !== testo) {
-        quanti.textContent = testo;
-    }
-    return righe;
+    return perGruppo(risultati.flatMap((risultato) => nellaRicerca(risultato, lingua, t, slug) ?? []));
 }
 
 /**
@@ -217,11 +201,13 @@ const TETTO_DEL_FRENO = 60;
  */
 
 export function cercaPer(parola: string, questa: AbortController, persona: Persona, inVolo: { current: AbortController | undefined }, frenataFinoA: { current: number }, mostra: (stato: StatoDellaRicerca) => void, seDaAccettare: (errore: unknown) => void, nelFreno: () => void, aSchermo: string | undefined, chiama_: typeof chiama): Promise<void> | undefined {
-    if (questa.signal.aborted || persona.email !== aSchermo) {
+    // Una parola che nel campo non c'è più non parte (voce 2062): l'`AppShell` chiamerà la cornice con quella nuova. Era il tasto
+    // della cornice ad annullarla; dalla `v4.18.0` il caricamento dal tasto è dell'`AppShell` (richiesta 46).
+    const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
+    if (questa.signal.aborted || persona.email !== aSchermo || (campo && campo.value.trim() !== parola)) {
         return undefined;
     }
 
-    quanti?.replaceChildren();
     return cerca([...parola].slice(0, 100).join(''), questa.signal, persona, chiama_).then(
         ({ risultati, workspace }) => {
             if (inVolo.current === questa) {

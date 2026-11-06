@@ -1,17 +1,5 @@
 /*
- * La cornice del cliente (dalla `v4.13.0`, voce #3319): il campo della ricerca non si vede, perché per chi è solo cliente il
- * backoffice non ha una ricerca e una funzione finta non si mostra (zr-pm, 06/11). Vale solo dentro la cornice del cliente,
- * che ha questa classe; la ricerca della `Cornice` resta com'è. Provvisoria: si toglie quando l'`AppShell` ha la prop che non
- * mostra la ricerca (richiesta 201 al design system). La importa il modulo che monta
- * la cornice del cliente, dopo il CSS del design system; non la importa `resources/js/cliente.tsx`, perché la build la porterebbe
- * anche nel CSS delle app che non la montano.
+ * La cornice del cliente (dalla `v4.13.0`, voce #3319): fino alla `v4.17.x` qui c'era la regola che nascondeva il campo della
+ * ricerca. Dalla `v4.18.0` lo fa l'`AppShell` (`search={false}`, richiesta 201 al design system), e il file è vuoto: resta
+ * perché il modulo che lo importa non si rompa, e si toglie alla prossima versione maggiore. L'import si può già togliere.
  */
-.zr-cornice-del-cliente .zr-top .zr-search {
-    display: none;
-}
-
-/* Senza il campo, che nella barra in alto prende lo spazio di mezzo, campanella e profilo scivolerebbero a sinistra, accanto alla
- * barra laterale: restano a destra, come nella `Cornice` (dalla `v4.13.1`). */
-.zr-cornice-del-cliente .zr-top-actions {
-    margin-left: auto;
-}

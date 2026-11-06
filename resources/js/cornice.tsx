@@ -1,9 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
-import { SaltaAlContenuto } from './salto';
 import { tonoDelWorkspace } from './tono';
 import { AppShell, Button } from './zeiras/componenti';
 
@@ -140,7 +139,11 @@ export interface CorniceProps {
     onNavigate?: ((id: string) => void) | undefined;
     /** Il percorso Workspace › Cartella › Oggetto: l'ultima voce è la pagina. */
     crumbs?: ShellCrumb[] | undefined;
-    onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
+    /**
+     * Il clic su una voce del percorso, con l'evento (dalla `v4.18.0`): con `preventDefault` la voce la gestisce il modulo;
+     * altrimenti un clic semplice su un indirizzo di questa origine passa da `naviga`.
+     */
+    onCrumb?: ((voce: ShellCrumb, indice: number, evento: MouseEvent<HTMLAnchorElement>) => void) | undefined;
     /** Le voci del menu «+»: i tipi che il prodotto crea. */
     create?: MenuItem[] | undefined;
     /** Il nome del «+» e del suo menu («Nuovo nel CRM», dalla `v3.6.0`); senza, «Crea» nella lingua della persona. */
@@ -680,13 +683,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         return { elenco, nonLette, sullaCampanella: nonLette ?? elenco.filter((notifica) => !notifica.letta).length };
     };
     const { elenco, nonLette, sullaCampanella } = conLeLetture(letteConUnClic);
-    const unaSola = sullaCampanella === 1;
     // La richiesta parte qui, nello stesso giro del clic. Se fallisce non cambia niente in pagina; alla risposta resta ciò che la
     // rotta ha detto, coi dati e l'elenco del clic. Dà una promessa che si chiude all'esito, riuscito o no — con un errore della
     // persona a schermo —, con l'id della notifica — un testo mai vuoto — solo se la lettura è riuscita (dalla `v2.14.0`: chi la
     // aspetta apre la risorsa solo allora), e che resta aperta quando la risposta è di un'altra persona (`segnaLetta` si chiude allora con un errore senza
     // niente dentro): chi la aspetta per aprire la risorsa non la apre con la sessione di chi è entrato.
-    const [daDire, setDaDire] = useState<string>();
     const leggi = (id: string, workspace: string, letta?: boolean) => {
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
@@ -695,7 +696,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             ({ il }) => {
                 if (!letta) {
                     setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
-                    setDaDire(id);
                 }
 
                 return id;
@@ -704,23 +704,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
-    // L'avviso per chi usa un lettore di schermo: la cornice lo dà all'`AppShell` (`notificationsNotice`), che lo dice in una
-    // zona viva che non si vede (dalla `v4.17.0`, riga 14). Parla solo quando il numero scende per una lettura fatta con un
-    // clic: arrivata la risposta (`daDire`) confronta il numero con quello che sarebbe senza quella lettura, e se è sceso dice
-    // il nome della campanella col numero nuovo — quello vero, anche oltre 99, dove la campanella scrive «99+» — o, a zero,
-    // il testo di zr-core. Tace quando il numero cambia per altro (dati nuovi, un elenco arrivato, «Segna tutte come lette»),
-    // e allora ciò che aveva detto si toglie: non resta in pagina a dire un numero che non è più quello. Nello stato ridotto
-    // ciò che ha detto si toglie anche se il numero dei dati è lo stesso, prima di andare in pagina: la campanella non ne ha
-    // più uno. Si decide mentre si rende, come per i dati tenuti (sopra).
-    const [avviso, setAvviso] = useState<{ testo: string; numero: number }>();
-    if (daDire !== undefined) {
-        setDaDire(undefined);
-        if (sullaCampanella < conLeLetture(letteConUnClic.filter((una) => una.id !== daDire)).sullaCampanella) {
-            setAvviso({ numero: sullaCampanella, testo: sullaCampanella === 0 ? t.unreadNone : `${t.notifications}, ${sullaCampanella} ${unaSola ? t.unreadOne : t.unread}` });
-        }
-    } else if (avviso !== undefined && (ridotta || avviso.numero !== sullaCampanella)) {
-        setAvviso(undefined);
-    }
     // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
     // risposta con `altre`, se contano zero non lette. Una notifica che arriva dopo è un altro giro, con «Segna tutte come
     // lette». Non lo dice la campanella a zero: senza il numero nei dati conta le non lette in pagina, che vanno a zero anche
@@ -819,29 +802,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // `non_letti` o l'accettazione non parte niente.
     const ridottaAdesso = useRef(ridotta);
     const diPrima = useRef<string>(undefined);
-    // A ogni tasto nel campo, con 2 caratteri o più, la ricerca è subito in caricamento: l'`AppShell` chiama la cornice 300 ms dopo
-    // l'ultimo tasto, e fino ad allora mostrerebbe lo stato della parola di prima — «Nessun risultato per» la parola nuova, o i
-    // risultati della vecchia (voce 2062, Decisione 18231; il difetto dell'`AppShell` è la riga 46 delle richieste al design system).
-    // Nello stato ridotto e in attesa l'`AppShell` non chiama la cornice, e nel freno la cornice resta all'errore: lì il tasto non
-    // cambia niente. L'ascolto sta sulla finestra, dopo quello di React: sul campo, lo stato cambiato durante l'evento ridisegnava
-    // l'`AppShell` col valore di prima, e in un browser vero il campo teneva solo il primo carattere (jsdom non lo vede; lo prova
-    // R.0 di `scripts/uat-cornice.mjs`). Conta solo il campo della ricerca dell'`AppShell`, nella sua barra in alto; un evento che non
-    // viene da un elemento (la finestra, il documento) non ha `matches` e passa. Fra il disegno dell'`AppShell` e questo ascolto,
-    // per un microtask, nel pannello c'è ancora lo stato di prima: il browser non lo disegna (R.2 dello script lo conta a parte).
-    // Un `input` che lascia nel campo il valore di prima (la stessa parola incollata sopra la selezione) non arriva all'`AppShell`,
-    // che non chiama la cornice: lì il tasto non cambia niente, o la ricerca resterebbe in caricamento. `visto` è l'ultimo valore
-    // del campo che l'ascolto ha visto: una variabile del primo disegno, l'unico di cui l'ascolto resta (`useRef`).
-    let visto: string | undefined;
-    const alTasto = useRef((e: Event) => {
-        const campo = e.target as HTMLInputElement;
-        if (campo.matches?.('.zr-top .zr-search input') && visto !== (visto = campo.value) && !ridottaAdesso.current && performance.now() >= frenataFinoA.current && campo.value.trim().length > 1) {
-            // La richiesta della parola di prima si annulla: la sua risposta, se arriva prima che l'`AppShell` chiami la cornice,
-            // non si scrive sotto la parola nuova.
-            ricercaInVolo.current?.abort();
-            ricercaInVolo.current = undefined;
-            setRicerca({ stato: 'loading' });
-        }
-    }).current;
     useLayoutEffect(() => {
         const campo = document.querySelector<HTMLInputElement>('.zr-top .zr-search input');
         const parola = campo?.value.trim();
@@ -870,14 +830,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // Smontata, annulla anche la sua ricerca in volo (dalla `v2.11.2`): rifatta con la stessa persona, `aSchermo` torna uguale
         // e `cercaPer` da solo farebbe partire la parola di prima; a fermarla è questo annullo, che non si toglie per i byte.
         mostra(persona);
-        addEventListener('input', alTasto);
+        void import('./rimedi').catch(() => undefined);
 
-        return () => (mostra(persona, 1), ricercaInVolo.current?.abort(), removeEventListener('input', alTasto));
+        return () => (mostra(persona, 1), ricercaInVolo.current?.abort());
     }, []);
-    // Il pezzo arriva una volta; `via` gli ridà il nome dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
-    useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.searchResults), () => undefined);
-    }, [t.searchResults]);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
@@ -888,7 +844,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     }
     // Il freno del backoffice: quando la ricerca risponde 429 coi secondi da aspettare (`TroppeRichieste`), fino a quell'istante
     // — al più `TETTO_DEL_FRENO` secondi dopo (`ricerca.ts`) — nessuna richiesta parte, qualunque cosa la persona scriva, e lo stato diventa
-    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo non mostra il caricamento, e nemmeno «Nessun
+    // l'errore, da qualunque stato si arrivi: una parola battuta nel frattempo mostra il caricamento solo per i 300 ms in cui
+    // l'`AppShell` aspetta prima di chiedere (dalla v4.18.0 il caricamento dal tasto è suo), poi torna l'errore; mai «Nessun
     // risultato» per una parola che non è partita (dopo lo stato ridotto, che la ricerca la dimentica). Il freno è della
     // persona, non di una richiesta: vale anche quando il 429 è di una richiesta che non è più l'ultima, e allora quella in
     // volo è annullata e non è più di nessuno, così la sua risposta non entra nello stato. Allo scadere non parte niente da
@@ -988,7 +945,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Serve solo con l'avviso, e con l'avviso i testi ci sono.
     const spenta = (daAccettare ? a?.acceptanceOff : a?.downOff)!;
 
-    const shell = (
+    return (
         <AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
@@ -1032,8 +989,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : apriNotifica.bind(0, {} as ShellNotification),
                 onSearch: ridotta ? undefined : cercaParola,
-                // L'avviso per il lettore di schermo (sopra), nella zona viva che l'`AppShell` tiene sempre montata (dalla `v4.17.0`).
-                notificationsNotice: avviso?.testo,
+                // Nello stato ridotto la zona viva delle notifiche si svuota: ciò che aveva detto del numero non resta lì (sprint 25 · T5.8).
+                notificationsNotice: ridotta ? '' : undefined,
                 flush: avvisoSopraLaPagina ? undefined : pagina.flush,
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
@@ -1068,19 +1025,14 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // accettato i documenti legali, e quando il backoffice non ha risposto, la frase di zr-core al posto dei tre testi
             // che pannello e ricerca mostrerebbero: l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore
             // della ricerca. In attesa i testi sono quelli di sempre: il pannello e la ricerca caricano coi testi
-            // dell'`AppShell`, e sotto il campo vuoto c'è l'invito a scrivere, perché la parola scritta verrà cercata.
+            // dell'`AppShell`, e sotto il campo vuoto c'è l'invito a scrivere, perché la parola scritta verrà cercata. Coi risultati,
+            // quanti sono (`searchCount`, dal pezzo della ricerca, che c'è se ci sono risultati), che l'`AppShell` dice nella sua zona
+            // viva (dalla `v4.18.0`, richiesta 134).
             labels={avvisoSopraLaPagina
                 ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
-                : { ...t, ...dellaRicerca, markAllRead: sulPulsante }}
+                : { ...t, ...dellaRicerca, ...(risultati.length > 0 && { searchCount: laRicerca!.quantiRisultati(lingua, t) }), markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
         />
-    );
-
-    return (
-        <>
-            <SaltaAlContenuto testo={t.skipToContent} />
-            {shell}
-        </>
     );
 }

@@ -1,9 +1,8 @@
-import { useLayoutEffect, type ReactNode } from 'react';
+import { useLayoutEffect, type MouseEvent, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb } from '../zeiras/index';
 import { nelSelettore, pagineDiApp, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
 import { DELL_INGRESSO, fileDelleLingue, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, registro } from './registro';
-import { SaltaAlContenuto } from './salto';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/cliente/en.json';
 
@@ -13,8 +12,7 @@ import inglese from '../lingue/cliente/en.json';
 // modulo con le voci della barra. Nel selettore «Come cliente › Il mio spazio», attivo, e le aziende in cui la persona è anche
 // membro; niente riquadro del piano, niente menu Moduli. La campanella resta vuota, perché l'`AppShell` la disegna sempre
 // (richiesta 64 al design system) e le notifiche del cliente aspettano zr-backoffice #3323; la ricerca non si vede: per il cliente
-// il backoffice non ne ha una. La regola che la nasconde sta in `resources/css/cliente.css`, che il modulo importa col CSS del
-// design system: importata da qui, la build la porterebbe anche nel CSS delle app che non montano questa cornice. Delle rotte
+// il backoffice non ne ha una (`search={false}`, dalla `v4.18.0`: niente campo né Ctrl/Cmd+K, che resta della pagina). Delle rotte
 // della cornice usa solo quella della foto, nell'avatar.
 
 /** I testi del cliente, per lingua: un file loro (`resources/lingue/cliente/`), fuori dalle lingue della cornice, come quelli dello staff. */
@@ -62,7 +60,11 @@ export interface CorniceDelClienteProps {
     onNavigate?: ((id: string) => void) | undefined;
     /** Il percorso: l'ultima voce è la pagina. */
     crumbs?: ShellCrumb[] | undefined;
-    onCrumb?: ((voce: ShellCrumb, indice: number) => void) | undefined;
+    /**
+     * Il clic su una voce del percorso, con l'evento (dalla `v4.18.0`): con `preventDefault` la voce la gestisce il modulo;
+     * altrimenti un clic semplice su un indirizzo di questa origine passa da `naviga`.
+     */
+    onCrumb?: ((voce: ShellCrumb, indice: number, evento: MouseEvent<HTMLAnchorElement>) => void) | undefined;
     /** Altro in topbar. */
     actions?: ReactNode;
     /** L'area della pagina senza margine. */
@@ -94,20 +96,8 @@ export function CorniceDelCliente(props: CorniceDelClienteProps) {
 
 function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogout, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelClienteProps & { lingua: string }) {
     const t = testi(lingua);
-    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono il nome.
-    useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.searchResults), () => undefined);
-    }, [t.searchResults]);
-    // Ctrl/Cmd+K non apre la ricerca, che qui non si vede: l'`AppShell` la aprirebbe nascosta, e al telefono i rimedi toglierebbero
-    // campanella e profilo finché resta aperta. Si ferma sul documento, in risalita, prima dell'ascolto dell'`AppShell`, che arriva
-    // dopo (un effetto, non di layout): la pagina lo riceve ancora (un editor che inserisce un link), e il tasto resta del browser.
-    // Smontata la cornice, torna com'era.
-    useLayoutEffect(() => {
-        const ferma = (tasto: KeyboardEvent) => (tasto.ctrlKey || tasto.metaKey) && !tasto.altKey && /^k$/i.test(tasto.key) && tasto.stopImmediatePropagation();
-        document.addEventListener('keydown', ferma);
-
-        return () => document.removeEventListener('keydown', ferma);
-    }, []);
+    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata.
+    useLayoutEffect(() => void import('./rimedi').catch(() => undefined), []);
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi del cliente, come per lo staff.
     const dello = testiDelCliente(linguaPronta(lingua) ? lingua : DELL_INGRESSO);
     const account = (pagina: keyof typeof pagineDiApp) => () => naviga(dashboard.indirizzo + pagineDiApp[pagina]);
@@ -120,34 +110,30 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
     ];
 
     return (
-        <>
-            <SaltaAlContenuto testo={t.skipToContent} />
-            <AppShell
-                {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
-                // Con `null` nessuna voce.
-                {...(active === undefined ? {} : { active })}
-                // La classe che nasconde il campo della ricerca (`resources/css/cliente.css`): l'`AppShell` la mette sulla `zr-shell`.
-                {...{ className: 'zr-cornice-del-cliente' }}
-                nav={nav}
-                user={dati.persona.nome}
-                email={dati.persona.email}
-                {...(dati.persona.foto ? { userPhoto: dati.persona.foto } : {})}
-                personal={{ label: dello.personal, active: true }}
-                companies={dati.aziende.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))}
-                // Un workspace porta alla sua Dashboard: dallo spazio cliente non c'è un prodotto aperto da tenere.
-                onSelectWorkspace={(slug) => naviga(nelWorkspace(dashboard.indirizzo, slug))}
-                navigate={naviga}
-                // Con le aziende, un workspace nuovo solo dove una lo permette («Nuovo workspace»): a chi è solo membro no. Senza, è
-                // il primo («Crea il tuo workspace»).
-                {...(nuovoWorkspace && (dati.aziende.length === 0 || dati.aziende.some((azienda) => azienda.nuovo_workspace)) ? { onNewWorkspace: () => naviga(nuovoWorkspace) } : {})}
-                plan={false}
-                settingsHref={dashboard.indirizzo + pagineDiApp.settings}
-                accountItems={menu}
-                notifications={[]}
-                labels={{ ...t, ...dello }}
-            >
-                {children}
-            </AppShell>
-        </>
+        <AppShell
+            {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
+            // Con `null` nessuna voce.
+            {...(active === undefined ? {} : { active })}
+            nav={nav}
+            user={dati.persona.nome}
+            email={dati.persona.email}
+            {...(dati.persona.foto ? { userPhoto: dati.persona.foto } : {})}
+            personal={{ label: dello.personal, active: true }}
+            companies={dati.aziende.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))}
+            // Un workspace porta alla sua Dashboard: dallo spazio cliente non c'è un prodotto aperto da tenere.
+            onSelectWorkspace={(slug) => naviga(nelWorkspace(dashboard.indirizzo, slug))}
+            navigate={naviga}
+            // Con le aziende, un workspace nuovo solo dove una lo permette («Nuovo workspace»): a chi è solo membro no. Senza, è
+            // il primo («Crea il tuo workspace»).
+            {...(nuovoWorkspace && (dati.aziende.length === 0 || dati.aziende.some((azienda) => azienda.nuovo_workspace)) ? { onNewWorkspace: () => naviga(nuovoWorkspace) } : {})}
+            plan={false}
+            search={false}
+            settingsHref={dashboard.indirizzo + pagineDiApp.settings}
+            accountItems={menu}
+            notifications={[]}
+            labels={{ ...t, ...dello }}
+        >
+            {children}
+        </AppShell>
     );
 }

@@ -19,10 +19,11 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * cornice non chiede, né quelli del modulo «Da attivare» (`off`) e di «Impostazioni del workspace» (`workspaceSettings`, dal lotto
  * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace. Né i tre dello spazio
  * cliente di zr-account (`personal`, `personalGroup`, `firstWorkspace`, dal design system 1793914149-8632): la cornice non passa
- * `personal`, e senza aziende non ha il selettore.
+ * `personal`, e senza aziende non ha il selettore. Né quanti risultati ha la ricerca (`searchCount`, dal lotto 0518): lo dice
+ * l'`AppShell` solo coi risultati, che arrivano col pezzo della ricerca, e il testo sta coi suoi (`resources/lingue/ricerca/`).
  */
 export type TestiDellaCornice = Required<
-    Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'off' | 'workspaceSettings' | 'personal' | 'personalGroup' | 'firstWorkspace'>
+    Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'searchCount' | 'off' | 'workspaceSettings' | 'personal' | 'personalGroup' | 'firstWorkspace'>
 > &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &

@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 51,6 KB | 18,1 KB | 64,2 KB | 14,1 KB |
-| la cornice e due componenti per nome | 58,8 KB | 20,4 KB | 64,3 KB | 14,1 KB |
-| la stessa cornice, dall'ingresso di sempre | 175,6 KB | 56,5 KB | 64,2 KB | 14,1 KB |
+| solo la cornice, dall'ingresso per le app | 53,6 KB | 18,7 KB | 61,4 KB | 13,2 KB |
+| la cornice e due componenti per nome | 60,8 KB | 20,9 KB | 61,4 KB | 13,2 KB |
+| la stessa cornice, dall'ingresso di sempre | 177,6 KB | 57,1 KB | 61,4 KB | 13,2 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.589 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.136 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -247,9 +247,13 @@ di zr-pm. Dalla `v4.11.0` è salito di 247 byte, alla misura più 20: il design 
 di zr-account, dentro l'`AppShell`, che la cornice non usa ancora ma il cui codice entra lo stesso; un sì di zr-pm senza
 contropartita. Dalla `v4.17.0` è salito di 420 byte, alla misura più 20: il lotto 0517 del design system ne porta 478
 (`navigate`, la zona viva dell'avviso, il contenuto nel giro del Tab, il singolare), e i rimedi che l'`AppShell` ora fa da sé
-ne tolgono 58; un sì di zr-pm (Decisione 22019). Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.330 byte la campanella, 2.097 i rimedi, 1.867 la
-ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0` e 2.000 dalla `v3.14.1` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ne tolgono 58; un sì di zr-pm (Decisione 22019). Dalla `v4.18.0` è salito di 547 byte, e il tetto è la misura più 20 (Decisione 22074 di
+zr-pm): il lotto 0518 del design system porta nell'`AppShell` il salto al contenuto, il caricamento dal tasto, il numero sceso detto al
+lettore di schermo, la zona del numero dei risultati e altre tredici righe, e i rimedi delle righe 5, 46 e 56 escono dall'ingresso; la
+contropartita sta nei pezzi a richiesta, che scendono alla loro misura più 20: 1.507 byte i rimedi, 1.576 la tastiera, 1.797 la ricerca.
+Hanno
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.330 byte la campanella, 1.507 i rimedi, 1.797 la
+ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
@@ -288,8 +292,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 95,9 KB | 15,8 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 92,7 KB | 15,4 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 96,5 KB | 15,9 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 93,3 KB | 15,5 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -452,6 +456,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.15.0` | `Cornice::datiDelCliente($lingua)` (#3341): la lingua della pagina per la cornice del cliente; con il prefisso di lingua nell'indirizzo (`/en/spazio/...`) la cornice segue il prefisso, senza resta la lingua del profilo (vedi «La cornice del cliente») | niente; chi ha il prefisso nell'indirizzo passa la sua lingua | niente | casi Pest di `CorniceDelClienteTest` |
 | `v4.16.0` | il titolo del Gate deciso dice com'è stato deciso (#3302): «Gate approvato», «Gate approvato con prescrizioni», «Gate respinto», dall'esito che il backoffice dà nei `dati` della notifica; `GET /cornice/notifiche` porta `esito`, e `rigaDellaNotifica` e `titoloDellaNotifica` lo prendono anche da `dati.esito` (vedi «Le notifiche») | niente; una pagina che mostra le notifiche dal backoffice con `rigaDellaNotifica` passa la notifica com'è, coi `dati` | un caso che confronta per intero una notifica di `GET /cornice/notifiche` trova `esito` (`null`) dopo `quando` | la notifica di un Gate respinto o approvato col suo titolo |
 | `v4.17.0` | il design system `ds-1793954760-e3af`, il lotto 0517 (richieste 199, 192, 193, 200, 91, 43, 6, 13, 14, 27/98, 29, 30, 117-118): `BrandIcon` e i marchi di Google Calendar e Outlook; `InlineEdit` `view`, `actions` e `saveOnUnmount`; il `Dialog` aperto dal `DetailPanel` sopra il pannello al telefono; «Area» al posto di «Cartella»; nell'`AppShell` `navigate`, `notificationsNotice`, `onNotificationsClose`, `active={null}`, `unreadOne` e `mainContent`. Le voci «Presto» fuori dal giro del Tab, il singolare, il contenuto nel giro del Tab col suo nome, i clic della barra laterale da `naviga` e l'avviso del numero li fa l'`AppShell`, e i rimedi della cornice che li facevano sono tolti. Il JS d'ingresso sale di 420 byte, tetto 18.589 | `composer update zeiras/zr-core`, poi la build | i test del frontend: l'avviso del numero sta nell'`AppShell` (`[role="status"][aria-live="polite"]`), non più dopo di lui fra i figli del contenitore; il pallino di una notifica non letta dice sempre «non letta»; una voce «Presto» non ha più `aria-label` (il nome è il suo testo); un clic sulla barra laterale passa da `naviga` anche senza il pezzo dei rimedi, e un ascolto su `document` o `body` che lo ferma con `preventDefault` non lo ferma più (arriva dopo l'`AppShell`): si mette sul collegamento, o in cattura | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
+| `v4.18.0` | il design system `ds-1793958976-2de0`, il lotto 0518 (richieste 5, 46, 47, 48, 56, 87, 109, 110, 124, 129-135, 201): nell'`AppShell` «Salta al contenuto» (`labels.skipToContent`), il caricamento dal tasto, Esc che lascia il fuoco nel campo e chiude il pannello dei risultati, Home e Fine nel selettore dei workspace, il numero sceso detto al lettore di schermo, il fuoco sulla linguetta scelta, l'`Avatar` `decorative`, la barra nascosta `inert`, il pannello dei risultati nel giro del Tab col suo nome, testa e piede del pannello delle notifiche senza ruolo, `onCrumb(c, i, e)` con l'evento e il clic sul percorso da `navigate`, le linguette con le frecce, la zona del numero dei risultati (`labels.searchCount`), l'opzione attiva in vista, `search={false}`. I rimedi della cornice che li facevano sono tolti (anche il pulsante «Salta al contenuto» di zr-core); la cornice del cliente passa a `search={false}`, e `resources/css/cliente.css` resta vuoto fino alla prossima maggiore. `onCrumb` delle tre cornici riceve anche l'evento. Nel freno del backoffice (un 429 della ricerca) una parola scritta mostra il caricamento dell'`AppShell` per i 300 ms in cui aspetta, poi torna l'errore: prima l'errore restava fermo. Il JS d'ingresso sale di 547 byte, tetto 19.136 | `composer update zeiras/zr-core`, poi la build; chi monta la cornice del cliente può togliere l'import di `cliente.css` | i test del frontend: «Salta al contenuto» è il link `.zr-shell > a.zr-skip`, dentro l'`AppShell` e non più un pulsante prima di lui fra i figli del contenitore; le zone vive sono due (`.zr-search > [role="status"]` per i risultati, `.zr-top-actions > [role="status"]` per le notifiche); testa e piede del pannello delle notifiche sono `div` senza `role`; un clic sul percorso passa da `naviga`, e un `onCrumb` che vuole tenerlo chiama `preventDefault`; nella cornice del cliente non c'è il campo della ricerca | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -993,7 +998,7 @@ cornice === null ? pagina : (
   token); quando l'`AppShell` lo porta questo si toglie, senza che il modulo cambi niente. Dalla `v2.25.2`, in una pagina
   senza niente che prende il fuoco, il contenuto può avere già una fermata sua (il punto qui sotto): senza percorso è il
   `main`, e il salto la trova e non la cambia; col percorso è il `div.zr-main-body`, e il salto dà come prima il fuoco al
-  `main`.
+  `main`. Dalla `v4.18.0` è il link dell'`AppShell` (richiesta 5 delle richieste al design system), primo nel giro del Tab, col testo della cornice (`skipToContent`): il pulsante di zr-core davanti all'`AppShell` non c'è più, e un test che lo cercava fra i figli del contenitore cerca `.zr-shell > a.zr-skip`.
 - **Il contenuto che scorre è una fermata del Tab, se non ha altro**: dalla `v2.25.2`, in una pagina in cui dentro il
   contenuto non c'è niente che prende il fuoco — né collegamenti, né pulsanti, né campi — il contenitore che scorre ha
   `tabindex="0"`: il `main` dell'`AppShell`, o col percorso il suo `div.zr-main-body`; in una pagina `flush` nessuno.
@@ -1017,7 +1022,7 @@ cornice === null ? pagina : (
   campo; un test del modulo che conta le fermate con la ricerca aperta va riletto. Esc col fuoco nel pannello chiude la
   ricerca come dal campo (l'`AppShell` lo fa solo dal campo), e il fuoco va al campo (dalla `v3.10.0`: prima andava al
   documento). Sta nel pezzo dei rimedi (dalla `v3.8.0` in quello della tastiera, che arriva al primo tasto), ed è provvisorio
-  come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`.
+  come quello del contenuto (è nelle richieste al design system); ha gli stessi limiti di `:focus-visible`. Dalla `v4.18.0` lo fa l'`AppShell` da sé (richieste 129 e 131): la fermata c'è finché il pannello scorre, col nome dei risultati, ed Esc dal pannello lo chiude e riporta il fuoco al campo; il pezzo dei rimedi non lo fa più.
 - **Il fuoco nel pannello delle notifiche**: dalla `v1.20.0`, aprendo la campanella — con Invio, con Spazio o col clic — il
   fuoco della tastiera entra nel pannello, sulla linguetta scelta («Per me» all'apertura), come nel menu del profilo. Il
   fuoco si sposta solo all'apertura: quando arriva l'elenco o cambiando linguetta resta dov'è, e dopo «Riprova» o «Segna
@@ -1038,7 +1043,7 @@ cornice === null ? pagina : (
   senza che il modulo cambi niente. Il rimedio sta in un pezzo a richiesta che la cornice chiede quando si monta (circa
   1,8 KB con gzip, con quelli dei punti sotto), fuori dal JS d'ingresso: se non arriva, la campanella si apre come prima,
   col fuoco sul pulsante. Se non arriva, l'aiuto di Vite manda su `window` l'evento `vite:preloadError`: un frontend che
-  a quell'evento ricarica la pagina la ricarica anche per questo pezzo.
+  a quell'evento ricarica la pagina la ricarica anche per questo pezzo. Dalla `v4.18.0` il fuoco sulla linguetta scelta lo porta l'`AppShell` (richiesta 87), anche senza il pezzo dei rimedi.
 - **Tab dentro un dialogo aperto**: dalla `v1.20.0`, con un `Dialog` aperto il fuoco della tastiera resta nel dialogo. Tab
   dall'ultimo elemento torna al primo, Maiusc+Tab dal primo va all'ultimo, e se il fuoco è ancora fuori il primo Tab
   entra. Lo stesso per un `DetailPanel` sotto 720 px, dove è largo tutta la pagina; da 721 px in su Tab esce verso la
@@ -1089,7 +1094,7 @@ cornice === null ? pagina : (
   raggiunge un link della barra col Tab va riletto. È provvisorio: il menu e la barra sono dell'`AppShell` del design system,
   e la cornice li corregge da sé, senza toccare il componente; quando l'`AppShell` lo porta questo si toglie, senza che il
   modulo cambi niente. Sta nello stesso pezzo a richiesta dei due punti sopra: se non arriva, il menu e la barra restano
-  com'erano.
+  com'erano. Dalla `v4.18.0` l'avatar della testa del menu è `decorative` nell'`AppShell` (richiesta 109), e la barra nascosta e il piede sono `inert` da sé (richiesta 110): i due rimedi sono tolti.
 - **Il pannello delle notifiche e la barra in alto senza errori di accessibilità**: dalla `v3.4.0`, nel pannello delle
   notifiche aperto la testa e il piede (un `<header>` e un `<footer>` dell'`AppShell`) hanno `role="none"`: prima axe li
   leggeva come un secondo banner e un contentinfo dentro la pagina (`landmark-banner-is-top-level`,
@@ -1108,7 +1113,7 @@ cornice === null ? pagina : (
   dei rimedi non lo fa più: prima, a ricerca aperta, mandava un Esc finto al campo. Le azioni tornano, 44×44 px, quando si chiude (Esc, un clic fuori, il Tab
   fuori da campo e pannello, la scelta di un risultato) e il fuoco non è più nel campo. Sopra 720 px non cambia niente. Il modulo non deve fare niente; un test del modulo
   che a 720 px o meno apre la ricerca e poi clicca la campanella va riletto. Il nascondere le azioni è provvisorio,
-  come i punti sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva la barra resta com'era.
+  come i punti sopra: quando l'`AppShell` lo porta si toglie, e se il pezzo a richiesta non arriva la barra resta com'era. Dalla `v4.18.0` testa e piede sono `div` dell'`AppShell`, senza ruolo (richiesta 124), e la cornice non scrive più niente su di loro.
 - **Esc nella ricerca, il cassetto e i menu della barra da tastiera**: dalla `v3.10.0` Esc dal campo della ricerca chiude il pannello e il fuoco resta nel
   campo (#2800): prima l'`AppShell` lo toglieva al campo e finiva sul documento. Un secondo Esc, col pannello chiuso, non svuota
   il campo: la parola resta, e si cancella come si scrive. Col menu a cassetto aperto (sotto i 1024 px) Esc lo chiude anche col
@@ -1123,7 +1128,7 @@ cornice === null ? pagina : (
   resta dove è andato (#2804: prima restavano aperti), come il selettore dei workspace dalla `v3.8.1`. Il modulo non deve fare
   niente; un test del modulo che dopo Esc nella ricerca cerca il fuoco sul documento, che col cassetto aperto conta le fermate
   del Tab, o che col Tab esce da un menu della barra e lo cerca aperto, va riletto. Sta nel pezzo della tastiera: se Esc è il primo tasto, quello che chiede il pezzo, il fuoco va dove
-  andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé.
+  andava prima. È provvisorio, finché l'`AppShell` non lo fa da sé. Dalla `v4.18.0` Esc dal campo e dal pannello della ricerca li fa l'`AppShell` (richieste 47 e 131): della cornice resta Esc col cassetto aperto.
 - **Il menu a cassetto è una finestra**: dalla `v3.14.0`, sotto i 1024 px — dove la barra laterale è un menu a cassetto —
   il cassetto aperto copre la pagina e lo dice: la barra laterale della cornice ha `role="dialog"`, accanto al suo nome; chiuso
   — col pulsante, con Esc o col velo — o con la finestra allargata a 1024 px o più, torna senza (riga 111, #2341). Non ha
@@ -1168,25 +1173,25 @@ cornice === null ? pagina : (
   `v3.10.0` Home e Fine fanno lo stesso nel menu del profilo e nel menu «+», fra le voci che non sono spente (#2802); dalla
   `v4.8.0` lì, e in ogni `Menu` della pagina, lo fa il `Menu` del design system (lotto 0513, richiesta 132), e il pezzo della
   tastiera lo tiene solo nel selettore dei workspace. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell` lo fa da sé (riga 48 delle
-  richieste al design system) si toglie.
+  richieste al design system) si toglie. Dalla `v4.18.0` lo fa l'`AppShell` da sé (richiesta 48), e il pezzo della tastiera non lo fa più.
 - **Le linguette del pannello delle notifiche con le frecce**: dalla `v3.10.0`, nel pannello delle notifiche aperto, col fuoco
   su «Per me» o su «Tutte», la freccia a destra o a sinistra passa all'altra linguetta e la sceglie, Home va alla prima e Fine
   all'ultima (#2803: prima le frecce non facevano niente); con Alt, Ctrl o Meta restano del browser. Nel giro del Tab resta la sola linguetta scelta, anche quando la
   sceglie un clic: prima il Tab si fermava su tutte e due. Il legame fra la linguetta e ciò che mostra (`aria-controls`) non c'è
   ancora: è struttura dell'`AppShell` (riga 133 delle richieste al design system). Il modulo non deve fare niente; un test del
   modulo che col Tab passa da «Per me» a «Tutte» va riletto. Sta nel pezzo della tastiera, ed è provvisorio: quando l'`AppShell`
-  lo fa da sé si toglie.
+  lo fa da sé si toglie. Dalla `v4.18.0` lo fa l'`AppShell` da sé (richiesta 133), con `aria-controls` verso il pannello che mostrano.
 - **Quanti risultati, a chi usa un lettore di schermo**: dalla `v3.10.0`, a ricerca finita una zona di stato nascosta alla
   vista dice quanti risultati la ricerca mostra, «Risultati: 12» nella lingua della cornice (#2801): prima la zona
   dell'`AppShell` diceva «Sto cercando…» e spariva coi risultati, senza dire quanti erano. È un paragrafo in fondo al documento
   (`role="status"`, classe `zr-visually-hidden`) che resta lì e si svuota a ogni ricerca che parte. Se la ricerca si chiude prima
   che arrivi la risposta, il numero si dice lo stesso: tacere costerebbe al pezzo della ricerca più del suo tetto. Il modulo non deve fare
   niente; un test del modulo che conta gli elementi `role="status"` della pagina va riletto. Sta nel pezzo della ricerca, ed è
-  provvisorio: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design system) si toglie.
+  provvisorio: quando l'`AppShell` tiene da sé una zona col numero (riga 134 delle richieste al design system) si toglie. Dalla `v4.18.0` la zona è dell'`AppShell` (richiesta 134), sotto il campo, e tace senza risultati, che dice il pannello; la cornice le dà il testo («Risultati: {n}») dal pezzo della ricerca. La zona figlia di `body` non c'è più: un test del frontend la cerca in `.zr-search > [role="status"]`.
 - **L'opzione attiva della ricerca in vista**: dalla `v3.10.0`, con le frecce giù e su nel campo della ricerca l'opzione attiva
   scorre in vista nel pannello dei risultati, quanto basta (#2799): prima il pannello restava fermo e dopo le prime righe
   l'opzione scelta era fuori vista. Il modulo non deve fare niente. Sta nel pezzo della tastiera, ed è provvisorio: quando
-  l'`AppShell` lo fa da sé (riga 135 delle richieste al design system) si toglie.
+  l'`AppShell` lo fa da sé (riga 135 delle richieste al design system) si toglie. Dalla `v4.18.0` lo fa l'`AppShell` (richiesta 135): tornando alla prima riga porta in cima il pannello.
 - **I collegamenti della barra laterale passano da `naviga`**: dalla `v2.25.0`, un clic semplice col tasto sinistro su Dashboard, su
   un modulo o su «Impostazioni» — i collegamenti della barra laterale — con un indirizzo di questa origine chiama
   `naviga(indirizzo)` e il browser non lo segue: senza, il clic è un link vero e ricarica la pagina intera anche dentro lo stesso
@@ -1204,7 +1209,7 @@ cornice === null ? pagina : (
   senza indirizzo (`#`) la ferma l'`AppShell`, e l'ultima, la pagina, non è un collegamento. L'`AppShell` chiama ancora
   `onCrumb(voce, indice)`, ma senza l'evento: **non navigate da `onCrumb`**, perché il browser segue già il link, e con
   `naviga` la visita partirebbe due volte. `onCrumb` resta per ciò che non è navigare (una misura, un registro). È provvisorio
-  come il punto sopra: quando l'`AppShell` dà l'evento a `onCrumb` (è fra le richieste al design system) si toglie.
+  come il punto sopra: quando l'`AppShell` dà l'evento a `onCrumb` (è fra le richieste al design system) si toglie. Dalla `v4.18.0` l'`AppShell` dà l'evento a `onCrumb(voce, indice, evento)` e il clic semplice passa da `navigate` (richiesta 130), anche senza il pezzo dei rimedi: un `onCrumb` che vuole gestire la voce da sé chiama `evento.preventDefault()`, e allora `naviga` non parte. Il tipo di `onCrumb` delle tre cornici ha il terzo argomento.
 - **I menu della barra in alto sopra il pannello di dettaglio**: dalla `v3.6.0`, il menu del profilo e il pannello delle
   notifiche, aperti, salgono di un gradino sopra un `DetailPanel` non modale (uno stile sull'elemento, `z-index:
   calc(var(--z-dialog) + 1)`): prima finivano sotto il pannello, e col pannello aperto «Esci» non si cliccava col mouse (da
@@ -1673,7 +1678,9 @@ cornice === null ? pagina : (
   scrive «99+». L'avviso parla solo per il numero che scende con un clic: quando il numero cambia per un altro motivo
   (dati nuovi, un elenco arrivato, «Segna tutte come lette») non lo dice, e ciò che aveva detto si toglie. Dalla `v4.17.0`
   dopo l'`AppShell` la `Cornice` non rende niente: un test del frontend che cercava l'avviso fra i figli del contenitore lo
-  cerca nell'`AppShell`, `[role="status"][aria-live="polite"]`.
+  cerca nell'`AppShell`, `[role="status"][aria-live="polite"]`. Dalla `v4.18.0` il numero sceso lo dice l'`AppShell` da sé (richiesta 56), coi testi della cornice: quando scende entro 10 secondi
+  dal clic su una notifica non letta; la cornice non lo calcola più, e nello stato ridotto svuota la zona. È quella accanto alla
+  campanella, `.zr-top-actions > [role="status"]`: sotto il campo della ricerca ce n'è un'altra, quella del numero dei risultati.
   Per i test di un frontend che passa alla `v1.12.0` cambiano cinque cose: tre sono delle notifiche, e sono quelle che
   seguono; due sono della ricerca, e stanno nel punto «La ricerca», qui sotto (senza `workspace` in una risposta finta di
   `POST /cornice/ricerca` la ricerca mostra il suo errore, e il segnaposto e l'aiuto del campo hanno testi nuovi). Una
@@ -1706,7 +1713,8 @@ cornice === null ? pagina : (
   prima parola se il fuoco nel campo non c'è stato, mai quando si monta. Chi scrive prima che il pezzo sia arrivato vede
   «Sto cercando…», e all'arrivo parte una richiesta sola, con l'ultima parola che il campo ha dato alla cornice: quella che
   c'era 300 ms dopo l'ultimo tasto. Una lettera battuta in quei 300 ms parte al loro scadere, come ogni parola scritta mentre
-  una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo. Una cornice smontata
+  una ricerca è in volo: annulla la richiesta di prima, e i risultati sono di ciò che è nel campo. Dalla `v4.18.0` il caricamento dal tasto lo
+  mostra l'`AppShell` (richiesta 46), e una parola che nel campo non c'è più non parte all'arrivo del pezzo. Una cornice smontata
   prima dell'arrivo — il layout la rifà quando cambia il workspace, anche con la stessa persona — non cerca più la parola
   scritta in lei, e all'arrivo non parte niente (dalla `v2.11.2`). Se il pezzo non arriva —
   la rete che cade, un file che una build nuova ha tolto — sotto il campo c'è l'errore della ricerca, lo stesso avviso di
@@ -2583,7 +2591,7 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
   ci sono risultati. Dalla `v4.1.1` (#2986), come nella `Cornice`, a ricerca finita una zona di stato nascosta alla vista dice
   quanti risultati mostra il pannello, «Risultati: 12» nella lingua dello staff: un paragrafo in fondo al documento
   (`role="status"`, classe `zr-visually-hidden`) che c'è da quando la cornice è montata, si svuota a ogni ricerca che parte e
-  se ne va con la cornice.
+  se ne va con la cornice. Dalla `v4.18.0` il caricamento dal tasto e la zona del numero sono dell'`AppShell` (richieste 46 e 134), col testo dello staff, e la zona tace senza risultati; il paragrafo in fondo al documento non c'è più.
 - **La ricerca all'invio**: dalla `v4.3.0` (#2965), con `cercaAllInvio` la cornice passa `searchOn="submit"` all'`AppShell`, e
   `cerca` parte solo quando la persona preme Invio con 2 caratteri o più, una volta per Invio, mai da sola mentre scrive: ogni
   ricerca dello staff pesa sul tetto orario del backoffice. Invio sulla parola già cercata ricerca solo se i risultati erano
@@ -2656,7 +2664,7 @@ App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));
 
 ```tsx
 import { CorniceDelCliente, type DatiDelCliente } from '../../vendor/zeiras/zr-core/resources/js/app';
-import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CSS del design system
+import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dalla v4.18.0: la riga si può togliere
 
 <CorniceDelCliente
     dati={cornice as DatiDelCliente}
@@ -2684,7 +2692,9 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CS
   06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
   build la porterebbe nel CSS di ogni app; dalla `v4.13.1` lo stesso file tiene campanella e profilo a destra della barra in alto,
   dove senza il campo non resterebbero. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
-  la prop che non mostra la ricerca (richiesta 201 al design system).
+  la prop che non mostra la ricerca (richiesta 201 al design system). Dalla `v4.18.0` la cornice passa `search={false}`
+  all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta fino alla prossima
+  versione maggiore perché l'import non si rompa, e il modulo lo può già togliere.
 - **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), le
   sue notifiche da cliente con zr-backoffice #3323. Fino ad allora la campanella resta, vuota, col testo del cliente («Qui
   arrivano gli avvisi delle tue aziende: appuntamenti, fatture, risposte.»), perché l'`AppShell` la disegna sempre (richiesta 64
