@@ -290,7 +290,8 @@ it('datiDelCliente() senza la lingua della pagina, o con null, dà la lingua del
     'null' => [null],
     'vuota' => [''],
     'con una barra' => ['en/../x'],
-    'oltre 35 caratteri' => [str_repeat('a', 36)],
+    // con la forma di una lingua, ma 42 caratteri: lo ferma il limite di 35, non la forma (revisione PR #184, R1)
+    'oltre 35 caratteri' => ['en-'.implode('-', array_fill(0, 5, 'aaaaaaa'))],
 ]);
 
 it('col 403 accettazione_richiesta i dati ridotti hanno la lingua della pagina, e la sessione resta com\'è (sprint 113 · T1.3)', function () {
@@ -307,4 +308,11 @@ it('datiDelCliente() con la lingua della pagina dopo linguaDelCliente() usa la s
 
     $lingua = Cornice::linguaDelCliente();
     expect([$lingua, Cornice::datiDelCliente('it')['lingua'], array_count_values(chiamateDelCliente())['/v1/io']])->toBe(['es', 'it', 1]);
+});
+
+it('datiDelCliente() prende una lingua con la forma di una lingua anche se Zeiras non la traduce: i testi mancanti la cornice li mostra in inglese (sprint 113 · T1.2, revisione PR #184 R2)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente();
+
+    expect(Cornice::datiDelCliente('pt-BR')['lingua'])->toBe('pt-BR');
 });
