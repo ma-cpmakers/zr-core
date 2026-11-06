@@ -263,3 +263,48 @@ it('linguaDelCliente() lascia passare il gettone rifiutato: la sessione è finit
 
     expect(fn () => Cornice::linguaDelCliente())->toThrow(GettoneRifiutato::class);
 });
+
+// Sprint 113 · T1 (voce #3341, Decisione 21833 di zr-pm): con il prefisso di lingua nell'indirizzo (zr-home /en/spazio/...) il
+// modulo dà a `datiDelCliente()` la lingua della pagina, e la cornice del cliente parla quella; la sessione resta com'è.
+
+it('datiDelCliente() con la lingua della pagina dà quella lingua, e il resto come senza; la sessione resta nella lingua del profilo (sprint 113 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
+    sessioneAMano(null);
+    backofficeDelCliente();
+
+    expect(Cornice::datiDelCliente('en'))->toBe([
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada Cliente', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
+        'aziende' => [],
+        'aggiornati_il' => '2026-11-06T10:00:00.000000Z',
+    ])->and(Sessione::utente()['lingua'])->toBe('es')
+        ->and(Cornice::datiDelCliente()['lingua'])->toBe('es');
+});
+
+it('datiDelCliente() senza la lingua della pagina, o con null, dà la lingua del profilo; una lingua malfatta non entra nei dati (sprint 113 · T1.2)', function (?string $pagina) {
+    sessioneAMano(null);
+    backofficeDelCliente();
+
+    expect(Cornice::datiDelCliente($pagina)['lingua'])->toBe('es');
+})->with([
+    'null' => [null],
+    'vuota' => [''],
+    'con una barra' => ['en/../x'],
+    'oltre 35 caratteri' => [str_repeat('a', 36)],
+]);
+
+it('col 403 accettazione_richiesta i dati ridotti hanno la lingua della pagina, e la sessione resta com\'è (sprint 113 · T1.3)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => accettazioneRichiesta()]);
+
+    $dati = Cornice::datiDelCliente('it');
+    expect([$dati['lingua'], $dati['accettazione_richiesta'], Sessione::utente()['lingua']])->toBe(['it', true, 'en']);
+});
+
+it('datiDelCliente() con la lingua della pagina dopo linguaDelCliente() usa la stessa lettura: /v1/io una volta (sprint 113 · T1.3)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente();
+
+    $lingua = Cornice::linguaDelCliente();
+    expect([$lingua, Cornice::datiDelCliente('it')['lingua'], array_count_values(chiamateDelCliente())['/v1/io']])->toBe(['es', 'it', 1]);
+});

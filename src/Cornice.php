@@ -337,13 +337,17 @@ final class Cornice
      * le sue notifiche da cliente non ci sono ancora: aspettano zr-backoffice #3320 e #3323. Dalla `v4.14.0` (#3335), dopo una
      * `linguaDelCliente()` nella stessa richiesta usa la sua lettura di io.mostra, una volta, e i dati hanno il suo segno.
      *
+     * `$lingua` è la lingua della pagina (dalla `v4.15.0`, voce #3341, Decisione 21833 di zr-pm): con il prefisso di lingua
+     * nell'indirizzo (`/en/spazio/...`) la cornice segue il prefisso, e la dà il modulo, che il prefisso lo ha già letto. Senza,
+     * o se non ha la forma di una lingua (vedi `inForma()`), è quella del profilo. La sessione non la prende: vale per la pagina.
+     *
      * null senza sessione, senza chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in
      * `dati()`: la persona della sessione senza foto, nessuna azienda e `accettazione_richiesta`. Ogni altro errore arriva a chi
      * chiama com'è, e una risposta di io.mostra senza la persona è BackofficeNonRisponde.
      *
      * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
-    public static function datiDelCliente(): ?array
+    public static function datiDelCliente(?string $lingua = null): ?array
     {
         $utente = Sessione::utente();
 
@@ -369,7 +373,7 @@ final class Cornice
         $utente = Sessione::utente() ?? $utente;
 
         return [
-            'lingua' => $utente['lingua'],
+            'lingua' => self::inForma($lingua) ?? $utente['lingua'],
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($letti['foto'], $utente['id'] ?? null))],
             'aziende' => $letti['aziende'] ?? [],
             'aggiornati_il' => $segno,
