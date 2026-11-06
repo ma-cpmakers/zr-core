@@ -5,5 +5,9 @@
     "acceptanceOff": "No disponible hasta que aceptes los documentos.",
     "downTitle": "Zeiras no responde",
     "downText": "Los módulos, las notificaciones y la búsqueda vuelven cuando Zeiras responda. Inténtalo de nuevo en breve.",
-    "downOff": "No disponible hasta que Zeiras responda."
+    "downOff": "No disponible hasta que Zeiras responda.",
+    "assistTitle": "Estás usando Zeiras como {name}",
+    "assistText": "{email} · Los cambios que hagas cuentan como hechos por {firstName}",
+    "assistReadOnly": "{email} · Solo lectura: puedes mirar, no modificar",
+    "assistEnd": "Terminar la asistencia"
 }

@@ -2889,6 +2889,56 @@ describe('il pannello delle notifiche', () => {
         expect(naviga.mock.calls[1]).toStrictEqual([`${nelCrm}/pipeline/uat-pipeline-1/impostazioni`]);
     });
 
+    // Sprint 115 · T2 (voce #2909, Decisione 22190): in assistenza («Accedi come» dello staff) la campanella mostra e non scrive.
+    const inAssistenza: DatiDellaCornice = { ...dati, non_lette: 3, assistenza: { persona: { nome: 'Anna', cognome: 'Bianchi', email: 'anna@example.com' }, sola_lettura: false } };
+
+    it('in assistenza il pannello non ha «Segna tutte come lette», anche con notifiche non lette caricate (sprint 115 · T2.1)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire }]));
+        await mostra(<Cornice dati={inAssistenza} product="crm" naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+
+        await clic(uno('.zr-bell'));
+        expect(voci()).toHaveLength(4);
+        expect(appShell.mock.lastCall?.[0].onMarkAllRead).toBeUndefined();
+        expect(campanella()).toBe('3');
+    });
+
+    it('in assistenza un clic su una notifica non letta apre la sua risorsa senza chiedere la lettura: niente PATCH, e il numero resta (sprint 115 · T2.2)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={inAssistenza} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        await act(async () => prossimoGiro());
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche']);
+        expect(campanella()).toBe('3');
+    });
+
+    it('una pagina senza `assistenza` nei dati che riceve il 403 `azione_non_consentita_in_assistenza` alla lettura apre lo stesso la risorsa, una richiesta sola, senza errore e col numero com\'era (sprint 115 · T2.3)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire }], async () => risposta({ errore: 'azione_non_consentita_in_assistenza' }, 403));
+        vi.stubGlobal('fetch', fetchFinto);
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        await act(async () => prossimoGiro());
+        expect(naviga.mock.calls).toStrictEqual([[`${nelCrm}/contatti/uat-persona-1`]]);
+        expect(richieste(fetchFinto)).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        expect([campanella(), detto()]).toStrictEqual(['3', '']);
+    });
+
+    it('un altro 403 alla lettura resta un errore: la risorsa non si apre (sprint 115 · T2.3)', async () => {
+        vi.stubGlobal('fetch', rotteDelClic([{ data: daAprire }], async () => risposta({ errore: 'azione_non_consentita' }, 403)));
+        const naviga = vi.fn();
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="crm" naviga={naviga} onLogout={esciSenzaEffetto} />);
+
+        await apre(0);
+        await act(async () => prossimoGiro());
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['una non letta che nel registro non ha dove andare', dati, {}, 3, paginaDelleNotifiche],
         ['una non letta di un modulo che nel workspace non si può aprire', { ...dati, prodotti: { pm: 'attivo', crm: 'in_arrivo' } }, {}, 0, paginaDelleNotifiche],

@@ -32,8 +32,9 @@ use Zeiras\Core\Cornice;
 // `web`.
 
 /**
- * Il backoffice in Http::fake, un metodo di /v1 alla volta: app.elenca, io.mostra, io.aziende.elenca e io.workspace.elenca.
- * Un elenco senza risposta data risponde una lista vuota, io.mostra zero non lette. Il percorso si confronta intero
+ * Il backoffice in Http::fake, un metodo di /v1 alla volta: app.elenca, io.mostra, io.aziende.elenca, io.workspace.elenca e
+ * accessi.corrente.mostra. Un elenco senza risposta data risponde una lista vuota, io.mostra zero non lette, accessi.corrente.mostra
+ * un accesso che non è un'assistenza. Il percorso si confronta intero
  * (`/v1/io` non risponde per `/v1/io/aziende`); un altro percorso non ha risposta, e TestCase ferma la richiesta.
  *
  * @param  array<string, mixed>  $risposte  per percorso («/v1/io/aziende»): un corpo JSON, o una risposta, una sequenza, una closure
@@ -41,6 +42,8 @@ use Zeiras\Core\Cornice;
 function backoffice(array $risposte = []): void
 {
     $risposte += ['/v1/io' => ioMostra(0)];
+    // Dalla `v4.22.0` (sprint 115 · T1) la cornice legge anche accessi.corrente.mostra, una volta per accesso: un accesso qualunque, non un'assistenza.
+    $risposte += ['/v1/accessi/corrente' => ['data' => ['accesso_id' => 'uat-accesso', 'scade_il' => '2026-12-31T00:00:00Z', 'impersonificazione' => null]]];
     foreach (['/v1/app', '/v1/io/aziende', '/v1/io/workspace'] as $elenco) {
         $risposte += [$elenco => ['data' => [], 'successivo' => null]];
     }
@@ -259,9 +262,9 @@ it('ogni workspace delle aziende porta il suo id, quello di io.workspace.elenca,
         ['id' => 'uat-ws-1', 'nome' => 'UAT clienti', 'slug' => 'uat-clienti'],
         ['id' => 'uat-ws-3', 'nome' => 'UAT Vendite', 'slug' => 'uat-vendite'],
     ]);
-    // Una richiesta per metodo, due per i workspace (le due pagine dell'elenco), e nessun'altra.
+    // Una richiesta per metodo, due per i workspace (le due pagine dell'elenco), e nessun'altra. // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso (sprint 115 · T1.3).
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
-        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']);
+        ->toBe(['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace', '/v1/io/workspace']);
 });
 
 // Sprint 74 · C5 (voce 2730 di zr-home). io.workspace.elenca dà a ogni workspace il suo `colore` (dal 17/10/2026): se è uno dei
@@ -363,9 +366,9 @@ it('il ruolo vale dentro la sua azienda: non passa a un\'altra, e quello di un w
         ['id' => 'az-a', 'nome' => 'UAT az-a', 'workspace' => [workspaceAlPosto(0)], 'nuovo_workspace' => true],
         ['id' => 'az-c', 'nome' => 'UAT az-c', 'workspace' => [], 'nuovo_workspace' => false],
     ]);
-    // Una richiesta per metodo, e nessun'altra: sono le letture della v1.8.0.
+    // Una richiesta per metodo, e nessun'altra: sono le letture della v1.8.0. // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso (sprint 115 · T1.3).
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
-        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
+        ->toBe(['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
 });
 
 // Sprint 69 · T2 (voce #2210). `moduli` è l'indirizzo di Impostazioni › Moduli di zr-home nel workspace dei dati, e la cornice lo
@@ -386,7 +389,8 @@ it('`moduli` è l\'indirizzo di Impostazioni › Moduli nel workspace dei dati, 
         // Dopo `non_lette`, prima del segno: nessuna chiave si sposta per chi non amministra.
         expect(array_slice(array_keys($dati), 3, 4))->toBe(['prodotti', 'aziende', 'non_lette', 'moduli']);
     }
-    expect(Http::recorded())->toHaveCount(4);
+    // Le quattro letture di sempre, e dalla `v4.22.0` accessi.corrente.mostra: per `moduli` nessuna in più.
+    expect(Http::recorded())->toHaveCount(5);
 })->with([
     'proprietario' => ['proprietario', true],
     'amministratore' => ['amministratore', true],
@@ -514,9 +518,9 @@ it('non_lette è notifiche_non_lette di io.mostra, chiesto col gettone del works
     )]);
 
     expect(Cornice::dati()['non_lette'])->toBe($nonLette);
-    // Una richiesta per metodo, e nessun'altra: l'elenco delle notifiche non si chiede più.
+    // Una richiesta per metodo, e nessun'altra: l'elenco delle notifiche non si chiede più. // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso (sprint 115 · T1.3).
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
-        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
+        ->toBe(['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
     $richiesta = richiesteA('/v1/io')->first();
     expect($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['workspace']))->toBeTrue()
         ->and(parse_url($richiesta->url(), PHP_URL_QUERY))->toBeNull();
@@ -661,7 +665,8 @@ it('alla richiesta dopo una pagina che legge la sessione senza chiamare la corni
     backoffice(['/v1/io' => ioMostraCon(['lingua' => 'es', 'nome' => 'UAT Ada Lovelace'])]);
 
     $this->get('w/uat-marketing/cornice')->assertOk();
-    expect(Http::recorded())->toHaveCount(4);
+    // Le quattro letture, e dalla `v4.22.0` accessi.corrente.mostra.
+    expect(Http::recorded())->toHaveCount(5);
 
     // La pagina dopo non chiama Cornice::dati(): legge la persona dalla sessione, come un middleware che ne prende la lingua.
     // Le due richieste di un test hanno la stessa sessione in memoria: il caso diventa rosso se la cornice non scrive nella
@@ -672,7 +677,7 @@ it('alla richiesta dopo una pagina che legge la sessione senza chiamare la corni
     expect($dopo->json('lingua'))->toBe('es')
         ->and($dopo->json('nome'))->toBe('UAT Ada Lovelace')
         ->and($dopo->json('id'))->toBe('uat-ada')
-        ->and(Http::recorded())->toHaveCount(4);
+        ->and(Http::recorded())->toHaveCount(5);
     Gettone::assenteDa($dopo);
 });
 
@@ -682,9 +687,9 @@ it('per rimettere la lingua e il nome la cornice non legge niente in più: le qu
 
     Cornice::dati();
 
-    // io.mostra una volta sola, col gettone del workspace: la lettura che conta le non lette porta già la persona.
+    // io.mostra una volta sola, col gettone del workspace: la lettura che conta le non lette porta già la persona. // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso (sprint 115 · T1.3).
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->sort()->values()->all())
-        ->toBe(['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
+        ->toBe(['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']);
     foreach (['/v1/io' => 'workspace', '/v1/app' => 'workspace', '/v1/io/aziende' => 'accesso', '/v1/io/workspace' => 'accesso'] as $percorso => $gettone) {
         expect(richiesteA($percorso)->first()->hasHeader('Authorization', 'Bearer '.$gettoni[$gettone]))->toBeTrue();
     }
@@ -910,9 +915,9 @@ it('la riga non aggiunge letture: in una richiesta con la riga e i dati della co
         // Ogni chiamata, la prima come l'ultima, dà la lingua del profilo.
         ->and($lingue)->toBe(array_fill(0, count($chiamate), 'es'));
 })->with([
-    'la riga e poi i dati' => [['lingua', 'dati'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
-    'i dati e poi la riga' => [['dati', 'lingua'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
-    'la riga, i dati, la riga' => [['lingua', 'dati', 'lingua'], ['/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'la riga e poi i dati' => [['lingua', 'dati'], ['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'i dati e poi la riga' => [['dati', 'lingua'], ['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
+    'la riga, i dati, la riga' => [['lingua', 'dati', 'lingua'], ['/v1/accessi/corrente', '/v1/app', '/v1/io', '/v1/io/aziende', '/v1/io/workspace']],
     'la riga tre volte' => [['lingua', 'lingua', 'lingua'], ['/v1/io']],
 ]);
 
@@ -926,7 +931,8 @@ it('chi non chiama la riga non vede cambiare niente: le quattro letture di prima
     $laSeconda = Cornice::dati();
 
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all())
-        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
+        // Dalla `v4.22.0` accessi.corrente.mostra dopo le letture della prima `dati()`, e una volta sola: la seconda la trova nella sessione (sprint 115 · T1.3).
+        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/accessi/corrente', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
         ->and([$laPrima['aggiornati_il'], $laSeconda['aggiornati_il']])->toBe(['2026-10-11T08:00:00.000001Z', '2026-10-11T08:00:02.000001Z'])
         ->and([$laPrima['non_lette'], $laSeconda['non_lette']])->toBe([3, 5]);
 });
@@ -944,7 +950,8 @@ it('la lettura della riga serve a una Cornice::dati() sola: la seconda, nella st
 
     // Una lettura della riga, tre della prima `dati()`, quattro della seconda: non è una cache dei dati della cornice.
     expect(Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all())
-        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
+        // Dalla `v4.22.0` accessi.corrente.mostra dopo le letture della prima `dati()`, e una volta sola: la seconda la trova nella sessione (sprint 115 · T1.3).
+        ->toBe(['/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace', '/v1/accessi/corrente', '/v1/io', '/v1/app', '/v1/io/aziende', '/v1/io/workspace'])
         ->and([$laPrima['aggiornati_il'], $laSeconda['aggiornati_il']])->toBe(['2026-10-11T08:00:00.000001Z', '2026-10-11T08:00:02.000001Z'])
         ->and([$laPrima['non_lette'], $laSeconda['non_lette']])->toBe([3, 5]);
 });
@@ -1137,9 +1144,12 @@ it('la lettura tenuta vale per quella richiesta: la richiesta dopo rilegge io.mo
     expect([$laPrima->json('lingua_della_pagina'), $laSeconda->json('lingua_della_pagina')])->toBe(['es', 'it'])
         ->and([$laPrima->json('cornice.lingua'), $laSeconda->json('cornice.lingua')])->toBe(['es', 'it'])
         ->and([$laPrima->json('cornice.non_lette'), $laSeconda->json('cornice.non_lette')])->toBe([3, 5])
-        // Quattro letture per richiesta, io.mostra una volta in ognuna: la seconda non usa la lettura della prima.
+        // Quattro letture per richiesta, io.mostra una volta in ognuna: la seconda non usa la lettura della prima. Dalla `v4.22.0`
+        // anche accessi.corrente.mostra, una per accesso: qui due, perché il client dei test non rimanda il cookie della sessione e
+        // ogni richiesta ha un id di sessione nuovo (i dati restano in memoria). Col cookie è una: CorniceAssistenzaTest (sprint 115 · T1.3).
         ->and(richiesteA('/v1/io'))->toHaveCount(2)
-        ->and(Http::recorded())->toHaveCount(8);
+        ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(2)
+        ->and(Http::recorded())->toHaveCount(10);
 });
 
 it('la lettura tenuta vale per quel workspace: se fra la riga e i dati la sessione entra in un altro workspace, Cornice::dati() rilegge io.mostra col gettone nuovo e dà le non lette di quello (sprint 18 · T2.7)', function () {

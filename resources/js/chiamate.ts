@@ -131,7 +131,8 @@ export async function chiama(indirizzo: string, { email, impronta }: Persona, me
                 throw new TroppeRichieste(esito, +riprovaFra);
             }
         }
-        throw new Error(esito);
+        // Il codice della rotta resta sull'errore (`errore`): chi chiama lo legge, se vuole (la lettura in assistenza, dalla `v4.22.0`).
+        throw Object.assign(new Error(esito), { errore: corpo?.errore });
     }
 
     return corpo;

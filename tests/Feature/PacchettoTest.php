@@ -137,7 +137,7 @@ function vincoliDiZrAuthIn(string $testo): array
     return array_values(array_unique($trovati[0]));
 }
 
-it('composer.json chiede zr-auth ^0.12.128 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
+it('composer.json chiede zr-auth ^0.12.139 e nessuna minore più vecchia, e la CI prova zr-core con quella: una voce nella matrice, due giri, con l\'ultima patch e con la più bassa accettata (sprint 13 · T1.1; review, R1 e S1; sprint 16 · T4.5; sprint 17 · T3.1; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
     $vincolo = $composer['require']['zeiras/zr-auth'];
     $ci = (string) file_get_contents(__DIR__.'/../../.github/workflows/ci.yml');
@@ -157,7 +157,9 @@ it('composer.json chiede zr-auth ^0.12.128 e nessuna minore più vecchia, e la C
     // Dalla `v4.1.0` dalla 0.12.120: la rotta della foto legge il file con `Api::immagine`, che c'è da quella (sprint 99 · T1.6).
     // Dalla `v4.5.2` dalla 0.12.128: `ConGettone` ricorda il ritorno solo per le navigazioni, e la foto chiesta da un `<img>` a
     // sessione scaduta non diventa la pagina di ritorno (#3019; sprint 109 · T1.3). Il giro «minima» la installa: FotoTest lo prova.
-    expect($vincolo)->toBe('^0.12.128')
+    // Dalla `v4.22.0` dalla 0.12.139: ogni pagina con la cornice legge accessi.corrente.mostra, e il backoffice finto di zr-auth lo
+    // conosce da quella (revisione dello sprint 115, R2): CorniceAssistenzaTest lo prova col finto nei due giri.
+    expect($vincolo)->toBe('^0.12.139')
         ->and(vociDellaMatriceDiZrAuth($ci))->toBe("'0.12'")
         ->and(vociDellePatchDiZrAuth($ci))->toBe("'ultima', 'minima'")
         ->and(versioniDiZrAuthNonProvate($vincolo, $ci))->toBe([])
@@ -1651,21 +1653,23 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.128, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.139, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3; sprint 115)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
     // Ogni vincolo 0.12 che il testo dice, intero: `^0.12.4` è anche l'inizio di `^0.12.41`.
     $vincoli = fn (string $t): array => preg_match_all('/\^0\.12\.\d+/', $t, $trovati) > 0 ? $trovati[0] : [];
 
-    expect($vincoli($testo))->toBe(['^0.12.128'])
+    expect($vincoli($testo))->toBe(['^0.12.139'])
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and($vincoli(str_replace('^0.12.128', '^0.12.120', $testo)))->toBe(['^0.12.120']);
+        ->and($vincoli(str_replace('^0.12.139', '^0.12.128', $testo)))->toBe(['^0.12.128']);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.128, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.139, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` parte dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm); dalla `v4.22.0` parte dalla 0.12.139, perché ogni pagina con la cornice legge `accessi.corrente.mostra` e il backoffice finto di zr-auth, nei test dei moduli, lo conosce da quella (revisione dello sprint 115).'))->toBe(1)
+        ->and(str_contains($claude, 'dalla `v4.5.2` parte dalla 0.12.128'))->toBe(false)
+        ->and(substr_count($readme, 'Dalla `v4.22.0` serve la 0.12.139: ogni pagina con la cornice legge `accessi.corrente.mostra`, e il backoffice finto di zr-auth, nei test di un modulo, lo conosce da quella; con una più vecchia Composer lascia zr-core alla `v4.21.0`.'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v4.1.0` parte dalla 0.12.120'))->toBe(false)
         // Anche il README dice il perché del vincolo nuovo (rilievo della revisione della PR #169).
         ->and(substr_count($readme, 'Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l\'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia zr-core alla `v4.5.1`.'))->toBe(1)
@@ -5620,7 +5624,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.282 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.394 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.20.0 (Decisione 22247 di zr-pm): +146 byte, i lotti 0520 e 0521, con le due chiamate che segnano lette nel pezzo della campanella.
     'i pesi: i 146 byte della v4.20.0' => ['pesi', 'Dalla `v4.20.0` è salito di 146 byte (Decisione 22247 di zr-pm): i lotti 0520 e 0521 del design system portano il menu del «+» alto quanto lo spazio'],
     // v4.8.1 (#3055, Decisione 21220): l'Alert nel pezzo degli avvisi, il tetto scende di 110, alla misura più 20.
@@ -5642,7 +5646,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
     // v4.16.0 (voce #3302): la campanella a 2.330, la misura più 20 (sì di zr-pm-07, 06/11). v4.18.0 (lettura della PR #187, R2):
     // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074).
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.592 byte la campanella, 1.507 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.592 byte la campanella, 1.507 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

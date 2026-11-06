@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 53,6 KB | 18,7 KB | 62,0 KB | 13,2 KB |
-| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 62,0 KB | 13,2 KB |
-| la stessa cornice, dall'ingresso di sempre | 191,1 KB | 61,5 KB | 62,0 KB | 13,2 KB |
+| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 63,0 KB | 13,9 KB |
+| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 63,0 KB | 13,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 191,1 KB | 61,5 KB | 63,0 KB | 13,9 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.282 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.394 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -254,9 +254,11 @@ contropartita sta nei pezzi a richiesta, che scendono alla loro misura più 20: 
 Dalla `v4.20.0` è salito di 146 byte (Decisione 22247 di zr-pm): i lotti 0520 e 0521 del design system portano il menu del «+»
 alto quanto lo spazio, con `returnFocus`, e il menu Moduli che si chiude col clic fuori e col Tab; la contropartita sono le due
 chiamate che segnano lette le notifiche, che servono solo a pannello aperto e sono uscite dal JS d'ingresso, nel pezzo della campanella.
+Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la campanella che in assistenza non scrive e la condizione
+che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.592 byte la campanella, 1.507 i rimedi, 1.797 la
-ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
@@ -464,6 +466,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.19.0` | il design system `ds-1793964343-e08c`, il lotto 0519 (richieste 202-205 e 25): `AgendaGrid`, la griglia di un'agenda con le ore (Bookings); `DataTable` con `sort`/`onSort`, `selected`, `onMore` con `total` e `loadingMore`, `Column.minWidth` e `stickyFirst`, e le intestazioni lunghe che vanno a capo; `Tabs` `variant="underline"` sotto i 720 px in una riga che scorre, con la linguetta scelta in vista; i testi propri di `InlineEdit`, `DataTable`, `AgendaGrid` e `ReorderList` in italiano, inglese e spagnolo nella lingua dell'app, come i testi comuni della `v4.10.0` (`LabelsProvider` o `<html lang>`; `labels` vince, un testo alla volta); `ReorderList`, un elenco che si riordina (CRM). `DataTable` senza `sort`, `selected` e `onMore` ordina, seleziona e pagina come prima; il segmentato di `Tabs` è com'era. Il JS d'ingresso sale di 18 byte (19.134, `lang` nei testi comuni che l'`AppShell` porta), 2 sotto il tetto di 19.136 | `composer update zeiras/zr-core`, poi la build; Bookings può togliere `agenda-griglia.tsx`; il CRM l'ordine col select «Ordina per» e il «Mostra altri» suoi (`pages/contatti.tsx`, `aziende.tsx`), la selezione in `lib/selezione.ts`, `.schede-in-riga` in `resources/css/app.css`, `etichetteInLinea(t)` di `lib/in-linea.ts` e i suoi pulsanti «Su» e «Giù» | i test del frontend: in italiano niente; con `<html lang>` (o `LabelsProvider lang`) `en`, `es` o un'altra lingua, i testi propri di `InlineEdit` e `DataTable` passano a quella lingua o all'inglese; `COMMON_LABELS` e `useLabels()` hanno anche `lang` (un confronto per intero cambia); la prima colonna di `DataTable` ha la classe `zr-td-first`; nelle schermate le intestazioni lunghe di `DataTable` vanno a capo e, sotto i 720 px, le `Tabs` `underline` stanno in una riga che scorre | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 | `v4.20.0` | il design system `ds-1793976975-045a`, i lotti 0520 e 0521 (richieste 209, 211-217): `KanbanCard` col numero della scheda (`number`, «#12») davanti al titolo; `SiteFooter` e `Zeiras.PUBLISHER` senza REA e col telefono +39 0575 146 0000; nell'`AppShell` il menu Moduli si chiude anche col clic fuori e quando il fuoco esce col Tab; `DataTable` con `rowName(row)` («Seleziona Mario Rossi»), «1 selezionato» con una riga sola (`labels.selectedOne`) e `selectionDisabled`; una `Checkbox` con `disabled` si vede spenta; `Menu` alto quanto il lato con più spazio e dentro la finestra, con `returnFocus`. Le due chiamate che segnano lette le notifiche passano nel pezzo della campanella: il JS d'ingresso misura 19.257 byte, sotto il tetto di 19.282 (Decisione 22247) | `composer update zeiras/zr-core`, poi la build; il CRM può lasciare la sua barra di selezione per quella di `DataTable`; Board può togliere l'involucro suo del `Menu` (#3112) | i test del frontend: con una riga scelta `DataTable` dice «1 selezionato» (prima «1 selezionati»); un `Menu` lungo resta nella finestra con lo scroll; il menu Moduli aperto si chiude a un clic fuori o al Tab che esce; nel piè del sito niente REA e il telefono nuovo | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 | `v4.21.0` | il design system `ds-1793981459-3e66`, la richiesta 218 (decisa da Luciano, caricata da sola): `SiteFooter` e `Zeiras.PUBLISHER` con l'ufficio del Registro delle Imprese dopo il capitale sociale, «Registro delle Imprese: Arezzo-Siena n. 02453920510» (art. 2250 c.c.); `company.registry` e `company.registryNumber` per un altro titolare, `labels.registry` e `labels.registryNo` per le etichette. Un titolare che passa un'altra P. IVA senza `registry` non eredita l'ufficio di Zeiras | `composer update zeiras/zr-core`, poi la build; zr-sito può togliere la riga del Registro scritta da sé, se ce l'ha | i test del frontend che leggono la riga societaria del piè: dopo il capitale c'è la riga del Registro delle Imprese | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
+| `v4.22.0` | l'assistenza (#2909): quando lo staff entra con «Accedi come», i dati della cornice portano `assistenza` (la persona assistita e `sola_lettura`, da `accessi.corrente.mostra`), sopra la pagina c'è la fascia di assistenza col pulsante «Termina l'assistenza» (`onLogout`), e la campanella mostra senza scrivere: niente «Segna tutte come lette», una notifica aperta non si segna letta, e il 403 `azione_non_consentita_in_assistenza` alla lettura apre lo stesso la risorsa. Per ogni altra sessione niente cambia | `composer update zeiras/zr-core zeiras/zr-auth` (serve zr-auth 0.12.139), poi la build | ogni pagina con la cornice legge anche `GET /v1/accessi/corrente`: il backoffice finto di zr-auth lo conosce dalla 0.12.139; un finto scritto a mano (`Http::fake`) risponde con `{data: {accesso_id, scade_il, impersonificazione: null}}`, e un caso che conta le richieste al backoffice ne conta una in più. Per una sessione che non è di assistenza le chiavi dei dati e la cornice sono quelle di prima | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html`; `layout.html?assistenza=1` e `?assistenza=lettura` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -529,7 +532,7 @@ L'ordine in cui `Cornice::dati()` fa le quattro letture non è un contratto: pu�
 `v1.2.2` la prima è `io.mostra`, per contare le non lette prima di ogni altra lettura). Un test del frontend non fissi «la
 prima lettura»: guardi quali letture partono e con quale gettone, non in che ordine.
 
-zr-core richiede `zeiras/zr-auth` `^0.12.128` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
+zr-core richiede `zeiras/zr-auth` `^0.12.139` (la CI lo prova con la più bassa che questo vincolo accetta e con l'ultima 0.12),
 installato e configurato come dice il suo README (la sessione lato server, `ZR_API_URL`). Dalla `v1.4.0` una zr-auth più
 vecchia non basta: la cornice chiama `Sessione::aggiorna`, che c'è dalla 0.12, e con una più vecchia Composer lascia zr-core
 alla `v1.3.0`. Dalla `v1.6.0` serve la 0.12.4: «Segna tutte come lette» tiene il blocco della sessione coi tempi di zr-auth,
@@ -541,7 +544,9 @@ cornice»), e con una più vecchia Composer lascia zr-core alla `v2.18.0`. Dalla
 foto legge il file con `Api::immagine`, che c'è da quella (vedi «Le rotte della cornice»), e con una più vecchia Composer lascia
 zr-core alla `v4.0.0`. Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina
 di ritorno dopo l'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia
-zr-core alla `v4.5.1`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
+zr-core alla `v4.5.1`. Dalla `v4.22.0` serve la 0.12.139: ogni pagina con la cornice legge
+`accessi.corrente.mostra`, e il backoffice finto di zr-auth, nei test di un modulo, lo conosce da quella; con una più vecchia Composer
+lascia zr-core alla `v4.21.0`. Composer non eredita i repository di un pacchetto: il repository `vcs` di zr-auth sta nel `composer.json` del
 frontend, accanto a quello di zr-core.
 
 Con Inertia, il frontend li condivide con ogni pagina nel `share()` del suo middleware:
@@ -569,6 +574,16 @@ Dalla `v4.1.0` la persona porta `foto` se ne ha una: l'indirizzo della rotta del
 sostituzione, e la foto nuova non resta nella cache del browser. Senza foto, e nei dati ridotti, la chiave non c'è: i dati
 sono quelli di prima. `Cornice::subito()` non la porta (non legge il backoffice), e nemmeno la cornice ridotta. Dalla
 `v4.2.0` la cornice la mostra nell'avatar della barra e in cima al menu del profilo (vedi «Le rotte della cornice»).
+
+Dalla `v4.22.0` (#2909), quando lo staff è entrato nel modulo con «Accedi come» (zr-backoffice #2914), dopo il segno i dati
+portano `assistenza: {persona: {nome, cognome, email}, sola_lettura}`: la persona assistita (`cognome` è un testo o `null`) e
+se l'assistenza è di sola lettura. La cornice la legge da `accessi.corrente.mostra` (`GET /v1/accessi/corrente`) col gettone
+del workspace, quello con cui il modulo scrive, una volta per sessione (di nuovo dopo un cambio di workspace, che la rinnova),
+e la tiene nella sessione per le pagine dopo; né l'id dell'assistenza né chi la fa escono.
+Per ogni altra sessione la chiave non c'è, nemmeno `null`: i dati sono quelli di prima. `Cornice::subito()` la porta se una
+pagina di prima l'ha già letta, e non la legge; i dati ridotti dal 403 `accettazione_richiesta` la portano solo se era già
+letta. Una risposta che la cornice non sa leggere è `BackofficeNonRisponde`, come le altre letture. Che cosa ne fa la cornice
+lo dice «La cornice», alla voce «L'assistenza».
 
 `aziende` ha l'ordine del backoffice, e ogni azienda i suoi workspace nell'ordine dell'elenco dei workspace della persona.
 Ogni workspace porta il suo `id`, quello di `io.workspace.elenca`: sta nella riga che `Cornice::dati()` legge già, e non
@@ -1897,6 +1912,16 @@ cornice === null ? pagina : (
   `await act(() => vi.dynamicImportSettled())`. Una lingua nuova porta anche il suo file degli avvisi; senza, gli avvisi
   sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».
+- **L'assistenza** (dalla `v4.22.0`, #2909): coi dati che portano `assistenza`, sopra la pagina c'è la fascia di assistenza,
+  l'`Alert` giallo (`warning`) del design system: «Stai usando Zeiras come Anna Bianchi», sotto l'email e «Le modifiche che fai
+  valgono come fatte da Anna» (o, di sola lettura, «Sola lettura: puoi guardare, non modificare»), e il pulsante «Termina
+  l'assistenza», che chiama `onLogout` come «Esci»: l'uscita di zr-auth chiude anche l'assistenza. La fascia non si chiude, e
+  resta anche nella cornice ridotta, sopra l'avviso. Il prototipo dello staff la mette sopra la barra in alto: l'`AppShell` non
+  ha quel posto, e la fascia sta dove sta l'avviso (Decisione 22312). Testi e fascia stanno nel pezzo degli avvisi, che la
+  cornice chiede anche in assistenza. In assistenza la campanella mostra e non scrive: il pannello non ha «Segna tutte come
+  lette», e una notifica aperta si apre senza segnarla letta, col numero com'era. Una pagina aperta prima che i dati dicessero
+  l'assistenza, che chiede la lettura e riceve il 403 `azione_non_consentita_in_assistenza`, apre lo stesso la risorsa: per la
+  cornice è un divieto, non un guasto. Le scritture del modulo in assistenza le gestisce il modulo (vedi `MODULO-NUOVO.md`).
 
 Per aprire un indirizzo la cornice usa il browser; un frontend che naviga da sé passa `naviga(indirizzo)`: un prodotto che
 apre da sé le sue risorse (una board, senza ricaricare la pagina) lo intercetta lì.

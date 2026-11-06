@@ -234,7 +234,7 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'non_trovato'], 404);
             }
 
-            return Accettazione::rispostaA($errore, $persona);
+            return self::inAssistenza($errore) ?? Accettazione::rispostaA($errore, $persona);
         }
 
         if ($segnata['id'] !== $notifica) {
@@ -315,10 +315,22 @@ final class NotificheDellaCornice
                 return new JsonResponse(['errore' => 'dati_non_validi'], 422);
             }
 
-            return Accettazione::rispostaA($errore, $persona);
+            return self::inAssistenza($errore) ?? Accettazione::rispostaA($errore, $persona);
         }
 
         return new JsonResponse(['data' => ['fino_a' => $segnate['fino_a'], 'altre' => $segnate['altre']], 'segnate_il' => Segno::adesso()]);
+    }
+
+    /**
+     * Il 403 `azione_non_consentita_in_assistenza` del backoffice (dalla `v4.22.0`, #2909): con il gettone di un «Accedi come» lo
+     * staff guarda e non scrive, e segnare lette le notifiche della persona è una scrittura. Non è un guasto: le due rotte che
+     * segnano lette rispondono 403 con quel codice, e la cornice apre lo stesso la notifica. Ogni altro errore: null.
+     */
+    private static function inAssistenza(ErroreApi $errore): ?JsonResponse
+    {
+        return $errore->stato === 403 && $errore->codice === 'azione_non_consentita_in_assistenza'
+            ? new JsonResponse(['errore' => 'azione_non_consentita_in_assistenza'], 403)
+            : null;
     }
 
     /**

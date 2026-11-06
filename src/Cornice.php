@@ -44,6 +44,9 @@ final class Cornice
     /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra che `lingua()` e `dati()` hanno in comune. */
     private const LETTURA = 'zr-core.io-mostra';
 
+    /** Dove sta, nella sessione, l'assistenza letta da accessi.corrente.mostra per l'accesso della sessione (dalla `v4.22.0`). */
+    private const ASSISTENZA = 'zr-core.assistenza';
+
     /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra del cliente che `linguaDelCliente()` e `datiDelCliente()` hanno in comune. */
     private const LETTURA_DEL_CLIENTE = 'zr-core.io-mostra-del-cliente';
 
@@ -119,7 +122,15 @@ final class Cornice
      * della foto (`/cornice/foto`, FotoDellaCornice) col `?v=` di `utente.foto_aggiornata_il` della stessa lettura di
      * io.mostra. Senza foto la chiave non c'è. `subito()` non la porta: non legge il backoffice.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * Dalla `v4.22.0` (#2909), se il gettone è di assistenza — lo staff è entrato con «Accedi come» (zr-backoffice #2914) —, dopo il
+     * segno c'è `assistenza`: la persona assistita (nome, cognome o null, email) e `sola_lettura`, da accessi.corrente.mostra (GET
+     * /v1/accessi/corrente), letta col gettone del workspace una volta per sessione e tenuta nella sessione (`assistenza()`). Per
+     * ogni altro gettone la chiave non c'è, nemmeno null. Né l'id dell'assistenza né chi la fa escono. La lettura è l'ultima, dopo
+     * le aziende; dopo il 403 `accettazione_richiesta` non parte, e i dati ridotti portano l'assistenza solo se è già stata letta,
+     * prima di `accettazione_richiesta`. Una risposta che la cornice non sa leggere è BackofficeNonRisponde, mai «non è
+     * un'assistenza», e non resta nella sessione: la pagina dopo rilegge.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -154,6 +165,7 @@ final class Cornice
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             ...($letti === null ? [] : self::moduli($workspace['slug'])),
             'aggiornati_il' => $lettura['segno'],
+            ...self::assistenza($letti !== null),
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
     }
@@ -175,7 +187,10 @@ final class Cornice
      * riletto mentre `dopo` è in lettura porta la sessione di adesso e la lingua di prima: col segno di adesso varrebbe nel
      * browser sopra la lingua nuova. Senza una lettura che l'abbia confermata, o se quella era di un'altra persona, non c'è.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * In fondo, dalla `v4.22.0`, `assistenza` come nei dati, se una pagina di prima l'ha già letta per questo accesso: `subito()`
+     * non la legge.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
      */
     public static function subito(): ?array
     {
@@ -194,6 +209,7 @@ final class Cornice
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             'sessione_il' => Segno::adesso(),
             ...self::linguaIl(),
+            ...self::assistenza(false),
         ];
     }
 
@@ -226,7 +242,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
      */
     public static function dopo(): ?array
     {
@@ -270,7 +286,7 @@ final class Cornice
      * di io.mostra che questa richiesta ha usato — l'istante in cui è cominciata —, e senza una lettura il primo istante che la
      * forma dei segni può dire: una cornice ridotta non vale mai sopra dati veri arrivati dopo. null senza sessione o senza workspace.
      *
-     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
      */
     public static function ridotta(): ?array
     {
@@ -284,7 +300,7 @@ final class Cornice
      * `dati()` ha fatto o ha trovato già fatta da `lingua()` (il frontend che mette la lingua prima del controller): lo stesso che i
      * dati riusciti avrebbero; senza una lettura, `$ripiego`.
      *
-     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string}|null
+     * @return array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
      */
     private static function laRidotta(string $ripiego): ?array
     {
@@ -910,6 +926,67 @@ final class Cornice
         $p = is_string($id) && $id !== '' ? FotoDellaCornice::diChi($id) : null;
 
         return $aggiornataIl === null || $p === null ? [] : ['foto' => '/cornice/foto?v='.rawurlencode($aggiornataIl).'&p='.$p];
+    }
+
+    /**
+     * L'assistenza dei dati (dalla `v4.22.0`, #2909): quella tenuta nella sessione, se è di questo accesso — l'id della sessione, che
+     * zr-auth rinnova a ogni ingresso, e la persona —; altrimenti, con `$leggi`, quella di accessi.corrente.mostra, che resta nella
+     * sessione per le pagine dopo anche quando non è un'assistenza (allora `assistenza` è null e la chiave non esce). Senza
+     * `$leggi` non chiama: `subito()` e i dati ridotti dal 403 `accettazione_richiesta`. Una lettura che lancia non tiene niente.
+     *
+     * @return array{assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}
+     */
+    private static function assistenza(bool $leggi): array
+    {
+        $di = [session()->getId(), Sessione::utente()['id'] ?? null];
+        $tenuta = session(self::ASSISTENZA);
+
+        if (is_array($tenuta) && $di[1] !== null && ($tenuta['di'] ?? null) === $di && array_key_exists('assistenza', $tenuta)) {
+            $assistenza = $tenuta['assistenza'];
+        } elseif ($leggi) {
+            $assistenza = self::accessoCorrente();
+            session()->put(self::ASSISTENZA, ['di' => $di, 'assistenza' => $assistenza]);
+        } else {
+            return [];
+        }
+
+        return is_array($assistenza) ? ['assistenza' => $assistenza] : [];
+    }
+
+    /**
+     * accessi.corrente.mostra (GET /v1/accessi/corrente), col gettone del workspace, quello con cui il modulo scrive: è quello che
+     * dice se c'è un'assistenza. Il gettone dell'accesso no: se nel browser c'era già una sessione della stessa persona, zr-auth lo
+     * tiene accanto a quello dell'assistenza (`Sessione::entra`), e con lui la risposta sarebbe «non è un'assistenza» mentre lo
+     * staff scrive a nome della persona (revisione di sicurezza dello sprint 115). `impersonificazione` è null per ogni gettone che
+     * non è di assistenza; per l'assistenza la persona assistita, mai chi la fa, e `sola_lettura`. Se ne prendono nome, cognome (un
+     * testo, o null), email e `sola_lettura`; l'id e la scadenza no. Una risposta senza `impersonificazione`, o con una che non ha
+     * quella forma (nome o email che non sono testi non vuoti, `sola_lettura` che non è un booleano), è BackofficeNonRisponde.
+     *
+     * @return array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}|null
+     */
+    private static function accessoCorrente(): ?array
+    {
+        $rotta = 'GET /v1/accessi/corrente';
+        $corrente = Api::workspace()->get('/v1/accessi/corrente')['data'] ?? null;
+
+        if (! is_array($corrente) || ! array_key_exists('impersonificazione', $corrente)) {
+            throw new BackofficeNonRisponde("La risposta di {$rotta} non porta `impersonificazione`.");
+        }
+
+        $assistenza = $corrente['impersonificazione'];
+        if ($assistenza === null) {
+            return null;
+        }
+
+        $utente = is_array($assistenza) ? ($assistenza['utente'] ?? null) : null;
+        [$nome, $email] = self::testi($utente, ['nome', 'email'], $rotta);
+        $cognome = is_array($utente) ? ($utente['cognome'] ?? null) : null;
+
+        if ($nome === '' || $email === '' || ($cognome !== null && ! is_string($cognome)) || ! is_array($assistenza) || ! is_bool($assistenza['sola_lettura'] ?? null)) {
+            throw new BackofficeNonRisponde("L'impersonificazione della risposta di {$rotta} non ha la forma del contratto.");
+        }
+
+        return ['persona' => ['nome' => $nome, 'cognome' => $cognome, 'email' => $email], 'sola_lettura' => $assistenza['sola_lettura']];
     }
 
     /**

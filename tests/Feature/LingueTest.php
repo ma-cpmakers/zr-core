@@ -857,7 +857,7 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     $chiavi = [
         // `unreadOne` e `mainContent` erano testi di zr-core; dalla `v4.17.0` sono anche dell'`AppShell` (righe 13 e 30), e vengono da lì.
         ...array_diff(chiaviDiAppShellLabels(), testiDellAppShellCheLaCorniceNonUsa()), 'products', 'dashboard', 'notificationTitle', 'markingAllRead', 'markRestRead', 'unreadNone',
-        'acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'skipToContent',
+        ...chiaviDegliAvvisi(), 'skipToContent',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
@@ -1396,16 +1396,17 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
 /**
  * I sette testi dei due avvisi della cornice ridotta — chi non ha accettato i documenti legali e Zeiras che non risponde —:
  * dalla `v3.7.0` stanno in resources/lingue/avvisi, un file per lingua col nome del file dei testi, e la cornice li chiede in un
- * pezzo a richiesta (`resources/js/avvisi.ts`) solo in quei due stati, fuori dal JS d'ingresso (zr-pm, 26/10/2026).
+ * pezzo a richiesta (`resources/js/avvisi.ts`) solo in quei due stati, fuori dal JS d'ingresso (zr-pm, 26/10/2026). Dalla `v4.22.0`
+ * (#2909) anche i quattro della fascia di assistenza, e il pezzo si chiede anche in assistenza.
  *
  * @return list<string>
  */
 function chiaviDegliAvvisi(): array
 {
-    return ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff'];
+    return ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'assistTitle', 'assistText', 'assistReadOnly', 'assistEnd'];
 }
 
-it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni lingua dei testi con lo stesso nome, coi soli sette testi degli avvisi; fra i testi della cornice non ci sono più (v3.7.0)', function () {
+it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni lingua dei testi con lo stesso nome, coi soli testi degli avvisi, sette e dalla v4.22.0 i quattro della fascia di assistenza; fra i testi della cornice non ci sono più (v3.7.0)', function () {
     $testi = fileDelleLingue('');
     $avvisi = fileDelleLingue('avvisi/');
 

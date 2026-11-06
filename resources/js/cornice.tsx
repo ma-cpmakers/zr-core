@@ -101,6 +101,12 @@ export interface DatiDellaCornice {
      */
     accettazione_richiesta?: boolean | undefined;
     /**
+     * L'assistenza (dalla `v4.22.0`, #2909): c'è solo quando lo staff è entrato con «Accedi come», e dice chi è la persona
+     * assistita e se l'assistenza è di sola lettura. Allora la campanella mostra e non scrive: niente «Segna tutte come lette», e
+     * una notifica aperta non si segna letta. La parte server non la manda mai vuota: senza, non è un'assistenza.
+     */
+    assistenza?: { persona: { nome: string; cognome: string | null; email: string }; sola_lettura: boolean } | undefined;
+    /**
      * `true` finché i dati letti dal backoffice non sono arrivati (dalla `v2.1.0`): lo mette `LayoutDellaCornice` quando ha
      * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca nello stato di caricamento. Se
      * la cornice ha già dati letti di quel workspace restano quelli, finché non arrivano i nuovi.
@@ -114,7 +120,7 @@ export interface DatiDellaCornice {
 }
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
-export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il' | 'lingua_il'>;
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il' | 'lingua_il' | 'assistenza'>;
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
  * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
@@ -481,9 +487,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
     // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
     // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
+    // Dalla `v4.22.0` (#2909) lo stesso pezzo porta i testi della fascia di assistenza, e si chiede anche in assistenza.
     const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
+    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza;
     useLayoutEffect(() => {
-        if (ridotta === 'error' && !avvisi) {
+        if (chiediGliAvvisi && !avvisi) {
             const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
             const ogni = setInterval(chiedi, 5e3);
 
@@ -493,7 +501,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
 
         return undefined;
-    }, [ridotta, avvisi]);
+    }, [chiediGliAvvisi, avvisi]);
     const a = avvisi?.testiDegliAvvisi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
@@ -704,8 +712,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
 
                 return id;
             },
-            // La notifica resta da leggere, e il numero com'era.
-            (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
+            // La notifica resta da leggere, e il numero com'era. In assistenza (una pagina aperta prima che i dati lo dicessero) la
+            // parte server non la segna, col 403 `azione_non_consentita_in_assistenza` (dalla `v4.22.0`): si apre lo stesso.
+            (errore) => (errore?.errore === 'azione_non_consentita_in_assistenza' ? id : errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
     // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
@@ -907,6 +916,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : campanella?.destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+        // In assistenza la notifica si apre senza segnarla letta (dalla `v4.22.0`).
+        if (risorsa !== undefined && dati.assistenza) return naviga(risorsa);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined) {
             letturaInVolo.current = true;
@@ -939,10 +950,19 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // L'Alert arriva col pezzo degli avvisi (dalla `v4.8.1`, #3055), insieme ai testi.
     const Alert = avvisi?.Alert;
     const avvisoSopraLaPagina = a && Alert && ridotta === 'error' ? (
+        <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
+            {daAccettare ? a.acceptanceText : a.downText}
+        </Alert>
+    ) : null;
+    // La fascia di assistenza (dalla `v4.22.0`, #2909): quando lo staff è entrato con «Accedi come», chi è la persona assistita e
+    // che cosa valgono le modifiche, col pulsante che termina l'assistenza uscendo, come «Esci». Non si chiude, e resta anche
+    // nella cornice ridotta, sopra l'avviso, nello stesso contenitore. Il prototipo la mette sopra la barra in alto: l'`AppShell`
+    // non ha quel posto, e la fascia sta dove sta l'avviso (scostamento dichiarato, Decisione 22312).
+    const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
+    const sopraLaPagina = Fascia || avvisoSopraLaPagina ? (
         <div className="zr-stack">
-            <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
-                {daAccettare ? a.acceptanceText : a.downText}
-            </Alert>
+            {Fascia && <Fascia lingua={lingua} assistenza={dati.assistenza!} onLogout={onLogout} />}
+            {avvisoSopraLaPagina}
             <div />
         </div>
     ) : null;
@@ -987,7 +1007,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // Senza il numero dei dati, quello delle non lette caricate: lo dà la cornice e non lo conta il design system
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
-                onMarkAllRead: ridotta ? undefined : segnaTutteLette,
+                onMarkAllRead: ridotta || dati.assistenza ? undefined : segnaTutteLette,
                 onRetryNotifications: ridotta ? undefined : () => carica(true),
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,
@@ -995,8 +1015,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onSearch: ridotta ? undefined : cercaParola,
                 // Nello stato ridotto la zona viva delle notifiche si svuota: ciò che aveva detto del numero non resta lì (sprint 25 · T5.8).
                 notificationsNotice: ridotta ? '' : undefined,
-                flush: avvisoSopraLaPagina ? undefined : pagina.flush,
-                children: <>{avvisoSopraLaPagina}{pagina.children}</>,
+                flush: sopraLaPagina ? undefined : pagina.flush,
+                children: <>{sopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
             email={persona.email}
