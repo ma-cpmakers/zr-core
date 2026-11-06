@@ -139,8 +139,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.13.1` (la cornice del cliente,
-   `CorniceDelCliente`, #3319; tetto 18.169); sprint 111 aperto: #3329 (K390.5, `v4.13.2`); poi lo 0518 e i componenti a richiesta per zr-crm; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · uscita la `v4.13.2` (#3329, K390.5; tetto 18.169);
+   sprint 112 aperto: #3335, `Cornice::linguaDelCliente()` (`v4.14.0`); poi lo 0518 e i componenti a richiesta per zr-crm; il primo accesso di Bookings è nel tag `design-zr-bookings--bookings-1793900366-5248`, e le 4
    schermate fuori flusso si sistemano nel prossimo giro di Bookings. #2909 (la fascia di assistenza) esce quando zr-backoffice ha
    `accessi.corrente.mostra` (Decisioni 19904 e 19935); #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.

@@ -246,6 +246,10 @@ class LinguaDellaPagina
 }
 ```
 
+Sulle pagine di chi è solo cliente, con `CorniceDelCliente` (README, «La cornice del cliente»), la riga è
+`App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));` (dalla `v4.14.0`): la stessa lingua, letta con la
+sessione dell'accesso.
+
 Lo dai, nel file delle rotte, al gruppo delle rotte che mostrano una pagina — non al gruppo `web`, che passa anche dalle
 rotte della cornice e dalle tue rotte JSON: lì la riga costa una lettura del backoffice in più a ogni richiesta. Nella
 vista radice: `<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">`. Per un modulo nuovo è l'unica strada da

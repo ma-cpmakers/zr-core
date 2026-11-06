@@ -5128,6 +5128,16 @@ it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `Cornice
         ->and($sezione)->toContain('`scripts/uat-cornice.mjs` la prova con `--cliente`');
 });
 
+it('il README dice `Cornice::linguaDelCliente()` nella cornice del cliente, con la riga del middleware e la lettura in comune con `Cornice::datiDelCliente()`, e la guida la nomina accanto a `Cornice::lingua()` (sprint 112 · T2.1)', function () {
+    $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
+    preg_match('/### La cornice del cliente (.*?)(?= ## | ### )/', $readme, $trovata);
+    $guida = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../MODULO-NUOVO.md'));
+
+    expect($trovata[1] ?? '')->toContain("App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));")
+        ->and($trovata[1] ?? '')->toContain('nella stessa richiesta `Cornice::datiDelCliente()` usa la sua lettura invece di rifarla')
+        ->and($guida)->toContain("la riga è `App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));` (dalla `v4.14.0`)");
+});
+
 it('il README dice, in «Come si installa in un frontend», i due ingressi, il passaggio, che cosa dall\'ingresso per le app non si scrive, che i due non si mescolano, i pesi e come misurarli (sprint 25 · T2.5)', function (string $frase) {
     $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Come si installa in un frontend');
 

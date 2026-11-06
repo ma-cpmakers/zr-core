@@ -445,6 +445,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.13.0` | la cornice del cliente, `CorniceDelCliente` coi dati di `Cornice::datiDelCliente()` (#3319): l'`AppShell` per «Il mio spazio» di zr-home, con la sessione dell'accesso anche senza workspace, coi testi suoi in `resources/lingue/cliente/` e la ricerca nascosta da `resources/css/cliente.css`; le aziende da cliente e la campanella aspettano zr-backoffice #3320 e #3323, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice del cliente») | niente per chi monta la `Cornice`; zr-home monta `CorniceDelCliente` nelle pagine `/spazio/*` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.1-CL.3) |
 | `v4.13.1` | nella cornice del cliente campanella e profilo restano a destra della barra in alto: senza il campo della ricerca scivolavano a sinistra, accanto alla barra laterale (`resources/css/cliente.css`) | niente: il modulo importa già `cliente.css` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.4) |
 | `v4.13.2` | sotto i 1024 px, con Invio come primo tasto della pagina su «Apri il menu», il fuoco entra nella prima voce del cassetto come con ogni altro tasto prima (#3329, K390.5): il clic lo ascolta il pezzo dei rimedi e non più quello della tastiera | niente | niente | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (K390.5) |
+| `v4.14.0` | `Cornice::linguaDelCliente()` (#3335): la lingua della pagina per il middleware delle pagine «Il mio spazio», letta con la sessione dell'accesso; nella stessa richiesta `Cornice::datiDelCliente()` usa la sua lettura di io.mostra (vedi «La cornice del cliente») | niente; chi monta `CorniceDelCliente` mette la riga nel middleware della lingua di quelle pagine | niente | casi Pest di `CorniceDelClienteTest` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2620,9 +2621,21 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
   `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
-  com'è. La lingua di `dati.lingua` è quella del profilo appena letto: senza un workspace `Cornice::lingua()` non rilegge
-  io.mostra, quindi il modulo che mette la lingua della pagina in un middleware, sulle pagine «Il mio spazio», la prende dalla
-  sessione dopo `Cornice::datiDelCliente()`, o la cornice e la pagina possono essere in due lingue dopo un cambio nel profilo.
+  com'è. La lingua di `dati.lingua` è quella del profilo appena letto.
+- **`Cornice::linguaDelCliente()`** (dalla `v4.14.0`, #3335) è la lingua della pagina per il middleware delle pagine «Il mio
+  spazio», quello che `Cornice::lingua()` è per le pagine di un workspace: senza un workspace `Cornice::lingua()` non rilegge
+  io.mostra, e con Inertia le prop condivise (`locale`, le traduzioni) si valutano prima della cornice, quindi dopo un cambio nel
+  profilo la pagina usciva nella lingua di prima e la cornice in quella nuova. Legge io.mostra col gettone dell'accesso, anche
+  con un workspace nella sessione, aggiorna la sessione e dà la lingua del profilo, se ha la forma di una lingua (se no `null`);
+  nella stessa richiesta `Cornice::datiDelCliente()` usa la sua lettura invece di rifarla (io.mostra una volta, e i dati hanno
+  il suo segno). Senza sessione dà `null` senza chiamare il backoffice. Non lancia: se il backoffice non risponde dà la lingua
+  della sessione e lascia un avviso nel log, e l'errore lo lancia `Cornice::datiDelCliente()` dopo, senza rileggere; col 403
+  `accettazione_richiesta` niente avviso, e i dati escono ridotti. Il gettone rifiutato passa, come da ogni altra chiamata.
+
+```php
+// nel middleware della lingua delle pagine «Il mio spazio», prima di quello di Inertia
+App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));
+```
 
 ```tsx
 import { CorniceDelCliente, type DatiDelCliente } from '../../vendor/zeiras/zr-core/resources/js/app';
