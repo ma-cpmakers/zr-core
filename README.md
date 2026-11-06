@@ -2750,7 +2750,7 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   la prop che non mostra la ricerca (richiesta 201 al design system). Dalla `v4.18.0` la cornice passa `search={false}`
   all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta fino alla prossima
   versione maggiore perché l'import non si rompa, e il modulo lo può già togliere.
-- **La campanella** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è `non_lette` dei
+- **La campanella del cliente** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è `non_lette` dei
   dati, «99+» oltre 99 e nessuno a 0. All'apertura la cornice chiede `GET /cornice/cliente/notifiche` (vedi «Le rotte della
   cornice») e mostra le righe con le frasi della `Cornice` (i quattro tipi da cliente di Bookings, vedi
   «La cornice»), l'azienda sotto il titolo quando il backoffice la dà, e l'ora. Il clic su una riga la segna letta e apre la

@@ -5154,7 +5154,7 @@ it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `Cornice
         // Fino alla v4.22.0 qui c'era «le sue notifiche da cliente con zr-backoffice #3323» e la campanella vuota: dalla v4.23.0
         // (sprint 116 · T4.1, voce 3398) le notifiche ci sono, e la frase di prima non si dice più.
         ->and($sezione)->not->toContain('le sue notifiche da cliente con zr-backoffice #3323')
-        ->and($sezione)->toContain('- **La campanella** (dalla `v4.23.0`, #3398')
+        ->and($sezione)->toContain('- **La campanella del cliente** (dalla `v4.23.0`, #3398')
         ->and($sezione)->toContain('chiede `GET /cornice/cliente/notifiche`')
         ->and($sezione)->toContain('`https://app.zeiras.com/spazio/prenotazioni/<id>`, con `naviga`')
         ->and($sezione)->toContain('`non_lette` (dalla `v4.23.0`, #3398')
