@@ -84,6 +84,27 @@ import * as React from 'react';
     }, h('path', { d: PATHS[p.name] || PATHS.more }));
   }
 
+  /* ---------- BrandIcon ---------- */
+  /* I marchi dei servizi esterni (richiesta 199) come li danno i loro proprietari, coi loro colori: non si ridisegnano col
+     tratto del set, non si ricolorano e stanno solo accanto al nome del servizio. Gli id interni (maschere, sfumature) sono
+     di ogni istanza, così due marchi nella stessa pagina, o uno in un menu chiuso, non si rubano i colori. */
+  var BRANDS = {
+    'google-calendar': { box: '0 0 800 859.1', svg: '<path fill="#bbe2ff" d="M 64.74,150.87 C 64.74,67.54 132.29,0 215.61,0 h 368.78 c 83.32,0 150.87,67.54 150.87,150.87 v 159.25 c 0,83.32 -67.54,150.87 -150.87,150.87 H 215.61 c -83.32,0 -150.87,-67.54 -150.87,-150.87 z"/><path fill="#3c90ff" d="M 1.19,216.83 C -9.55,135.26 53.95,62.86 136.22,62.86 h 527.56 c 82.27,0 145.77,72.39 135.04,153.97 l -32.13,244.15 32.13,244.15 c 10.73,81.57 -52.76,153.97 -135.04,153.97 H 136.22 c -82.27,0 -145.77,-72.39 -135.04,-153.97 L 33.31,460.98 Z"/><mask id="__ID__0" width="154" height="152" x="19" y="20" maskUnits="userSpaceOnUse"><path fill="#3c90ff" d="M 19.87,49.39 C 17.82,33.82 29.94,20 45.65,20 h 100.71 c 15.71,0 27.83,13.82 25.78,29.39 L 166,96 l 6.13,46.61 C 174.18,158.18 162.06,172 146.35,172 H 45.65 C 29.94,172 17.82,158.18 19.87,142.61 L 26,96 Z"/></mask><g mask="url(#__ID__0)" transform="matrix(5.2384,0,0,5.2384,-102.8851,-41.9071)"><path fill="url(#__ID__2)" d="M 0,0 H 166 V 76 H 0 Z" transform="matrix(1,0,0,-1,13,172)"/></g><mask id="__ID__1" width="154" height="152" x="19" y="20" maskUnits="userSpaceOnUse"><path fill="#3186ff" d="M 19.87,49.39 C 17.82,33.82 29.94,20 45.65,20 h 100.71 c 15.71,0 27.83,13.82 25.78,29.39 L 166,96 l 6.13,46.61 C 174.18,158.18 162.06,172 146.35,172 H 45.65 C 29.94,172 17.82,158.18 19.87,142.61 L 26,96 Z"/></mask><g mask="url(#__ID__1)" transform="matrix(5.2384,0,0,5.2384,-102.8851,-41.9071)"><path fill="url(#__ID__3)" d="M 32,27.2 C 32,16.6 40.6,8 51.2,8 h 89.6 C 151.4,8 160,16.6 160,27.2 V 96 H 32 Z" filter="url(#__ID__4)"/></g><path fill="#ffffff" d="m 291.84,656.56 q -32.91,0 -56.45,-10.7 -23.55,-10.7 -39.86,-28.63 -16.06,-18.2 -22.75,-35.58 -6.69,-17.39 -5.35,-21.14 a 10.84,10.84 0 0 1 5.35,-5.89 l 29.7,-11.77 q 3.74,-1.87 7.49,-0.53 3.74,1.07 8.83,12.3 5.35,11.24 14.98,23.81 a 74.91,74.91 0 0 0 23.55,19.53 q 13.65,6.96 33.71,6.96 32.37,0 51.37,-18.73 19.26,-18.73 19.26,-47.62 0,-31.3 -20.34,-48.16 Q 321.01,473.28 287.56,473.28 H 259.47 a 9.95,9.95 0 0 1 -6.96,-2.67 q -2.67,-2.94 -2.68,-6.69 v -28.63 q 0,-4.02 2.67,-6.69 a 9.53,9.53 0 0 1 6.96,-2.94 h 24.34 q 29.97,0 48.16,-16.32 18.19,-16.32 18.19,-42.27 0,-25.68 -16.32,-41.47 -16.32,-15.79 -44.95,-15.79 -16.06,0 -27.83,5.35 a 60.24,60.24 0 0 0 -20.34,14.98 118.91,118.91 0 0 0 -14.71,19.8 q -6.15,10.17 -9.9,11.24 -3.74,0.8 -7.22,-1.34 l -28.09,-13.65 q -3.48,-1.88 -4.55,-5.89 -1.07,-4.01 6.42,-18.73 7.76,-14.98 23.54,-30.5 a 110.01,110.01 0 0 1 36.93,-24.08 q 21.14,-8.56 49.23,-8.56 52.17,0 82.67,27.55 30.5,27.29 30.5,72.24 0,31.04 -14.98,53.78 -14.72,22.73 -41.74,32.11 v 1.07 q 32.64,9.63 51.37,35.31 19,25.42 18.99,60.73 0,50.57 -35.32,82.94 -35.31,32.37 -92.04,32.37 z m 268.47,-6.16 q -4.55,0 -8.03,-3.48 a 11.79,11.79 0 0 1 -3.21,-8.29 V 341.11 l -60.2,43.34 q -3.22,2.41 -7.5,1.61 a 10.27,10.27 0 0 1 -6.42,-4.01 l -17.39,-24.62 a 10.37,10.37 0 0 1 -1.88,-7.49 q 0.8,-4.27 4.28,-6.68 l 106.75,-76.26 q 1.34,-1.07 2.94,-1.6 1.61,-0.8 3.75,-0.8 h 22.48 q 4.55,0 7.22,3.21 2.94,2.93 2.94,7.49 v 363.33 q 0,4.82 -3.48,8.29 a 10.48,10.48 0 0 1 -8.03,3.48 z"/><defs><linearGradient id="__ID__2" x1="83" x2="83" y1="76" gradientUnits="userSpaceOnUse"><stop stop-color="#4fa0ff"/><stop offset="1" stop-color="#3186ff"/></linearGradient><linearGradient id="__ID__3" x1="89.06" x2="89.06" y1="21.75" y2="96.39" gradientUnits="userSpaceOnUse"><stop stop-color="#a9a8ff"/><stop offset="0.8" stop-color="#3c90ff"/></linearGradient><filter id="__ID__4" width="152" height="112" x="20" y="-4" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" mode="normal"/><feGaussianBlur result="effect1_foregroundBlur_37330_7673" stdDeviation="6"/></filter></defs>' },
+    outlook: { box: '60 90.4 570.02 539.67', svg: '<defs><linearGradient id="__ID__0" gradientUnits="userSpaceOnUse" x1="9.99" y1="22.36" x2="30.93" y2="9.37" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0" stop-color="#20a7fa"/><stop offset="0.4" stop-color="#3bd5ff"/><stop offset="1" stop-color="#c4b0ff"/></linearGradient><linearGradient id="__ID__1" gradientUnits="userSpaceOnUse" x1="17.2" y1="26.79" x2="28.86" y2="8.13" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0" stop-color="#165ad9"/><stop offset="0.5" stop-color="#1880e5"/><stop offset="1" stop-color="#8587ff"/></linearGradient><linearGradient id="__ID__2" gradientUnits="userSpaceOnUse" x1="25.7" y1="27.05" x2="12.76" y2="16.5" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0.24" stop-color="#448aff" stop-opacity="0"/><stop offset="0.79" stop-color="#0032b1" stop-opacity="0.2"/></linearGradient><linearGradient id="__ID__3" gradientUnits="userSpaceOnUse" x1="24.05" y1="31.11" x2="44.51" y2="18.02" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0" stop-color="#1a43a6"/><stop offset="0.49" stop-color="#2052cb"/><stop offset="1" stop-color="#5f20cb"/></linearGradient><linearGradient id="__ID__4" gradientUnits="userSpaceOnUse" x1="29.83" y1="30.33" x2="17.4" y2="19.57" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0" stop-color="#0045b9" stop-opacity="0"/><stop offset="0.67" stop-color="#0d1f69" stop-opacity="0.2"/></linearGradient><radialGradient id="__ID__5" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(0,-405.0405,438.393,0,360.027,102.2682)"><stop offset="0.57" stop-color="#275ff0" stop-opacity="0"/><stop offset="0.99" stop-color="#002177"/></radialGradient><linearGradient id="__ID__6" gradientUnits="userSpaceOnUse" x1="42" y1="29.94" x2="23.85" y2="29.94" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0" stop-color="#4dc4ff"/><stop offset="0.2" stop-color="#0fafff"/></linearGradient><radialGradient id="__ID__7" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(122.7396,-122.7396,122.7396,122.7396,421.392,568.6755)"><stop offset="0.26" stop-color="#0060d1" stop-opacity="0.4"/><stop offset="0.91" stop-color="#0383f1" stop-opacity="0"/></radialGradient><radialGradient id="__ID__8" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(357.407,-468.4459,423.5946,323.1871,159.471,697.08)"><stop offset="0.73" stop-color="#f4a7f7" stop-opacity="0"/><stop offset="1" stop-color="#f4a7f7" stop-opacity="0.501961"/></radialGradient><radialGradient id="__ID__9" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(-170.8609,259.7254,-674.0181,-443.4042,278.562,412.9785)"><stop offset="0" stop-color="#49deff"/><stop offset="0.72" stop-color="#29c3ff"/></radialGradient><linearGradient id="__ID__10" gradientUnits="userSpaceOnUse" x1="3.46" y1="37.87" x2="20.93" y2="37.86" gradientTransform="matrix(15,0,0,15,0,0)"><stop offset="0.21" stop-color="#6ce0ff"/><stop offset="0.54" stop-color="#50d5ff" stop-opacity="0"/></linearGradient><radialGradient id="__ID__11" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(215.7672,230.7691,-230.7691,215.7672,59.1436,354.231)"><stop offset="0.04" stop-color="#0091ff"/><stop offset="0.92" stop-color="#183dad"/></radialGradient><radialGradient id="__ID__12" gradientUnits="userSpaceOnUse" cx="0" cy="0" fx="0" fy="0" r="1" gradientTransform="matrix(0,168,-193.782,0,180,491.1585)"><stop offset="0.56" stop-color="#0fa5f7" stop-opacity="0"/><stop offset="1" stop-color="#74c6ff" stop-opacity="0.501961"/></radialGradient></defs><g><path fill="url(#__ID__0)" d="M 463.98 140.14 L 119.64 358.41 L 90.02 311.7 L 90.02 271.44 C 90.02 256.78 97.45 243.12 109.74 235.14 L 309.91 105.26 C 340.41 85.47 379.69 85.46 410.19 105.25 Z M 463.98 140.14 "/><path fill="url(#__ID__1)" d="M 407.1 103.34 C 408.14 103.95 409.16 104.59 410.18 105.25 L 566.4 206.59 L 179.06 452.11 L 119.62 358.34 L 403.89 177.8 C 430.82 160.7 432 122.23 407.1 103.34 Z M 407.1 103.34 "/><path fill="url(#__ID__2)" d="M 407.1 103.34 C 408.14 103.95 409.16 104.59 410.18 105.25 L 566.4 206.59 L 179.06 452.11 L 119.62 358.34 L 403.89 177.8 C 430.82 160.7 432 122.23 407.1 103.34 Z M 407.1 103.34 "/><path fill="url(#__ID__3)" d="M 333.6 498.99 L 179.07 452.11 L 507.63 243.84 C 535.3 226.3 535.23 185.9 507.5 168.46 L 506.02 167.53 L 510.28 170.18 L 610.27 235.04 C 622.57 243.02 630 256.68 630 271.34 L 630 310.3 Z M 333.6 498.99 "/><path fill="url(#__ID__4)" d="M 333.6 498.99 L 179.07 452.11 L 507.63 243.84 C 535.3 226.3 535.23 185.9 507.5 168.46 L 506.02 167.53 L 510.28 170.18 L 610.27 235.04 C 622.57 243.02 630 256.68 630 271.34 L 630 310.3 Z M 333.6 498.99 "/><path fill="url(#__ID__5)" d="M 410.19 105.25 C 379.69 85.46 340.41 85.47 309.91 105.26 L 109.74 235.14 C 97.45 243.12 90.02 256.78 90.02 271.44 L 90.02 273.41 C 90.51 288.12 98.25 301.68 110.76 309.57 L 359.64 466.48 L 609.16 309.8 C 622.12 301.67 629.98 287.44 629.98 272.14 L 629.98 310.31 L 629.99 271.34 C 629.99 256.68 622.57 243.02 610.27 235.04 Z M 410.19 105.25 "/><path fill="url(#__ID__6)" d="M 315.77 630.05 L 536.22 630.05 C 588 630.05 629.97 588.08 629.97 536.3 L 629.97 272.14 C 629.97 287.44 622.11 301.67 609.15 309.8 L 281.24 515.7 C 263.55 526.8 252.82 546.22 252.82 567.11 C 252.82 601.87 281 630.05 315.77 630.05 Z M 315.77 630.05 "/><path fill="url(#__ID__7)" d="M 315.77 630.05 L 536.22 630.05 C 588 630.05 629.97 588.08 629.97 536.3 L 629.97 272.14 C 629.97 287.44 622.11 301.67 609.15 309.8 L 281.24 515.7 C 263.55 526.8 252.82 546.22 252.82 567.11 C 252.82 601.87 281 630.05 315.77 630.05 Z M 315.77 630.05 "/><path fill="url(#__ID__8)" d="M 315.77 630.05 L 536.22 630.05 C 588 630.05 629.97 588.08 629.97 536.3 L 629.97 272.14 C 629.97 287.44 622.11 301.67 609.15 309.8 L 281.24 515.7 C 263.55 526.8 252.82 546.22 252.82 567.11 C 252.82 601.87 281 630.05 315.77 630.05 Z M 315.77 630.05 "/><path fill="url(#__ID__9)" d="M 405.4 630.04 L 183.74 630.04 C 131.96 630.04 89.99 588.06 89.99 536.29 L 89.99 271.95 C 89.99 287.22 97.82 301.42 110.74 309.57 L 438.32 516.09 C 456.26 527.39 467.13 547.11 467.13 568.31 C 467.13 602.4 439.49 630.04 405.4 630.04 Z M 405.4 630.04 "/><path fill="url(#__ID__10)" d="M 405.4 630.04 L 183.74 630.04 C 131.96 630.04 89.99 588.06 89.99 536.29 L 89.99 271.95 C 89.99 287.22 97.82 301.42 110.74 309.57 L 438.32 516.09 C 456.26 527.39 467.13 547.11 467.13 568.31 C 467.13 602.4 439.49 630.04 405.4 630.04 Z M 405.4 630.04 "/><path fill="url(#__ID__11)" d="M 108.75 345 L 251.25 345 C 278.18 345 300 366.82 300 393.75 L 300 536.25 C 300 563.18 278.18 585 251.25 585 L 108.75 585 C 81.82 585 60 563.18 60 536.25 L 60 393.75 C 60 366.82 81.82 345 108.75 345 Z M 108.75 345 "/><path fill="url(#__ID__12)" d="M 108.75 345 L 251.25 345 C 278.18 345 300 366.82 300 393.75 L 300 536.25 C 300 563.18 278.18 585 251.25 585 L 108.75 585 C 81.82 585 60 563.18 60 536.25 L 60 393.75 C 60 366.82 81.82 345 108.75 345 Z M 108.75 345 "/><path fill="#ffffff" d="M 179.39 534 C 159.54 534 143.25 527.79 130.51 515.38 C 117.77 502.96 111.4 486.76 111.4 466.77 C 111.4 445.66 117.87 428.59 130.8 415.55 C 143.73 402.52 160.66 396 181.59 396 C 201.38 396 217.47 402.24 229.89 414.71 C 242.38 427.19 248.62 443.64 248.62 464.07 C 248.62 485.05 242.15 501.96 229.22 514.82 C 216.35 527.61 199.74 534 179.39 534 Z M 179.96 507.65 C 190.78 507.65 199.48 503.95 206.08 496.57 C 212.67 489.18 215.97 478.9 215.97 465.74 C 215.97 452.02 212.77 441.35 206.37 433.71 C 199.96 426.07 191.42 422.26 180.73 422.26 C 169.72 422.26 160.85 426.2 154.13 434.08 C 147.41 441.91 144.05 452.27 144.05 465.18 C 144.05 478.29 147.41 488.65 154.13 496.29 C 160.85 503.86 169.46 507.65 179.96 507.65 Z M 179.96 507.65 "/><path fill="#ffffff" d="M 179.33 535.85 C 159.56 535.85 143.33 529.47 130.64 516.72 C 117.95 503.96 111.61 487.32 111.61 466.79 C 111.61 445.11 118.05 427.57 130.93 414.18 C 143.81 400.79 160.68 394.09 181.53 394.09 C 201.23 394.09 217.27 400.5 229.64 413.32 C 242.08 426.14 248.3 443.04 248.3 464.02 C 248.3 485.57 241.86 502.95 228.98 516.14 C 216.16 529.28 199.61 535.85 179.33 535.85 Z M 179.9 508.78 C 190.68 508.78 199.36 504.98 205.92 497.4 C 212.49 489.81 215.77 479.25 215.77 465.73 C 215.77 451.64 212.59 440.68 206.21 432.83 C 199.83 424.99 191.32 421.07 180.67 421.07 C 169.7 421.07 160.87 425.11 154.17 433.21 C 147.48 441.25 144.13 451.9 144.13 465.16 C 144.13 478.62 147.48 489.27 154.17 497.11 C 160.87 504.89 169.45 508.78 179.9 508.78 Z M 179.9 508.78 "/></g>' }
+  };
+  var BRAND_ICON_NAMES = Object.keys(BRANDS);
+  function BrandIcon(p) {
+    var id = 'zrb' + React.useId().replace(/[^A-Za-z0-9_-]/g, '');
+    var b = BRANDS[p.name];
+    if (!b) return null;
+    var size = p.size || 20;
+    return h('svg', {
+      className: cx('zr-brand-icon', p.className), width: size, height: size, viewBox: b.box, focusable: 'false',
+      role: p.title ? 'img' : undefined, 'aria-label': p.title || undefined, 'aria-hidden': p.title ? undefined : true,
+      dangerouslySetInnerHTML: { __html: b.svg.replace(/__ID__/g, id + '-') }
+    });
+  }
+
   /* ---------- Button ---------- */
   function Button(p) {
     var v = p.variant || 'primary', s = p.size || 'md';
@@ -159,11 +180,11 @@ import * as React from 'react';
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
     searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca',
-    notifications: 'Notifiche', unread: 'non lette', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
+    notifications: 'Notifiche', unread: 'non lette', unreadOne: 'non letta', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
     notificationsEmpty: 'Nessuna notifica', notificationsEmptyText: 'Ti avviseremo qui quando qualcuno ti menziona o ti assegna qualcosa.',
     notificationsError: 'Non riusciamo a caricare le notifiche.', retry: 'Riprova', loading: 'Caricamento',
     account: 'Il tuo account', profile: 'Profilo', accountSettings: 'Impostazioni', plan: 'Piano', company: 'Azienda', logout: 'Esci',
-    crumbs: 'Percorso'
+    crumbs: 'Percorso', mainContent: 'Contenuto'
   };
   var IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 
@@ -223,10 +244,11 @@ import * as React from 'react';
         p.actions ? h('div', { className: 'zr-appt-actions' }, p.actions) : null));
   }
 
+  var SHELL_FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
   function AppShell(p) {
     var L = Object.assign({}, APPSHELL_LABELS, p.labels);
     var nav = p.nav || DEFAULT_NAV;
-    var active = p.active || 'home';
+    var active = p.active === null ? null : (p.active || 'home'); /* null: nessuna voce attiva (richiesta 29) */
     var user = p.user || L.userFallback;
     var prodGroup = p.product ? nav.find(function (g) { return g.products || (g.group === 'Prodotti' || g.group === 'Moduli'); }) : null;
     var current = prodGroup ? prodGroup.items.find(function (it) { return it.id === p.product; }) : null;
@@ -238,7 +260,7 @@ import * as React from 'react';
     var hiSt = useState(0), hi = hiSt[0], setHi = hiSt[1];
     var tabSt = useState('me'), tab = tabSt[0], setTab = tabSt[1];
     var switchRef = useRef(null), wsRef = useRef(null), wsBtn = useRef(null), bellRef = useRef(null), notifRef = useRef(null);
-    var avatarRef = useRef(null), searchRef = useRef(null), inputRef = useRef(null), timer = useRef(null);
+    var avatarRef = useRef(null), searchRef = useRef(null), inputRef = useRef(null), timer = useRef(null), mainRef = useRef(null);
     var ids = useRef(null); if (!ids.current) { uid += 1; ids.current = 'zr-shell-' + uid; }
     var sid = ids.current;
 
@@ -257,18 +279,22 @@ import * as React from 'react';
       function k(e) { if (e.key === 'Escape') { e.stopPropagation(); setPop(null); if (bellRef.current) bellRef.current.focus(); } }
       document.addEventListener('keydown', k, true); return function () { document.removeEventListener('keydown', k, true); };
     }, [pop]);
+    var notifOpenRef = useRef(false); /* il pannello delle notifiche si chiude da qualunque strada: una chiamata sola (richiesta 91) */
+    useEffect(function () { if (pop === 'notif') { notifOpenRef.current = true; return; } if (notifOpenRef.current) { notifOpenRef.current = false; if (p.onNotificationsClose) p.onNotificationsClose(); } }, [pop]);
 
-    function go(it, e) { if (!it.href && e) e.preventDefault(); if (it.soon) return; setOpen(false); setDrawer(false); setPop(null); if (p.onNavigate) p.onNavigate(it.id); }
+    /* con navigate un clic semplice su una voce con href di questa origine non ricarica la pagina (richieste 27 e 98); Ctrl, Cmd, Maiusc, Alt, il tasto centrale e un'altra origine restano del browser */
+    function spa(e) { var a = e && e.currentTarget; return !!(p.navigate && a && a.href && !e.defaultPrevented && !e.button && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && a.protocol === location.protocol && a.host === location.host); }
+    function go(it, e) { var to = it.href && spa(e) ? e.currentTarget.href : null; if ((!it.href || to) && e) e.preventDefault(); if (it.soon) return; setOpen(false); setDrawer(false); setPop(null); if (p.onNavigate) p.onNavigate(it.id); if (to) p.navigate(to); }
     function item(it) {
       var isActive = it.id === active;
       return h('a', {
         key: it.id, href: it.href || '#', className: cx('zr-nav-item', isActive && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
-        'aria-current': isActive ? 'page' : undefined, 'aria-disabled': it.soon ? 'true' : undefined,
+        'aria-current': isActive ? 'page' : undefined, 'aria-disabled': it.soon ? 'true' : undefined, tabIndex: it.soon ? -1 : undefined,
         onClick: function (e) { go(it, e); }
       },
         h(Icon, { name: it.icon, size: 18 }),
         h('span', { className: 'zr-nav-label' }, it.label),
-        it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
+        it.soon ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
         it.count ? countParts(it.count, 'zr-count', it.countLabel) : null);
     }
 
@@ -342,12 +368,12 @@ import * as React from 'react';
         var isCur = it.id === current.id;
         return h('a', {
           key: it.id, href: it.href || '#', className: cx('zr-nav-item', isCur && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
-          'aria-current': isCur ? 'true' : undefined, 'aria-disabled': it.soon ? 'true' : undefined,
+          'aria-current': isCur ? 'true' : undefined, 'aria-disabled': it.soon ? 'true' : undefined, tabIndex: it.soon ? -1 : undefined,
           onClick: function (e) { if (!it.href) e.preventDefault(); if (isCur) { setOpen(false); return; } go(it, e); }
         },
           h(Icon, { name: it.icon, size: 18 }),
           h('span', { className: 'zr-nav-label' }, it.label),
-          it.soon ? h('span', { className: 'zr-nav-soon' }, L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
+          it.soon ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
       }).reduce(function (acc, el, i) { acc.push(el); var it = prodGroup.items[i]; if (it.home && i < prodGroup.items.length - 1) acc.push(h('div', { key: 'sep', className: 'zr-product-sep', role: 'separator' })); return acc; }, [])) : null) : null;
     var groups = nav.filter(function (g) { return !(prodGroup && g === prodGroup); });
 
@@ -403,7 +429,7 @@ import * as React from 'react';
     else if (nState === 'error') notifBody = h('div', { className: 'zr-notif-state', role: 'alert' }, h('p', null, L.notificationsError), p.onRetryNotifications ? h(Button, { variant: 'secondary', size: 'sm', icon: 'refresh', onClick: p.onRetryNotifications }, L.retry) : null);
     else if (!shown.length) notifBody = h(EmptyState, { compact: true, icon: 'bell', title: L.notificationsEmpty, text: L.notificationsEmptyText });
     else notifBody = h('ul', { className: 'zr-notif-list' }, shown.map(function (n) {
-      return h('li', { key: n.id }, h(NotificationItem, { title: n.title, text: n.text, time: n.time, product: n.product, unread: n.unread, actor: n.actor, icon: n.icon, tone: n.tone, unreadLabel: L.unread,
+      return h('li', { key: n.id }, h(NotificationItem, { title: n.title, text: n.text, time: n.time, product: n.product, unread: n.unread, actor: n.actor, icon: n.icon, tone: n.tone, unreadLabel: L.unreadOne,
         onClick: function () { setPop(null); if (p.onOpenNotification) p.onOpenNotification(n); } }));
     }));
     var notifPanel = pop === 'notif' ? h('div', { ref: notifRef, id: sid + '-notif', className: 'zr-pop zr-notif', role: 'dialog', 'aria-label': L.notifications },
@@ -436,6 +462,15 @@ import * as React from 'react';
       })) : null;
 
     var settingsItem = { id: 'settings', label: L.settings, icon: 'settings', href: p.settingsHref };
+    /* l'area che scorre (il main, o col percorso il suo corpo; flush non scorre) è nel giro del Tab quando dentro niente prende il fuoco: chi usa la tastiera la fa scorrere (richiesta 30) */
+    var hasCrumbs = !!crumbs;
+    useEffect(function () {
+      var m = mainRef.current; var el = m && (p.flush ? null : hasCrumbs ? m.querySelector(':scope > .zr-main-body') : m); if (!el) return;
+      var mine = false;
+      function fix() { var has = el.querySelector(SHELL_FOCUSABLE); if (has && mine) { el.removeAttribute('tabindex'); mine = false; } else if (!has && !mine && !el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); mine = true; } }
+      fix(); var mo = new MutationObserver(fix); mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['href', 'disabled', 'tabindex', 'contenteditable'] });
+      return function () { mo.disconnect(); if (mine) el.removeAttribute('tabindex'); };
+    }, [p.flush, hasCrumbs]);
     var kbd = IS_MAC ? '⌘K' : 'Ctrl K';
     var unreadText = unread > 99 ? '99+' : String(unread);
 
@@ -473,17 +508,18 @@ import * as React from 'react';
           showPanel ? h('div', { className: 'zr-search-panel' }, panelBody) : null),
         h('div', { className: 'zr-top-actions' },
           p.actions || null,
-          h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + L.unread : ''),
+          h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + (unread === 1 ? L.unreadOne : L.unread) : ''),
             'aria-expanded': pop === 'notif' ? 'true' : 'false', 'aria-controls': sid + '-notif',
             onClick: function () { var next = pop === 'notif' ? null : 'notif'; setPop(next); if (next && p.onNotificationsOpen) p.onNotificationsOpen(); } },
             h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: cx('zr-bell-count', unreadText.length > 2 && 'is-wide'), 'aria-hidden': 'true' }, unreadText) : null),
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
             onClick: function () { setPop(pop === 'profile' ? null : 'profile'); } }, h(Avatar, { name: user, src: p.userPhoto })),
           notifPanel,
+          h('div', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, p.notificationsNotice || ''), /* l'avviso letto ad alta voce, sempre montato (richiesta 14) */
           pop === 'profile' ? h(Menu, { anchor: avatarRef.current, inline: true, label: L.account, items: profileItems, className: 'zr-profile-menu',
         head: h('div', { className: 'zr-profile-head' }, h(Avatar, { name: user, src: p.userPhoto }), h('span', null, h('strong', null, user), p.email ? h('span', null, p.email) : null, p.planName ? h('span', null, p.planName) : null)),
         onClose: function () { setPop(null); } }) : null)),
-      h('main', { className: cx('zr-main', p.flush && 'is-flush', crumbs && 'has-crumbs') },
+      h('main', { ref: mainRef, className: cx('zr-main', p.flush && 'is-flush', crumbs && 'has-crumbs'), 'aria-label': L.mainContent },
         crumbs ? [h('div', { key: 'cb', className: 'zr-crumbbar' }, crumbs), h('div', { key: 'body', className: 'zr-main-body' }, p.children)] : p.children));
   }
 
@@ -518,7 +554,7 @@ import * as React from 'react';
         h('div', { className: 'zr-folder-title' },
           h('h3', null, p.name),
           h('span', null, boards.length + (boards.length === 1 ? ' board' : ' board') + ' · ' + total + ' schede' + (p.updated ? ' · ' + p.updated : ''))),
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': 'Azioni cartella' })),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': 'Azioni area' })),
       h('ul', { className: 'zr-folder-boards' },
         boards.map(function (b) {
           return h('li', { key: b.name },
@@ -705,7 +741,7 @@ import * as React from 'react';
 
   /* ---------- DashboardHome ---------- */
   var SAMPLE_PRODUCTS = [
-    { id: 'pm', name: 'Board', icon: 'board', tone: 'pine', description: 'Board Kanban in cartelle: organizza attività, scadenze e persone.', meta: '2 cartelle · 5 board' },
+    { id: 'pm', name: 'Board', icon: 'board', tone: 'pine', description: 'Board Kanban in aree: organizza attività, scadenze e persone.', meta: '2 aree · 5 board' },
     { id: 'crm', name: 'CRM', icon: 'users', tone: 'sky', description: 'Contatti, aziende e trattative in una pipeline semplice.', meta: '248 contatti · 12 trattative' },
     { id: 'reports', name: 'Report', icon: 'chart', tone: 'citrus', description: 'Dashboard di marketing, vendite e attività, sempre aggiornate.', meta: '3 dashboard' },
     { id: 'automations', name: 'Automazioni', icon: 'bolt', tone: 'plum', description: 'Quando succede qualcosa, Zeiras fa il resto: email, attività, avvisi.', meta: '4 attive' },
@@ -732,8 +768,8 @@ import * as React from 'react';
         }))),
       h('section', { className: 'zr-home-section' },
         h('div', { className: 'zr-home-row' },
-          h('h2', { className: 'zr-home-h2' }, 'Cartelle recenti'),
-          h(Button, { variant: 'ghost', size: 'sm', icon: 'folder' }, 'Tutte le cartelle')),
+          h('h2', { className: 'zr-home-h2' }, 'Aree recenti'),
+          h(Button, { variant: 'ghost', size: 'sm', icon: 'folder' }, 'Tutte le aree')),
         h('div', { className: 'zr-grid-2' }, folders.map(function (f) { return h(ProjectFolder, Object.assign({ key: f.name }, f)); }))));
   }
 
@@ -834,7 +870,7 @@ import * as React from 'react';
   function StepList(p) {
     var steps = p.steps || [
       { title: 'Iscriviti', text: 'Email o Google, nessuna carta. Il tuo spazio di lavoro è pronto subito.', icon: 'users' },
-      { title: 'Crea una cartella', text: 'Una per progetto o area: lavoro, clienti, casa, studio.', icon: 'folder' },
+      { title: 'Crea un\'area', text: 'Una per progetto o ambito: lavoro, clienti, casa, studio.', icon: 'folder' },
       { title: 'Organizza la board', text: 'Liste, schede, scadenze e persone. Trascina e il lavoro avanza.', icon: 'board' }
     ];
     return h('ol', { className: 'zr-steps' }, steps.map(function (s, i) {
@@ -850,7 +886,7 @@ import * as React from 'react';
       { title: 'Progetti personali', text: 'Casa, viaggi, studio: gratis e senza limiti.' },
       { title: 'Freelance', text: 'Clienti, consegne e scadenze sotto controllo.' },
       { title: 'Formazione', text: 'Corsi, docenti e calendari di lancio.' },
-      { title: 'Agenzie', text: 'Una board per cliente, tutte in una cartella.' },
+      { title: 'Agenzie', text: 'Una board per cliente, tutte in un\'area.' },
       { title: 'Associazioni', text: 'Volontari ed eventi coordinati senza fatica.' },
       { title: 'Studi professionali', text: 'Pratiche e adempimenti visibili a tutto lo studio.' }
     ];
@@ -1335,6 +1371,15 @@ import * as React from 'react';
     var ms = useState(''), msg = ms[0];
     var mode = useRef(editing ? 'edit' : 'view'), mounted = useRef(false), viewRef = useRef(null), fieldRef = useRef(null), timer = useRef(null), alive = useRef(true), back = useRef(false), ptr = useRef(false);
     useEffect(function () { alive.current = true; return function () { alive.current = false; clearTimeout(timer.current); }; }, []);
+    /* saveOnUnmount: smontato col campo aperto, la bozza cambiata si salva una volta, se è valida e non è appena stata rifiutata (richiesta 193); nel cleanup del layout il campo c'è ancora */
+    var last = useRef(null); last.current = { p: p, draft: draft, value: value, stato: stato };
+    React.useLayoutEffect(function () { return function () {
+      var l = last.current, q = l.p, f = fieldRef.current, vd = f && f.validity;
+      if (!q.saveOnUnmount || !q.onSave || mode.current !== 'edit' || l.stato === 'error' || (vd && (vd.badInput || vd.typeMismatch))) return;
+      var next = q.trim === false || q.as === 'select' ? l.draft : l.draft.trim();
+      if (next === l.value || !next.trim() && (q.cancelOnEmpty || q.required) || (q.validate && q.validate(next))) return;
+      try { var r = q.onSave(next); if (r && typeof r.then === 'function') r.then(null, function () {}); } catch (e) {} /* l'errore non ha più dove mostrarsi: lo gestisce chi usa il componente */
+    }; }, []);
     /* aperto o chiuso da fuori: si riparte dal valore, e chiuso da fuori non salva */
     var pe = useState(editing);
     if (pe[0] !== editing) {
@@ -1406,7 +1451,9 @@ import * as React from 'react';
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
         'aria-label': L.edit + ': ' + p.label + (value ? ', ' + shown(value) : '') },
-        h('span', { className: 'zr-inline-edit-text' }, shown(value) || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
+        h('span', { className: 'zr-inline-edit-text' }, value && p.view ? p.view(value) : shown(value) || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
+      /* view: come si vede il valore dentro il pulsante; actions: accanto, fuori dal clic che apre il campo (un link, «Chiama») (richiesta 192) */
+      if (p.actions) body = h('div', { className: 'zr-inline-edit-row' }, body, h('span', { className: 'zr-inline-edit-actions' }, p.actions));
     }
     return h('div', { className: cx('zr-inline-edit', 'is-' + size, editing && 'is-editing', stato === 'error' && 'is-error', p.multiline && 'is-multiline', p.className) },
       body,
@@ -2427,6 +2474,8 @@ export {
   SectorGrid,
   Breadcrumb,
   ICON_NAMES,
+  BrandIcon,
+  BRAND_ICON_NAMES,
   Field,
   MentionField,
   MENTION_LABELS,

@@ -255,9 +255,9 @@ describe('la Cornice', () => {
             .toStrictEqual(fra(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']));
         const attesi = fra(ordine.map((id) => (id === 'home' ? 'https://app.zeiras.com/w/acme-marketing' : conIndirizzo.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : '#')));
         expect(voci.map((voce) => voce.getAttribute('href'))).toStrictEqual(attesi);
-        // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice.
+        // «Presto»: la voce non porta da nessuna parte, è disattivata e lo dice (dopo la virgola che non si vede, riga 6).
         const presto = attesi.map((indirizzo) => indirizzo === '#');
-        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.lastChild?.textContent ?? null)).toStrictEqual(presto.map((si) => (si ? 'Presto' : null)));
         expect(voci.map((voce) => voce.getAttribute('aria-disabled'))).toStrictEqual(presto.map((si) => (si ? 'true' : null)));
         expect(voci[0].getAttribute('aria-current')).toBe('page');
         const icone: IconName[] = ['grid', 'board', 'users', 'calendar', 'euro', 'chart', 'bolt', 'sparkle'];
@@ -450,7 +450,7 @@ describe('la Cornice', () => {
         expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['CRM', 'Bookings']);
         expect(voci.map((voce) => voce.getAttribute('href')))
             .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) ? `${indirizzi[id]}/w/acme-marketing` : prodotti[id as 'crm'] === 'disponibile' ? dati.moduli : '#')));
-        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.textContent ?? null))
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-soon')?.lastChild?.textContent ?? null))
             .toStrictEqual(['crm', 'bookings'].map((id) => (aperti.includes(id) || prodotti[id as 'crm'] === 'disponibile' ? null : 'Presto')));
     });
 
@@ -2839,8 +2839,8 @@ describe('il pannello delle notifiche', () => {
             return allaLettura(id);
         });
     };
-    /** L'avviso della cornice per il lettore di schermo: accanto all'`AppShell`, non dentro. */
-    const avviso = () => [...contenitore.children].find((figlio) => figlio.getAttribute('role') === 'status') ?? null;
+    /** L'avviso della cornice per il lettore di schermo: nella zona viva dell'`AppShell` (`notificationsNotice`, dalla `v4.17.0`). */
+    const avviso = () => uno('.zr-shell [role="status"][aria-live="polite"]');
     const detto = () => avviso()?.textContent ?? null;
     /** Apre la campanella e fa clic sulla notifica in quella posizione: il pannello si chiude. */
     const apre = async (indice: number) => {
@@ -3460,9 +3460,8 @@ describe('il pannello delle notifiche', () => {
         vi.stubGlobal('fetch', rotteDelClic([{ data: elenco, lettoIl: alSecondo(5) }], () => lettura.promessa));
         await mostra(<Cornice dati={letti(alSecondo(3), elenco.filter((notifica) => !notifica.letta).length, { lingua })} naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
 
-        // Al caricamento c'è già, fuori dall'`AppShell`, con la classe del design system per ciò che non si vede: ed è vuoto.
+        // Al caricamento c'è già, nell'`AppShell`, con la classe del design system per ciò che non si vede: ed è vuoto.
         expect([avviso()?.tagName, avviso()?.className, detto()]).toStrictEqual(['DIV', 'zr-visually-hidden', '']);
-        expect(avviso()?.closest('.zr-shell')).toBeNull();
         expect(tutti('[role="status"]')).toHaveLength(1);
 
         // Vuoto anche con l'elenco arrivato, e con la lettura in volo.
@@ -3948,18 +3947,19 @@ describe('il pannello delle notifiche', () => {
         expect(segnaTutte()).not.toBeNull();
     });
 
-    // Sprint 12 · review della PR, R3. Il design system ha un testo solo per le non lette: è nel nome della campanella ed è il nome
-    // del pallino di ogni notifica non letta. Col singolare di zr-core il pallino segue il numero della campanella, non la notifica.
-    it.each<[lingua: string, nonLetteNeiDati: number, nonLetteCaricate: number, pallino: string]>([
-        ['it', 1, 1, 'non letta'],
-        ['it', 3, 3, 'non lette'],
+    // Sprint 12 · review della PR, R3, e dalla `v4.17.0` la riga 13 delle richieste al design system. Il pallino di ogni notifica non
+    // letta dice la sua, al singolare, col testo `unreadOne` della cornice; il nome della campanella dice il numero che mostra, al
+    // singolare con una sola: lo fa l'`AppShell`, coi testi che la cornice gli dà.
+    it.each<[lingua: string, nonLetteNeiDati: number, nonLetteCaricate: number, pallino: string, dellaCampanella: string]>([
+        ['it', 1, 1, 'non letta', 'Notifiche, 1 non letta'],
+        ['it', 3, 3, 'non letta', 'Notifiche, 3 non lette'],
         // Una sola non letta in pagina e tre sulla campanella: le altre due stanno oltre la prima pagina.
-        ['it', 3, 1, 'non lette'],
+        ['it', 3, 1, 'non letta', 'Notifiche, 3 non lette'],
         // Il numero che la campanella mostra, non quello dei dati: un elenco più recente ne ha due.
-        ['it', 1, 2, 'non lette'],
-        ['en', 1, 1, 'unread'],
-        ['es', 3, 3, 'sin leer'],
-    ])('con la lingua "%s", %s non lette nei dati e %s caricate, il pallino di ogni notifica non letta si chiama «%s» per il lettore di schermo, come le non lette della campanella (sprint 12 · review, R3)', async (lingua, nonLetteNeiDati, nonLetteCaricate, pallino) => {
+        ['it', 1, 2, 'non letta', 'Notifiche, 2 non lette'],
+        ['en', 1, 1, 'unread', 'Notifications, 1 unread'],
+        ['es', 3, 3, 'sin leer', 'Notificaciones, 3 sin leer'],
+    ])('con la lingua "%s", %s non lette nei dati e %s caricate, il pallino di ogni notifica non letta si chiama «%s» per il lettore di schermo, e la campanella «%s» (sprint 12 · review, R3; riga 13)', async (lingua, nonLetteNeiDati, nonLetteCaricate, pallino, dellaCampanella) => {
         const elenco = [
             ...Array.from({ length: nonLetteCaricate }, (_, indice) => nata(`uat-n${80 - indice}`, '2026-10-06T11:55:00Z')),
             nata('uat-n70', '2026-10-06T11:00:00Z', true),
@@ -3970,6 +3970,7 @@ describe('il pannello delle notifiche', () => {
 
         expect(voci().map((voce) => voce.querySelector('.zr-notif-dot')?.getAttribute('aria-label') ?? null))
             .toStrictEqual([...Array.from({ length: nonLetteCaricate }, () => pallino), null]);
+        expect(uno('.zr-bell')?.getAttribute('aria-label')).toBe(dellaCampanella);
     });
 
     // Sprint 17 · T1 (voce #1481). Il pulsante dice che cosa sta succedendo: dal clic alla risposta che la richiesta è in corso
@@ -6558,33 +6559,21 @@ describe('la voce attiva della barra', () => {
         expect(appShell.mock.lastCall?.[0].active).toBe(attiva.active);
     });
 
-    it('nessuna voce può avere l\'id con cui la cornice dice «nessuna»: data una voce proprio con quell\'id, non è segnata, e l\'id è un altro (sprint 12 · T5.4)', async () => {
+    // Fino alla `v4.16` la cornice diceva «nessuna» con un id che nessuna voce aveva; dalla `v4.17.0` all'`AppShell` arriva `null`
+    // (riga 29 delle richieste al design system), e nessuna voce è segnata, qualunque id abbia: anche «-», quello di prima.
+    it('con active={null} all\'`AppShell` arriva `null`, e nessuna voce è segnata, qualunque id abbia (sprint 12 · T5.4; riga 29)', async () => {
         const appShell = vi.spyOn(componenti, 'AppShell');
-        const idDato = () => appShell.mock.lastCall?.[0].active;
-        const voci = [...vociDiPm[0].items];
-        const dati_: string[] = [];
+        const voci = [...vociDiPm[0].items, { id: '-', label: 'UAT voce col trattino', icon: 'star' as const }, { id: 'home', label: 'UAT voce home', icon: 'star' as const }];
 
-        // Tre volte: si legge l'id che l'`AppShell` riceve con `null`, e al giro dopo una voce del prodotto ha proprio quello.
-        for (let giro = 0; giro < 3; giro += 1) {
-            await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="pm" nav={[{ group: 'Lavoro', items: voci }]} active={null} />);
-            const id = idDato();
-
-            expect(typeof id).toBe('string');
-            expect(id).not.toBe('');
-            expect(voci.map((voce) => voce.id)).not.toContain(id);
-            expect(ordine).not.toContain(id);
-            // Nella barra ci sono le voci del prodotto e «Impostazioni», dell'`AppShell`.
-            expect(tutti('a.zr-nav-item')).toHaveLength(voci.length + 1);
-            expect(segnate()).toStrictEqual([]);
-            dati_.push(id as string);
-            voci.push({ id: id as string, label: `UAT voce ${giro + 1}`, icon: 'star' });
-        }
-        expect(new Set(dati_).size).toBe(3);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} product="pm" nav={[{ group: 'Lavoro', items: voci }]} active={null} />);
+        expect(appShell.mock.lastCall?.[0].active).toBeNull();
+        // Nella barra ci sono le voci del prodotto e «Impostazioni», dell'`AppShell`.
+        expect(tutti('a.zr-nav-item')).toHaveLength(voci.length + 1);
+        expect(segnate()).toStrictEqual([]);
 
         // Lo stesso in una pagina di app.zeiras.com, dove le voci sono quelle del registro e quelle date dal frontend.
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} nav={[{ group: 'Lavoro', items: voci }]} active={null} />);
-        expect(voci.map((voce) => voce.id)).not.toContain(idDato());
-        expect(ordine).not.toContain(idDato());
+        expect(appShell.mock.lastCall?.[0].active).toBeNull();
         expect(tutti('a.zr-nav-item')).toHaveLength(ordine.length + voci.length + 1);
         expect(segnate()).toStrictEqual([]);
     });
@@ -7298,9 +7287,9 @@ describe('chi non ha accettato i documenti legali', () => {
         const senzaLaPagina = (props: Record<string, unknown>) => valori(Object.fromEntries(Object.entries(props).filter(([nome]) => nome !== 'children')));
 
         const senza = await date(diSempre);
-        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`.
+        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`, più `navigate` dalla `v4.17.0`.
         expect(Object.keys(senza).sort()).toStrictEqual([
-            'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
+            'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'navigate', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
             'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
         ]);
         expect([senza.product, senza.flush, senza.unreadCount, senza.notificationsState, senza.searchState]).toStrictEqual(['pm', true, 7, 'ready', 'ready']);
@@ -7475,7 +7464,7 @@ describe('chi non ha accettato i documenti legali', () => {
             return risposta({ data: { id: 'uat-n69', letta: true } });
         });
         vi.stubGlobal('fetch', fetchFinto);
-        const detto = () => [...contenitore.children].find((figlio) => figlio.getAttribute('role') === 'status')?.textContent;
+        const detto = () => uno('.zr-shell [role="status"][aria-live="polite"]')?.textContent;
         const laPagina = (deiDati: DatiDellaCornice) => <Cornice dati={deiDati} naviga={vi.fn()} onLogout={esciSenzaEffetto} />;
         const conQuelNumero = { ...diSempre, non_lette: nonLette };
         await mostra(laPagina(conQuelNumero));
@@ -7837,10 +7826,13 @@ describe('«Salta al contenuto»', () => {
         expect(uno('main')?.textContent).toContain('Niente da fare qui.');
     });
 
-    it('la regione degli avvisi resta l\'ultimo elemento della cornice, com\'era (T4.1)', async () => {
+    // Dalla `v4.17.0` la regione degli avvisi è quella dell'`AppShell` (`notificationsNotice`, riga 14): la cornice è il salto e
+    // l'`AppShell`, e niente dopo.
+    it('la regione degli avvisi sta nell\'`AppShell`, e dopo il salto c\'è solo lei (T4.1; riga 14)', async () => {
         await mostra(laPagina());
 
-        expect([contenitore.lastElementChild?.getAttribute('role'), contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['status', 'zr-visually-hidden', 3]);
+        expect([contenitore.lastElementChild?.className, contenitore.children.length]).toStrictEqual(['zr-shell', 2]);
+        expect(contenitore.lastElementChild?.querySelectorAll('[role="status"][aria-live="polite"].zr-visually-hidden')).toHaveLength(1);
     });
 });
 
@@ -8680,34 +8672,31 @@ describe('scelta una voce del menu «+» con la tastiera il fuoco torna al «+»
 });
 
 // Riga 6 delle richieste al design system: le voci «Presto» non portano da nessuna parte ma fermavano il Tab, e un lettore di
-// schermo leggeva «CRMPresto». Col pezzo della tastiera escono dal giro del Tab, e il nome dice la voce e lo stato, separati.
+// schermo leggeva «CRMPresto». Dalla `v4.17.0` lo fa l'`AppShell`, senza aspettare un tasto: escono dal giro del Tab, e il nome
+// (il testo della voce, che ha la virgola nascosta) dice la voce e lo stato, separati. La cornice non dà a queste voci un nome suo.
 describe('le voci «Presto» escono dal giro del Tab e dicono nome e stato separati (riga 6)', () => {
     const voci = () => tutti('.zr-shell a.zr-nav-item');
-    const comeSono = () => voci().map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('tabindex'), voce.getAttribute('aria-label')]);
+    const comeSono = () => voci().map((voce) => [voce.querySelector('.zr-nav-label')?.textContent, voce.getAttribute('tabindex'), voce.getAttribute('aria-label') ?? voce.textContent]);
     const conIDati = async (lingua: string, prodotti: DatiDellaCornice['prodotti']) => {
         await mostra(<Cornice dati={{ ...datiDiUnMembro, lingua, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
-        await act(async () => {
-            await vi.dynamicImportSettled();
-        });
     };
 
-    it('col pezzo della tastiera arrivato una voce «Presto» ha `tabindex="-1"` e il nome «<voce>, Presto»; le altre restano come sono, anche quella che smette di essere «Presto», e il nome segue la lingua', async () => {
+    it('una voce «Presto» ha `tabindex="-1"` e il nome «<voce>, Presto» appena montata; le altre restano come sono, anche quella che smette di essere «Presto», e il nome segue la lingua', async () => {
         await conIDati('it', { pm: 'attivo', crm: 'in_arrivo' });
-        await conLaTastiera();
 
-        expect(comeSono().slice(0, 3)).toStrictEqual([['Dashboard', null, null], ['Board', null, null], ['CRM', '-1', 'CRM, Presto']]);
+        expect(comeSono().slice(0, 3)).toStrictEqual([['Dashboard', null, 'Dashboard'], ['Board', null, 'Board'], ['CRM', '-1', 'CRM, Presto']]);
         expect(comeSono().slice(3, -1).map(([nome, fermata, etichetta]) => fermata === '-1' && etichetta === `${nome}, Presto`)).toStrictEqual(Array(5).fill(true));
-        expect(comeSono().at(-1)).toStrictEqual(['Impostazioni', null, null]);
+        expect(comeSono().at(-1)).toStrictEqual(['Impostazioni', null, 'Impostazioni']);
 
         await conIDati('it', { pm: 'attivo', crm: 'attivo' });
 
-        expect(comeSono()[2]).toStrictEqual(['CRM', null, null]);
+        expect(comeSono()[2]).toStrictEqual(['CRM', null, 'CRM']);
 
         await conIDati('en', { pm: 'attivo', crm: 'in_arrivo' });
         const soon = uno('.zr-shell a.zr-nav-item.is-soon .zr-nav-soon')?.textContent;
 
-        expect(soon).not.toBe('Presto');
-        expect(comeSono()[2]).toStrictEqual(['CRM', '-1', `CRM, ${soon}`]);
+        expect(soon).not.toBe(', Presto');
+        expect(comeSono()[2]).toStrictEqual(['CRM', '-1', `CRM${soon}`]);
     });
 });
 
@@ -9848,10 +9837,9 @@ describe('i menu della barra in alto stanno sopra il pannello di dettaglio (riga
     });
 });
 
-// Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: senza
-// questo rimedio un clic semplice ricarica la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta
-// la cornice il clic passa da `naviga` (provvisorio, finché l'`AppShell` non ha la sua funzione). Il gestore sta nel pezzo dei
-// rimedi, che la cornice chiede quando si monta.
+// Sprint 69 · T3 (voce #2033). I collegamenti della barra laterale (Dashboard, moduli, «Impostazioni») sono link veri: un clic
+// semplice ricaricherebbe la pagina intera, anche dentro lo stesso modulo. Con un indirizzo dell'app che monta la cornice il clic
+// passa da `naviga`: fino alla `v4.16` col rimedio, dalla `v4.17.0` con `navigate` dell'`AppShell` (righe 27 e 98).
 describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce 2033)', () => {
     const laCornice = async (naviga: (indirizzo: string) => void) => {
         await mostra(<Cornice dati={{ ...dati, aziende }} onLogout={esciSenzaEffetto} naviga={naviga} />);
@@ -9919,11 +9907,12 @@ describe('i clic sulla barra laterale passano da `naviga` (sprint 69 · T3, voce
             primo?.setAttribute('href', altrove);
             expect(cliccato(primo as Element).visto).toBe(false);
         }
+        // Gestito prima che arrivi all'`AppShell`: sul collegamento stesso.
         primo?.setAttribute('href', `${location.origin}/uat`);
         const gestore = (evento: Event) => evento.preventDefault();
-        document.body.addEventListener('click', gestore);
+        primo?.addEventListener('click', gestore);
         expect(cliccato(primo as Element).visto).toBe(true);
-        document.body.removeEventListener('click', gestore);
+        primo?.removeEventListener('click', gestore);
 
         expect(naviga).not.toHaveBeenCalled();
     });
@@ -10201,43 +10190,15 @@ describe('il contenuto che scorre è una fermata del Tab, col suo nome (patch v2
         expect([uno('.zr-visually-hidden button')?.textContent, main()?.getAttribute('aria-label')]).toStrictEqual(['Skip to content', 'Content']);
     });
 
-    it('2394.1 col fuoco da tastiera il contenuto ha il contorno del design system, coi soli token sull\'elemento; col fuoco da un clic no, e quando il fuoco esce non l\'ha più', async () => {
+    // Dalla `v4.17.0` (riga 30) il contorno del fuoco lo dà il CSS del design system, solo alla fermata e solo col fuoco da tastiera:
+    // la cornice non scrive niente sull'elemento.
+    it('2394.1 il contorno del fuoco del contenuto è quello del CSS del design system, e sull\'elemento non c\'è uno stile della cornice', async () => {
         await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Niente da fare qui.</p></Cornice>);
-        const salto = contenitore.firstElementChild?.querySelector('button') as HTMLButtonElement;
-        // jsdom non sa da dove arriva il fuoco: qui lo dice il caso, in Chromium lo prova la UAT.
-        const daTastiera = (si: boolean) => {
-            const matches = Element.prototype.matches;
-            return vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
-                return selettore === ':focus-visible' ? si : matches.call(this, selettore);
-            });
-        };
+        const css = readFileSync(resolve(process.cwd(), 'resources/css/zeiras.css'), 'utf8');
 
-        const conLaTastiera = daTastiera(true);
+        expect(css).toContain('.zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }');
         await act(async () => (main() as HTMLElement).focus());
-        expect([main()?.style.outlineOffset, main()?.style.cssText.includes('var(--focus)')]).toStrictEqual(['-2px', true]);
-        await act(async () => salto.focus());
-        expect(main()?.getAttribute('style')).toBe('');
-
-        conLaTastiera.mockRestore();
-        daTastiera(false);
-        await act(async () => (main() as HTMLElement).focus());
-        expect(main()?.getAttribute('style')).toBe('');
-    });
-
-    // Seconda lettura della PR #121, N1: la fermata se ne va mentre ha il fuoco, e il `focusout` dopo non è più suo.
-    it('2394.1 se la fermata se ne va mentre ha il contorno, il contorno se ne va con lei', async () => {
-        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><p>Carico…</p></Cornice>);
-        const matches = Element.prototype.matches;
-        vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selettore: string) {
-            return selettore === ':focus-visible' || matches.call(this, selettore);
-        });
-        await act(async () => (main() as HTMLElement).focus());
-        expect(main()?.style.outlineOffset).toBe('-2px');
-
-        await laCornice(<Cornice dati={dati} onLogout={esciSenzaEffetto}><a href="/schede">Schede</a></Cornice>);
-        await act(async () => (uno('a[href="/schede"]') as HTMLElement).focus());
-
-        expect([main()?.hasAttribute('tabindex'), main()?.getAttribute('style') ?? null]).toStrictEqual([false, null]);
+        expect([document.activeElement === main(), main()?.hasAttribute('style')]).toStrictEqual([true, false]);
     });
 
 });

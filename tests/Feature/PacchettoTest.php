@@ -1960,10 +1960,12 @@ it('il README dichiara, nel punto che ne parla, ciò che la cornice oggi non dic
     // lettore di schermo: al design system manca il posto per un avviso (seconda lettura dello sprint 12, N4).
     'T2.1: che cosa la cornice ancora non dice' => ['Le notifiche', 'Una cosa la cornice ancora non la dice: l\'avviso per il lettore di schermo'],
     'T2.1: niente annuncia il testo che cambia' => ['Le notifiche', 'Il testo del pulsante cambia sullo schermo, ma niente lo annuncia'],
-    'T2.1: che cosa manca per dirla' => ['Le notifiche', 'il pannello del design system non ha un posto per un avviso'],
+    // Dalla `v4.17.0` il posto c'è (riga 14), e la cornice lo usa solo per il numero che scende.
+    'T2.1: che cosa manca per dirla' => ['Le notifiche', 'la zona dell\'avviso dell\'`AppShell` (`notificationsNotice`, dalla `v4.17.0`) la cornice la usa solo per il numero che scende con un clic'],
     'R3: il nome della campanella al singolare' => ['La campanella', 'con una sola al singolare («Notifiche, 1 non letta»)'],
-    'R3: lo stesso testo è del pallino' => ['La campanella', 'Il design system ha un testo solo per le non lette, e lo usa anche per il pallino di ogni notifica non letta nel pannello'],
-    'R3: che cosa dice il pallino' => ['La campanella', 'il pallino dice «non letta» quando sulla campanella ce n\'è una sola, «non lette» negli altri casi'],
+    // Dalla `v4.17.0` (riga 13) il singolare è dell'`AppShell`, e il pallino dice la sua notifica.
+    'R3: il singolare è dell\'AppShell' => ['La campanella', 'il singolare lo fa l\'`AppShell` col testo `unreadOne` della cornice'],
+    'R3: che cosa dice il pallino' => ['La campanella', 'il pallino di ogni notifica non letta nel pannello dice la sua, «non letta», qualunque sia il numero sulla campanella'],
     'R4: una lingua con più forme di plurale' => ['La lingua', 'una lingua con più forme di plurale (il polacco, l\'arabo) oggi non entra con un file solo'],
 ]);
 
@@ -3931,7 +3933,7 @@ it('il README dice che dalla v1.12.0 il clic che apre la risorsa segna letta la 
     'una chiamata in più, e perché (sprint 53 · T3.4, review R9)' => ['punto', 'così una scheda rimasta aperta non la apre con la sessione di un\'altra persona entrata altrove. È una chiamata al backoffice in più per ogni clic su una già letta'],
     'i test di chi passa alla v2.14.0 (sprint 53 · T4, review R7)' => ['punto', 'Per i test di un frontend che passa alla `v2.14.0` cambiano due cose. Un clic su una notifica che ha una destinazione, anche già letta, apre solo se la `PATCH` finta della lettura risponde `{"data": {"letta": true}}`'],
     'i test di chi passa alla v2.14.0: l\'apertura dopo la risposta (sprint 53 · T4, review R7)' => ['punto', 'E l\'apertura arriva dopo la risposta, non nello stesso giro del clic'],
-    'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`), accanto all\'`AppShell`'],
+    'l\'avviso' => ['punto', 'lo dice un avviso che non si vede (`role="status"`, con la classe `zr-visually-hidden`): dalla `v4.17.0` è la zona viva dell\'`AppShell`'],
     'che cosa dice l\'avviso' => ['punto', 'dice il nome della campanella col numero nuovo («Notifiche, 2 non lette», «Notifiche, 1 non letta») e a zero il testo `unreadNone` di zr-core («Nessuna notifica non letta»)'],
     'quando l\'avviso tace' => ['punto', 'parla solo per il numero che scende con un clic'],
 ]);
@@ -5618,7 +5620,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.169 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.589 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.8.1 (#3055, Decisione 21220): l'Alert nel pezzo degli avvisi, il tetto scende di 110, alla misura più 20.
     'i pesi: i 110 byte della v4.8.1' => ['pesi', 'Dalla `v4.8.1` è sceso di 110 byte, alla misura più 20: l\'Alert del design system, che la cornice usa solo per l\'avviso della cornice ridotta, arriva col pezzo degli avvisi, dal suo modulo'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
@@ -6695,17 +6697,18 @@ it('il README non dice più che una scheda con l\'email di prima riceve il 409 p
         ->and(str_contains($readme, 'Una scheda rimasta aperta con l\'email di prima ha la stessa impronta della persona'))->toBe(true);
 });
 
-// Sprint 69 · T3.4 e T2.5 (voci 2033 e 2210). Il README dice che i clic della barra laterale passano da `naviga` ed è provvisorio; la
-// guida e il README dicono dove porta un modulo `disponibile`: la pagina e il campo dei dati.
-it('il README dice che i clic della barra laterale passano da `naviga`, provvisorio, con la `naviga` che la cornice ha quando si monta; README e guida dicono la pagina dei moduli e il campo `moduli` (sprint 69 · T3.4, T2.5)', function () {
+// Sprint 69 · T3.4 e T2.5 (voci 2033 e 2210). Il README dice che i clic della barra laterale passano da `naviga`, dalla `v4.17.0` con
+// `navigate` dell'`AppShell` (righe 27 e 98) e non più provvisorio; la guida e il README dicono dove porta un modulo `disponibile`:
+// la pagina e il campo dei dati.
+it('il README dice che i clic della barra laterale passano da `naviga`, dalla v4.17.0 con `navigate` dell\'`AppShell`; README e guida dicono la pagina dei moduli e il campo `moduli` (sprint 69 · T3.4, T2.5)', function () {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $guida = (string) file_get_contents(__DIR__.'/../../MODULO-NUOVO.md');
     $inizio = (int) strpos($readme, '- **I collegamenti della barra laterale passano da `naviga`**');
     $punto = substr($readme, $inizio, (int) strpos($readme, "\n- **", $inizio + 10) - $inizio);
 
     expect($inizio)->toBeGreaterThan(0)
-        ->and(paroleCheMancanoIn($punto, ['**È provvisorio**: finché l\'`AppShell`', 'È la `naviga` che la cornice ha quando si monta', 'la stessa dei suoi altri indirizzi']))->toBe([])
-        ->and(paroleCheMancanoIn(str_replace('**È provvisorio**', '**Definitivo**', $punto), ['**È provvisorio**']))->toBe(['**È provvisorio**'])
+        ->and(paroleCheMancanoIn($punto, ['Dalla `v4.17.0` lo fa l\'`AppShell` con `navigate`', 'a cui la cornice dà la sua `naviga`', 'la stessa dei suoi altri indirizzi']))->toBe([])
+        ->and(str_contains($punto, '**È provvisorio**'))->toBeFalse()
         ->and(str_contains($readme, '/w/<slug>/impostazioni/moduli'))->toBeTrue()
         ->and(str_contains($guida, '/w/<slug>/impostazioni/moduli') && str_contains($guida, 'campo `moduli` dei dati'))->toBeTrue();
 });
