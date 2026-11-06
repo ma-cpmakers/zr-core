@@ -1,0 +1,165 @@
+<?php
+
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Zeiras\Auth\Errori\BackofficeNonRisponde;
+use Zeiras\Auth\Errori\ErroreApi;
+use Zeiras\Auth\Sessione;
+use Zeiras\Core\Cornice;
+use Zeiras\Core\Http\FotoDellaCornice;
+
+// Sprint 110 · T1 (voce #3319, da zr-home #3317). `Cornice::datiDelCliente()` dà alla cornice di chi è solo cliente (le pagine
+// /spazio/* di zr-home, design zr-account--il-mio-spazio) i dati della persona con la sessione dell'accesso, anche senza
+// workspace: lingua e persona dalla sessione dopo `Sessione::aggiorna` con io.mostra letto col gettone dell'accesso, la foto, e
+// le aziende in cui la persona è membro (la schermata 13). Il backoffice è Http::fake: un percorso che qui non ha risposta lo
+// ferma TestCase.
+
+/**
+ * Il backoffice del cliente: io.mostra col gettone dell'accesso (workspace, ruolo e non lette null) e i due elenchi vuoti, salvo
+ * ciò che il caso dà al loro posto.
+ *
+ * @param  array<string, mixed>  $risposte  per percorso: un corpo JSON, o una risposta
+ */
+function backofficeDelCliente(array $risposte = []): void
+{
+    $risposte += [
+        '/v1/io' => ioDelCliente(),
+        '/v1/io/aziende' => ['data' => [], 'successivo' => null],
+        '/v1/io/workspace' => ['data' => [], 'successivo' => null],
+    ];
+
+    Http::fake(function (Request $richiesta) use ($risposte) {
+        $risposta = $risposte[parse_url($richiesta->url(), PHP_URL_PATH)] ?? null;
+
+        return match (true) {
+            is_array($risposta) => Http::response($risposta),
+            $risposta instanceof Closure => $risposta(),
+            default => $risposta,
+        };
+    });
+}
+
+/**
+ * io.mostra col gettone dell'accesso: la persona com'è nel profilo, in spagnolo e con un altro nome di quello dell'ingresso, e
+ * null a workspace, ruolo e non lette.
+ *
+ * @param  array<string, mixed>  $utente  ciò che cambia nella persona
+ * @return array{data: array<string, mixed>}
+ */
+function ioDelCliente(array $utente = []): array
+{
+    return ['data' => [
+        'utente' => $utente + ['id' => 'uat-ada', 'nome' => 'UAT Ada Cliente', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'es', 'fuso_orario' => 'Europe/Rome', 'foto_aggiornata_il' => null],
+        'workspace' => null,
+        'ruolo' => null,
+        'notifiche_non_lette' => null,
+    ]];
+}
+
+/** I percorsi di /v1 chiamati, nell'ordine. */
+function chiamateDelCliente(): array
+{
+    return Http::recorded()->map(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH))->all();
+}
+
+it('con la sessione dell\'accesso senza workspace dà lingua e persona di io.mostra, letto col gettone dell\'accesso anche con le non lette null, le aziende e il segno (sprint 110 · T1.1)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
+    $gettoni = sessioneAMano(null);
+    backofficeDelCliente();
+
+    expect(Cornice::datiDelCliente())->toBe([
+        'lingua' => 'es',
+        'persona' => ['nome' => 'UAT Ada Cliente', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
+        'aziende' => [],
+        'aggiornati_il' => '2026-11-06T10:00:00.000000Z',
+    ]);
+    $io = Http::recorded()->first(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH) === '/v1/io')[0];
+    expect($io->hasHeader('Authorization', 'Bearer '.$gettoni['accesso']))->toBeTrue()
+        // La sessione ha preso la lingua e il nome del profilo: Sessione::aggiorna con la stessa lettura.
+        ->and(Sessione::utente()['lingua'])->toBe('es')
+        ->and(Sessione::utente()['nome'])->toBe('UAT Ada Cliente');
+});
+
+it('con un workspace nella sessione legge lo stesso col gettone dell\'accesso, e nei dati non c\'è il workspace (sprint 110 · T1.1)', function () {
+    $gettoni = sessioneAMano(['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']);
+    backofficeDelCliente();
+
+    $dati = Cornice::datiDelCliente();
+
+    expect(array_keys($dati))->toBe(['lingua', 'persona', 'aziende', 'aggiornati_il'])
+        ->and(Http::recorded()->every(fn (array $coppia) => $coppia[0]->hasHeader('Authorization', 'Bearer '.$gettoni['accesso'])))->toBeTrue();
+});
+
+it('con la foto la persona ha `foto`, l\'indirizzo della rotta della foto col `?v=` del momento e `p`; senza, la chiave non c\'è (sprint 110 · T1.2)', function (mixed $il, ?string $atteso) {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => ioDelCliente(['foto_aggiornata_il' => $il])]);
+
+    $persona = Cornice::datiDelCliente()['persona'];
+
+    $atteso === null
+        ? expect(array_key_exists('foto', $persona))->toBeFalse()
+        : expect($persona['foto'])->toBe('/cornice/foto?v='.$atteso.'&p='.FotoDellaCornice::diChi('uat-ada'));
+})->with([
+    'con la foto' => ['2026-11-04T09:30:00.000000Z', '2026-11-04T09%3A30%3A00.000000Z'],
+    'senza foto' => [null, null],
+    'vuota' => ['', null],
+]);
+
+it('le aziende sono quelle in cui la persona è membro, coi loro workspace, lette col gettone dell\'accesso; quelle di un workspace di un\'azienda che non è nell\'elenco no (sprint 110 · T1.3)', function () {
+    $gettoni = sessioneAMano(null);
+    backofficeDelCliente([
+        '/v1/io/aziende' => ['data' => [['id' => 'az-r', 'nome' => 'UAT Rossi Interior']], 'successivo' => null],
+        '/v1/io/workspace' => ['data' => [
+            ['id' => 'uat-ws-p', 'nome' => 'UAT Progetti', 'slug' => 'uat-progetti', 'ruolo' => 'proprietario', 'azienda_id' => 'az-r', 'colore' => 'citrus'],
+            ['id' => 'uat-ws-x', 'nome' => 'UAT di un altro', 'slug' => 'uat-altro', 'ruolo' => 'membro', 'azienda_id' => 'az-x'],
+        ], 'successivo' => null],
+    ]);
+
+    expect(Cornice::datiDelCliente()['aziende'])->toBe([
+        ['id' => 'az-r', 'nome' => 'UAT Rossi Interior', 'workspace' => [['id' => 'uat-ws-p', 'nome' => 'UAT Progetti', 'slug' => 'uat-progetti', 'colore' => 'citrus']], 'nuovo_workspace' => true],
+    ]);
+    foreach (Http::recorded() as [$richiesta]) {
+        expect($richiesta->hasHeader('Authorization', 'Bearer '.$gettoni['accesso']))->toBeTrue();
+    }
+});
+
+it('una riga delle aziende senza i suoi campi è un guasto, non un\'azienda (sprint 110 · T1.3)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io/aziende' => ['data' => [['id' => 'az-r']], 'successivo' => null]]);
+
+    expect(fn () => Cornice::datiDelCliente())->toThrow(BackofficeNonRisponde::class);
+});
+
+it('senza sessione dà null e non chiama il backoffice (sprint 110 · T1.4)', function () {
+    backofficeDelCliente();
+
+    expect(Cornice::datiDelCliente())->toBeNull()
+        ->and(chiamateDelCliente())->toBe([]);
+});
+
+it('col 403 accettazione_richiesta dà la persona della sessione, senza foto e senza aziende, con accettazione_richiesta (sprint 110 · T1.4)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => accettazioneRichiesta()]);
+
+    expect(Cornice::datiDelCliente())->toBe([
+        'lingua' => 'en',
+        'persona' => ['nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
+        'aziende' => [],
+        'aggiornati_il' => '2026-11-06T10:00:00.000000Z',
+        'accettazione_richiesta' => true,
+    ])->and(chiamateDelCliente())->toBe(['/v1/io']);
+});
+
+it('ogni altro errore del backoffice arriva a chi chiama com\'è (sprint 110 · T1.4)', function (mixed $risposta, string $classe) {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => $risposta]);
+
+    expect(fn () => Cornice::datiDelCliente())->toThrow($classe);
+})->with([
+    'un 503 col suo codice' => [fn () => Http::response(['codice' => 'servizio_non_disponibile', 'status' => 503], 503), ErroreApi::class],
+    'un 503 senza JSON' => [fn () => Http::response('guasto', 503), BackofficeNonRisponde::class],
+    'un 403 con un altro codice' => [fn () => accettazioneRichiesta(403, 'permesso_negato'), ErroreApi::class],
+    'una risposta senza la persona' => [fn () => Http::response(['data' => ['utente' => null]]), BackofficeNonRisponde::class],
+]);

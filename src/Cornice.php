@@ -325,6 +325,57 @@ final class Cornice
     }
 
     /**
+     * I dati della cornice di chi è solo cliente (dalla `v4.13.0`, voce #3319, da zr-home #3317): le pagine «Il mio spazio» di
+     * zr-home, con la sessione dell'accesso anche senza workspace (design zr-account--il-mio-spazio). La persona e la lingua sono
+     * quelle della sessione dopo `Sessione::aggiorna` con io.mostra, letto col gettone dell'accesso (Api::persona), che a
+     * workspace, ruolo e non lette risponde null; la foto come in `dati()`; le aziende in cui la persona è membro, coi loro
+     * workspace, come in `dati()` (la persona che è anche membro sceglie lì un suo workspace: schermata 13). Un workspace nella
+     * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente e
+     * le sue notifiche da cliente non ci sono ancora: aspettano zr-backoffice #3320 e #3323.
+     *
+     * null senza sessione, senza chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in
+     * `dati()`: la persona della sessione senza foto, nessuna azienda e `accettazione_richiesta`. Ogni altro errore arriva a chi
+     * chiama com'è, e una risposta di io.mostra senza la persona è BackofficeNonRisponde.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, aggiornati_il: string, accettazione_richiesta?: true}|null
+     */
+    public static function datiDelCliente(): ?array
+    {
+        $utente = Sessione::utente();
+
+        if ($utente === null) {
+            return null;
+        }
+
+        $segno = Segno::adesso();
+
+        try {
+            $io = Api::persona()->get('/v1/io')['data'] ?? null;
+            if (! is_array($io) || ! is_array($io['utente'] ?? null)) {
+                throw new BackofficeNonRisponde('La risposta di GET /v1/io non porta la persona.');
+            }
+            Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
+            self::ricordaLaLingua($io, $segno);
+            $letti = ['foto' => self::fotoAggiornataIl($io, $utente['id'] ?? null), 'aziende' => self::aziende()];
+        } catch (ErroreApi $errore) {
+            if (! Accettazione::richiesta($errore)) {
+                throw $errore;
+            }
+            $letti = null;
+        }
+
+        $utente = Sessione::utente() ?? $utente;
+
+        return [
+            'lingua' => $utente['lingua'],
+            'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($letti['foto'], $utente['id'] ?? null))],
+            'aziende' => $letti['aziende'] ?? [],
+            'aggiornati_il' => $segno,
+            ...($letti === null ? ['accettazione_richiesta' => true] : []),
+        ];
+    }
+
+    /**
      * La lingua della persona già aggiornata dal profilo, per il modulo che mette la lingua della pagina in un middleware,
      * prima del controller: legge io.mostra, lo dà a `Sessione::aggiorna` e risponde con la lingua della sessione, che cosa
      * vale lo decide zr-auth. Senza la riga la lingua letta dalla sessione prima di `dati()` è ancora quella dell'ingresso, e
