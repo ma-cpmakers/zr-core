@@ -807,7 +807,9 @@ risposte sono quelle della tabella, con due differenze nell'elenco: non c'è `wo
 il nome dell'azienda di cui la persona è cliente (`workspace_nome` della notifica, `null` se il backoffice non lo dà), e `ids`
 solo per una notifica che il backoffice dice da cliente (`spazio_cliente`), un oggetto vuoto per ogni altra. Senza sessione
 rispondono 401, a una pagina di un'altra persona 409 `persona_diversa`, col 403 `accettazione_richiesta` come le altre; il 403
-`gettone_senza_workspace` qui non c'è.
+`gettone_senza_workspace` qui non c'è. In una sessione col solo gettone di un workspace e senza accesso, quella che apre il
+ricevitore di un modulo, rispondono invece 403 `{errore: "gettone_senza_accesso"}` senza chiamare il backoffice: lì zr-auth
+manderebbe il gettone del workspace, e l'elenco e le letture sarebbero quelli del workspace.
 
 Dalla `v4.1.0` c'è una quinta rotta, `GET /cornice/foto`: la foto della persona della sessione, letta da
 `io.foto.file.mostra` col gettone della persona, per l'`<img>` del suo avatar. L'indirizzo lo danno i dati della cornice
@@ -2750,15 +2752,19 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   la prop che non mostra la ricerca (richiesta 201 al design system). Dalla `v4.18.0` la cornice passa `search={false}`
   all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta fino alla prossima
   versione maggiore perché l'import non si rompa, e il modulo lo può già togliere.
-- **La campanella del cliente** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è `non_lette` dei
-  dati, «99+» oltre 99 e nessuno a 0. All'apertura la cornice chiede `GET /cornice/cliente/notifiche` (vedi «Le rotte della
-  cornice») e mostra le righe con le frasi della `Cornice` (i quattro tipi da cliente di Bookings, vedi
-  «La cornice»), l'azienda sotto il titolo quando il backoffice la dà, e l'ora. Il clic su una riga la segna letta e apre la
-  prenotazione in «Il mio spazio» di zr-home, `https://app.zeiras.com/spazio/prenotazioni/<id>`, con `naviga`; una notifica che
-  il backoffice non dice da cliente si segna letta e non apre niente. «Segna tutte come lette» segna lette quelle nate fino alla
-  più recente caricata. Senza notifiche resta il testo del cliente («Qui arrivano gli avvisi delle tue aziende: appuntamenti,
-  fatture, risposte.»); coi dati ridotti (`accettazione_richiesta`) nessun numero, e la campanella non si apre. Righe e frasi le
-  compone il pezzo della campanella, chiesto solo quando arrivano notifiche: l'app che prende la `Cornice` pesa come prima.
+- **La campanella del cliente** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è
+  `non_lette` dei dati, «99+» oltre 99 e nessuno a 0. All'apertura la cornice chiede `GET /cornice/cliente/notifiche` (vedi «Le
+  rotte della cornice») e mostra le righe con le frasi della `Cornice` (i quattro tipi da cliente di Bookings, vedi «La
+  cornice»); sotto il titolo il servizio, quando non è nel titolo, e l'azienda, quando il backoffice la dà; e l'ora. Il clic su
+  una riga la segna letta e apre la prenotazione in «Il mio spazio» di zr-home,
+  `https://app.zeiras.com/spazio/prenotazioni/<id>`, con `naviga`; una notifica che il backoffice non dice da cliente si segna
+  letta e non apre niente. In assistenza la lettura non si segna (403 `azione_non_consentita_in_assistenza`) e la riga apre lo
+  stesso, come nella `Cornice`; il numero scende solo per una notifica che i dati contavano, non per una nata dopo la loro
+  lettura. «Segna tutte come lette» segna lette quelle nate fino alla più recente caricata, una volta sola anche con due clic.
+  Senza notifiche resta il testo del cliente («Qui arrivano gli avvisi delle tue aziende: appuntamenti, fatture, risposte.»);
+  coi dati ridotti (`accettazione_richiesta`) nessun numero, e il pannello si apre vuoto, senza chiamare niente. Righe e frasi
+  le compone il pezzo della campanella, chiesto solo quando arrivano notifiche: il JS d'ingresso dell'app che prende la
+  `Cornice` pesa come prima, e il pezzo della campanella, che chiede anche lei, cresce di 137 byte.
 - **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), e il
   nome dell'azienda di una notifica con zr-backoffice #3399 (`workspace_nome`): fino ad allora la riga esce senza. Le notifiche
   delle fatture e delle risposte del design non ci sono, perché il backoffice non ha quei tipi.
@@ -2767,7 +2773,7 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   la `Cornice` pesa come prima. Il resto — «Salta al contenuto», i rimedi di tastiera — è quello della `Cornice`.
 
 La pagina di prova è `cliente.html` (`?lingua=`, `?aziende=1` per le aziende, `?nuovo=1` per «Crea il tuo workspace», `?foto=1`;
-dalla `v4.23.0` con quattro notifiche da cliente, e `?notifiche=0` senza),
+dalla `v4.23.0` con tre notifiche da cliente, e `?notifiche=0` senza),
 e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le righe della ricerca; dalla `v4.13.1` CL.4, campanella
 e profilo a destra a 1280 e a 390 px). Prima del tag zr-core lo
 lancia su `cliente.html` in italiano, inglese e spagnolo, e su `cliente.html?aziende=1&nuovo=1`. Nella `v4.13.0` lì una riga è ❌,

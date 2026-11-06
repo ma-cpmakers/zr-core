@@ -149,7 +149,7 @@ final class NotificheDellaCornice
      */
     public function elencoDelCliente(): JsonResponse
     {
-        return self::elencoPer(true);
+        return self::senzaAccesso() ?? self::elencoPer(true);
     }
 
     /** L'elenco della cornice (`elenco()`) o di quella del cliente (`elencoDelCliente()`): cambiano il gettone e ciò che si aggiunge. */
@@ -187,6 +187,18 @@ final class NotificheDellaCornice
             ...($delCliente ? [] : ['workspace' => $workspace]),
             'persona' => $persona,
         ]);
+    }
+
+    /**
+     * Le rotte del cliente leggono col gettone dell'accesso, e `Api::persona()` di zr-auth, quando quel gettone non c'è, manda
+     * quello del workspace. In una sessione nata dal ricevitore di un modulo (`Sessione::entra`: un workspace e nessun accesso)
+     * l'elenco del cliente sarebbe quello del workspace, e «Segna tutte come lette» segnerebbe lette le sue notifiche: lì le
+     * rotte del cliente rispondono 403 `gettone_senza_accesso`, senza chiamare il backoffice (revisione dello sprint 116, R1).
+     * La sessione ristretta di un cliente (`Sessione::entraCliente`) non ha un workspace, e passa.
+     */
+    private static function senzaAccesso(): ?JsonResponse
+    {
+        return Sessione::workspace() !== null && Sessione::accesso() === null ? new JsonResponse(['errore' => 'gettone_senza_accesso'], 403) : null;
     }
 
     /**
@@ -260,7 +272,7 @@ final class NotificheDellaCornice
      */
     public function letturaDelCliente(Request $richiesta, string $notifica): JsonResponse
     {
-        return self::letturaPer($richiesta, $notifica, true);
+        return self::senzaAccesso() ?? self::letturaPer($richiesta, $notifica, true);
     }
 
     private static function letturaPer(Request $richiesta, string $notifica, bool $delCliente): JsonResponse
@@ -325,7 +337,7 @@ final class NotificheDellaCornice
      */
     public function lettureDelCliente(Request $richiesta): JsonResponse
     {
-        return self::lettureFinoA($richiesta, true);
+        return self::senzaAccesso() ?? self::lettureFinoA($richiesta, true);
     }
 
     private static function lettureFinoA(Request $richiesta, bool $delCliente): JsonResponse

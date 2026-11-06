@@ -148,44 +148,70 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
             chiediLaCampanella().then((pezzo) => pezzo.caricaFrasi(lingua)).then(() => setNotifiche((prima) => ({ ...prima })), () => setNotifiche({ stato: 'error', elenco: [] }));
         }
     }, [senzaFrasi, lingua]);
-    // Una riga: il titolo delle frasi (il servizio e la data, quando ci sono), sotto l'azienda — o, senza, ciò che le frasi mettono
-    // sotto —, l'ora, l'icona e il tono del prodotto da cui viene; non il suo nome, che è di Zeiras e non dell'azienda.
+    // Una riga: il titolo delle frasi (il servizio e la data, quando ci sono), sotto ciò che le frasi mettono sotto (il servizio, se
+    // non è nel titolo) e l'azienda, l'ora, l'icona e il tono del prodotto da cui viene; non il suo nome, che è di Zeiras e non dell'azienda.
     const adesso = new Date();
     const righe: ShellNotification[] = frasi
         ? notifiche.elenco.map((notifica) => {
               const riga = campanella!.rigaConLeFrasi(frasi, notifica, lingua);
               const delProdotto = prodottoDelRegistro(notifica.app);
 
-              return senzaUndefined({ id: notifica.id, title: riga.titolo, text: nomePulito(notifica.azienda) ?? riga.sotto, time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso), icon: delProdotto?.icona, tone: delProdotto?.tono, unread: !notifica.letta });
+              return senzaUndefined({ id: notifica.id, title: riga.titolo, text: [riga.sotto, nomePulito(notifica.azienda)].filter(Boolean).join(' · ') || undefined, time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso), icon: delProdotto?.icona, tone: delProdotto?.tono, unread: !notifica.letta });
           })
         : [];
     // Il clic su una riga la segna letta, letta o no, e alla lettura riuscita apre la sua pagina in «Il mio spazio», se ne ha una
     // (`destinazioneDellaNotificaDelCliente`: solo con l'id che la parte server dà a una notifica da cliente). Il pezzo c'è: le righe
-    // si mostrano con le sue frasi.
+    // si mostrano con le sue frasi. In assistenza la parte server non la segna, col 403 `azione_non_consentita_in_assistenza`: si
+    // apre lo stesso, come nella `Cornice`. Il numero scende solo per una notifica che i dati contavano: una nata dopo la loro
+    // lettura non c'era (revisione dello sprint 116, R2 e R3).
     const apri = ({ id }: ShellNotification) => {
         const notifica = notifiche.elenco.find((una) => una.id === id)!;
-        campanella!.segnaLetta(id, persona, DEL_CLIENTE).then(() => {
-            if (!notifica.letta) {
-                setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((una) => (una.id === id ? { ...una, letta: true } : una)) }));
-                setSceso({ di: diQuestiDati, n: Math.max(0, nonLette - 1) });
+        const risorsa = () => {
+            const indirizzo = campanella!.destinazioneDellaNotificaDelCliente(notifica);
+            if (indirizzo) {
+                naviga(indirizzo);
             }
-            const risorsa = campanella!.destinazioneDellaNotificaDelCliente(notifica);
-            if (risorsa) {
-                naviga(risorsa);
-            }
-        }, () => undefined);
+        };
+        const contata = !(Date.parse(notifica.creata_il) > Date.parse(dati.aggiornati_il ?? ''));
+        campanella!.segnaLetta(id, persona, DEL_CLIENTE).then(
+            () => {
+                if (!notifica.letta) {
+                    setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((una) => (una.id === id ? { ...una, letta: true } : una)) }));
+                    if (contata) {
+                        setSceso((prima) => ({ di: diQuestiDati, n: Math.max(0, (prima?.di === diQuestiDati ? prima.n : (dati.non_lette ?? 0)) - 1) }));
+                    }
+                }
+                risorsa();
+            },
+            (errore) => void (errore?.errore === 'azione_non_consentita_in_assistenza' && risorsa()),
+        );
     };
     // «Segna tutte come lette» fino alla più recente delle caricate: se la parte server dice che ne restano, il numero resta e
-    // l'elenco si chiede di nuovo; altrimenti il numero va a 0. Una richiesta che non riesce non cambia niente.
+    // l'elenco si chiede di nuovo; altrimenti si segnano lette le notifiche fino a lì, e il numero è quello delle non lette più
+    // recenti, arrivate nell'elenco mentre la richiesta era in volo. Un secondo clic in volo non manda niente, e una richiesta che
+    // non riesce non cambia niente (revisione dello sprint 116, R4).
     const finoA = piuRecente(notifiche.elenco);
-    const segnaTutte = () =>
-        void campanella!.segnaLetteFinoA(finoA!, undefined, persona, DEL_CLIENTE).then(({ altre }) => {
-            if (altre) {
-                return carica();
-            }
-            setSceso({ di: diQuestiDati, n: 0 });
-            setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((notifica) => ({ ...notifica, letta: true })) }));
-        }, () => undefined);
+    const elencoOra = useRef(notifiche.elenco);
+    elencoOra.current = notifiche.elenco;
+    const segnando = useRef(false);
+    const segnaTutte = () => {
+        if (segnando.current) {
+            return;
+        }
+        segnando.current = true;
+        const fino = finoA!;
+        const primaDi = (una: NotificaDelCliente) => !(Date.parse(una.creata_il) > Date.parse(fino));
+        void campanella!
+            .segnaLetteFinoA(fino, undefined, persona, DEL_CLIENTE)
+            .then(({ altre }) => {
+                if (altre) {
+                    return carica();
+                }
+                setSceso({ di: diQuestiDati, n: elencoOra.current.filter((una) => !una.letta && !primaDi(una)).length });
+                setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((una) => (primaDi(una) ? { ...una, letta: true } : una)) }));
+            }, () => undefined)
+            .finally(() => (segnando.current = false));
+    };
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi del cliente, come per lo staff.
     const dello = testiDelCliente(linguaPronta(lingua) ? lingua : DELL_INGRESSO);
     const account = (pagina: keyof typeof pagineDiApp) => () => naviga(dashboard.indirizzo + pagineDiApp[pagina]);

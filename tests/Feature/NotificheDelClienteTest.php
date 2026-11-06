@@ -5,7 +5,9 @@ use Illuminate\Http\Request as RichiestaDelBrowser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Zeiras\Auth\Persona;
+use Zeiras\Auth\Sessione;
 use Zeiras\Core\Http\NotificheDellaCornice;
 
 // Sprint 116 · T1 (voce #3398, Decisione 22367 di zr-pm). Le notifiche da cliente per la cornice di chi è solo cliente
@@ -280,6 +282,28 @@ it('le tre rotte del cliente hanno la guardia di zr-auth e StessaPersona: senza 
     $senza = senzaGettone($this->withoutHeader('Persona')->json($metodo, $indirizzo, $corpo));
     expect($senza->getStatusCode())->toBe(422)
         ->and($senza->getContent())->toBe('{"errore":"persona_mancante","persona":""}');
+    Http::assertNothingSent();
+})->with([
+    'l\'elenco' => ['GET', 'cornice/cliente/notifiche', []],
+    'la lettura di una' => ['PATCH', 'cornice/cliente/notifiche/uat-n1/lettura', ['letta' => true]],
+    'segna tutte' => ['POST', 'cornice/cliente/notifiche/letture', ['fino_a' => '2026-11-06T09:00:00.123Z']],
+]);
+
+// Revisione dello sprint 116, R1: `Api::persona()` di zr-auth, senza il gettone dell'accesso, manda quello del workspace. In una
+// sessione nata dal ricevitore di un modulo (`Sessione::entra`, nessun accesso) le rotte del cliente leggerebbero e segnerebbero le
+// notifiche del workspace: lì rispondono 403 `gettone_senza_accesso` e non chiamano il backoffice.
+it('in una sessione col solo gettone del workspace, nata dal ricevitore, le tre rotte del cliente rispondono 403 `gettone_senza_accesso` senza chiamare il backoffice (sprint 116, revisione R1)', function (string $metodo, string $indirizzo, array $corpo) {
+    Http::fake();
+    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    Sessione::entra(['gettone' => 'zr_'.Str::random(48), 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $utente, 'workspace' => WORKSPACE_DEL_MEMBRO, 'ruolo' => 'membro']);
+    $this->withHeader('Persona', 'uat-ada%40example.com');
+    Persona::impronta() !== null ? $this->withHeader(Persona::INTESTAZIONE, Persona::impronta()) : $this->withoutHeader(Persona::INTESTAZIONE);
+
+    $risposta = senzaGettone($this->json($metodo, $indirizzo, $corpo));
+
+    expect($risposta->getStatusCode())->toBe(403)
+        ->and($risposta->json())->toBe(['errore' => 'gettone_senza_accesso'])
+        ->and(Sessione::accesso())->toBeNull();
     Http::assertNothingSent();
 })->with([
     'l\'elenco' => ['GET', 'cornice/cliente/notifiche', []],
