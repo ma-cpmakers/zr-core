@@ -95,6 +95,15 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
     useLayoutEffect(() => {
         void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
     }, [t.mainContent, t.searchResults]);
+    // Ctrl/Cmd+K non apre la ricerca, che qui non si vede: l'`AppShell` la aprirebbe nascosta, e al telefono i rimedi toglierebbero
+    // campanella e profilo finché resta aperta. Si ferma prima che arrivi al documento, dove l'`AppShell` l'ascolta; il tasto resta
+    // del browser. Smontata la cornice, torna com'era.
+    useLayoutEffect(() => {
+        const ferma = (tasto: KeyboardEvent) => (tasto.ctrlKey || tasto.metaKey) && !tasto.altKey && /^k$/i.test(tasto.key) && tasto.stopPropagation();
+        addEventListener('keydown', ferma, true);
+
+        return () => removeEventListener('keydown', ferma, true);
+    }, []);
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi del cliente, come per lo staff.
     const dello = testiDelCliente(linguaPronta(lingua) ? lingua : DELL_INGRESSO);
     const account = (pagina: keyof typeof pagineDiApp) => () => naviga(dashboard.indirizzo + pagineDiApp[pagina]);

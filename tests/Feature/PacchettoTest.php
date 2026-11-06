@@ -5166,10 +5166,10 @@ it('la guida dice a un modulo che nasce di partire dall\'ingresso per le app, co
     'il test di allineamento' => ['lo sha256 di `bundle.js` resta il segno che il design system è cambiato'],
 ]);
 
-it('le pagine di prova sono quattro, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff)', function () {
+it('le pagine di prova sono cinque, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff; dalla v4.13.0 cliente.html, la cornice del cliente: sprint 110 · T3.1)', function () {
     $costruzione = (string) file_get_contents(__DIR__.'/../../vite.demo.config.ts');
 
-    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html']"))->toBe(1)
+    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html', 'cliente.html']"))->toBe(1)
         ->and(scritteNellaPaginaDiProva('app.html', ['<script type="module" src="./app.tsx"></script>']))->toBe(['<script type="module" src="./app.tsx"></script>' => 1])
         ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
         ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'v
 import * as dallIngresso from './index';
 import * as dallIngressoDelleApp from './app';
 import { CorniceDelCliente, type CorniceDelClienteProps, type DatiDelCliente } from './cliente';
+import { CorniceDelloStaff } from './staff';
 import { testi } from './lingue';
 import { nelWorkspace, registro } from './registro';
 import * as rimedi from './rimedi';
@@ -190,6 +191,17 @@ describe('la cornice del cliente', () => {
             campo.dispatchEvent(new Event('input', { bubbles: true }));
         });
         expect(uno('.zr-search-panel [role="status"] .zr-visually-hidden')).toBeNull();
+    });
+
+    it('T2.4 Ctrl+K non apre la ricerca nascosta, che al telefono nasconderebbe campanella e profilo; smontata la cornice del cliente, Ctrl+K torna a chi c\'è', async () => {
+        const ctrlK = () => act(async () => void document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true })));
+        await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci} />);
+        await ctrlK();
+        expect(uno('.zr-search.is-open')).toBeNull();
+
+        await mostra(<CorniceDelloStaff lingua="it" persona={persona} onLogout={esci} />);
+        await ctrlK();
+        expect(uno('.zr-search.is-open')).not.toBeNull();
     });
 
     it('T2.4 il CSS del cliente nasconde il campo della ricerca solo dentro la cornice del cliente', () => {

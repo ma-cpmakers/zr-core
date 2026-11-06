@@ -1400,7 +1400,10 @@ it('i testi della cornice del cliente stanno in resources/lingue/cliente, un fil
     expect(array_keys($cliente))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
         ->and($chiavi)->toContain('personal', 'personalGroup', 'firstWorkspace', 'notificationsEmptyText')
         ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $cliente))->toBe(array_fill_keys(array_keys($cliente), $chiavi))
-        ->and(array_filter(array_map(fn (array $delCodice): array => array_values(array_intersect($chiavi, array_keys($delCodice))), fileDelleLingue(''))))->toBe([]);
+        // Nessun testo del cliente nelle lingue della cornice, che stanno nell'ingresso di ogni app; `notificationsEmptyText` è una
+        // chiave dell'`AppShell` che il cliente dice a modo suo, come lo staff.
+        ->and(array_filter(array_map(fn (array $delCodice): array => array_values(array_intersect(['personal', 'personalGroup', 'firstWorkspace'], array_keys($delCodice))), fileDelleLingue(''))))->toBe([])
+        ->and(array_filter(array_map(fn (string $codice): array => array_values(array_intersect(array_values($cliente[$codice]), array_values(array_filter(fileDelleLingue('')[$codice], 'is_string')))), array_combine(array_keys($cliente), array_keys($cliente)))))->toBe([]);
 });
 
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {

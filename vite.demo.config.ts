@@ -22,9 +22,9 @@ const favicon = (): Plugin => ({
 });
 
 // Le pagine di prova della UAT (resources/demo): `npm run demo` le costruisce in dist/demo, `npx vite preview --config
-// vite.demo.config.ts` le serve. Quattro ingressi: index.html (la `Cornice` montata dalla pagina, presa dall'ingresso di sempre),
+// vite.demo.config.ts` le serve. Cinque ingressi: index.html (la `Cornice` montata dalla pagina, presa dall'ingresso di sempre),
 // app.html (la stessa pagina, con la `Cornice` dell'ingresso per le app), layout.html (il layout della cornice sotto Inertia) e,
-// dalla `v3.16.0`, staff.html (la cornice dello staff).
+// dalla `v3.16.0`, staff.html (la cornice dello staff) e, dalla `v4.13.0`, cliente.html (la cornice del cliente).
 // Non entrano nel pacchetto. Con `ZR_PEZZI_ALTROVE=1 npm run demo` il pezzo della campanella va in una cartella dentro quella del
 // JS d'ingresso (`assets/pezzi/`), come lo può mettere un frontend: è la build con cui si prova «Riprova» (README, «Le notifiche»).
 // Con `ZR_INGRESSO_CON_CODA=1 npm run demo` la build ha la sola app.html, così la `Cornice` sta nel JS d'ingresso, e la pagina lo
@@ -45,7 +45,7 @@ export default defineConfig({
         // Il manifest, come quello di un modulo: `scripts/servi-demo.mjs` ci trova i file delle lingue da precaricare (dalla `v4.4.0`).
         manifest: true,
         rolldownOptions: {
-            input: ['index.html', 'app.html', 'layout.html', 'staff.html'].filter(solaLApp).map((pagina) => delRepo(`resources/demo/${pagina}`)),
+            input: ['index.html', 'app.html', 'layout.html', 'staff.html', 'cliente.html'].filter(solaLApp).map((pagina) => delRepo(`resources/demo/${pagina}`)),
             output: process.env.ZR_PEZZI_ALTROVE
                 ? { chunkFileNames: (pezzo) => `assets/${pezzo.name === 'campanella' ? 'pezzi/' : ''}[name]-[hash].js` }
                 : {},
