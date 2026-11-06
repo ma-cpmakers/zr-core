@@ -35,6 +35,16 @@ Route::middleware(['web', StessaPersona::class, ConWorkspace::class])->withoutMi
     Route::post('ricerca', [RicercaDellaCornice::class, 'cerca']);
 });
 
+// Dalla v4.24.0 (#3398) le notifiche da cliente, per la cornice di chi è solo cliente (`CorniceDelCliente`): le stesse tre rotte
+// sotto `cornice/cliente/`, con StessaPersona e la guardia di zr-auth come le altre, ma fuori da ConWorkspace. La parte server le
+// gira al backoffice col gettone dell'accesso, anche senza un workspace nella sessione, e quello di un workspace non lo usa mai.
+Route::middleware(['web', StessaPersona::class])->withoutMiddleware(SoloDallaPersona::class)->prefix('cornice/cliente')->group(function (): void {
+    Route::get('notifiche', [NotificheDellaCornice::class, 'elencoDelCliente']);
+    Route::post('notifiche/letture', [NotificheDellaCornice::class, 'lettureDelCliente'])
+        ->block(NotificheDellaCornice::tenutaDelBlocco(), Sessione::BLOCCO_ATTESA);
+    Route::patch('notifiche/{notifica}/lettura', [NotificheDellaCornice::class, 'letturaDelCliente'])->where('notifica', NotificheDellaCornice::ID);
+});
+
 // Dalla v4.1.0 la foto della persona: la chiede un `<img>`, che non manda le intestazioni della persona della pagina, e per
 // questo sta fuori da StessaPersona. Risponde solo alla persona della sessione, con la sua foto, letta col gettone della
 // persona: anche senza un workspace, e fuori da ConWorkspace (FotoDellaCornice). La guardia di zr-auth resta; da

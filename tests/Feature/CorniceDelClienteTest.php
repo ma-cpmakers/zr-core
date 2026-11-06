@@ -74,6 +74,7 @@ it('con la sessione dell\'accesso senza workspace dà lingua e persona di io.mos
         'lingua' => 'es',
         'persona' => ['nome' => 'UAT Ada Cliente', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'aziende' => [],
+        'non_lette' => 0,
         'aggiornati_il' => '2026-11-06T10:00:00.000000Z',
     ]);
     $io = Http::recorded()->first(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH) === '/v1/io')[0];
@@ -89,7 +90,7 @@ it('con un workspace nella sessione legge lo stesso col gettone dell\'accesso, e
 
     $dati = Cornice::datiDelCliente();
 
-    expect(array_keys($dati))->toBe(['lingua', 'persona', 'aziende', 'aggiornati_il'])
+    expect(array_keys($dati))->toBe(['lingua', 'persona', 'aziende', 'non_lette', 'aggiornati_il'])
         ->and(Http::recorded()->every(fn (array $coppia) => $coppia[0]->hasHeader('Authorization', 'Bearer '.$gettoni['accesso'])))->toBeTrue();
 });
 
@@ -139,6 +140,34 @@ it('senza sessione dà null e non chiama il backoffice (sprint 110 · T1.4)', fu
     expect(Cornice::datiDelCliente())->toBeNull()
         ->and(chiamateDelCliente())->toBe([]);
 });
+
+// Sprint 116 · T1.4 (voce #3398): dal #3323 io.mostra col gettone dell'accesso dà `notifiche_non_lette`, le notifiche da cliente
+// non lette. Nei dati del cliente è `non_lette`, dalla stessa lettura: nessuna chiamata in più.
+
+it('i dati del cliente portano `non_lette`, `notifiche_non_lette` di io.mostra letto col gettone dell\'accesso, con una sola GET /v1/io (sprint 116 · T1.4)', function (?array $workspace) {
+    $gettoni = sessioneAMano($workspace);
+    backofficeDelCliente(['/v1/io' => ['data' => ['notifiche_non_lette' => 3] + ioDelCliente()['data']]]);
+
+    $dati = Cornice::datiDelCliente();
+
+    expect($dati['non_lette'] ?? null)->toBe(3)
+        ->and(array_count_values(chiamateDelCliente())['/v1/io'])->toBe(1)
+        ->and(Http::recorded()->every(fn (array $coppia) => $coppia[0]->hasHeader('Authorization', 'Bearer '.$gettoni['accesso'])))->toBeTrue();
+})->with(['senza workspace' => [null], 'con un workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']]]);
+
+it('`non_lette` è 0 quando io.mostra non dà un intero da 0 in su: null, senza, un numero negativo, un testo, un decimale (sprint 116 · T1.4)', function (array $io) {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => ['data' => $io]]);
+
+    expect(Cornice::datiDelCliente()['non_lette'] ?? null)->toBe(0);
+})->with([
+    // Funzioni, chiamate quando il caso gira: io.mostra ha la data di adesso, che fuori dal caso non c'è.
+    'null' => [fn () => ioDelCliente()['data']],
+    'senza' => [fn () => array_diff_key(ioDelCliente()['data'], ['notifiche_non_lette' => true])],
+    'meno uno' => [fn () => ['notifiche_non_lette' => -1] + ioDelCliente()['data']],
+    'il testo "3"' => [fn () => ['notifiche_non_lette' => '3'] + ioDelCliente()['data']],
+    'un decimale' => [fn () => ['notifiche_non_lette' => 2.5] + ioDelCliente()['data']],
+]);
 
 it('col 403 accettazione_richiesta dà la persona della sessione, senza foto e senza aziende, con accettazione_richiesta (sprint 110 · T1.4)', function () {
     Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
@@ -276,6 +305,7 @@ it('datiDelCliente() con la lingua della pagina dà quella lingua, e il resto co
         'lingua' => 'en',
         'persona' => ['nome' => 'UAT Ada Cliente', 'email' => 'uat-ada@example.com', 'impronta' => improntaDi('uat-ada')],
         'aziende' => [],
+        'non_lette' => 0,
         'aggiornati_il' => '2026-11-06T10:00:00.000000Z',
     ])->and(Sessione::utente()['lingua'])->toBe('es')
         ->and(Cornice::datiDelCliente()['lingua'])->toBe('es');

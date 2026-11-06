@@ -349,8 +349,10 @@ final class Cornice
      * quelle della sessione dopo `Sessione::aggiorna` con io.mostra, letto col gettone dell'accesso (Api::persona), che a
      * workspace, ruolo e non lette risponde null; la foto come in `dati()`; le aziende in cui la persona è membro, coi loro
      * workspace, come in `dati()` (la persona che è anche membro sceglie lì un suo workspace: schermata 13). Un workspace nella
-     * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente e
-     * le sue notifiche da cliente non ci sono ancora: aspettano zr-backoffice #3320 e #3323. Dalla `v4.14.0` (#3335), dopo una
+     * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente non
+     * ci sono ancora: aspettano zr-backoffice #3320. Dalla `v4.24.0` (#3398) `non_lette` è il numero delle sue notifiche da cliente
+     * non lette, `notifiche_non_lette` della stessa lettura di io.mostra: un intero da 0 in su, e 0 quando il backoffice dà null,
+     * non lo dà o dà altro (prima del #3323 a quel gettone dava null). Dalla `v4.14.0` (#3335), dopo una
      * `linguaDelCliente()` nella stessa richiesta usa la sua lettura di io.mostra, una volta, e i dati hanno il suo segno.
      *
      * `$lingua` è la lingua della pagina (dalla `v4.15.0`, voce #3341, Decisione 21833 di zr-pm): con il prefisso di lingua
@@ -358,10 +360,10 @@ final class Cornice
      * o se non ha la forma di una lingua (vedi `inForma()`), è quella del profilo. La sessione non la prende: vale per la pagina.
      *
      * null senza sessione, senza chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in
-     * `dati()`: la persona della sessione senza foto, nessuna azienda e `accettazione_richiesta`. Ogni altro errore arriva a chi
+     * `dati()`: la persona della sessione senza foto, nessuna azienda, senza `non_lette` e con `accettazione_richiesta`. Ogni altro errore arriva a chi
      * chiama com'è, e una risposta di io.mostra senza la persona è BackofficeNonRisponde.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette?: int<0, max>, aggiornati_il: string, accettazione_richiesta?: true}|null
      */
     public static function datiDelCliente(?string $lingua = null): ?array
     {
@@ -378,7 +380,7 @@ final class Cornice
             if ($lettura['esito'] !== true) {
                 throw $lettura['esito'];
             }
-            $letti = ['foto' => $lettura['foto'], 'aziende' => self::aziende()];
+            $letti = ['foto' => $lettura['foto'], 'aziende' => self::aziende(), 'non_lette' => $lettura['non_lette']];
         } catch (ErroreApi $errore) {
             if (! Accettazione::richiesta($errore)) {
                 throw $errore;
@@ -392,6 +394,7 @@ final class Cornice
             'lingua' => self::inForma($lingua) ?? $utente['lingua'],
             'persona' => ['nome' => $utente['nome'], 'email' => $utente['email'], 'impronta' => Persona::impronta(), ...($letti === null ? [] : self::foto($letti['foto'], $utente['id'] ?? null))],
             'aziende' => $letti['aziende'] ?? [],
+            ...($letti === null ? [] : ['non_lette' => $letti['non_lette']]),
             'aggiornati_il' => $segno,
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
@@ -640,7 +643,8 @@ final class Cornice
 
     /**
      * La lettura di io.mostra del cliente di questa richiesta, una sola per `linguaDelCliente()` e `datiDelCliente()` (dalla
-     * `v4.14.0`): come `lettura()`, ma col gettone dell'accesso e senza le non lette, che a quel gettone il backoffice dà null; e
+     * `v4.14.0`): come `lettura()`, ma col gettone dell'accesso, e le non lette sono quelle da cliente (dalla `v4.24.0`; prima del
+     * #3323 a quel gettone il backoffice le dava null, e sono 0 anche per un valore che non è un intero da 0 in su); e
      * senza la richiesta rimandata, che la cornice del cliente non fa. Prende il segno, legge, dà la risposta a `Sessione::aggiorna`
      * e tiene fra gli attributi della richiesta di chi è (l'id della persona), il segno, l'esito (`true`, o l'errore), se una
      * `datiDelCliente()` l'ha già usata e il momento della foto. `linguaDelCliente()` usa la lettura che c'è, sempre;
@@ -649,7 +653,7 @@ final class Cornice
      * GettoneRifiutato non si prende, e non si tiene niente.
      *
      * @param  array<string, mixed>  $utente  la persona della sessione
-     * @return array{di: mixed, segno: string, esito: true|BackofficeNonRisponde|ErroreApi, nei_dati: bool, foto: string|null}
+     * @return array{di: mixed, segno: string, esito: true|BackofficeNonRisponde|ErroreApi, nei_dati: bool, foto: string|null, non_lette: int<0, max>}
      */
     private static function letturaDelCliente(array $utente, bool $perIDati): array
     {
@@ -676,15 +680,17 @@ final class Cornice
             self::ricordaLaLingua($io, $segno);
             $esito = true;
             $foto = self::fotoAggiornataIl($io, $di);
+            $nonLette = is_int($io['notifiche_non_lette'] ?? null) && $io['notifiche_non_lette'] >= 0 ? $io['notifiche_non_lette'] : 0;
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
             $foto = null;
+            $nonLette = 0;
             if (! $perIDati && ! Accettazione::richiesta($errore)) {
                 self::avvisa($errore);
             }
         }
 
-        $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati, 'foto' => $foto];
+        $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati, 'foto' => $foto, 'non_lette' => $nonLette];
         request()->attributes->set(self::LETTURA_DEL_CLIENTE, $lettura);
 
         return $lettura;

@@ -556,8 +556,8 @@ it('le rotte della cornice stanno nel gruppo `web` del frontend, che porta la se
         array_filter($dellaCornice(), fn ($rotta) => ! in_array('web', $rotta->gatherMiddleware(), true)),
     ));
 
-    // Cinque dalla `v4.1.0`: la foto (sprint 99 · T1).
-    expect($dellaCornice())->toHaveCount(5)
+    // Cinque dalla `v4.1.0`: la foto (sprint 99 · T1). Otto dalla `v4.24.0`: le tre del cliente (sprint 116 · T1).
+    expect($dellaCornice())->toHaveCount(8)
         ->and($fuoriDalWeb())->toBe([]);
 
     // Il controllo nei due versi: nel gruppo `api` una rotta ha la guardia della sessione ma non il CSRF, e qui si vede.
@@ -1256,17 +1256,17 @@ it('se il lock della sessione è di un\'altra richiesta per più dell\'attesa di
     'un altro workspace: senza il blocco sarebbe un 409' => [['fino_a' => '2026-10-08T10:00:00.123Z', 'workspace' => 'uat-vendite']],
 ]);
 
-it('delle rotte della cornice solo POST /cornice/notifiche/letture tiene il blocco della sessione: l\'elenco, la lettura di una notifica e la ricerca no, o due richieste della stessa persona si metterebbero in fila (sprint 16 · T4.4)', function () {
+it('delle rotte della cornice solo POST /cornice/notifiche/letture tiene il blocco della sessione, e dalla `v4.24.0` la sua del cliente: l\'elenco, la lettura di una notifica e la ricerca no, o due richieste della stessa persona si metterebbero in fila (sprint 16 · T4.4; sprint 116 · T1.2)', function () {
     $colBlocco = fn () => array_values(array_map(
         fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri(),
         array_filter(Route::getRoutes()->getRoutes(), fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/') && $rotta->locksFor() !== null),
     ));
 
-    expect($colBlocco())->toBe(['POST cornice/notifiche/letture']);
+    expect($colBlocco())->toBe(['POST cornice/notifiche/letture', 'POST cornice/cliente/notifiche/letture']);
 
     // Il controllo nei due versi: una GET della cornice col blocco la nomina.
     Route::middleware('web')->get('cornice/uat-in-fila', fn () => 'in fila')->block(5, 1);
-    expect($colBlocco())->toBe(['POST cornice/notifiche/letture', 'GET cornice/uat-in-fila']);
+    expect($colBlocco())->toBe(['POST cornice/notifiche/letture', 'POST cornice/cliente/notifiche/letture', 'GET cornice/uat-in-fila']);
 });
 
 // Sprint 20 · T1 (voce #1674): chi ha fatto, su che cosa, e per chi. Dal #1670 di zr-backoffice ogni notifica di /v1 porta
@@ -2016,7 +2016,7 @@ it('la parte server delle notifiche non ha agganci per i test nel codice che va 
     sort($pubblici);
     $sorgente = (string) file_get_contents((string) $classe->getFileName());
 
-    expect($pubblici)->toBe(['elenco', 'idsDellaNotifica', 'lettura', 'letture', 'tenutaDelBlocco'])
+    expect($pubblici)->toBe(['elenco', 'elencoDelCliente', 'idsDellaNotifica', 'lettura', 'letturaDelCliente', 'letture', 'lettureDelCliente', 'tenutaDelBlocco'])
         ->and($classe->hasProperty('fileDelRegistro'))->toBe(false)
         ->and(str_contains($sorgente, '@internal'))->toBe(false)
         // Il registro è quello del pacchetto, e lo legge `Registro`: qui non c'è una lettura di file, né una copia tenuta, e le
