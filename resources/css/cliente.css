@@ -9,3 +9,9 @@
 .zr-cornice-del-cliente .zr-top .zr-search {
     display: none;
 }
+
+/* Senza il campo, che nella barra in alto prende lo spazio di mezzo, campanella e profilo scivolerebbero a sinistra, accanto alla
+ * barra laterale: restano a destra, come nella `Cornice` (dalla `v4.13.1`). */
+.zr-cornice-del-cliente .zr-top-actions {
+    margin-left: auto;
+}

@@ -229,7 +229,8 @@ describe('la cornice del cliente', () => {
         const foglio = readFileSync(resolve(process.cwd(), 'resources/css/cliente.css'), 'utf8');
         const regole = [...foglio.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selettore, dichiarazioni]) => [selettore!.trim(), dichiarazioni!.replace(/\s+/g, ' ').trim()]);
 
-        expect(regole).toEqual([['.zr-cornice-del-cliente .zr-top .zr-search', 'display: none;']]);
+        // Dalla v4.13.1 anche campanella e profilo a destra: senza il campo, che spingeva, scivolavano a sinistra (CL.4 della UAT).
+        expect(regole).toEqual([['.zr-cornice-del-cliente .zr-top .zr-search', 'display: none;'], ['.zr-cornice-del-cliente .zr-top-actions', 'margin-left: auto;']]);
     });
 
     it.each([
