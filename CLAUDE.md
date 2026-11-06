@@ -143,7 +143,7 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 
 ## Progetto sulla board
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 117 aperto (#3413, `v4.24.0`: `form-action` per una
-   pagina con nome e zr-auth ^0.12.141, Decisioni 22412-22413); uscita la `v4.23.0` (la campanella del cliente, #3398). Il lotto
+   pagina con nome e zr-auth dalla 0.12.141, Decisioni 22412-22413); uscita la `v4.23.0` (la campanella del cliente, #3398). Il lotto
    0522 (58, 16, 116, 4, 28, 136, 219) al sì di Luciano, col numero libero (Decisione 22430); la 206 (tema) dopo zr-home #2780;
    #2916 (i colleghi per email) aspetta zr-backoffice-55.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
