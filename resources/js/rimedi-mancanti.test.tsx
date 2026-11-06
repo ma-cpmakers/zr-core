@@ -55,33 +55,35 @@ it('se il pezzo dei rimedi di tastiera non arriva la cornice c\'è lo stesso, la
     process.off('unhandledRejection', nonGestite);
 });
 
-// Sprint 69 · T3.3 (voce #2033). Il gestore dei clic sulla barra laterale sta nel pezzo dei rimedi: senza il pezzo i clic restano del
-// browser, e `naviga` non è chiamata.
-it('senza il pezzo dei rimedi un clic su un collegamento della barra laterale resta del browser e `naviga` non è chiamata (sprint 69 · T3.3)', async () => {
+// Sprint 69 · T3.3 (voce #2033). Fino alla `v4.16` il gestore dei clic sulla barra laterale stava nel pezzo dei rimedi; dalla
+// `v4.17.0` è dell'`AppShell` (`navigate`, righe 27 e 98), e senza il pezzo un clic sulla barra passa lo stesso da `naviga`. Nel
+// pezzo resta quello del percorso (#2722): senza, un clic sul percorso resta del browser.
+it('senza il pezzo dei rimedi un clic su una voce della barra laterale passa da `naviga`, e uno sul percorso resta del browser (sprint 69 · T3.3; righe 27 e 98)', async () => {
     const naviga = vi.fn();
     const contenitore = document.createElement('div');
     document.body.append(contenitore);
     const radice = createRoot(contenitore);
 
-    await act(async () => radice.render(<Cornice dati={dati} onLogout={() => {}} naviga={naviga} />));
+    await act(async () => radice.render(<Cornice dati={dati} onLogout={() => {}} naviga={naviga} crumbs={[{ label: 'UAT Board', href: `${location.origin}/uat/board` }, { label: 'UAT Pagina' }]} />));
     await act(async () => {
         await vi.dynamicImportSettled();
         await new Promise((fatto) => setTimeout(fatto, 0));
     });
     const collegamento = [...contenitore.querySelectorAll<HTMLAnchorElement>('.zr-shell > .zr-side a[href]')].find((uno) => uno.getAttribute('href') !== '#');
     collegamento?.setAttribute('href', `${location.origin}/uat`);
-    let visto: boolean | undefined;
+    const visti: boolean[] = [];
     const alla = (evento: Event) => {
-        visto = evento.defaultPrevented;
+        visti.push(evento.defaultPrevented);
         evento.preventDefault();
     };
     window.addEventListener('click', alla);
     collegamento?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    contenitore.querySelector('.zr-crumbbar a[href]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
     window.removeEventListener('click', alla);
 
     expect(collegamento).toBeDefined();
-    expect(visto).toBe(false);
-    expect(naviga).not.toHaveBeenCalled();
+    expect(visti).toStrictEqual([true, false]);
+    expect(naviga.mock.calls).toStrictEqual([[`${location.origin}/uat`]]);
 
     await act(async () => radice.unmount());
     contenitore.remove();

@@ -302,12 +302,17 @@ describe('tastiera e salto della cornice del cliente', () => {
         expect(document.activeElement).toBe(uno('main.zr-main'));
     });
 
-    it('i rimedi di tastiera arrivano come per la Cornice: con la naviga del modulo e i nomi della sua lingua', async () => {
+    it('i rimedi di tastiera arrivano come per la Cornice: con la naviga del modulo e il nome dei risultati nella sua lingua', async () => {
         const via = vi.spyOn(rimedi, 'via');
         const naviga = vi.fn();
         await mostra(<CorniceDelCliente dati={{ ...dati, lingua: 'en' }} nav={nav} naviga={naviga} onLogout={esci} />);
         await act(() => vi.dynamicImportSettled());
 
-        expect(via).toHaveBeenCalledWith(naviga, testi('en').mainContent, testi('en').searchResults);
+        expect(via).toHaveBeenCalledWith(naviga, testi('en').searchResults);
+        // Il nome del contenuto e i clic sulla barra laterale sono dell'`AppShell` dalla `v4.17.0` (righe 30, 27 e 98): coi testi e la `naviga` della cornice.
+        const voce = document.querySelector<HTMLAnchorElement>('.zr-shell > .zr-side a.zr-nav-item[href]:not([href="#"])')!;
+        voce.setAttribute('href', `${location.origin}/uat`);
+        await act(async () => voce.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
+        expect([document.querySelector('.zr-shell > main')?.getAttribute('aria-label'), naviga.mock.calls]).toStrictEqual([testi('en').mainContent, [[`${location.origin}/uat`]]]);
     });
 });

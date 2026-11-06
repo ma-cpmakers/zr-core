@@ -14,23 +14,10 @@ vi.mock('./tastiera', async (originale) => {
     return originale();
 });
 
-it('una voce «Presto» della barra laterale ha `tabindex="-1"` e il nome «<voce>, Presto» appena arrivano i rimedi, senza un tasto; un collegamento del contenuto con la stessa classe tiene il suo nome anche dopo un cambio della pagina (riga 6; R4 e R9 della revisione 381)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"><aside class="zr-side"><nav><a class="zr-nav-item is-soon" href="#"><span>CRM</span><span>Presto</span></a></nav></aside><main><a class="zr-nav-item" href="/x" aria-label="Il mio">X</a></main></div>';
-
-    await import('./rimedi');
-
-    const presto = document.querySelector('.is-soon')!;
-    const delModulo = document.querySelector('main a')!;
-
-    expect([presto.getAttribute('tabindex'), presto.getAttribute('aria-label')]).toStrictEqual(['-1', 'CRM, Presto']);
-    document.querySelector('main')!.append(document.createElement('p'));
-    await cambiato();
-    expect(delModulo.getAttribute('aria-label')).toBe('Il mio');
-});
-
 it('l\'avatar di una notifica il cui titolo dice un nome che comincia come il suo non si nasconde: il nome si cerca isolato, come la riga lo scrive (riga 85; R10 della revisione 381)', async () => {
     const riga = (nome: string, titolo: string) => `<button class="zr-notif-item"><span class="zr-avatar" role="img" aria-label="${nome}"></span><span><span>${titolo}</span></span></button>`;
     document.body.innerHTML = '<div class="zr-shell"><div class="zr-top-actions"><div class="zr-notif"><div class="zr-notif-list"></div></div></div></div>';
+    await import('./rimedi');
 
     document.querySelector('.zr-notif-list')!.innerHTML = riga('Ada', '⁨Adamo⁩ ha creato un\'area') + riga('Bruno', '⁨Bruno⁩ ha creato un\'area');
     await cambiato();
@@ -58,7 +45,8 @@ it('sotto i 1024 px il menu a cassetto aperto ha `role="dialog"` senza un tasto,
 });
 
 it('aperto con Invio o con lo spazio — il clic senza `detail` — prima che arrivi il pezzo della tastiera, come quando Invio è il primo tasto della pagina, il menu a cassetto dà il fuoco alla sua prima voce che lo prende, non a una «Presto»; col mouse il fuoco resta su «Apri il menu» (voce 3329, K390.5)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"><aside class="zr-side"><nav><a class="zr-nav-item is-soon" href="#"><span>CRM</span><span>Presto</span></a><a class="zr-nav-item" href="/">Dashboard</a></nav></aside><main><div class="zr-top"><button class="zr-top-menu" aria-expanded="false">Apri il menu</button></div></main></div>';
+    // La voce «Presto» come la fa l'`AppShell` dalla `v4.17.0` (riga 6): fuori dal giro del Tab.
+    document.body.innerHTML = '<div class="zr-shell"><aside class="zr-side"><nav><a class="zr-nav-item is-soon" href="#" tabindex="-1" aria-disabled="true"><span>CRM</span><span>Presto</span></a><a class="zr-nav-item" href="/">Dashboard</a></nav></aside><main><div class="zr-top"><button class="zr-top-menu" aria-expanded="false">Apri il menu</button></div></main></div>';
     await import('./rimedi');
     await cambiato();
 

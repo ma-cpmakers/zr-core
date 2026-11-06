@@ -150,10 +150,10 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
 
         return () => (inVolo.current?.abort(), removeEventListener('input', alTasto));
     }, []);
-    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono i nomi.
+    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono il nome.
     useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
-    }, [t.mainContent, t.searchResults]);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.searchResults), () => undefined);
+    }, [t.searchResults]);
     // La `cerca` è quella di adesso, non quella del tasto di 300 ms fa: se il modulo l'ha tolta non parte niente. Una `cerca` che
     // lancia è una ricerca in errore, non un caricamento che non finisce.
     const cercata = useRef<string>(undefined);
@@ -212,8 +212,8 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
             <SaltaAlContenuto testo={t.skipToContent} />
             <AppShell
                 {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
-                // Con `null` nessuna voce: un id che nessuna voce ha.
-                {...(active === null ? { active: '-' + nav.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)).join('-') } : active === undefined ? {} : { active })}
+                // Con `null` nessuna voce.
+                {...(active === undefined ? {} : { active })}
                 nav={nav}
                 user={persona.nome}
                 email={persona.email}
@@ -226,6 +226,7 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
                 searchState={ricerca?.stato ?? 'ready'}
                 searchResults={ricerca?.stato === 'ready' ? ricerca.risultati : []}
                 onSelectResult={(scelto) => scelto.href !== undefined && naviga(scelto.href)}
+                navigate={naviga}
                 labels={{ ...t, ...dello }}
             >
                 {children}

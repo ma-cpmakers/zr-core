@@ -164,22 +164,6 @@ export interface CorniceProps {
 /** La Dashboard: il registro la porta sempre, per prima. */
 const dashboard = registro.find((voce) => voce.id === 'home')!;
 
-/**
- * Un id che nessuna di quelle voci ha. L'`AppShell` segna la voce che ha l'id attivo, e senza un id la Dashboard: «nessuna» gli
- * si dice con un id che non è di nessuna. Si calcola dalle voci di quel render, e non è un valore fisso: un frontend potrebbe
- * dare una voce proprio con quell'id. È fatto di soli trattini, perché una voce la cornice non la vede: «Impostazioni», che
- * l'`AppShell` mette da sé in fondo alla barra, e il suo id è una parola.
- */
-export function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
-    const presi = new Set(gruppi.flatMap((gruppo) => gruppo.items.map((voce) => voce.id)));
-    let id = '-';
-    while (presi.has(id)) {
-        id += '-';
-    }
-
-    return id;
-}
-
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
 export const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
@@ -720,8 +704,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
-    // L'avviso per chi usa un lettore di schermo: l'`AppShell` non ha un posto per dire che il numero è cambiato, e la cornice lo
-    // dice accanto, in un `role="status"` che non si vede. Parla solo quando il numero scende per una lettura fatta con un
+    // L'avviso per chi usa un lettore di schermo: la cornice lo dà all'`AppShell` (`notificationsNotice`), che lo dice in una
+    // zona viva che non si vede (dalla `v4.17.0`, riga 14). Parla solo quando il numero scende per una lettura fatta con un
     // clic: arrivata la risposta (`daDire`) confronta il numero con quello che sarebbe senza quella lettura, e se è sceso dice
     // il nome della campanella col numero nuovo — quello vero, anche oltre 99, dove la campanella scrive «99+» — o, a zero,
     // il testo di zr-core. Tace quando il numero cambia per altro (dati nuovi, un elenco arrivato, «Segna tutte come lette»),
@@ -890,10 +874,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
 
         return () => (mostra(persona, 1), ricercaInVolo.current?.abort(), removeEventListener('input', alTasto));
     }, []);
-    // Il pezzo arriva una volta; `via` gli ridà i nomi del contenuto e dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
+    // Il pezzo arriva una volta; `via` gli ridà il nome dei risultati della ricerca a ogni cambio di lingua, anche senza una cornice nuova.
     useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
-    }, [t.mainContent, t.searchResults]);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.searchResults), () => undefined);
+    }, [t.searchResults]);
     // Passata allo stato ridotto la cornice dimentica la ricerca: la richiesta in volo è annullata e non è più di nessuno, così
     // la sua risposta, se arriva lo stesso, non entra nello stato; e ciò che c'era si toglie. Tornata quella di sempre, la
     // ricerca è pronta e vuota finché la persona non cerca di nuovo: mai i risultati di prima sotto una parola che la cornice
@@ -1008,7 +992,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         <AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
-            // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva»:
+            // cornice non ha niente da dare, e allora all'`AppShell` non arriva. Solo `null` vuol dire «nessuna voce attiva», e
+            // all'`AppShell` arriva così (dalla `v4.17.0`, riga 29 delle richieste al design system):
             // senza `active`, o con `active` vuoto, resta la Dashboard, come decide l'`AppShell` — tranne nello stato ridotto su
             // una pagina di un modulo, dove il modulo aperto all'`AppShell` non arriva e la Dashboard sarebbe segnata a chi è
             // nel modulo: lì, senza `active` o con `active` vuoto, nessuna voce. Il numero sulla campanella è quello dei dati, e mai
@@ -1016,7 +1001,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // nessuna lista del profilo: vale quella che l'`AppShell` mette da sé, con la voce «Piano».
             {...senzaUndefined({
                 ...pagina,
-                active: active === null || (ridotta && aperto !== undefined && !active) ? idDiNessunaVoce(voci) : active,
+                active: active === null || (ridotta && aperto !== undefined && !active) ? null : active,
                 companies,
                 searchState: ridotta ?? ricerca?.stato ?? 'ready',
                 // Senza la chiave l'`AppShell` non mette «Nuovo workspace» in fondo al selettore.
@@ -1047,6 +1032,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onOpenNotification: ridotta ? undefined : apriNotifica,
                 onAllNotifications: ridotta ? undefined : apriNotifica.bind(0, {} as ShellNotification),
                 onSearch: ridotta ? undefined : cercaParola,
+                // L'avviso per il lettore di schermo (sopra), nella zona viva che l'`AppShell` tiene sempre montata (dalla `v4.17.0`).
+                notificationsNotice: avviso?.testo,
                 flush: avvisoSopraLaPagina ? undefined : pagina.flush,
                 children: <>{avvisoSopraLaPagina}{pagina.children}</>,
             })}
@@ -1057,6 +1044,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             workspaceSlug={dati.workspace.slug}
             // Lo stesso prodotto nel workspace scelto (linea guida 15, passo 8); da una pagina di app.zeiras.com, la Dashboard.
             onSelectWorkspace={(slug) => naviga(nelWorkspace((aperto ?? dashboard).indirizzo, slug))}
+            // Un clic semplice su una voce della barra laterale con un indirizzo di questa origine passa da `naviga` (righe 27 e 98).
+            navigate={naviga}
             // A chi non ha accettato i documenti legali pannello e ricerca non mostrano niente di ciò che la cornice aveva, e
             // dicono perché con lo stato che l'`AppShell` ha per un errore: il design system non ha uno stato «non disponibile».
             // In attesa lo stato è quello di caricamento. I risultati non hanno bisogno di una guardia loro: nello stato
@@ -1071,11 +1060,10 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                     naviga(scelto.href);
                 }
             }}
-            // Con una sola non letta il nome della campanella per il lettore di schermo è al singolare: il design system ha un
-            // testo solo per le non lette, e zr-core gli dà il suo. Lo stesso testo è il nome del pallino di ogni notifica non
-            // letta nel pannello, che così segue il numero della campanella e non la notifica (README, «La campanella»). Anche
-            // il pulsante «Segna tutte come lette» ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento.
-            // Ognuno dei due per conto suo, su una copia: i testi di una lingua sono di tutti, e non si cambiano. Sulla stessa
+            // Con una sola non letta il nome della campanella è al singolare, e il pallino di una notifica non letta dice «non
+            // letta»: lo fa l'`AppShell` col testo `unreadOne` (dalla `v4.17.0`, riga 13). Il pulsante «Segna tutte come lette»
+            // ha nell'`AppShell` un testo solo, e zr-core gli dà quello del suo momento, su una copia: i testi di una lingua
+            // sono di tutti, e non si cambiano. Sulla stessa
             // copia il segnaposto della ricerca e l'invito, che dice le fonti del workspace (`dellaRicerca`). A chi non ha
             // accettato i documenti legali, e quando il backoffice non ha risposto, la frase di zr-core al posto dei tre testi
             // che pannello e ricerca mostrerebbero: l'errore del pannello, e sotto il campo l'invito a scrivere e l'errore
@@ -1083,7 +1071,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // dell'`AppShell`, e sotto il campo vuoto c'è l'invito a scrivere, perché la parola scritta verrà cercata.
             labels={avvisoSopraLaPagina
                 ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
-                : { ...t, ...dellaRicerca, unread: unaSola ? t.unreadOne : t.unread, markAllRead: sulPulsante }}
+                : { ...t, ...dellaRicerca, markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
         />
@@ -1093,7 +1081,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         <>
             <SaltaAlContenuto testo={t.skipToContent} />
             {shell}
-            <div role="status" className="zr-visually-hidden">{avviso?.testo}</div>
         </>
     );
 }

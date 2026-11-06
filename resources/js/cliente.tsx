@@ -1,6 +1,6 @@
 import { useLayoutEffect, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb } from '../zeiras/index';
-import { idDiNessunaVoce, nelSelettore, pagineDiApp, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
+import { nelSelettore, pagineDiApp, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
 import { DELL_INGRESSO, fileDelleLingue, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, registro } from './registro';
 import { SaltaAlContenuto } from './salto';
@@ -94,10 +94,10 @@ export function CorniceDelCliente(props: CorniceDelClienteProps) {
 
 function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogout, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelClienteProps & { lingua: string }) {
     const t = testi(lingua);
-    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono i nomi.
+    // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata, e a ogni cambio di lingua riprendono il nome.
     useLayoutEffect(() => {
-        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.mainContent, t.searchResults), () => undefined);
-    }, [t.mainContent, t.searchResults]);
+        void import('./rimedi').then((rimedi) => rimedi.via(naviga, t.searchResults), () => undefined);
+    }, [t.searchResults]);
     // Ctrl/Cmd+K non apre la ricerca, che qui non si vede: l'`AppShell` la aprirebbe nascosta, e al telefono i rimedi toglierebbero
     // campanella e profilo finché resta aperta. Si ferma sul documento, in risalita, prima dell'ascolto dell'`AppShell`, che arriva
     // dopo (un effetto, non di layout): la pagina lo riceve ancora (un editor che inserisce un link), e il tasto resta del browser.
@@ -124,8 +124,8 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
             <SaltaAlContenuto testo={t.skipToContent} />
             <AppShell
                 {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
-                // Con `null` nessuna voce: un id che nessuna voce ha.
-                {...(active === null ? { active: idDiNessunaVoce(nav) } : active === undefined ? {} : { active })}
+                // Con `null` nessuna voce.
+                {...(active === undefined ? {} : { active })}
                 // La classe che nasconde il campo della ricerca (`resources/css/cliente.css`): l'`AppShell` la mette sulla `zr-shell`.
                 {...{ className: 'zr-cornice-del-cliente' }}
                 nav={nav}
@@ -136,6 +136,7 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
                 companies={dati.aziende.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))}
                 // Un workspace porta alla sua Dashboard: dallo spazio cliente non c'è un prodotto aperto da tenere.
                 onSelectWorkspace={(slug) => naviga(nelWorkspace(dashboard.indirizzo, slug))}
+                navigate={naviga}
                 // Con le aziende, un workspace nuovo solo dove una lo permette («Nuovo workspace»): a chi è solo membro no. Senza, è
                 // il primo («Crea il tuo workspace»).
                 {...(nuovoWorkspace && (dati.aziende.length === 0 || dati.aziende.some((azienda) => azienda.nuovo_workspace)) ? { onNewWorkspace: () => naviga(nuovoWorkspace) } : {})}

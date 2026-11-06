@@ -473,16 +473,16 @@ describe('LayoutDellaCornice', () => {
     });
 
     it('la pagina resta figlia di `main.zr-main`, o di `div.zr-main-body` col percorso: il layout non mette nessun elemento suo intorno all\'`AppShell` né alla pagina (sprint 9 · T1)', async () => {
-        // Accanto all'`AppShell` ci sono solo «Salta al contenuto» (sprint 28 · T4), prima di lui, e l'avviso della cornice per il
-        // lettore di schermo (sprint 22 · T2.6), dopo: nessuno dei due intorno.
+        // Accanto all'`AppShell` c'è solo «Salta al contenuto» (sprint 28 · T4), prima di lui, e non intorno; l'avviso della cornice
+        // per il lettore di schermo (sprint 22 · T2.6) dalla `v4.17.0` sta nell'`AppShell` (riga 14).
         const accantoAllAppShell = () => [...contenitore.children].map((figlio) => figlio.getAttribute('role') ?? figlio.className);
         await visita(dati, <PaginaA key="1" />);
-        expect(accantoAllAppShell()).toStrictEqual(['zr-visually-hidden', 'zr-shell', 'status']);
+        expect(accantoAllAppShell()).toStrictEqual(['zr-visually-hidden', 'zr-shell']);
         expect(contenitore.children[1]?.className).toBe('zr-shell');
         expect(uno('#uat-pagina-a')?.parentElement).toBe(uno('.zr-shell > main.zr-main'));
 
         await visita(dati, <PaginaA key="1" />, { crumbs: percorso });
-        expect(accantoAllAppShell()).toStrictEqual(['zr-visually-hidden', 'zr-shell', 'status']);
+        expect(accantoAllAppShell()).toStrictEqual(['zr-visually-hidden', 'zr-shell']);
         expect(uno('#uat-pagina-a')?.parentElement).toBe(uno('.zr-shell > main.zr-main > div.zr-main-body'));
     });
 

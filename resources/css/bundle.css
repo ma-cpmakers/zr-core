@@ -3,6 +3,7 @@
 
 body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 22px; background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; }
 .zr-icon { display: block; flex: none; }
+.zr-brand-icon { display: block; flex: none; }
 :where(.zr-btn, .zr-tile, .zr-nav-item, .zr-card, .zr-col-add, .zr-add-list, .zr-tab, .zr-folder-boards a, .zr-folder-new, .zr-search input, .zr-composer textarea):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* Button */
@@ -509,6 +510,8 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-inline-edit-view:disabled { cursor: default; }
 .zr-inline-edit-view.is-empty .zr-inline-edit-text { color: var(--ink-muted); font-weight: 400; }
 .zr-inline-edit-text { min-width: 0; overflow-wrap: anywhere; }
+.zr-inline-edit-row { display: flex; align-items: center; gap: var(--space-3); max-width: 100%; min-width: 0; } /* actions accanto alla vista (richiesta 192) */
+.zr-inline-edit-actions { display: inline-flex; flex: none; align-items: center; gap: var(--space-1); }
 .zr-inline-edit.is-multiline .zr-inline-edit-text { white-space: pre-line; }
 .zr-inline-edit-field { width: 100%; box-sizing: border-box; margin: calc(-1 * var(--space-1) - 1px) 0; padding: var(--space-1) var(--space-1-5); border: 1px solid var(--focus); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); font: inherit; outline: 2px solid var(--focus); outline-offset: 1px; }
 textarea.zr-inline-edit-field { resize: vertical; }
@@ -863,6 +866,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-detail-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--line); background: var(--surface); }
 @media (max-width: 720px) {
   .zr-detail:not(.is-inline) { top: 0; width: 100%; border-left: 0; z-index: calc(var(--z-dialog) + 1); }
+  .zr-scrim:not(.is-inline) { z-index: calc(var(--z-dialog) + 3); } /* un dialogo aperto dal pannello a tutto schermo, o col cassetto aperto, sta sopra tutti e due (richiesta 200) */
   .zr-detail-back { display: inline-flex; }
   .zr-detail-close { display: none; }
   .zr-detail-ctx { text-align: right; }
@@ -999,6 +1003,7 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-shell-crumbs { flex-wrap: wrap; row-gap: 2px; }
 .zr-shell-crumbs a, .zr-shell-crumbs [aria-current] { overflow-wrap: anywhere; }
 .zr-main-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-4) var(--space-6) var(--space-6); }
+.zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .zr-main.is-flush .zr-crumbbar { padding-bottom: var(--space-2); }
 .zr-main.is-flush .zr-main-body { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
