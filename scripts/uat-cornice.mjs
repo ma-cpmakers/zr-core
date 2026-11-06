@@ -1469,7 +1469,8 @@ async function uat(page, apri) {
 
 // CL (dalla v4.13.0, #3319): la cornice del cliente. CL.1 il campo della ricerca non si vede e Ctrl+K non porta il fuoco da nessuna
 // parte che non si veda; CL.2 il selettore dice «Come cliente › Il mio spazio» e non c'è il riquadro del piano; CL.3 il menu del
-// profilo è Profilo, Impostazioni, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova scrive in `#uat-ultima`).
+// profilo è Profilo, Impostazioni, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova scrive in `#uat-ultima`); CL.4
+// (dalla v4.13.1) campanella e profilo stanno a destra della barra in alto, a 1280 e a 390 px.
 async function ilCliente(page, larghezza) {
     const id = larghezza > 720 ? 'CL' : 'CL390';
     const campo = await page.evaluate(() => {
@@ -1488,6 +1489,14 @@ async function ilCliente(page, larghezza) {
         };
     });
     scrivi(campo.c && !campo.visibile && dopo.fuoco !== 'nascosto' && !dopo.aperta && dopo.azioni ? '✅' : '❌', `${id}.1`, `a ${larghezza} px il campo della ricerca non si vede; Ctrl+K non la apre, non porta il fuoco su un elemento nascosto e lascia campanella e profilo`, `campo: ${campo.c ? (campo.visibile ? 'visibile' : 'nascosto') : 'assente'}, dopo Ctrl+K: fuoco ${dopo.fuoco}, ricerca aperta: ${dopo.aperta}, azioni visibili: ${dopo.azioni}`);
+    // CL.4 (dalla v4.13.1): senza il campo della ricerca, campanella e profilo restano in fondo a destra della barra in alto, come
+    // nella `Cornice`, e non scivolano a sinistra accanto alla barra laterale.
+    const posto = await page.evaluate(() => {
+        const barra = document.querySelector('.zr-shell .zr-top')?.getBoundingClientRect();
+        const azioni = document.querySelector('.zr-shell .zr-top-actions')?.getBoundingClientRect();
+        return barra && azioni ? Math.round(barra.right - azioni.right) : null;
+    });
+    scrivi(posto !== null && posto <= 32 ? '✅' : '❌', `${id}.4`, `a ${larghezza} px campanella e profilo stanno a destra della barra in alto`, `distanza dal bordo destro: ${posto} px`);
     await page.evaluate(() => document.activeElement?.blur());
     if (larghezza <= 720) {
         return;

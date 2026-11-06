@@ -441,6 +441,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.11.0` | il design system `ds-1793914149-8632`: lo spazio cliente di zr-account nell'`AppShell` (`personal`, «Il mio spazio» in cima al selettore nel gruppo «Come cliente», il selettore anche per chi è solo cliente con «Crea il tuo workspace», `plan={false}`) e `AppointmentItem`, la riga di un appuntamento. La cornice non passa `personal`: i suoi tre testi non stanno nelle lingue della cornice. Il JS d'ingresso sale di 247 byte, tetto 18.169 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative, senza tutto resta com'era | `AppointmentItem` e `personal` per chi fa lo spazio cliente o gli appuntamenti |
 | `v4.12.0` | il titolo e la destinazione del Gate deciso di Project Management (`board.gate.deciso`, «Gate deciso»): un clic apre il Gate, che è una scheda (`/c/{id}`) | niente | un caso che apre quella notifica e si aspetta la pagina delle notifiche trova il Gate | la notifica del Gate deciso col suo titolo, e un clic apre il Gate |
 | `v4.13.0` | la cornice del cliente, `CorniceDelCliente` coi dati di `Cornice::datiDelCliente()` (#3319): l'`AppShell` per «Il mio spazio» di zr-home, con la sessione dell'accesso anche senza workspace, coi testi suoi in `resources/lingue/cliente/` e la ricerca nascosta da `resources/css/cliente.css`; le aziende da cliente e la campanella aspettano zr-backoffice #3320 e #3323, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice del cliente») | niente per chi monta la `Cornice`; zr-home monta `CorniceDelCliente` nelle pagine `/spazio/*` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.1-CL.3) |
+| `v4.13.1` | nella cornice del cliente campanella e profilo restano a destra della barra in alto: senza il campo della ricerca scivolavano a sinistra, accanto alla barra laterale (`resources/css/cliente.css`) | niente: il modulo importa già `cliente.css` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.4) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2648,7 +2649,8 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CS
   Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo).
 - **La ricerca non si vede**: per chi è solo cliente il backoffice non ne ha una, e una ricerca finta non si mostra (zr-pm,
   06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
-  build la porterebbe nel CSS di ogni app. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
+  build la porterebbe nel CSS di ogni app; dalla `v4.13.1` lo stesso file tiene campanella e profilo a destra della barra in alto,
+  dove senza il campo non resterebbero. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
   la prop che non mostra la ricerca (richiesta 201 al design system).
 - **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), le
   sue notifiche da cliente con zr-backoffice #3323. Fino ad allora la campanella resta, vuota, col testo del cliente («Qui
@@ -2659,7 +2661,8 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CS
   la `Cornice` pesa come prima. Il resto — «Salta al contenuto», i rimedi di tastiera — è quello della `Cornice`.
 
 La pagina di prova è `cliente.html` (`?lingua=`, `?aziende=1` per le aziende, `?nuovo=1` per «Crea il tuo workspace», `?foto=1`),
-e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le righe della ricerca). Prima del tag zr-core lo
+e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le righe della ricerca; dalla `v4.13.1` CL.4, campanella
+e profilo a destra a 1280 e a 390 px). Prima del tag zr-core lo
 lancia su `cliente.html` in italiano, inglese e spagnolo, e su `cliente.html?aziende=1&nuovo=1`. Nella `v4.13.0` lì una riga è ❌,
 K390.5: con Invio come primo tasto su «Apri il menu» il fuoco resta sul pulsante e non entra nel cassetto. È un difetto che c'era
 già, del pezzo che ascolta il clic del pulsante, non di questa cornice, e lo corregge #3329.
