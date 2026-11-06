@@ -214,7 +214,8 @@ lì. Un'origine che serve a ogni pagina (un font tuo) va in `csp` — README, «
 pagina sola (il widget di un altro sito) va in un insieme di `csp_pagine`, che il controller chiama per nome —
 README, «Per una pagina sola» —, e quella pagina si apre e si lascia con un caricamento intero (un link normale, non una
 visita di Inertia): lasciata con una visita, la sua CSP più larga resta sulle pagine dopo, e nessuna violazione lo dice.
-Una `fetch` verso un'altra origine vuole `connect-src`; verso il tuo stesso sito, niente.
+Una `fetch` verso un'altra origine vuole `connect-src`; verso il tuo stesso sito, niente. Un `<form>` che manda a un
+altro host vuole `form-action`, e solo in un insieme di `csp_pagine`: in `csp` è scartata.
 
 **Prova**: la console del browser non segna violazioni della CSP in nessuna tua pagina. La CSP nuova la leggi una volta
 dalla risposta della pagina (col cookie della sessione o dalla scheda Rete, come al passo 3: un rimando non porta le

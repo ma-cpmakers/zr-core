@@ -1656,23 +1656,24 @@ it('il README non dice più che il limite è di una richiesta lenta, né che zr-
     'zr-core da solo non lo chiude' => ['zr-core da solo non lo chiude', 'Il blocco ferma solo chi lo prende'],
 ]);
 
-it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.139, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3; sprint 115)', function (string $file) {
+it('composer.json, README e CLAUDE.md dicono lo stesso vincolo di zr-auth, ^0.12.141, una volta, e nessuno dice più quelli di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3; sprint 115; sprint 117 · T2.1)', function (string $file) {
     $testo = (string) file_get_contents(__DIR__.'/../../'.$file);
     // Ogni vincolo 0.12 che il testo dice, intero: `^0.12.4` è anche l'inizio di `^0.12.41`.
     $vincoli = fn (string $t): array => preg_match_all('/\^0\.12\.\d+/', $t, $trovati) > 0 ? $trovati[0] : [];
 
-    expect($vincoli($testo))->toBe(['^0.12.139'])
+    expect($vincoli($testo))->toBe(['^0.12.141'])
         // Il controllo nei due versi: il vincolo di prima, rimesso, si vede.
-        ->and($vincoli(str_replace('^0.12.139', '^0.12.128', $testo)))->toBe(['^0.12.128']);
+        ->and($vincoli(str_replace('^0.12.141', '^0.12.139', $testo)))->toBe(['^0.12.139']);
 })->with(['composer.json', 'README.md', 'CLAUDE.md']);
 
-it('CLAUDE.md dice perché il vincolo parte dalla 0.12.139, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3)', function () {
+it('CLAUDE.md dice perché il vincolo parte dalla 0.12.141, e né CLAUDE.md né il README dicono più il motivo del vincolo di prima (sprint 16 · T4.5; sprint 55 · T1.4; sprint 59 · T1.4; sprint 99 · T1.6; sprint 109 · T1.3; sprint 117 · T2.1)', function () {
     $readme = suUnaRiga((string) file_get_contents(__DIR__.'/../../README.md'));
     $claude = suUnaRiga((string) file_get_contents(__DIR__.'/../../CLAUDE.md'));
 
-    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm); dalla `v4.22.0` parte dalla 0.12.139, perché ogni pagina con la cornice legge `accessi.corrente.mostra` e il backoffice finto di zr-auth, nei test dei moduli, lo conosce da quella (revisione dello sprint 115).'))->toBe(1)
+    expect(substr_count($claude, 'il vincolo non scende sotto una patch che nessun giro ha provato col codice che la usa, né sotto quella che la cornice chiede per stare sicura (dalla `v2.16.0` la 0.12.31: la richiesta rimandata della cornice in due dati la protegge `SessioneChiusa`, che c\'è da quella); dalla `v2.19.0` dalla 0.12.41, perché il codice e i casi della cornice usano `SoloDallaPersona` e `Persona`, che ci sono da quella; dalla `v4.1.0` dalla 0.12.120, perché la rotta della foto usa `Api::immagine`, che c\'è da quella; dalla `v4.5.2` dalla 0.12.128, perché `ConGettone` ricorda il ritorno solo per le navigazioni e la foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno (decisioni di zr-pm); dalla `v4.22.0` parte dalla 0.12.139, perché ogni pagina con la cornice legge `accessi.corrente.mostra` e il backoffice finto di zr-auth, nei test dei moduli, lo conosce da quella (revisione dello sprint 115); dalla `v4.24.0` dalla 0.12.141, perché il codice dell\'«Accedi come» arriva al modulo solo da un POST del pannello dello staff (Decisione 22413).'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v4.5.2` parte dalla 0.12.128'))->toBe(false)
         ->and(substr_count($readme, 'Dalla `v4.22.0` serve la 0.12.139: ogni pagina con la cornice legge `accessi.corrente.mostra`, e il backoffice finto di zr-auth, nei test di un modulo, lo conosce da quella; con una più vecchia Composer lascia zr-core alla `v4.21.0`.'))->toBe(1)
+        ->and(substr_count($readme, 'Dalla `v4.24.0` serve la 0.12.141: il codice dell\'«Accedi come» arriva al modulo solo da un POST del pannello dello staff, e un modulo con una zr-auth più vecchia non riceve più l\'assistenza quando il pannello passa al POST; con una più vecchia Composer lascia zr-core alla `v4.23.0`.'))->toBe(1)
         ->and(str_contains($claude, 'dalla `v4.1.0` parte dalla 0.12.120'))->toBe(false)
         // Anche il README dice il perché del vincolo nuovo (rilievo della revisione della PR #169).
         ->and(substr_count($readme, 'Dalla `v4.5.2` serve la 0.12.128: una foto chiesta da un `<img>` a sessione scaduta non diventa la pagina di ritorno dopo l\'accesso, perché `ConGettone` ricorda il ritorno solo per le navigazioni, e con una più vecchia Composer lascia zr-core alla `v4.5.1`.'))->toBe(1)
