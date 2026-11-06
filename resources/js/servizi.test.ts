@@ -4,7 +4,8 @@ import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { cerca as cercaCon } from './ricerca';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, segnaLetta, segnaLetteFinoA, TroppeRichieste } from './servizi';
+import { segnaLetta, segnaLetteFinoA } from './letture';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, mostra, TroppeRichieste } from './servizi';
 
 // Dalla `v2.16.0` (sprint 55 · T3) la `chiama` la passa al pezzo la cornice: qui è quella di questo `servizi`, come allora.
 const cerca = (parola: string, segnale: AbortSignal, email: string, impronta?: string) => cercaCon(parola, segnale, { email, impronta }, chiama);

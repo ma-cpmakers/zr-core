@@ -2849,6 +2849,24 @@ describe('il pannello delle notifiche', () => {
         expect(uno('.zr-notif')).toBeNull();
     };
 
+    // v4.20.0 (Decisione 22247, lettura della PR, R1): `segnaLetta` sta nel pezzo della campanella, e col pezzo arrivato la
+    // PATCH parte nello stesso giro del clic, senza un `then` prima: è ciò che la porta in fondo con `keepalive`.
+    it('col pezzo della campanella arrivato, la PATCH della lettura parte nello stesso giro del clic sulla notifica (v4.20.0)', async () => {
+        const fetchFinto = rotteDelClic([{ data: daAprire }]);
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} product="crm" naviga={vi.fn()} onLogout={esciSenzaEffetto} />);
+        await clic(uno('.zr-bell'));
+
+        // Dentro un `act` sincrono: il controllo gira subito dopo il clic, prima di ogni promessa.
+        let partite: string[] = [];
+        act(() => {
+            (voci()[0] as HTMLElement).click();
+            partite = richieste(fetchFinto);
+        });
+        expect(partite).toStrictEqual(['GET /cornice/notifiche', laLettura('uat-n69')]);
+        await act(async () => prossimoGiro());
+    });
+
     it('un clic su una notifica non letta che ha una destinazione chiede PATCH /cornice/notifiche/<id>/lettura con {"letta": true}, col gettone CSRF e con keepalive, e apre la risorsa: la richiesta parte prima dell\'apertura (sprint 22 · T2.1)', async () => {
         cookieCsrf('eyJpdiI6Ik1h%3D%3D');
         const fetchFinto = rotteDelClic([{ data: daAprire }]);
