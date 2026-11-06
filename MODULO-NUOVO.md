@@ -304,6 +304,13 @@ zr-auth risponde 403 con `codice` e `mancanti`, senza rimando: lì decidi tu che
 quando lo stato arriva o se ne va: ciò che è scritto in un campo resta — README, «La cornice», al punto «Chi non ha
 accettato i documenti legali».
 
+**Lo staff in assistenza**, dalla `v4.22.0`: quando lo staff entra nel tuo modulo con «Accedi come», i dati della cornice
+portano `assistenza` (chi è la persona assistita e `sola_lettura`), e la cornice lo dice sopra la tua pagina, con un
+pulsante che termina l'assistenza chiamando il tuo `onLogout`. Per la cornice non fai niente. Le scritture del modulo sono
+tue: in assistenza il backoffice può rifiutare una tua chiamata che scrive col 403 `azione_non_consentita_in_assistenza`
+(di sicuro quando è di sola lettura), e che cosa mostrare — un pulsante spento, un messaggio — lo decidi tu, guardando
+`assistenza` nei dati della cornice. Il dettaglio sta nel README, «La cornice», al punto «L'assistenza».
+
 **Errore già pagato**: un test che fissa «la prima lettura» si rompe a un aggiornamento (l'ordine non è un contratto). Un
 backoffice finto scritto a mano deve dare l'`id` di ogni workspace, o i dati falliscono. Due chiamate nella stessa
 richiesta sono otto letture: chi la chiama prima ne tiene il risultato.
