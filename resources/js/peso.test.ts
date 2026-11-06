@@ -769,7 +769,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 2.729 byte (v4.24.0: le quattro righe delle notifiche da cliente, la misura 2.625 + 20, sì di zr-pm-07; e la campanella della cornice del cliente, che dal pezzo prende la destinazione in «Il mio spazio» e le due chiamate con le rotte del cliente, la misura 2.709 + 20, sì di zr-pm-07; v4.20.0: le due chiamate che segnano lette le notifiche, uscite dal JS d\'ingresso, la misura 2.572 + 20, Decisione 22247; v4.16.0: il titolo del Gate per esito, la misura 2.310 + 20, zr-pm-07 06/11; v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.729 byte (v4.23.0: le quattro righe delle notifiche da cliente, la misura 2.625 + 20, sì di zr-pm-07; e la campanella della cornice del cliente, che dal pezzo prende la destinazione in «Il mio spazio» e le due chiamate con le rotte del cliente, la misura 2.709 + 20, sì di zr-pm-07; v4.20.0: le due chiamate che segnano lette le notifiche, uscite dal JS d\'ingresso, la misura 2.572 + 20, Decisione 22247; v4.16.0: il titolo del Gate per esito, la misura 2.310 + 20, zr-pm-07 06/11; v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -787,7 +787,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // v4.16.0 (sprint 114 · T2.4, voce #3302): il titolo del Gate per esito, 2.310 (+22): la misura + 20, sì di zr-pm-07 06/11.
         // v4.20.0 (Decisione 22247, sì di zr-pm-07 06/11): le due chiamate che segnano lette le notifiche (`./letture`), uscite
         // dal JS d'ingresso come contropartita dei lotti 0520 e 0521: 2.572, la misura + 20.
-        // v4.24.0 (sprint 116 · T2, voce #3398): le quattro righe delle notifiche da cliente nel registro (+37) e il percorso con gli
+        // v4.23.0 (sprint 116 · T2, voce #3398): le quattro righe delle notifiche da cliente nel registro (+37) e il percorso con gli
         // id in una funzione che usa anche la cornice del cliente (+16): 2.625, la misura + 20, sì di zr-pm-07. Sprint 116 · T3:
         // la cornice del cliente prende dal pezzo la destinazione in «Il mio spazio» (+73) e le due chiamate con le rotte del
         // cliente (+11): 2.709, la misura + 20, sì di zr-pm-07 06/11 (meglio nel pezzo che nell'ingresso di zr-home).

@@ -350,7 +350,7 @@ final class Cornice
      * workspace, ruolo e non lette risponde null; la foto come in `dati()`; le aziende in cui la persona è membro, coi loro
      * workspace, come in `dati()` (la persona che è anche membro sceglie lì un suo workspace: schermata 13). Un workspace nella
      * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente non
-     * ci sono ancora: aspettano zr-backoffice #3320. Dalla `v4.24.0` (#3398) `non_lette` è il numero delle sue notifiche da cliente
+     * ci sono ancora: aspettano zr-backoffice #3320. Dalla `v4.23.0` (#3398) `non_lette` è il numero delle sue notifiche da cliente
      * non lette, `notifiche_non_lette` della stessa lettura di io.mostra: un intero da 0 in su, e 0 quando il backoffice dà null,
      * non lo dà o dà altro (prima del #3323 a quel gettone dava null). Dalla `v4.14.0` (#3335), dopo una
      * `linguaDelCliente()` nella stessa richiesta usa la sua lettura di io.mostra, una volta, e i dati hanno il suo segno.
@@ -643,7 +643,7 @@ final class Cornice
 
     /**
      * La lettura di io.mostra del cliente di questa richiesta, una sola per `linguaDelCliente()` e `datiDelCliente()` (dalla
-     * `v4.14.0`): come `lettura()`, ma col gettone dell'accesso, e le non lette sono quelle da cliente (dalla `v4.24.0`; prima del
+     * `v4.14.0`): come `lettura()`, ma col gettone dell'accesso, e le non lette sono quelle da cliente (dalla `v4.23.0`; prima del
      * #3323 a quel gettone il backoffice le dava null, e sono 0 anche per un valore che non è un intero da 0 in su); e
      * senza la richiesta rimandata, che la cornice del cliente non fa. Prende il segno, legge, dà la risposta a `Sessione::aggiorna`
      * e tiene fra gli attributi della richiesta di chi è (l'id della persona), il segno, l'esito (`true`, o l'errore), se una

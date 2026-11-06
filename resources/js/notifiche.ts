@@ -39,7 +39,7 @@ export function destinazioneDellaNotifica(notifica: { app?: unknown; tipo?: unkn
 }
 
 /**
- * L'indirizzo che apre una notifica da cliente (dalla `v4.24.0`, #3398), nella cornice di chi è solo cliente: la sua pagina in
+ * L'indirizzo che apre una notifica da cliente (dalla `v4.23.0`, #3398), nella cornice di chi è solo cliente: la sua pagina in
  * «Il mio spazio» di zr-home, nella voce della Dashboard del registro e fuori da ogni workspace — il cliente non è membro di
  * quello dell'azienda —, per una prenotazione `https://app.zeiras.com/spazio/prenotazioni/<id>`. Si apre solo un percorso
  * che chiede un id e lo trova negli `ids`, che la parte server dà solo a una notifica che il backoffice dice da cliente: per

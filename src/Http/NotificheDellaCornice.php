@@ -139,7 +139,7 @@ final class NotificheDellaCornice
     }
 
     /**
-     * GET /cornice/cliente/notifiche (dalla `v4.24.0`, #3398): le notifiche da cliente della persona, per la cornice di chi è solo
+     * GET /cornice/cliente/notifiche (dalla `v4.23.0`, #3398): le notifiche da cliente della persona, per la cornice di chi è solo
      * cliente (`CorniceDelCliente`), lette col gettone dell'accesso (Api::persona), anche senza un workspace nella sessione e mai
      * col gettone di quello che c'è: a quel gettone il backoffice dà solo le notifiche da cliente, di ogni azienda. Le notifiche
      * hanno la forma dell'elenco di sopra, più `azienda`, il nome del workspace dell'azienda di cui la persona è cliente
@@ -191,7 +191,7 @@ final class NotificheDellaCornice
 
     /**
      * Il client del backoffice: col gettone del workspace della sessione per la cornice, con quello dell'accesso per la cornice del
-     * cliente (dalla `v4.24.0`), che un workspace non lo guarda mai.
+     * cliente (dalla `v4.23.0`), che un workspace non lo guarda mai.
      */
     private static function api(bool $delCliente): Api
     {
@@ -255,7 +255,7 @@ final class NotificheDellaCornice
     }
 
     /**
-     * PATCH /cornice/cliente/notifiche/{notifica}/lettura (dalla `v4.24.0`, #3398): la stessa, per una notifica da cliente, col
+     * PATCH /cornice/cliente/notifiche/{notifica}/lettura (dalla `v4.23.0`, #3398): la stessa, per una notifica da cliente, col
      * gettone dell'accesso (io.notifiche.lettura.modifica). Una notifica che a quel gettone il backoffice non dà è il suo 404.
      */
     public function letturaDelCliente(Request $richiesta, string $notifica): JsonResponse
@@ -319,7 +319,7 @@ final class NotificheDellaCornice
     }
 
     /**
-     * POST /cornice/cliente/notifiche/letture (dalla `v4.24.0`, #3398): le stesse, per le notifiche da cliente, col gettone
+     * POST /cornice/cliente/notifiche/letture (dalla `v4.23.0`, #3398): le stesse, per le notifiche da cliente, col gettone
      * dell'accesso (io.notifiche.letture.crea), con lo stesso blocco della sessione e gli stessi tetti. Il corpo porta solo
      * `fino_a`: il cliente non è in un workspace, e un workspace della sessione qui non conta.
      */

@@ -32,7 +32,7 @@ beforeEach(() => {
     radice = createRoot(contenitore);
     vi.spyOn(console, 'error');
     // La cornice del cliente non chiama nessuna rotta (né /cornice/notifiche né /cornice/ricerca): una chiamata è un difetto.
-    // Dalla `v4.24.0` (sprint 116 · T3) la campanella chiama le rotte del cliente all'apertura: i suoi casi hanno le loro.
+    // Dalla `v4.23.0` (sprint 116 · T3) la campanella chiama le rotte del cliente all'apertura: i suoi casi hanno le loro.
     nessunaRotta = vi.fn(async () => { throw new Error('nessuna rotta'); });
     vi.stubGlobal('fetch', nessunaRotta);
 });
@@ -189,7 +189,7 @@ describe('la cornice del cliente', () => {
         expect(naviga).toHaveBeenCalledWith(nelWorkspace(dashboard.indirizzo, 'interni'));
     });
 
-    // Fino alla `v4.23` la campanella era vuota e non chiamava niente; dalla `v4.24.0` (sprint 116 · T3) apre le notifiche da
+    // Fino alla `v4.22` la campanella era vuota e non chiamava niente; dalla `v4.23.0` (sprint 116 · T3) apre le notifiche da
     // cliente: qui senza `non_lette` e senza notifiche, e i casi suoi sono in fondo.
     it('T2.4 senza `non_lette` la campanella non ha numero, e senza notifiche il pannello ha il testo vuoto del cliente', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [], persona: persona.email })));
@@ -243,7 +243,7 @@ describe('la cornice del cliente', () => {
         // Una lingua che zr-core non ha: l'inglese, per il cliente come per la cornice.
         ['de', clienteInglese, 'en'],
     ])('T2.5 in %s i testi del cliente vengono dal loro file, il resto dalla cornice', async (lingua, delCliente, base) => {
-        // La campanella, dalla `v4.24.0`, chiede le notifiche da cliente: qui nessuna, e il pannello dice il testo vuoto del cliente.
+        // La campanella, dalla `v4.23.0`, chiede le notifiche da cliente: qui nessuna, e il pannello dice il testo vuoto del cliente.
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [], persona: persona.email })));
         await mostra(<CorniceDelCliente dati={{ ...dati, lingua }} nav={nav} nuovoWorkspace="/spazio/nuovo-workspace" onLogout={esci} />);
 

@@ -2,7 +2,7 @@
 // `Cornice::datiDelCliente()` scritti qui e la barra della schermata 5 del design zr-account--il-mio-spazio. Ciò che la cornice
 // chiede al modulo — un indirizzo da aprire, l'uscita — la pagina lo scrive sotto, e in console («UAT naviga», «UAT esci»). Con
 // `?aziende=1` la persona è anche membro di un'azienda coi suoi workspace (schermata 13), con `?nuovo=1` il selettore ha «Crea
-// il tuo workspace» (schermata 14), con `?foto=1` l'avatar ha una foto. Dalla `v4.24.0` (voce 3398) la campanella ha le notifiche da
+// il tuo workspace» (schermata 14), con `?foto=1` l'avatar ha una foto. Dalla `v4.23.0` (voce 3398) la campanella ha le notifiche da
 // cliente delle rotte `/cornice/cliente/…`, finte qui sotto: tre, due non lette (la schermata 5), e con `?notifiche=0` nessuna.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';

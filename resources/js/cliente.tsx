@@ -12,8 +12,8 @@ import inglese from '../lingue/cliente/en.json';
 // system per chi entra in Zeiras come cliente di un'azienda, senza un workspace suo — le pagine «Il mio spazio» di zr-home
 // (design zr-account--il-mio-spazio). La riempiono i dati di `Cornice::datiDelCliente()`, letti col gettone dell'accesso, e il
 // modulo con le voci della barra. Nel selettore «Come cliente › Il mio spazio», attivo, e le aziende in cui la persona è anche
-// membro; niente riquadro del piano, niente menu Moduli. La campanella, dalla `v4.24.0` (voce 3398), ha le notifiche da cliente
-// delle rotte `/cornice/cliente/…` (fino alla `v4.23` era vuota); la ricerca non si vede: per il cliente il backoffice non ne ha
+// membro; niente riquadro del piano, niente menu Moduli. La campanella, dalla `v4.23.0` (voce 3398), ha le notifiche da cliente
+// delle rotte `/cornice/cliente/…` (fino alla `v4.22` era vuota); la ricerca non si vede: per il cliente il backoffice non ne ha
 // una (`search={false}`, dalla `v4.18.0`: niente campo né Ctrl/Cmd+K, che resta della pagina). Delle altre rotte della cornice usa
 // solo quella della foto, nell'avatar.
 
@@ -47,7 +47,7 @@ export interface DatiDelCliente {
     /** Le aziende in cui la persona è membro, coi loro workspace: vuota per chi è solo cliente. */
     aziende: { id: string; nome: string; workspace: WorkspaceDeiDati[]; nuovo_workspace?: boolean | undefined }[];
     aggiornati_il?: string | undefined;
-    /** Quante notifiche da cliente la persona non ha letto (dalla `v4.24.0`): il numero sulla campanella. Senza, nessun numero. */
+    /** Quante notifiche da cliente la persona non ha letto (dalla `v4.23.0`): il numero sulla campanella. Senza, nessun numero. */
     non_lette?: number | undefined;
     /**
      * I documenti legali in vigore non sono accettati: i dati sono ridotti (nessuna azienda, nessuna foto, nessun numero sulla
@@ -91,7 +91,7 @@ export interface CorniceDelClienteProps {
 /** La Dashboard: le pagine di account stanno al suo indirizzo, e un workspace del selettore si apre lì. */
 const dashboard = registro.find((voce) => voce.id === 'home')!;
 
-/** Le rotte delle notifiche da cliente (dalla `v4.24.0`): le stesse tre della `Cornice`, col gettone dell'accesso e senza workspace. */
+/** Le rotte delle notifiche da cliente (dalla `v4.23.0`): le stesse tre della `Cornice`, col gettone dell'accesso e senza workspace. */
 const DEL_CLIENTE = '/cornice/cliente';
 
 /** Una notifica da cliente come la dà GET /cornice/cliente/notifiche: quella della `Cornice`, più l'azienda di cui la persona è cliente. */
@@ -115,7 +115,7 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
     // Chi è a schermo, come per la `Cornice` (`mostra`): una lettura che risponde quando la cornice è di un'altra persona non apre niente.
     useLayoutEffect(() => (mostra(persona), () => mostra(persona, 1)), [persona.email]);
 
-    // La campanella (dalla `v4.24.0`, voce 3398). Il numero è quello dei dati, finché un clic non lo fa scendere: vale per quei dati,
+    // La campanella (dalla `v4.23.0`, voce 3398). Il numero è quello dei dati, finché un clic non lo fa scendere: vale per quei dati,
     // e i dati di una visita nuova (un altro `aggiornati_il`, un altro numero) lo riportano a sé. I dati ridotti non hanno numero.
     const diQuestiDati = `${dati.aggiornati_il}|${dati.non_lette}`;
     const [sceso, setSceso] = useState<{ di: string; n: number }>();

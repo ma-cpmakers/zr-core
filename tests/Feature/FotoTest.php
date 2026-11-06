@@ -232,7 +232,7 @@ it('fra le rotte della cornice la foto è la sola fuori da StessaPersona, e con 
         ->reject(fn ($rotta) => in_array($classe, $router->gatherRouteMiddleware($rotta), true))
         ->map(fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri())->values()->all();
 
-    // Dalla `v4.24.0` fuori da ConWorkspace stanno anche le tre del cliente, col gettone dell'accesso (sprint 116 · T1.3).
+    // Dalla `v4.23.0` fuori da ConWorkspace stanno anche le tre del cliente, col gettone dell'accesso (sprint 116 · T1.3).
     expect($senza(StessaPersona::class))->toBe(['GET cornice/foto'])
         ->and($senza(ConWorkspace::class))->toBe(['GET cornice/cliente/notifiche', 'POST cornice/cliente/notifiche/letture', 'PATCH cornice/cliente/notifiche/{notifica}/lettura', 'GET cornice/foto'])
         ->and($senza(ConGettone::class))->toBe([])

@@ -14,7 +14,7 @@ import { aSchermo, chiama, haLaFormaDiUnId, segno, type Persona } from './chiama
  * col tetto e l'orologio di `chiama`. Una risposta senza `fino_a` è un errore come le altre. Dà
  * l'istante in cui la parte server le ha segnate (`segnate_il`): se manca, o ha un'altra forma, non è un errore, è senza segno.
  * E dice se ne restano (`altre`): la parte server si è fermata a un tetto, e la stessa richiesta continua da lì. Solo il
- * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano. Dalla `v4.24.0` la
+ * booleano `true` lo dice: una parte server di prima della `v1.3.0` non dà `altre`, e allora non ne restano. Dalla `v4.23.0` la
  * cornice del cliente le segna con le rotte sue (`radice` `/cornice/cliente`, voce 3398), senza un workspace: il corpo porta solo `fino_a`.
  */
 export async function segnaLetteFinoA(finoA: string, workspace: string | undefined, persona: Persona, radice = '/cornice'): Promise<{ il: string | undefined; altre: boolean }> {
@@ -40,7 +40,7 @@ export async function segnaLetteFinoA(finoA: string, workspace: string | undefin
  * manca, o ha un'altra forma, non è un errore, è senza segno. `persona` è quella della cornice che chiede (email e impronta): se la sessione è
  * passata a un'altra persona la parte server non segna la notifica a chi è entrato (409 `persona_diversa`, dalla `v2.6.0`), e
  * né quel 409 né il 403 `accettazione_richiesta` di un'altra persona tornano a chi ha chiesto: la pagina, se è ancora lì, si
- * ricarica (vedi `chiama`). Dalla `v4.24.0` la cornice del cliente la chiede alla rotta sua (`radice` `/cornice/cliente`, voce 3398).
+ * ricarica (vedi `chiama`). Dalla `v4.23.0` la cornice del cliente la chiede alla rotta sua (`radice` `/cornice/cliente`, voce 3398).
  */
 export async function segnaLetta(id: string, persona: Persona, radice = '/cornice'): Promise<{ il: string | undefined }> {
     // L'id arriva da un elenco che la parte server ha dato, con una conversione di tipo e non con un controllo: se non è un testo
