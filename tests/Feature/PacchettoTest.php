@@ -1098,7 +1098,7 @@ it('il README dice, nella riga di ognuna delle due rotte delle notifiche, il suo
     $elenco = '| `GET /cornice/notifiche` |';
     $letture = '| `POST /cornice/notifiche/letture` con `{fino_a, workspace, persona}` |';
     $cosaDice = fn (string $testo): array => [
-        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'),
+        'aggiornati_il nella risposta dell\'elenco' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, esito, ids}], aggiornati_il, workspace, persona}`:'),
         'che cos\'è aggiornati_il' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`aggiornati_il` è l\'istante in cui la parte server ha cominciato a leggere l\'elenco, prima di chiamare il backoffice'),
         'segnate_il nella risposta delle letture' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '| `{data: {fino_a, altre}, segnate_il}`:'),
         'che cos\'è segnate_il' => str_contains(rigaDellaRotta($testo, 'POST /cornice/notifiche/letture'), '`segnate_il` è l\'istante preso dopo l\'ultima risposta del backoffice'),
@@ -1165,7 +1165,7 @@ it('il README dice il tipo nella riga di GET /cornice/notifiche: fra le chiavi d
     $ricerca = '| `POST /cornice/ricerca` con `{q}` |';
     // Chi non traduce il tipo è la parte server: zr-core, nel browser, gli dà un titolo (il punto «Le notifiche»).
     $cosaDice = fn (string $testo): array => [
-        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'),
+        'tipo fra le chiavi di ogni notifica' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, esito, ids}], aggiornati_il, workspace, persona}`:'),
         'tipo com\'è nel backoffice' => str_contains(rigaDellaRotta($testo, 'GET /cornice/notifiche'), '`tipo` è il tipo dell\'evento che l\'ha generata (`com.zeiras.board.cartella.creata`…), com\'è nel backoffice: la parte server non lo traduce e non lo confronta con un elenco'),
     ];
 
@@ -3886,7 +3886,7 @@ it('il README dice che dalla v1.12.0 l\'elenco delle notifiche porta il suo work
         // Il workspace in cui si apre non è più, sempre, quello dei dati della pagina.
         ->and(str_contains($testi['punto'], 'nel modulo da cui viene e nel workspace dei dati'))->toBe(false);
 })->with([
-    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`:'],
+    'la chiave nella riga della rotta' => ['rotta', '| `{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, esito, ids}], aggiornati_il, workspace, persona}`:'],
     'che cos\'è, e da quando' => ['rotta', 'dalla `v1.12.0` `workspace` è lo slug del workspace della sessione, quello col cui gettone l\'elenco è stato letto: lo dice la parte server, e non segue niente di ciò che manda il browser'],
     'dove si apre' => ['punto', 'Dalla `v1.11.0` un clic su una notifica apre la sua risorsa, nel modulo da cui viene e, dalla `v1.12.0`, nel workspace dell\'elenco'],
     'perché' => ['punto', 'la sessione ha un workspace solo: con due schede su due workspace, la scheda rimasta indietro riceve le notifiche di quello in cui la persona è entrata per ultimo'],
@@ -4679,6 +4679,26 @@ it('il README dice, dalla v4.12.0, il titolo e il tipo del Gate deciso, che non 
     'senza chi e senza esito' => ['senza chi l\'ha fatto e senza l\'esito, che il titolo non dice ancora'],
     'dove si apre' => ['Un clic apre il Gate, che è una scheda (`/c/{id}`)'],
     'quanti sono i titoli' => ['Con lui i titoli sono 59: 40 tipi di evento e i diciannove che non sono eventi'],
+]);
+
+// v4.16.0 (sprint 114 · T3.1, voce #3302). Il titolo del Gate dice l'esito: il README lo dice nel punto «Le notifiche», nella riga
+// della rotta e nella tabella delle versioni.
+it('il README dice, dalla v4.16.0, i titoli del Gate per esito, la chiave `esito` della rotta e la riga della versione (sprint 114 · T3.1)', function (string $dove, string $frase) {
+    $readme = (string) file_get_contents(__DIR__.'/../../README.md');
+    $testo = match ($dove) {
+        'notifiche' => puntoDelleNotifiche($readme),
+        'rotta' => rigaDellaRotta($readme, 'GET /cornice/notifiche'),
+        default => suUnaRiga($readme),
+    };
+
+    expect($testo)->not->toBe('')
+        ->and(substr_count($testo, $frase))->toBe(1);
+})->with([
+    'i tre titoli' => ['notifiche', 'Dalla `v4.16.0` il titolo del Gate dice com\'è stato deciso, dall\'esito che il backoffice dà nei `dati` della notifica (`esito`): «Gate approvato», «Gate approvato con prescrizioni» e «Gate respinto»'],
+    'senza esito' => ['notifiche', 'senza l\'esito, o con uno che le lingue non hanno, resta «Gate deciso». I titoli per esito non sono tipi: i titoli restano 59.'],
+    'la chiave della rotta' => ['rotta', 'dalla `v4.16.0` `esito` dice com\'è stata decisa la cosa'],
+    'la riga della versione' => ['readme', '| `v4.16.0` | il titolo del Gate deciso dice com\'è stato deciso (#3302)'],
+    'le pagine' => ['readme', '(`titoloDellaNotifica(tipo, lingua, esito)`, `dati.esito` della notifica)'],
 ]);
 
 it('il README dice, dalla v4.12.0, la riga del registro del Gate deciso (v4.12.0)', function () {
@@ -5495,7 +5515,7 @@ it('il README dice il conto delle azioni e il nome della board: le due chiavi de
     expect($testo)->not->toBe('')
         ->and(str_contains($testo, $frase))->toBe(true);
 })->with([
-    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, ids}], aggiornati_il, workspace, persona}`'],
+    'le chiavi di una notifica' => ['elenco', '`{data: [{id, creata_il, letta, app, tipo, autore_nome, risorsa_nome, per_me, azioni, board_nome, quando, esito, ids}], aggiornati_il, workspace, persona}`'],
     'che cosa sono le due chiavi' => ['elenco', 'dalla `v2.1.0` `azioni` è quante azioni la notifica racconta (un intero da 1 in su) e `board_nome` il nome della board in cui sta la cosa, o `null`'],
     'da dove vengono' => ['elenco', 'sono `azioni` e `board.nome` del backoffice'],
     'il backoffice di prima' => ['elenco', 'un backoffice che non li manda è quello di prima, e valgono 1 e `null`'],
@@ -5615,7 +5635,8 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: i byte dell\'impronta' => ['pesi', 'Dalla `v2.20.0` sono 30 byte in più, quelli dell\'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona`'],
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.290 byte la campanella, 2.097 i rimedi, 1.867 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
+    // v4.16.0 (voce #3302): la campanella a 2.330, la misura più 20 (sì di zr-pm-07, 06/11).
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.330 byte la campanella, 2.097 i rimedi, 1.867 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

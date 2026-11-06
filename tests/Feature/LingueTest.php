@@ -95,7 +95,8 @@ function lingueDellaCornice(): array
 /**
  * Cosa non torna fra i due file di ogni lingua (sprint 30 · T1.9): i testi della cornice stanno in resources/lingue, le frasi
  * delle notifiche — le chiavi `notificationTitle.<tipo>`, `notificationTitleWhoWhat.<tipo>`, `notificationTitleWho.<tipo>` e,
- * dallo sprint 34 · T2, le tre della riga sotto il titolo, `notificationUnder.<quale>` — in
+ * dallo sprint 34 · T2, le tre della riga sotto il titolo, `notificationUnder.<quale>`, e dalla v4.16.0 i titoli per esito,
+ * `notificationTitleOutcome.<tipo>.<esito>` — in
  * resources/lingue/notifiche, e la cornice le carica quando si apre la campanella. `notificationTitle` da solo è il titolo di
  * ripiego e resta fra i testi: serve anche a chi le frasi non le ha ancora.
  *
@@ -105,7 +106,7 @@ function lingueDellaCornice(): array
  */
 function problemiDeiDueFile(array $testi, array $frasi): array
 {
-    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What)?|WhatWhen|When)?|Under)\../', $chiave) === 1;
+    $eUnaFrase = fn (string $chiave): bool => preg_match('/^notification(Title(Who(What)?|WhatWhen|When|Outcome)?|Under)\../', $chiave) === 1;
 
     $problemi = [];
     foreach (array_diff(array_keys($testi), array_keys($frasi)) as $codice) {
