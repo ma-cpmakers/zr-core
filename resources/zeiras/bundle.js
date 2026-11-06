@@ -1006,13 +1006,15 @@
   }
 
   var PUBLISHER = {
-    name: 'Castro & Partners', legalForm: 'S.r.l.', address: 'Via Margaritone 30, 52100 Arezzo (AR), Italia', vat: '02453920510', taxCode: null,
+    name: 'Castro & Partners', legalForm: 'S.r.l.', address: 'Via Margaritone 30, 52100 Arezzo (AR), Italia', vat: '02453920510', taxCode: null, registry: 'Arezzo-Siena',
     capital: '40.000 €', pec: 'castroandpartners@pec.it', email: 'contatti@castroandpartners.com', phone: '+39 0575 146 0000'
   };
-  var SITE_FOOTER_LABELS = { tagline: 'La suite semplice e gratuita per organizzare il tuo lavoro.', by: 'Sviluppato da', registeredOffice: 'Sede legale', vat: 'P. IVA', vatTax: 'P. IVA e C.F.', taxCode: 'C.F.', rea: 'REA', capital: 'Capitale sociale', paidUp: 'i.v.', pec: 'PEC', email: 'Email', phone: 'Tel.', rights: 'Tutti i diritti riservati.', legalNav: 'Informazioni legali', missing: 'Dato da inserire', language: 'Lingua', soon: 'In arrivo' };
+  var SITE_FOOTER_LABELS = { tagline: 'La suite semplice e gratuita per organizzare il tuo lavoro.', by: 'Sviluppato da', registeredOffice: 'Sede legale', vat: 'P. IVA', vatTax: 'P. IVA e C.F.', taxCode: 'C.F.', rea: 'REA', registry: 'Registro delle Imprese', registryNo: 'n.', capital: 'Capitale sociale', paidUp: 'i.v.', pec: 'PEC', email: 'Email', phone: 'Tel.', rights: 'Tutti i diritti riservati.', legalNav: 'Informazioni legali', missing: 'Dato da inserire', language: 'Lingua', soon: 'In arrivo' };
   function SiteFooter(p) {
     var L = Object.assign({}, SITE_FOOTER_LABELS, p.labels || {});
     var co = Object.assign({}, PUBLISHER, p.company || {});
+    /* l'ufficio del Registro delle Imprese col numero d'iscrizione, che per una società è il C.F. (art. 2250 c.c., richiesta 218): un titolare con la sua P. IVA non eredita l'ufficio di Zeiras */
+    var registry = p.company && 'vat' in p.company && p.company.vat !== PUBLISHER.vat && !p.company.registry ? null : co.registry, regNo = co.registryNumber || co.taxCode || co.vat;
     var cols = p.columns || [
       { title: 'Moduli', links: ['Board', 'CRM', 'Bookings', 'Finanze', 'Prezzi'] },
       { title: 'Risorse', links: ['Guida introduttiva', 'Modelli di board', 'Novità', 'Stato del servizio'] },
@@ -1031,6 +1033,7 @@
       [L.taxCode, co.taxCode || null],
       [L.rea, co.rea || null], /* il n. REA solo se il titolare lo passa: nei dati di Zeiras non c'è, e non ha segnaposto */
       [L.capital, co.capital ? co.capital + ' ' + L.paidUp : val(null, 'capitale sociale i.v.')],
+      [L.registry, registry && regNo ? registry + ' ' + L.registryNo + ' ' + regNo : null], /* senza ufficio o senza numero la riga non c'è */
       [L.pec, co.pec ? h('a', { href: 'mailto:' + co.pec }, co.pec) : val(null, 'indirizzo PEC')],
       [L.email, co.email ? h('a', { href: 'mailto:' + co.email }, co.email) : null],
       [L.phone, co.phone || null]
