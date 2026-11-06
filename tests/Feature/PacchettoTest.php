@@ -5683,7 +5683,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
 
     // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
     // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
-    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Sprint 110 · T2.4 (voce #3319): dalla `v4.13.0` la regola che nasconde la ricerca nella cornice del cliente, provvisoria.
+    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
         ->and(substr_count($salto, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)

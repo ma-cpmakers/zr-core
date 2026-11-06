@@ -24,7 +24,7 @@ const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
 // una chiave solo quando ha un valore (`senzaUndefined`, più sotto).
 
 /** Un workspace di un'azienda nei dati della cornice (`DatiDellaCornice`, `aziende`). */
-type WorkspaceDeiDati = { id?: string | undefined; nome: string; slug: string; colore?: ShellWorkspace['tone'] };
+export type WorkspaceDeiDati = { id?: string | undefined; nome: string; slug: string; colore?: ShellWorkspace['tone'] };
 
 /** I dati della cornice, come li dà `Cornice::dati()` della parte server: la persona, la sua lingua, il workspace in cui è entrata. */
 export interface DatiDellaCornice {
@@ -181,7 +181,7 @@ function idDiNessunaVoce(gruppi: { items: { id: string }[] }[]): string {
 }
 
 /** Le pagine di account, azienda e notifiche: stanno su app.zeiras.com, l'indirizzo della Dashboard. */
-const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
+export const pagineDiApp: Record<Exclude<AccountAction, 'logout'> | 'notifiche', string> = {
     profile: '/impostazioni/profilo',
     settings: '/impostazioni/preferenze',
     plan: '/azienda/impostazioni/piano',
@@ -230,7 +230,7 @@ function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
  * del nome, dello slug o del posto nell'elenco. Senza l'uno e l'altro nessun tono, nemmeno la chiave: il pallino è quello che
  * l'`AppShell` mette da sé.
  */
-function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
+export function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
     return senzaUndefined({ slug: workspace.slug, name: workspace.nome, tone: workspace.colore ?? tonoDelWorkspace(workspace.id) });
 }
 

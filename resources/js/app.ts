@@ -15,3 +15,6 @@ export { CorniceDelloStaff, type CorniceDelloStaffProps } from './staff';
 // Il Toast della cornice (dalla `v3.17.0`): quello del design system già messo in basso al centro. In coda, come la cornice dello
 // staff; un'app che non lo usa non lo porta nella build.
 export { ToastDellaCornice, type ToastDellaCorniceProps } from './toast';
+// La cornice del cliente (dalla `v4.13.0`): per le pagine «Il mio spazio» di zr-home, coi dati di `Cornice::datiDelCliente()`. In
+// coda, come la cornice dello staff; un'app che non la usa non la porta nella build.
+export { CorniceDelCliente, type CorniceDelClienteProps, type DatiDelCliente } from './cliente';
