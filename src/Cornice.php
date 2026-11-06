@@ -44,6 +44,9 @@ final class Cornice
     /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra che `lingua()` e `dati()` hanno in comune. */
     private const LETTURA = 'zr-core.io-mostra';
 
+    /** Dove sta, fra gli attributi della richiesta, la lettura di io.mostra del cliente che `linguaDelCliente()` e `datiDelCliente()` hanno in comune. */
+    private const LETTURA_DEL_CLIENTE = 'zr-core.io-mostra-del-cliente';
+
     /**
      * Il segno della lingua, nella sessione: di chi è (l'id della persona) e l'inizio della lettura di io.mostra che ha
      * confermato la sua lingua. Sta nella sessione e non sulla richiesta: `subito()` lo dà in una richiesta che non legge.
@@ -331,7 +334,8 @@ final class Cornice
      * workspace, ruolo e non lette risponde null; la foto come in `dati()`; le aziende in cui la persona è membro, coi loro
      * workspace, come in `dati()` (la persona che è anche membro sceglie lì un suo workspace: schermata 13). Un workspace nella
      * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente e
-     * le sue notifiche da cliente non ci sono ancora: aspettano zr-backoffice #3320 e #3323.
+     * le sue notifiche da cliente non ci sono ancora: aspettano zr-backoffice #3320 e #3323. Dalla `v4.14.0` (#3335), dopo una
+     * `linguaDelCliente()` nella stessa richiesta usa la sua lettura di io.mostra, una volta, e i dati hanno il suo segno.
      *
      * null senza sessione, senza chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in
      * `dati()`: la persona della sessione senza foto, nessuna azienda e `accettazione_richiesta`. Ogni altro errore arriva a chi
@@ -347,16 +351,14 @@ final class Cornice
             return null;
         }
 
-        $segno = Segno::adesso();
+        $lettura = self::letturaDelCliente($utente, true);
+        $segno = $lettura['segno'];
 
         try {
-            $io = Api::persona()->get('/v1/io')['data'] ?? null;
-            if (! is_array($io) || ! is_array($io['utente'] ?? null)) {
-                throw new BackofficeNonRisponde('La risposta di GET /v1/io non porta la persona.');
+            if ($lettura['esito'] !== true) {
+                throw $lettura['esito'];
             }
-            Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
-            self::ricordaLaLingua($io, $segno);
-            $letti = ['foto' => self::fotoAggiornataIl($io, $utente['id'] ?? null), 'aziende' => self::aziende()];
+            $letti = ['foto' => $lettura['foto'], 'aziende' => self::aziende()];
         } catch (ErroreApi $errore) {
             if (! Accettazione::richiesta($errore)) {
                 throw $errore;
@@ -411,8 +413,37 @@ final class Cornice
             $utente = Sessione::utente() ?? $utente;
         }
 
-        $lingua = $utente['lingua'] ?? null;
+        return self::inForma($utente['lingua'] ?? null);
+    }
 
+    /**
+     * La lingua della persona già aggiornata dal profilo per le pagine di chi è solo cliente (dalla `v4.14.0`, voce #3335,
+     * Decisione 21806 di zr-pm): quello che `lingua()` è per le pagine di un workspace, nel middleware che mette la lingua della
+     * pagina prima del controller (con Inertia, prima delle prop condivise), dove la cornice è `CorniceDelCliente`. Legge
+     * io.mostra col gettone dell'accesso, anche con un workspace nella sessione, come `datiDelCliente()`, lo dà a
+     * `Sessione::aggiorna` e risponde con la lingua della sessione, se ha la forma di una lingua (vedi `lingua()`). Nella stessa
+     * richiesta `datiDelCliente()` usa questa lettura invece di rifarla.
+     *
+     * null senza una sessione, e il backoffice non si chiama. Non lancia: se il backoffice non risponde, o risponde con un errore,
+     * dà la lingua che la sessione ha e lascia un avviso nel log, e l'errore lo lancia `datiDelCliente()`, se in quella richiesta
+     * c'è; col 403 `accettazione_richiesta` senza avviso, e i dati escono ridotti. GettoneRifiutato passa.
+     */
+    public static function linguaDelCliente(): ?string
+    {
+        $utente = Sessione::utente();
+
+        if ($utente === null) {
+            return null;
+        }
+
+        self::letturaDelCliente($utente, false);
+
+        return self::inForma((Sessione::utente() ?? $utente)['lingua'] ?? null);
+    }
+
+    /** La lingua se ha la forma di una lingua (FORMA_DI_UNA_LINGUA, 35 caratteri al più), per `App::setLocale`; se no null. */
+    private static function inForma(mixed $lingua): ?string
+    {
         return is_string($lingua) && strlen($lingua) <= 35 && preg_match(self::FORMA_DI_UNA_LINGUA, $lingua) === 1 ? $lingua : null;
     }
 
@@ -583,6 +614,58 @@ final class Cornice
         if (! $perIDati) {
             is_int($esito) ? session()->put(self::RIMANDATA, ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'il' => Segno::orologio(), 'foto' => $foto]) : session()->forget(self::RIMANDATA);
         }
+
+        return $lettura;
+    }
+
+    /**
+     * La lettura di io.mostra del cliente di questa richiesta, una sola per `linguaDelCliente()` e `datiDelCliente()` (dalla
+     * `v4.14.0`): come `lettura()`, ma col gettone dell'accesso e senza le non lette, che a quel gettone il backoffice dà null; e
+     * senza la richiesta rimandata, che la cornice del cliente non fa. Prende il segno, legge, dà la risposta a `Sessione::aggiorna`
+     * e tiene fra gli attributi della richiesta di chi è (l'id della persona), il segno, l'esito (`true`, o l'errore), se una
+     * `datiDelCliente()` l'ha già usata e il momento della foto. `linguaDelCliente()` usa la lettura che c'è, sempre;
+     * `datiDelCliente()` una volta sola. Una risposta senza la persona è BackofficeNonRisponde, e di lei non si prende niente.
+     * L'errore preso per `linguaDelCliente()`, che non lo lancia, va nel log come avviso, salvo il 403 `accettazione_richiesta`.
+     * GettoneRifiutato non si prende, e non si tiene niente.
+     *
+     * @param  array<string, mixed>  $utente  la persona della sessione
+     * @return array{di: mixed, segno: string, esito: true|BackofficeNonRisponde|ErroreApi, nei_dati: bool, foto: string|null}
+     */
+    private static function letturaDelCliente(array $utente, bool $perIDati): array
+    {
+        $di = $utente['id'] ?? null;
+        $tenuta = request()->attributes->get(self::LETTURA_DEL_CLIENTE);
+
+        if (is_array($tenuta) && $di !== null && $tenuta['di'] === $di && ! ($perIDati && $tenuta['nei_dati'])) {
+            if ($perIDati) {
+                $tenuta['nei_dati'] = true;
+                request()->attributes->set(self::LETTURA_DEL_CLIENTE, $tenuta);
+            }
+
+            return $tenuta;
+        }
+
+        $segno = Segno::adesso();
+
+        try {
+            $io = Api::persona()->get('/v1/io')['data'] ?? null;
+            if (! is_array($io) || ! is_array($io['utente'] ?? null)) {
+                throw new BackofficeNonRisponde('La risposta di GET /v1/io non porta la persona.');
+            }
+            Sessione::aggiorna(self::conLaLinguaRicordata($io, $segno));
+            self::ricordaLaLingua($io, $segno);
+            $esito = true;
+            $foto = self::fotoAggiornataIl($io, $di);
+        } catch (BackofficeNonRisponde|ErroreApi $errore) {
+            $esito = $errore;
+            $foto = null;
+            if (! $perIDati && ! Accettazione::richiesta($errore)) {
+                self::avvisa($errore);
+            }
+        }
+
+        $lettura = ['di' => $di, 'segno' => $segno, 'esito' => $esito, 'nei_dati' => $perIDati, 'foto' => $foto];
+        request()->attributes->set(self::LETTURA_DEL_CLIENTE, $lettura);
 
         return $lettura;
     }

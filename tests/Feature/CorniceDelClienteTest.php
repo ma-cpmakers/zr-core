@@ -3,8 +3,10 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
+use Zeiras\Auth\Errori\GettoneRifiutato;
 use Zeiras\Auth\Sessione;
 use Zeiras\Core\Cornice;
 use Zeiras\Core\Http\FotoDellaCornice;
@@ -175,3 +177,89 @@ it('ogni altro errore del backoffice arriva a chi chiama com\'è (sprint 110 · 
     'un 403 con un altro codice' => [fn () => accettazioneRichiesta(403, 'permesso_negato'), ErroreApi::class],
     'una risposta senza la persona' => [fn () => Http::response(['data' => ['utente' => null]]), BackofficeNonRisponde::class],
 ]);
+
+// Sprint 112 · T1 (voce #3335, Decisione 21806 di zr-pm-07). `Cornice::linguaDelCliente()` dà al middleware delle pagine di chi è
+// solo cliente la lingua del profilo già aggiornata, con la sessione dell'accesso; nella stessa richiesta `datiDelCliente()` usa la
+// sua lettura di io.mostra invece di rifarla, come `dati()` con `lingua()`.
+
+it('linguaDelCliente() legge io.mostra col gettone dell\'accesso, anche con un workspace nella sessione, aggiorna la sessione e dà la lingua del profilo (sprint 112 · T1.1)', function (?array $workspace) {
+    $gettoni = sessioneAMano($workspace);
+    backofficeDelCliente();
+
+    expect(Cornice::linguaDelCliente())->toBe('es')
+        ->and(Sessione::utente()['lingua'])->toBe('es')
+        ->and(chiamateDelCliente())->toBe(['/v1/io'])
+        ->and(Http::recorded()->first()[0]->hasHeader('Authorization', 'Bearer '.$gettoni['accesso']))->toBeTrue();
+})->with([
+    'senza workspace' => [null],
+    'con un workspace' => [['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing']],
+]);
+
+it('datiDelCliente() dopo linguaDelCliente() usa la stessa lettura: /v1/io una volta, la stessa lingua e lo stesso segno; una seconda datiDelCliente() rilegge (sprint 112 · T1.2)', function () {
+    Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
+    sessioneAMano(null);
+    backofficeDelCliente();
+
+    $lingua = Cornice::linguaDelCliente();
+    Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:01.000000', 'UTC'));
+    $dati = Cornice::datiDelCliente();
+
+    expect([$lingua, $dati['lingua'], $dati['aggiornati_il'], array_count_values(chiamateDelCliente())['/v1/io']])
+        ->toBe(['es', 'es', '2026-11-06T10:00:00.000000Z', 1]);
+    expect([Cornice::datiDelCliente()['aggiornati_il'], array_count_values(chiamateDelCliente())['/v1/io']])
+        ->toBe(['2026-11-06T10:00:01.000000Z', 2]);
+});
+
+it('la lettura di linguaDelCliente() è della persona che l\'ha fatta: con un\'altra persona nella sessione datiDelCliente() rilegge (sprint 112 · T1.2)', function () {
+    // io.mostra risponde per la persona della sessione: Bea ha l'italiano nel profilo.
+    backofficeDelCliente(['/v1/io' => fn () => Http::response(ioDelCliente(Sessione::utente()['id'] === 'uat-bea' ? ['id' => 'uat-bea', 'email' => 'uat-bea@example.com', 'lingua' => 'it'] : []))]);
+    sessioneAMano(null);
+    Cornice::linguaDelCliente();
+
+    sessioneAMano(null, 'en', ['id' => 'uat-bea', 'email' => 'uat-bea@example.com']);
+
+    // Con la lettura di prima i dati avrebbero la lingua della sessione di adesso, 'en': 'it' è quella riletta per lei.
+    expect(Cornice::datiDelCliente()['lingua'])->toBe('it');
+});
+
+it('linguaDelCliente() senza sessione dà null e non chiama il backoffice (sprint 112 · T1.3)', function () {
+    backofficeDelCliente();
+
+    expect(Cornice::linguaDelCliente())->toBeNull()
+        ->and(chiamateDelCliente())->toBe([]);
+});
+
+it('linguaDelCliente() con una lingua che non ha la forma di una lingua dà null: va a App::setLocale (sprint 112 · T1.3)', function () {
+    sessioneAMano(null, 'es/../x');
+    backofficeDelCliente(['/v1/io' => ioDelCliente(['lingua' => 'es/../x'])]);
+
+    expect(Cornice::linguaDelCliente())->toBeNull();
+});
+
+it('linguaDelCliente() non lancia: davanti a un guasto del backoffice dà la lingua della sessione con un avviso nel log, al 403 accettazione_richiesta senza; la datiDelCliente() dopo non rilegge, e lancia quell\'errore o dà i dati ridotti (sprint 112 · T1.3)', function (Closure $risposta, ?string $classe) {
+    Log::spy();
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => $risposta]);
+
+    expect(Cornice::linguaDelCliente())->toBe('en');
+    if ($classe === null) {
+        expect(Cornice::datiDelCliente()['accettazione_richiesta'] ?? null)->toBeTrue();
+    } else {
+        expect(fn () => Cornice::datiDelCliente())->toThrow($classe);
+    }
+    // Un avviso solo, quello di linguaDelCliente(): la datiDelCliente() dopo non ne scrive (R1 della revisione).
+    $classe === null ? Log::shouldNotHaveReceived('warning') : Log::shouldHaveReceived('warning')->once();
+    expect(chiamateDelCliente())->toBe(['/v1/io']);
+})->with([
+    'un 503 col suo codice' => [fn () => Http::response(['codice' => 'servizio_non_disponibile', 'status' => 503], 503), ErroreApi::class],
+    'un 503 senza JSON' => [fn () => Http::response('guasto', 503), BackofficeNonRisponde::class],
+    'una risposta senza la persona' => [fn () => Http::response(['data' => ['utente' => null]]), BackofficeNonRisponde::class],
+    'il 403 accettazione_richiesta' => [fn () => accettazioneRichiesta(), null],
+]);
+
+it('linguaDelCliente() lascia passare il gettone rifiutato: la sessione è finita, e lo tratta il frontend (sprint 112 · T1.3)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => fn () => Http::response((string) json_encode(['type' => 'about:blank', 'title' => 'uat', 'status' => 401, 'detail' => 'uat', 'codice' => 'gettone_scaduto']), 401, ['Content-Type' => 'application/problem+json'])]);
+
+    expect(fn () => Cornice::linguaDelCliente())->toThrow(GettoneRifiutato::class);
+});
