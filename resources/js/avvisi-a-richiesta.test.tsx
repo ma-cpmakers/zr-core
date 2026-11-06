@@ -48,7 +48,7 @@ afterEach(async () => {
     vi.unstubAllGlobals();
 });
 
-const mostra = async (deiDati: DatiDellaCornice) => act(async () => radice.render(<Cornice dati={deiDati} product="pm" onLogout={() => {}}><p>La pagina</p></Cornice>));
+const mostra = async (deiDati: DatiDellaCornice, onLogout = () => {}) => act(async () => radice.render(<Cornice dati={deiDati} product="pm" onLogout={onLogout}><p>La pagina</p></Cornice>));
 const arrivati = async () => act(() => vi.dynamicImportSettled());
 /**
  * Finché sopra la pagina non c'è quel testo, al più per due secondi, un giro alla volta dentro `act`. Il pezzo passa dalla
@@ -86,5 +86,65 @@ describe('i testi degli avvisi arrivano con un pezzo a richiesta, chiesto solo n
         await mostra({ ...dati, lingua: 'pt-BR', non_letti: true });
         await finoAlTesto(inglesi.downTitle + inglesi.downText);
         expect(sopraLaPagina()).toBe(inglesi.downTitle + inglesi.downText);
+    });
+});
+
+// Sprint 115 · T3 (voce #2909, Decisione 22312): quando lo staff è entrato con «Accedi come», sopra la pagina la fascia di
+// assistenza — l'Alert del design system, tono `warning` — dice chi è la persona assistita, la sua email, che cosa valgono le
+// modifiche, e ha il pulsante che termina l'assistenza. I testi stanno nel pezzo degli avvisi, che allora si chiede.
+describe('la fascia di assistenza (sprint 115 · T3)', () => {
+    const anna = { persona: { nome: 'Anna', cognome: 'Bianchi', email: 'anna@example.com' }, sola_lettura: false };
+    const avvisiSopra = () => [...contenitore.querySelectorAll('main .zr-alert')].map((avviso) => [avviso.className, avviso.querySelector('strong')?.textContent, avviso.querySelector('.zr-alert-body > div')?.textContent, [...avviso.querySelectorAll('button')].map((pulsante) => pulsante.textContent)]);
+    const fascia = (titolo: string, testo: string, pulsante: string) => ['zr-alert zr-alert-warning', titolo, testo, [pulsante]];
+    const finoAllaFascia = async () => {
+        for (let giri = 0; giri < 200 && contenitore.querySelector('main .zr-alert') === null; giri++) {
+            await act(async () => {
+                await vi.dynamicImportSettled();
+                await new Promise((fatto) => setTimeout(fatto, 10));
+            });
+        }
+    };
+
+    it('in italiano, spagnolo e inglese: il nome e il cognome nel titolo, l\'email e che cosa valgono le modifiche nel testo, il pulsante che termina; con la sola lettura il testo della sola lettura (T3.1)', async () => {
+        await mostra({ ...dati, assistenza: anna });
+        await finoAllaFascia();
+        expect(avvisiSopra()).toStrictEqual([fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Le modifiche che fai valgono come fatte da Anna', "Termina l'assistenza")]);
+
+        await mostra({ ...dati, lingua: 'es', assistenza: { ...anna, sola_lettura: true } });
+        expect(avvisiSopra()).toStrictEqual([fascia('Estás usando Zeiras como Anna Bianchi', 'anna@example.com · Solo lectura: puedes mirar, no modificar', 'Terminar la asistencia')]);
+
+        await mostra({ ...dati, lingua: 'en', assistenza: { persona: { nome: 'Bob', cognome: null, email: 'bob@example.com' }, sola_lettura: false } });
+        expect(avvisiSopra()).toStrictEqual([fascia("You're using Zeiras as Bob", 'bob@example.com · Changes you make count as made by Bob', 'End assistance')]);
+
+        await mostra({ ...dati, assistenza: { ...anna, sola_lettura: true } });
+        expect(avvisiSopra()).toStrictEqual([fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Sola lettura: puoi guardare, non modificare', "Termina l'assistenza")]);
+    });
+
+    it('«Termina l\'assistenza» chiama `onLogout`, come «Esci» (T3.2)', async () => {
+        const esci = vi.fn();
+        await mostra({ ...dati, assistenza: anna }, esci);
+        await finoAllaFascia();
+
+        await act(async () => contenitore.querySelector<HTMLButtonElement>('main .zr-alert button')?.click());
+        expect(esci).toHaveBeenCalledTimes(1);
+    });
+
+    it('la fascia non si chiude e resta nella cornice ridotta, sopra l\'avviso; senza `assistenza` nessuna fascia (T3.3; che la cornice di sempre non chieda il pezzo lo prova il primo caso del file)', async () => {
+        await mostra({ ...dati, non_letti: true, assistenza: anna });
+        await finoAllaFascia();
+        expect(avvisiSopra()).toStrictEqual([
+            fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Le modifiche che fai valgono come fatte da Anna', "Termina l'assistenza"),
+            ['zr-alert zr-alert-warning', italiani.downTitle, italiani.downText, []],
+        ]);
+
+        await mostra(dati);
+        expect(avvisiSopra()).toStrictEqual([]);
+    });
+
+    it('in una lingua che non ha il suo file la fascia è in inglese (T3.4)', async () => {
+        await mostra({ ...dati, lingua: 'pt-BR', assistenza: anna });
+        await finoAllaFascia();
+        expect(avvisiSopra()).toStrictEqual([fascia("You're using Zeiras as Anna Bianchi", 'anna@example.com · Changes you make count as made by Anna', 'End assistance')]);
+        expect([inglesi, spagnoli, italiani].map((file) => Object.keys(file).filter((chiave) => chiave.startsWith('assist')))).toStrictEqual(Array(3).fill(['assistTitle', 'assistText', 'assistReadOnly', 'assistEnd']));
     });
 });

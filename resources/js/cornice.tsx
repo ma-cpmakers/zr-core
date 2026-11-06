@@ -487,9 +487,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
     // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
     // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
+    // Dalla `v4.22.0` (#2909) lo stesso pezzo porta i testi della fascia di assistenza, e si chiede anche in assistenza.
     const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
+    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza;
     useLayoutEffect(() => {
-        if (ridotta === 'error' && !avvisi) {
+        if (chiediGliAvvisi && !avvisi) {
             const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
             const ogni = setInterval(chiedi, 5e3);
 
@@ -499,7 +501,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
 
         return undefined;
-    }, [ridotta, avvisi]);
+    }, [chiediGliAvvisi, avvisi]);
     const a = avvisi?.testiDegliAvvisi(lingua);
     // I due testi della ricerca: il segnaposto, uno solo dove la ricerca ha delle fonti, e l'invito, che dice che cosa si può
     // cercare. Le fonti sono i tipi di risorsa dei moduli attivi nel workspace dei dati e, dopo, i membri del workspace, che ci
@@ -948,10 +950,19 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // L'Alert arriva col pezzo degli avvisi (dalla `v4.8.1`, #3055), insieme ai testi.
     const Alert = avvisi?.Alert;
     const avvisoSopraLaPagina = a && Alert && ridotta === 'error' ? (
+        <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
+            {daAccettare ? a.acceptanceText : a.downText}
+        </Alert>
+    ) : null;
+    // La fascia di assistenza (dalla `v4.22.0`, #2909): quando lo staff è entrato con «Accedi come», chi è la persona assistita e
+    // che cosa valgono le modifiche, col pulsante che termina l'assistenza uscendo, come «Esci». Non si chiude, e resta anche
+    // nella cornice ridotta, sopra l'avviso, nello stesso contenitore. Il prototipo la mette sopra la barra in alto: l'`AppShell`
+    // non ha quel posto, e la fascia sta dove sta l'avviso (scostamento dichiarato, Decisione 22312).
+    const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
+    const sopraLaPagina = Fascia || avvisoSopraLaPagina ? (
         <div className="zr-stack">
-            <Alert tone="warning" title={daAccettare ? a.acceptanceTitle : a.downTitle} action={daAccettare ? <Button variant="secondary" size="sm" onClick={vaiAllAccettazione}>{a.acceptanceAction}</Button> : undefined}>
-                {daAccettare ? a.acceptanceText : a.downText}
-            </Alert>
+            {Fascia && <Fascia lingua={lingua} assistenza={dati.assistenza!} onLogout={onLogout} />}
+            {avvisoSopraLaPagina}
             <div />
         </div>
     ) : null;
@@ -1004,8 +1015,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onSearch: ridotta ? undefined : cercaParola,
                 // Nello stato ridotto la zona viva delle notifiche si svuota: ciò che aveva detto del numero non resta lì (sprint 25 · T5.8).
                 notificationsNotice: ridotta ? '' : undefined,
-                flush: avvisoSopraLaPagina ? undefined : pagina.flush,
-                children: <>{avvisoSopraLaPagina}{pagina.children}</>,
+                flush: sopraLaPagina ? undefined : pagina.flush,
+                children: <>{sopraLaPagina}{pagina.children}</>,
             })}
             nav={voci}
             email={persona.email}

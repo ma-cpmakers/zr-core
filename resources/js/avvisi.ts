@@ -3,12 +3,18 @@
 // questo pezzo quando i dati dicono uno dei due (`accettazione_richiesta`, il segnale dell'accettazione, `non_letti`), e
 // l'avviso sopra la pagina, con la frase di campanella e ricerca spente, c'è quando il pezzo è arrivato. Nessun ingresso
 // riesporta niente da qui. Dalla `v4.8.1` (#3055, Decisione 21220) il pezzo porta anche l'Alert del design system, dal suo
-// modulo: l'avviso è il solo posto della cornice che lo usa, e il JS d'ingresso non lo porta più.
+// modulo: l'avviso è il solo posto della cornice che lo usa, e il JS d'ingresso non lo porta più. Dalla `v4.22.0` (#2909) porta
+// anche i testi della fascia di assistenza, che la cornice mette sopra la pagina quando lo staff è entrato con «Accedi come»: la
+// cornice chiede il pezzo anche quando i dati hanno `assistenza`.
 
+import { createElement as h } from 'react';
 import inglesi from '../lingue/avvisi/en.json';
+import type { DatiDellaCornice } from './cornice';
 import { linguaDeiTesti } from './lingue';
+import { Alert } from './zeiras/Alert';
+import { Button } from './zeiras/componenti';
 
-export { Alert } from './zeiras/Alert';
+export { Alert };
 
 /**
  * I testi: stanno in `resources/lingue/avvisi/`, un file per lingua col codice per nome come le lingue della cornice. Il file è
@@ -42,6 +48,17 @@ export interface TestiDegliAvvisi {
     downText: string;
     /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
     downOff: string;
+    /**
+     * Il titolo della fascia di assistenza (dalla `v4.22.0`, #2909): chi è la persona assistita, `{name}` col nome e il cognome.
+     * La fascia non si chiude: resta finché dura l'assistenza, anche nella cornice ridotta, sopra l'avviso.
+     */
+    assistTitle: string;
+    /** Il testo della stessa fascia: `{email}` della persona, e che le modifiche valgono come fatte da lei, `{firstName}` col nome. */
+    assistText: string;
+    /** Il testo della stessa fascia quando l'assistenza è di sola lettura, al posto di `assistText`. */
+    assistReadOnly: string;
+    /** Il pulsante della stessa fascia: termina l'assistenza uscendo, come «Esci» (`onLogout`). */
+    assistEnd: string;
 }
 
 const file = import.meta.glob<Partial<TestiDegliAvvisi>>('../lingue/avvisi/*.json', { eager: true, import: 'default' });
@@ -51,4 +68,15 @@ export function testiDegliAvvisi(lingua: string): TestiDegliAvvisi {
     const scelti = file[`../lingue/avvisi/${linguaDeiTesti(lingua)}.json`] ?? {};
 
     return Object.fromEntries(Object.entries(inglesi).map(([chiave, inglese]) => [chiave, scelti[chiave as keyof TestiDegliAvvisi]?.trim() || inglese])) as unknown as TestiDegliAvvisi;
+}
+
+/**
+ * La fascia di assistenza in una lingua: l'Alert del design system, tono `warning`, coi nomi e l'email della persona assistita, e il
+ * pulsante che termina l'assistenza chiamando `onLogout`. Sta qui e non nella cornice perché serve solo in assistenza.
+ */
+export function FasciaDiAssistenza({ lingua, assistenza: { persona: { nome, cognome, email }, sola_lettura }, onLogout }: { lingua: string; assistenza: NonNullable<DatiDellaCornice['assistenza']>; onLogout: () => void }) {
+    const t = testiDegliAvvisi(lingua);
+    const con = (frase: string) => frase.replace(/\{(name|email|firstName)\}/g, (_posto, chi: string) => (chi === 'name' ? [nome, cognome].filter(Boolean).join(' ') : chi === 'email' ? email : nome));
+
+    return h(Alert, { tone: 'warning', title: con(t.assistTitle), action: h(Button, { variant: 'secondary', size: 'sm', onClick: onLogout }, t.assistEnd) }, con(sola_lettura ? t.assistReadOnly : t.assistText));
 }

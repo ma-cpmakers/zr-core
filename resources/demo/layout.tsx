@@ -46,6 +46,9 @@ const marketing: DatiDellaCornice = {
     prodotti: { pm: 'attivo', crm: 'disponibile', bookings: 'in_arrivo', reports: 'attivo' },
     aziende: [{ id: 'uat-1', nome: 'UAT Acme', workspace: [{ id: 'uat-ws-2', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-ws-3', nome: 'UAT Marketing', slug: 'uat-marketing' }], nuovo_workspace: true }],
     non_lette: Number(scelti.get('non_lette') ?? 7),
+    // Sprint 115 · T3 (#2909): con `?assistenza=1` lo staff è entrato con «Accedi come», con `?assistenza=lettura` di sola
+    // lettura: sopra la pagina la fascia di assistenza, e la campanella mostra senza scrivere.
+    ...(scelti.has('assistenza') && { assistenza: { persona: { nome: 'UAT Anna', cognome: 'Bianchi', email: 'uat-anna@example.com' }, sola_lettura: scelti.get('assistenza') === 'lettura' } }),
 };
 // Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
 const marketingDopo: DatiDellaCornice = {
@@ -402,7 +405,7 @@ const attesaLenta = 6000;
  */
 function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
-    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona', 'sessione']) {
+    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona', 'sessione', 'assistenza']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);
