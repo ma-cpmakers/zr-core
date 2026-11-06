@@ -178,6 +178,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-cover-plum { background: var(--plum); }
 .zr-card-labels { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .zr-card-title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); }
+.zr-card-num { color: var(--ink-muted); font-variant-numeric: tabular-nums; } /* «#12» davanti al titolo (richiesta 209) */
 .zr-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); }
 .zr-meta { display: inline-flex; align-items: center; gap: var(--space-1); }
 .zr-meta.is-overdue { color: var(--coral); background: var(--coral-soft); padding: 2px var(--space-1-5); border-radius: var(--radius-sm); font-weight: 600; }
@@ -414,6 +415,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-check-box { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: var(--radius-sm); border: var(--border-strong, 1.5px) solid var(--line-strong); background: var(--surface-raised); color: transparent; box-sizing: border-box; flex: none; }
 .zr-check input:checked + .zr-check-box, .zr-check input:indeterminate + .zr-check-box { background: var(--pine); border-color: var(--pine); color: var(--on-pine); }
 .zr-check input:focus-visible + .zr-check-box { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-check input:disabled, .zr-check input:disabled ~ * { cursor: not-allowed; } .zr-check input:disabled ~ * { opacity: .5; } /* una casella spenta si vede spenta, come Switch e Radio (richiesta 215) */
 
 .zr-switch { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 24px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; }
 .zr-switch:disabled, .zr-switch[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
@@ -915,7 +917,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-menu-item.is-disabled:hover:not(:focus-visible) { background: transparent; }
 .zr-menu-reason { margin: 0; padding: 0 var(--space-3) var(--space-2); font-size: 12px; line-height: 16px; color: var(--ink-muted); } /* il perché di una voce spenta, sotto la voce (richiesta 83) */
 .zr-menu-item.is-danger, .zr-menu-item.is-danger .zr-icon { color: var(--danger); }
-.zr-menu-sep { height: 1px; margin: var(--space-1) 0; background: var(--line); }
+.zr-menu-sep { flex: none; height: 1px; margin: var(--space-1) 0; background: var(--line); } /* nel menu con lo scroll il separatore non si schiaccia (216) */
 .zr-kbd { font: inherit; font-size: 11px; line-height: 16px; padding: 0 var(--space-1-5); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink-muted); background: var(--surface); }
 
 /* ---------- DetailPanel ---------- */

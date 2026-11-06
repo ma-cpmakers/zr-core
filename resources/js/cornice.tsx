@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type React
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
 import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
-import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segnaLetta, segnaLetteFinoA, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
+import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
 import { AppShell, Button } from './zeiras/componenti';
 
@@ -11,6 +11,10 @@ import { AppShell, Button } from './zeiras/componenti';
 // già in memoria. Se il pezzo non arriva è un errore come quello delle frasi che non arrivano.
 const caricaFrasi = (lingua: string, senzaAttesa?: boolean) => chiediLaCampanella(senzaAttesa).then((arrivata) => arrivata.caricaFrasi(lingua));
 const frasiPronte = (lingua: string) => campanella?.frasiPronte(lingua);
+// Anche le due chiamate che segnano lette le notifiche stanno nel pezzo (dalla `v4.20.0`, Decisione 22247): la persona le chiede
+// dal pannello, che mostra l'elenco solo quando il pezzo è arrivato, e allora la richiesta parte nello stesso giro del clic. Se
+// il pezzo non c'è ancora lo si chiede, e la richiesta parte all'arrivo.
+const colPezzo = <Esito,>(fa: (pezzo: typeof import('./campanella')) => Promise<Esito>) => (campanella ? fa(campanella) : chiediLaCampanella().then(fa));
 
 // La cornice di Zeiras per i frontend: l'`AppShell` del design system così com'è, riempita da zr-core. Il frontend dà la pagina,
 // il prodotto aperto con le sue voci e i dati della parte server (`Cornice::dati()`); zr-core mette il menu Moduli dal
@@ -692,7 +696,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const questi = dati;
         const elencoDelClic = notifiche.richiesta;
         const elencoDiQueiDati = elencoDiQuestiDati;
-        return segnaLetta(id, persona).then(
+        return colPezzo((pezzo) => pezzo.segnaLetta(id, persona)).then(
             ({ il }) => {
                 if (!letta) {
                     setLetteConUnClic((prima) => [...prima.filter((una) => una.id !== id), { id, con: questi, il, elenco: elencoDelClic, workspace, elencoDiQueiDati }]);
@@ -734,7 +738,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // Con lo slug del workspace dei dati con cui l'elenco è stato chiesto: l'istante è delle sue notifiche. Se la
             // sessione è passata a un altro, la parte server non segna niente. E con l'email di chi è mostrato: nemmeno se
             // è passata a un'altra persona.
-            ({ il, altre } = await segnaLetteFinoA(finoA, caricate.con.workspace.slug, persona));
+            ({ il, altre } = await colPezzo((pezzo) => pezzo.segnaLetteFinoA(finoA, caricate.con.workspace.slug, persona)));
         } catch (errore) {
             // Non cambia niente: il pulsante resta, per riprovare.
             seDaAccettare(errore);

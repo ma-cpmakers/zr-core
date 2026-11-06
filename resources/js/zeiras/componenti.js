@@ -268,7 +268,7 @@ import * as React from 'react';
     var qSt = useState(''), q = qSt[0], setQ = qSt[1];
     var hiSt = useState(0), hi = hiSt[0], setHi = hiSt[1];
     var tabSt = useState('me'), tab = tabSt[0], setTab = tabSt[1];
-    var switchRef = useRef(null), wsRef = useRef(null), wsBtn = useRef(null), bellRef = useRef(null), notifRef = useRef(null);
+    var switchRef = useRef(null), prodRef = useRef(null), wsRef = useRef(null), wsBtn = useRef(null), bellRef = useRef(null), notifRef = useRef(null);
     var avatarRef = useRef(null), searchRef = useRef(null), inputRef = useRef(null), timer = useRef(null), mainRef = useRef(null);
     var ids = useRef(null); if (!ids.current) { uid += 1; ids.current = 'zr-shell-' + uid; }
     var sid = ids.current;
@@ -285,6 +285,7 @@ import * as React from 'react';
     useOutside(pop === 'ws', [wsRef], function () { setPop(null); });
     useOutside(pop === 'notif', [notifRef, bellRef], function () { setPop(null); });
     useOutside(pop === 'search', [searchRef], function () { setPop(null); });
+    useOutside(open, [prodRef], function () { setOpen(false); }); /* il menu Moduli si chiude anche col clic fuori, come gli altri (richiesta 211) */
     useEffect(function () {
       if (pop !== 'notif') return;
       function k(e) { if (e.key === 'Escape') { e.stopPropagation(); setPop(null); if (bellRef.current) bellRef.current.focus(); } }
@@ -363,7 +364,7 @@ import * as React from 'react';
       : (p.workspace ? h('span', { className: 'zr-workspace' }, p.workspace) : null);
 
     /* ---- Menu Prodotti collassabile ---- */
-    var switcher = current ? h('div', { className: cx('zr-product', open && 'is-open') },
+    var switcher = current ? h('div', { ref: prodRef, className: cx('zr-product', open && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false); } /* il fuoco esce dal pulsante e dalla lista: il menu si chiude, come selettore e ricerca (richiesta 212) */ },
       h('button', {
         ref: switchRef, type: 'button', className: 'zr-product-switch', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': sid + '-products',
         onClick: function () { setOpen(!open); },
@@ -623,7 +624,7 @@ import * as React from 'react';
     var done = cl && cl.total > 0 && cl.done >= cl.total;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length ? p.actions : null;
-    var rest = omit(p, ['title', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className', 'texts', 'actions', 'actionsLabel', 'votes']);
+    var rest = omit(p, ['title', 'number', 'labels', 'due', 'overdue', 'checklist', 'comments', 'assignees', 'cover', 'dragging', 'className', 'texts', 'actions', 'actionsLabel', 'votes']);
     /* il voto anonimo della retrospettiva: quanti e «hai votato», il pulsante premuto; senza onToggle solo il numero (richiesta 170) */
     var vt = p.votes, vn = vt ? Math.max(0, vt.count || 0) : 0, vs = vt ? (vn === 1 ? T.oneVote : textOf(T.votes, '{n}', String(vn))) : '';
     var vote = !vt ? null : vt.onToggle ? h('button', { type: 'button', draggable: false, className: 'zr-card-vote', 'aria-pressed': vt.mine ? 'true' : 'false', 'aria-label': T.vote + ': ' + vs, title: vt.mine ? T.unvote : T.vote,
@@ -641,7 +642,7 @@ import * as React from 'react';
         onMouseDown: function (e) { e.stopPropagation(); }, onClick: function (e) { e.stopPropagation(); kb.current = false; ms[1](!menu); } }, h(Icon, { name: 'more', size: 16 })) : null,
       p.cover ? h('div', { className: cx('zr-card-cover', 'zr-cover-' + p.cover) }) : null,
       p.labels && p.labels.length ? h('div', { className: 'zr-card-labels' }, p.labels.map(function (l, i) { return h(Label, { key: i, tone: l.tone }, l.text); })) : null,
-      h('h4', { className: 'zr-card-title' }, p.title),
+      h('h4', { className: 'zr-card-title' }, p.number != null && p.number !== '' ? h('span', { className: 'zr-card-num' }, '#' + p.number + ' ') : null, p.title), /* il numero della scheda davanti al titolo, in grigio: per cercarla e citarla (richiesta 209) */
       (p.due || cl || p.comments || vote || (p.assignees && p.assignees.length)) ? h('div', { className: 'zr-card-meta' },
         p.due ? h('span', { className: cx('zr-meta', p.overdue && 'is-overdue') }, h(Icon, { name: p.overdue ? 'clock' : 'calendar', size: 14 }), p.overdue ? textOf(T.overdue, '{date}', p.due) : p.due) : null,
         cl ? h('span', { className: cx('zr-meta', done && 'is-done'), title: T.checklist }, h(Icon, { name: 'checklist', size: 14 }), cl.done + '/' + cl.total) : null,
@@ -1006,7 +1007,7 @@ import * as React from 'react';
 
   var PUBLISHER = {
     name: 'Castro & Partners', legalForm: 'S.r.l.', address: 'Via Margaritone 30, 52100 Arezzo (AR), Italia', vat: '02453920510', taxCode: null,
-    rea: 'AR-215964', capital: '40.000 €', pec: 'castroandpartners@pec.it', email: 'contatti@castroandpartners.com', phone: '+39 0575 138 9257'
+    capital: '40.000 €', pec: 'castroandpartners@pec.it', email: 'contatti@castroandpartners.com', phone: '+39 0575 146 0000'
   };
   var SITE_FOOTER_LABELS = { tagline: 'La suite semplice e gratuita per organizzare il tuo lavoro.', by: 'Sviluppato da', registeredOffice: 'Sede legale', vat: 'P. IVA', vatTax: 'P. IVA e C.F.', taxCode: 'C.F.', rea: 'REA', capital: 'Capitale sociale', paidUp: 'i.v.', pec: 'PEC', email: 'Email', phone: 'Tel.', rights: 'Tutti i diritti riservati.', legalNav: 'Informazioni legali', missing: 'Dato da inserire', language: 'Lingua', soon: 'In arrivo' };
   function SiteFooter(p) {
@@ -1028,7 +1029,7 @@ import * as React from 'react';
       [L.registeredOffice, val(co.address, 'indirizzo sede legale')],
       [co.taxCode ? L.vat : L.vatTax, val(co.vat, 'partita IVA')],
       [L.taxCode, co.taxCode || null],
-      [L.rea, val(co.rea, 'CCIAA e n. REA')],
+      [L.rea, co.rea || null], /* il n. REA solo se il titolare lo passa: nei dati di Zeiras non c'è, e non ha segnaposto */
       [L.capital, co.capital ? co.capital + ' ' + L.paidUp : val(null, 'capitale sociale i.v.')],
       [L.pec, co.pec ? h('a', { href: 'mailto:' + co.pec }, co.pec) : val(null, 'indirizzo PEC')],
       [L.email, co.email ? h('a', { href: 'mailto:' + co.email }, co.email) : null],
@@ -1856,10 +1857,10 @@ import * as React from 'react';
   }
 
   /* ---------- Data ---------- */
-  var DATATABLE_LABELS = { selected: '{n} selezionati', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri' };
+  var DATATABLE_LABELS = { selected: '{n} selezionati', selectedOne: '{n} selezionato', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', selectRowName: 'Seleziona {name}', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri' };
   var DATATABLE_TEXTS = { it: DATATABLE_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina (richiesta 205) */
-    en: { selected: '{n} selected', deselect: 'Deselect', selectAll: 'Select all', selectRow: 'Select row', range: '{from}–{to} of {total}', prev: 'Previous page', next: 'Next page', emptyTitle: 'No results', emptyText: 'Try changing the filters.', sortBy: 'Sort by', sortNone: 'Original order', ascending: '{col}, ascending', descending: '{col}, descending', more: 'Show more' },
-    es: { selected: '{n} seleccionados', deselect: 'Deseleccionar', selectAll: 'Seleccionar todos', selectRow: 'Seleccionar fila', range: '{from}–{to} de {total}', prev: 'Página anterior', next: 'Página siguiente', emptyTitle: 'Sin resultados', emptyText: 'Prueba a cambiar los filtros.', sortBy: 'Ordenar por', sortNone: 'Orden inicial', ascending: '{col}, ascendente', descending: '{col}, descendente', more: 'Mostrar más' } };
+    en: { selected: '{n} selected', selectedOne: '{n} selected', deselect: 'Deselect', selectAll: 'Select all', selectRow: 'Select row', selectRowName: 'Select {name}', range: '{from}–{to} of {total}', prev: 'Previous page', next: 'Next page', emptyTitle: 'No results', emptyText: 'Try changing the filters.', sortBy: 'Sort by', sortNone: 'Original order', ascending: '{col}, ascending', descending: '{col}, descending', more: 'Show more' },
+    es: { selected: '{n} seleccionados', selectedOne: '{n} seleccionado', deselect: 'Deseleccionar', selectAll: 'Seleccionar todos', selectRow: 'Seleccionar fila', selectRowName: 'Seleccionar {name}', range: '{from}–{to} de {total}', prev: 'Página anterior', next: 'Página siguiente', emptyTitle: 'Sin resultados', emptyText: 'Prueba a cambiar los filtros.', sortBy: 'Ordenar por', sortNone: 'Orden inicial', ascending: '{col}, ascendente', descending: '{col}, descendente', more: 'Mostrar más' } };
   function DataTable(p) {
     var cols = p.columns || [], rows = p.rows || [];
     var L = useCompLabels(DATATABLE_TEXTS, p.labels);
@@ -1886,21 +1887,25 @@ import * as React from 'react';
     var rid = function (r, i) { return r.id != null ? r.id : i; };
     var allOn = shown.length > 0 && shown.every(function (r, i) { return sel.indexOf(rid(r, i)) >= 0; });
     function all() { var ids = shown.map(rid), n = allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids))); setSel(n); } /* anche «Seleziona tutti» lo dice al modulo, come la casella di una riga */
+    var off = !!p.selectionDisabled; /* durante un'operazione sulle righe scelte la selezione non cambia: caselle e «Deseleziona» spenti (richiesta 215) */
+    /* una riga sola: «1 selezionato»; se la pagina ha dato solo il suo «selected», resta quello (richiesta 214) */
+    var selText = sel.length === 1 && !(p.labels && p.labels.selected && !p.labels.selectedOne) ? L.selectedOne : L.selected;
+    function rowLabel(r) { var n = p.rowName ? p.rowName(r) : null; return (n || n === 0) && !(p.labels && p.labels.selectRow && !p.labels.selectRowName) ? fill(L.selectRowName, '{name}', String(n)) : L.selectRow; } /* «Seleziona Mario Rossi»: il lettore di schermo distingue le righe (richiesta 213) */
     function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); }
     var sortCols = cols.filter(function (c) { return c.sortable !== false; });
     var sortOpts = (sort ? [] : [{ value: '', label: L.sortNone }]).concat([].concat.apply([], sortCols.map(function (c) {
       return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label || c.srLabel || '') }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label || c.srLabel || '') }];
     })));
     return h('div', { className: 'zr-table-wrap' },
-      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
-        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); } }, L.deselect)) : null,
+      p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(selText, '{n}', num(sel.length))), p.bulkActions || null,
+        h(Button, { variant: 'ghost', size: 'sm', disabled: off, onClick: function () { setSel([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
         onChange: function (e) { var v = e.target.value.split(':'); setSort(v[0] ? { key: v[0], dir: v[1] } : null); setPage(0); } }) : null,
-      p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */
+      p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, disabled: off, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */
       h('div', { className: 'zr-table-scroll' },
         h('table', { className: cx('zr-table', p.stickyFirst && 'is-sticky-first') }, /* stickyFirst: la prima colonna (con la casella) resta ferma quando la tabella scorre di lato */
           h('thead', null, h('tr', null,
-            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, onChange: all })) : null,
+            p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, disabled: off, onChange: all })) : null,
             cols.map(function (c, k) {
               var active = sort && sort.key === c.key;
               return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first'), style: c.width || c.minWidth ? { width: c.width, minWidth: c.minWidth } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
@@ -1909,7 +1914,7 @@ import * as React from 'react';
           h('tbody', null, shown.length ? shown.map(function (r, i) {
             var id = rid(r, from + i), on = sel.indexOf(id) >= 0;
             return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
-              p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': L.selectRow, checked: on, onChange: function () { toggle(id); } })) : null,
+              p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': rowLabel(r), checked: on, disabled: off, onChange: function () { toggle(id); } })) : null,
               cols.map(function (c, k) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
       more && rows.length ? h('div', { className: 'zr-pager' }, /* le righe a blocchi: quante sono arrivate sul totale vero, detto quando cambia, e «Mostra altri» finché ne mancano */
@@ -2587,10 +2592,10 @@ import * as React from 'react';
 
   /* ---------- Menu (P-15: menu contestuali e «+») ---------- */
   function Menu(p) {
-    var ref = useRef(null), mid = useId('mnu');
+    var ref = useRef(null), mid = useId('mnu'), last = useRef(p); last.current = p; /* Esc legge le props di adesso (returnFocus arrivato dopo l'apertura) */
     React.useEffect(function () {
       function close(e) { if (ref.current && !ref.current.contains(e.target) && e.target !== p.anchor && !(p.anchor && p.anchor.contains && p.anchor.contains(e.target))) p.onClose(); }
-      function key(e) { if (e.key === 'Escape') { e.stopPropagation(); p.onClose(); if (p.anchor && p.anchor.focus) p.anchor.focus(); } }
+      function key(e) { if (e.key === 'Escape') { e.stopPropagation(); last.current.onClose(); back(); } }
       var t = setTimeout(function () { document.addEventListener('mousedown', close); }, 0);
       document.addEventListener('keydown', key, true);
       var first = ref.current && (ref.current.querySelector('[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])') || ref.current.querySelector('[role^="menuitem"]:not(:disabled)')); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
@@ -2600,10 +2605,19 @@ import * as React from 'react';
     var r = p.anchor && p.anchor.getBoundingClientRect ? p.anchor.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 };
     var W = 240, vw = window.innerWidth || 1024, vh = window.innerHeight || 768;
     var left = Math.max(8, Math.min(p.align === 'end' ? r.right - W : r.left, vw - W - 8));
-    var top = r.bottom + 6; if (!p.head && top > vh - 40 * items.length - 16) top = Math.max(8, r.top - 6 - 38 * items.length);
-    function back() { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) p.anchor.focus(); }
-    /* la stima non conosce le righe del perché (richiesta 83): misurato, il menu che esce in basso va sopra il pulsante */
-    React.useLayoutEffect(function () { var m = ref.current; if (p.inline || p.head || !m) return; var b = m.getBoundingClientRect(), up = r.top - 6 - b.height; if (b.top < r.top) m.style.top = Math.max(8, up) + 'px'; else if (b.bottom > vh - 8 && up >= 8) m.style.top = up + 'px'; }); /* sopra il pulsante il fondo del menu si ferma sopra il pulsante */
+    var top = r.bottom + 6;
+    /* il fuoco torna a returnFocus se è nella pagina (richiesta 217, come DetailPanel), altrimenti al pulsante che ha aperto il menu */
+    function back() { var q = last.current, rf = q.returnFocus, t = rf && rf.current !== undefined ? rf.current : rf; if (!(t && t.focus && document.contains(t))) t = q.anchor; if (t && t.focus && document.contains(t)) t.focus(); }
+    /* misurato (le righe del perché, richiesta 83; la testa): sotto se ci sta, altrimenti sopra se ci sta, altrimenti dal lato con più spazio, alto quanto quel lato e con lo scroll; dentro la finestra a 8 px dai bordi, anche col pulsante fuori vista o una voce lunga (richiesta 216) */
+    React.useLayoutEffect(function () { var m = ref.current; if (p.inline || !m) return; var st = m.scrollTop, cs = getComputedStyle(m); m.style.maxHeight = ''; m.style.overflowY = ''; m.style.maxWidth = ''; m.style.left = '0px'; /* misurato a sinistra: la larghezza non dipende da dov'era */
+      var b = m.getBoundingClientRect(); if (b.width > vw - 16) { m.style.maxWidth = Math.max(vw - 16 - (b.width - parseFloat(cs.width)), 0) + 'px'; b = m.getBoundingClientRect(); } /* il max-width del CSS non conta padding e bordo */
+      var hgt = b.height, lo = Math.max(8, r.bottom + 6), hi = Math.min(vh - 8, r.top - 6), below = vh - 8 - lo, above = hi - 8;
+      if (hgt <= below) m.style.top = lo + 'px';
+      else if (hgt <= above) m.style.top = hi - hgt + 'px';
+      else { var dn = below >= above, room = Math.max(dn ? below : above, 0); m.style.maxHeight = Math.max(room - (hgt - parseFloat(cs.height)), 0) + 'px'; m.style.overflowY = 'auto'; m.style.top = (dn ? lo : 8) + 'px'; m.scrollTop = st; }
+      var bw = m.getBoundingClientRect().width; /* dopo lo scroll: la barra classica allarga il menu */
+      m.style.left = Math.max(8, Math.min(p.align === 'end' ? r.right - bw : r.left, vw - bw - 8)) + 'px';
+    });
     function move(e) {
       if (e.key === 'Tab') { if (p.anchor && p.anchor.focus && document.contains(p.anchor)) { e.preventDefault(); if (p.onClose) p.onClose(); p.anchor.focus(); } return; } /* richiesta 93: col pulsante che l'ha aperto il fuoco torna lì; senza, il Tab resta del browser o di chi contiene il menu (un Dialog) */
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(e.key) < 0) return; /* Home e Fine: la prima e l'ultima voce (richiesta 132) */
