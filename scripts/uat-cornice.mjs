@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -20,7 +20,8 @@
  *
  * Dalla v4.4.0 le righe R.L guardano la lingua della cornice dalla prima pagina aperta (con un Chromium suo, a cache vuota):
  * la lingua di `<html lang>`; sulle pagine di prova `?lingua=es` (e `&precarico=0` per la pagina senza la riga nel Blade).
- * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1).
+ * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
+ * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
@@ -42,6 +43,10 @@ const parola = opzione('--parola', 'pro');
 // che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
 // S.5 (`invio=1`), dalla v4.5.0 S.6 (`ruolo` e `fino`) e dalla v4.5.1 S.7 (`fino` domani). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
+// --cliente (dalla v4.13.0, #3319): la pagina ha la cornice del cliente (`CorniceDelCliente`), senza la ricerca, che non si vede, e
+// senza «+»: girano axe, i menu, le linguette della campanella vuota, il selettore, il percorso, il cassetto, i font, la CSP e le
+// righe CL. Prima del tag zr-core la lancia su `cliente.html`, e su `cliente.html?aziende=1&nuovo=1` per il selettore con le aziende.
+const colCliente = argomenti.includes('--cliente') && argomenti.splice(argomenti.indexOf('--cliente'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -765,7 +770,8 @@ async function cassetto(page) {
         await page.keyboard.press('Escape');
         await pausa(300);
     }
-    scrivi(prima[1] && !conIlPannello[0] && conIlPannello[1] && (!finto || senza[0]) ? '✅' : '❌', 'K390.12', 'col pannello di dettaglio a tutta pagina Ctrl+K non apre la ricerca e il fuoco resta nel pannello; senza, la apre (sprint 89)', `${finto ? 'pannello finto' : 'pannello della pagina'}; fuoco nel pannello prima: ${prima[1]}; dopo Ctrl+K ricerca aperta: ${conIlPannello[0]}, fuoco nel pannello: ${conIlPannello[1]}${finto ? `; senza pannello ricerca aperta: ${senza[0]}` : ''}`);
+    // Nella cornice del cliente Ctrl+K non apre la ricerca nemmeno senza pannello (CL.1): conta solo che col pannello il fuoco resti lì.
+    scrivi(prima[1] && !conIlPannello[0] && conIlPannello[1] && (!finto || senza[0] || colCliente) ? '✅' : '❌', 'K390.12', 'col pannello di dettaglio a tutta pagina Ctrl+K non apre la ricerca e il fuoco resta nel pannello; senza, la apre (sprint 89)', `${finto ? 'pannello finto' : 'pannello della pagina'}; fuoco nel pannello prima: ${prima[1]}; dopo Ctrl+K ricerca aperta: ${conIlPannello[0]}, fuoco nel pannello: ${conIlPannello[1]}${finto ? `; senza pannello ricerca aperta: ${senza[0]}` : ''}`);
     await page.evaluate(() => document.activeElement?.blur());
 }
 
@@ -1004,12 +1010,12 @@ async function fontDelPacchetto(page, diGoogle) {
 // lingua della pagina e dell'inglese, nessuno in italiano, e ognuno preso dalla richiesta della cornice (senza il «preloaded but
 // not used» di Chromium); R.L.3 con le lingue che non arrivano la cornice si disegna in italiano. I testi «di una lingua sola»
 // sono quelli lunghi, con uno spazio, che le altre due lingue non hanno: dai file del repo accanto allo script (con `--staff`
-// anche quelli dello staff, che la sua cornice ha nel JS d'ingresso in tutte e tre le lingue).
+// anche quelli dello staff, che la sua cornice ha nel JS d'ingresso in tutte e tre le lingue, e con `--cliente` quelli del cliente).
 const UN_FILE_DI_LINGUA = /\/(en|es)-[\w-]{8,}\.json(?:\?|$)/;
 function testiDiUnaLinguaSola() {
     try {
         const di = (percorso) => Object.values(JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/${percorso}.json`, import.meta.url)), 'utf8')));
-        const lingue = Object.fromEntries(['it', 'en', 'es'].map((codice) => [codice, [...di(codice), ...(conLoStaff ? di(`staff/${codice}`) : [])]]));
+        const lingue = Object.fromEntries(['it', 'en', 'es'].map((codice) => [codice, [...di(codice), ...(conLoStaff ? di(`staff/${codice}`) : []), ...(colCliente ? di(`cliente/${codice}`) : [])]]));
         return Object.fromEntries(Object.entries(lingue).map(([codice, testi]) => [codice, testi.filter((testo) => typeof testo === 'string' && testo.length > 10 && testo.includes(' ') && Object.entries(lingue).every(([altra, suoi]) => altra === codice || !suoi.includes(testo)))]));
     } catch {
         return null;
@@ -1391,6 +1397,24 @@ async function uat(page, apri) {
     };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
+    if (colCliente) {
+        await fuoriDaiMenu(page);
+        await tornaAllaPagina();
+        await inizioEFineNeiMenu(page);
+        await tornaAllaPagina();
+        await linguetteDelleNotifiche(page);
+        await tornaAllaPagina();
+        await selettore(page);
+        await tornaAllaPagina();
+        await campanella(page, true);
+        await tornaAllaPagina();
+        await sopraIlPannello(page);
+        await tornaAllaPagina();
+        await percorso(page);
+        await tornaAllaPagina();
+        await ilCliente(page, 1280);
+        return a390(page, apri, diGoogle, errori, csp);
+    }
     await ricerca(page, true);
     await tornaAllaPagina();
     await escNellaBarra(page, true);
@@ -1443,6 +1467,46 @@ async function uat(page, apri) {
     await a390(page, apri, diGoogle, errori, csp);
 }
 
+// CL (dalla v4.13.0, #3319): la cornice del cliente. CL.1 il campo della ricerca non si vede e Ctrl+K non porta il fuoco da nessuna
+// parte che non si veda; CL.2 il selettore dice «Come cliente › Il mio spazio» e non c'è il riquadro del piano; CL.3 il menu del
+// profilo è Profilo, Impostazioni, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova scrive in `#uat-ultima`).
+async function ilCliente(page, larghezza) {
+    const id = larghezza > 720 ? 'CL' : 'CL390';
+    const campo = await page.evaluate(() => {
+        const ricerca = document.querySelector('.zr-shell .zr-top > .zr-search');
+        return { c: ricerca !== null, visibile: !!ricerca && getComputedStyle(ricerca).display !== 'none' && ricerca.getClientRects().length > 0 };
+    });
+    await page.keyboard.press('Control+k');
+    await pausa(300);
+    const dopo = await page.evaluate(() => {
+        const a = document.activeElement;
+        const azioni = document.querySelector('.zr-shell .zr-top-actions');
+        return {
+            fuoco: !a || a === document.body ? 'documento' : a.getClientRects().length > 0 ? 'visibile' : 'nascosto',
+            aperta: document.querySelector('.zr-shell .zr-top > .zr-search.is-open') !== null,
+            azioni: !!azioni && getComputedStyle(azioni).visibility !== 'hidden',
+        };
+    });
+    scrivi(campo.c && !campo.visibile && dopo.fuoco !== 'nascosto' && !dopo.aperta && dopo.azioni ? '✅' : '❌', `${id}.1`, `a ${larghezza} px il campo della ricerca non si vede; Ctrl+K non la apre, non porta il fuoco su un elemento nascosto e lascia campanella e profilo`, `campo: ${campo.c ? (campo.visibile ? 'visibile' : 'nascosto') : 'assente'}, dopo Ctrl+K: fuoco ${dopo.fuoco}, ricerca aperta: ${dopo.aperta}, azioni visibili: ${dopo.azioni}`);
+    await page.evaluate(() => document.activeElement?.blur());
+    if (larghezza <= 720) {
+        return;
+    }
+    const barra = await page.evaluate(() => ({
+        selettore: document.querySelector('.zr-shell .zr-ws-switch')?.getAttribute('aria-label') ?? null,
+        piano: document.querySelector('.zr-shell .zr-plan') !== null,
+        moduli: document.querySelector('.zr-shell .zr-product-switch') !== null,
+    }));
+    scrivi(barra.selettore?.includes(' › ') && !barra.piano && !barra.moduli ? '✅' : '❌', 'CL.2', 'il selettore dice lo spazio del cliente; niente riquadro del piano, niente menu Moduli', `selettore: «${barra.selettore}», piano: ${barra.piano}, menu Moduli: ${barra.moduli}`);
+    await page.click('.zr-shell .zr-avatar-btn');
+    await pausa(300);
+    const voci = await page.evaluate(() => [...document.querySelectorAll('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep')].map((voce) => (voce.matches('.zr-menu-sep') ? '—' : voce.textContent?.trim())));
+    await page.locator('.zr-profile-menu [role="menuitem"]').last().click();
+    await pausa(300);
+    const uscito = await page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');
+    scrivi(voci.length === 4 && voci[2] === '—' && uscito === 'esci' ? '✅' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; dopo Esci: «${uscito}»`);
+}
+
 /** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font, la CSP e la console. */
 async function a390(page, apri, diGoogle, errori, csp) {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -1452,11 +1516,17 @@ async function a390(page, apri, diGoogle, errori, csp) {
     pagina = page.url();
     await page.screenshot({ path: join(cartella, 'pagina-390.png') });
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
-    await ricerca(page, false);
-    await tornaAllaPagina();
-    await escNellaBarra(page, false);
-    await tornaAllaPagina();
+    if (!colCliente) {
+        await ricerca(page, false);
+        await tornaAllaPagina();
+        await escNellaBarra(page, false);
+        await tornaAllaPagina();
+    }
     await cassetto(page);
+    if (colCliente) {
+        await tornaAllaPagina();
+        await ilCliente(page, 390);
+    }
     if (!conLoStaff) {
         await tornaAllaPagina();
         await campanella(page, false);

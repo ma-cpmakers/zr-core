@@ -1393,6 +1393,19 @@ it('i testi della cornice dello staff stanno in resources/lingue/staff, un file 
         ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $staff))->toBe(array_fill_keys(array_keys($staff), $chiavi));
 });
 
+it('i testi della cornice del cliente stanno in resources/lingue/cliente, un file per ogni lingua dei testi con lo stesso nome e le stesse chiavi, e nessuno nelle lingue della cornice (sprint 110 · T2.5)', function () {
+    $cliente = fileDelleLingue('cliente/');
+    $chiavi = array_keys($cliente['en'] ?? []);
+
+    expect(array_keys($cliente))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
+        ->and($chiavi)->toContain('personal', 'personalGroup', 'firstWorkspace', 'notificationsEmptyText')
+        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $cliente))->toBe(array_fill_keys(array_keys($cliente), $chiavi))
+        // Nessun testo del cliente nelle lingue della cornice, che stanno nell'ingresso di ogni app; `notificationsEmptyText` è una
+        // chiave dell'`AppShell` che il cliente dice a modo suo, come lo staff.
+        ->and(array_filter(array_map(fn (array $delCodice): array => array_values(array_intersect(['personal', 'personalGroup', 'firstWorkspace'], array_keys($delCodice))), fileDelleLingue(''))))->toBe([])
+        ->and(array_filter(array_map(fn (string $codice): array => array_values(array_intersect(array_values($cliente[$codice]), array_values(array_filter(fileDelleLingue('')[$codice], 'is_string')))), array_combine(array_keys($cliente), array_keys($cliente)))))->toBe([]);
+});
+
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
@@ -1526,8 +1539,8 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
     // Sprint 74 · T2.5 (voce 2549): un id del registro non è un testo, anche quando una lingua ha un testo uguale. Il nome da
     // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
     // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca. Revisione dello sprint 93
-    // (R1): e quelli della cornice dello staff, in resources/lingue/staff.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/'))])))), idDeiProdotti()));
+    // (R1): e quelli della cornice dello staff, in resources/lingue/staff. Sprint 110 · T2.5: e quelli della cornice del cliente.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {

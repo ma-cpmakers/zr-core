@@ -8,6 +8,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import avvisiInglesi from '../lingue/avvisi/en.json';
 import avvisiSpagnoli from '../lingue/avvisi/es.json';
 import avvisiItaliani from '../lingue/avvisi/it.json';
+import clienteInglese from '../lingue/cliente/en.json';
+import clienteItaliano from '../lingue/cliente/it.json';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
@@ -367,6 +369,19 @@ describe('un\'app che prende solo la cornice dall\'ingresso per le app non porta
 
     it('pesa, con gzip, al più il 60% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(0.6 * gzip(diSempre.js));
+    });
+});
+
+// Sprint 110 · T2.6 (voce #3319): la cornice del cliente sta in coda ai due ingressi, e un'app che prende solo la cornice non
+// la porta: né il suo codice né i suoi testi né la regola del suo CSS, che il modulo importa da sé.
+describe('un\'app che prende solo la cornice non porta la cornice del cliente (sprint 110 · T2.6)', () => {
+    it('niente codice, testi né CSS del cliente nell\'ingresso, nei pezzi a richiesta e nei fogli', () => {
+        const tutto = [soloCornice.js, ...soloCornice.aRichiesta, soloCornice.css, ...soloCornice.cssARichiesta].join('\n');
+
+        expect(tutto).not.toContain('zr-cornice-del-cliente');
+        // «Il mio spazio» e «Come cliente» no: sono anche i testi di default dell'`AppShell`, nel design system.
+        expect(tutto).not.toContain(clienteItaliano.notificationsEmptyText);
+        expect(tutto).not.toContain(clienteInglese.notificationsEmptyText);
     });
 });
 

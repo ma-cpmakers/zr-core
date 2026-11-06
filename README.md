@@ -440,6 +440,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.10.0` | il design system `ds-1793913087-6ea4`, i lotti 0515 e 0516 (richieste 186, 170, 166, 68, 187, 191, 190, 188): i testi comuni dei componenti nella lingua dell'app (`LabelsProvider`, `useLabels`, `COMMON_LABELS`: la ✕ di `Dialog`, `Toast`, `Alert`, `DetailPanel`, «Annulla», «Aggiungi», «Indietro», «Togli», «non letta»; senza `LabelsProvider` seguono `<html lang>`, una lingua che il design system non ha cade sull'inglese, una pagina senza lingua resta in italiano; la prop del componente vince sempre); `KanbanCard` `votes`, il voto della retrospettiva; `NotificationItem`, la riga di una notifica, la stessa del pannello della campanella; `DealCard` `amountText`; `DealPipeline` e `DealCard` `formatAmount`; `DetailPanel` `actions`, le azioni accanto alla ✕; l'icona `archive`. Il JS d'ingresso sale di 411 byte, tetto 17.922 | `composer update zeiras/zr-core`, poi la build | in italiano niente: props nuove facoltative e stessi default. In una pagina con `<html lang="en">` o `"es"` la ✕ e gli altri testi comuni passano a quella lingua anche senza toccare il modulo: un caso che cerca «Chiudi» su una pagina inglese o spagnola trova «Close» o «Cerrar» | i dialoghi, i toast e il pannello di dettaglio in inglese e spagnolo |
 | `v4.11.0` | il design system `ds-1793914149-8632`: lo spazio cliente di zr-account nell'`AppShell` (`personal`, «Il mio spazio» in cima al selettore nel gruppo «Come cliente», il selettore anche per chi è solo cliente con «Crea il tuo workspace», `plan={false}`) e `AppointmentItem`, la riga di un appuntamento. La cornice non passa `personal`: i suoi tre testi non stanno nelle lingue della cornice. Il JS d'ingresso sale di 247 byte, tetto 18.169 | `composer update zeiras/zr-core`, poi la build | niente: props nuove facoltative, senza tutto resta com'era | `AppointmentItem` e `personal` per chi fa lo spazio cliente o gli appuntamenti |
 | `v4.12.0` | il titolo e la destinazione del Gate deciso di Project Management (`board.gate.deciso`, «Gate deciso»): un clic apre il Gate, che è una scheda (`/c/{id}`) | niente | un caso che apre quella notifica e si aspetta la pagina delle notifiche trova il Gate | la notifica del Gate deciso col suo titolo, e un clic apre il Gate |
+| `v4.13.0` | la cornice del cliente, `CorniceDelCliente` coi dati di `Cornice::datiDelCliente()` (#3319): l'`AppShell` per «Il mio spazio» di zr-home, con la sessione dell'accesso anche senza workspace, coi testi suoi in `resources/lingue/cliente/` e la ricerca nascosta da `resources/css/cliente.css`; le aziende da cliente e la campanella aspettano zr-backoffice #3320 e #3323, e l'app che prende la `Cornice` pesa come prima (vedi «La cornice del cliente») | niente per chi monta la `Cornice`; zr-home monta `CorniceDelCliente` nelle pagine `/spazio/*` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.1-CL.3) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2591,7 +2592,77 @@ La pagina di prova è `staff.html`, e `scripts/uat-cornice.mjs` la prova con `--
 dalla `v4.1.1` anche N.1-N.2, Q.1 e D.1-D.2: le linguette del pannello vuoto, quanti risultati, i menu sopra il dettaglio;
 dalla `v4.3.0` S.4, su `staff.html?configurazione=0`, e S.5, su `staff.html?invio=1`; dalla `v4.5.0` S.6, su
 `staff.html?ruolo=…&fino=…`, il ruolo e la fine della sessione a 1280 e a 390 px; dalla `v4.5.1` S.7, la fine della sessione
-domani). Prima del tag zr-core lo lancia su `layout.html` e su `staff.html` in italiano, inglese e spagnolo (`?lingua=en`, `?lingua=es`).
+domani). Prima del tag zr-core lo lancia su `layout.html` e su `staff.html` in italiano, inglese e spagnolo (`?lingua=en`, `?lingua=es`);
+dalla `v4.13.0` anche su `cliente.html`, con `--cliente` (vedi «La cornice del cliente»).
+
+### La cornice del cliente
+
+Dalla `v4.13.0` (#3319, per «Il mio spazio» di zr-home, #3317) il pacchetto ha una terza cornice, `CorniceDelCliente`, per chi
+entra in Zeiras come cliente di un'azienda e non ha un workspace suo: le pagine `/spazio/*` di zr-home, con la sessione
+dell'accesso (design `zr-account--il-mio-spazio`). Come quella dello staff è l'`AppShell` del design system; delle rotte della
+cornice usa solo quella della foto (`/cornice/foto`, quando `persona.foto` c'è), che risponde anche senza workspace: il modulo
+registra le rotte della cornice come per la `Cornice`. I dati li dà la parte server, con `Cornice::datiDelCliente()`:
+
+```php
+use Zeiras\Core\Cornice;
+
+// nel middleware di Inertia delle pagine «Il mio spazio»: con la sessione dell'accesso, anche senza workspace
+return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelCliente()];
+```
+
+- **`Cornice::datiDelCliente()`** legge io.mostra col gettone dell'accesso, aggiorna la sessione (`Sessione::aggiorna`) e dà
+  `lingua`, `persona` (`nome`, `email`, `impronta`, e `foto` se la persona ne ha una, come in `Cornice::dati()`), `aziende` — le
+  aziende in cui la persona è anche membro, coi loro workspace e `nuovo_workspace`, vuota per chi è solo cliente — e
+  `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
+  chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
+  foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
+  com'è. La lingua di `dati.lingua` è quella del profilo appena letto: senza un workspace `Cornice::lingua()` non rilegge
+  io.mostra, quindi il modulo che mette la lingua della pagina in un middleware, sulle pagine «Il mio spazio», la prende dalla
+  sessione dopo `Cornice::datiDelCliente()`, o la cornice e la pagina possono essere in due lingue dopo un cambio nel profilo.
+
+```tsx
+import { CorniceDelCliente, type DatiDelCliente } from '../../vendor/zeiras/zr-core/resources/js/app';
+import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // dopo il CSS del design system
+
+<CorniceDelCliente
+    dati={cornice as DatiDelCliente}
+    nav={[{ group: 'Il mio spazio', items: [{ id: 'appuntamenti', label: 'Appuntamenti', icon: 'calendar' }] }]}
+    active="appuntamenti"
+    onNavigate={(id) => vaiA(id)}
+    nuovoWorkspace="/spazio/nuovo-workspace"   // senza, «Crea il tuo workspace» non c'è
+    naviga={(indirizzo) => router.visit(indirizzo)}
+    onLogout={esci}
+>
+    {pagina}
+</CorniceDelCliente>
+```
+
+- **Il selettore** dice «Come cliente › Il mio spazio», attivo; sotto, le aziende di `dati.aziende` coi loro workspace, e un
+  workspace si apre alla sua Dashboard (`naviga`). Con `nuovoWorkspace`, in fondo, «Crea il tuo workspace» per chi non ha aziende,
+  e «Nuovo workspace» se una delle sue aziende lo permette (`nuovo_workspace`): a chi è solo membro no. Tutti e due portano a
+  `nuovoWorkspace`. Niente riquadro del piano, niente menu Moduli, niente «+».
+- **La barra**: solo le voci di `nav`, tutte del modulo (coi gruppi, `active`, `onNavigate`; con `active={null}` nessuna), il
+  percorso (`crumbs`, `onCrumb`), `actions` e `flush` come nella `Cornice`. In fondo l'`AppShell` mette da sé «Impostazioni», che
+  arriva a `onNavigate` come `settings`, come nella `Cornice`.
+- **Il menu del profilo del cliente** è Profilo, Impostazioni, una linea ed «Esci»: Profilo e Impostazioni sono le pagine di account della
+  Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo).
+- **La ricerca non si vede**: per chi è solo cliente il backoffice non ne ha una, e una ricerca finta non si mostra (zr-pm,
+  06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
+  build la porterebbe nel CSS di ogni app. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
+  la prop che non mostra la ricerca (richiesta 201 al design system).
+- **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), le
+  sue notifiche da cliente con zr-backoffice #3323. Fino ad allora la campanella resta, vuota, col testo del cliente («Qui
+  arrivano gli avvisi delle tue aziende: appuntamenti, fatture, risposte.»), perché l'`AppShell` la disegna sempre (richiesta 64
+  al design system).
+- **I testi** del cliente stanno in `resources/lingue/cliente/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
+  l'inglese), fuori dalle lingue della cornice: un'app che non monta questa cornice non li porta nella build, e l'app che prende
+  la `Cornice` pesa come prima. Il resto — «Salta al contenuto», i rimedi di tastiera — è quello della `Cornice`.
+
+La pagina di prova è `cliente.html` (`?lingua=`, `?aziende=1` per le aziende, `?nuovo=1` per «Crea il tuo workspace», `?foto=1`),
+e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le righe della ricerca). Prima del tag zr-core lo
+lancia su `cliente.html` in italiano, inglese e spagnolo, e su `cliente.html?aziende=1&nuovo=1`. Nella `v4.13.0` lì una riga è ❌,
+K390.5: con Invio come primo tasto su «Apri il menu» il fuoco resta sul pulsante e non entra nel cassetto. È un difetto che c'era
+già, del pezzo che ascolta il clic del pulsante, non di questa cornice, e lo corregge #3329.
 
 ### Il Toast della cornice
 

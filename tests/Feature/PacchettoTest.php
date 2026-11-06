@@ -5109,10 +5109,23 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'ToastDellaCornice'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
+});
+
+it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `CorniceDelCliente`, il CSS che nasconde la ricerca, e che aziende da cliente e campanella aspettano #3320 e #3323 (sprint 110 · T4.1)', function () {
+    $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
+    preg_match('/### La cornice del cliente (.*?)(?= ## | ### )/', $readme, $trovata);
+    $sezione = $trovata[1] ?? '';
+
+    expect($sezione)->toContain("'cornice' => fn () => Cornice::datiDelCliente()")
+        ->and($sezione)->toContain('<CorniceDelCliente')
+        ->and($sezione)->toContain("import '../../vendor/zeiras/zr-core/resources/css/cliente.css';")
+        ->and($sezione)->toContain('le aziende di cui la persona è cliente arrivano con zr-backoffice #3320')
+        ->and($sezione)->toContain('le sue notifiche da cliente con zr-backoffice #3323')
+        ->and($sezione)->toContain('`scripts/uat-cornice.mjs` la prova con `--cliente`');
 });
 
 it('il README dice, in «Come si installa in un frontend», i due ingressi, il passaggio, che cosa dall\'ingresso per le app non si scrive, che i due non si mescolano, i pesi e come misurarli (sprint 25 · T2.5)', function (string $frase) {
@@ -5166,10 +5179,10 @@ it('la guida dice a un modulo che nasce di partire dall\'ingresso per le app, co
     'il test di allineamento' => ['lo sha256 di `bundle.js` resta il segno che il design system è cambiato'],
 ]);
 
-it('le pagine di prova sono quattro, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff)', function () {
+it('le pagine di prova sono cinque, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff; dalla v4.13.0 cliente.html, la cornice del cliente: sprint 110 · T3.1)', function () {
     $costruzione = (string) file_get_contents(__DIR__.'/../../vite.demo.config.ts');
 
-    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html']"))->toBe(1)
+    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html', 'cliente.html']"))->toBe(1)
         ->and(scritteNellaPaginaDiProva('app.html', ['<script type="module" src="./app.tsx"></script>']))->toBe(['<script type="module" src="./app.tsx"></script>' => 1])
         ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
         ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
@@ -5683,7 +5696,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
 
     // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
     // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
-    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Sprint 110 · T2.4 (voce #3319): dalla `v4.13.0` la regola che nasconde la ricerca nella cornice del cliente, provvisoria.
+    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
         ->and(substr_count($salto, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
