@@ -249,6 +249,8 @@ class LinguaDellaPagina
 Sulle pagine di chi è solo cliente, con `CorniceDelCliente` (README, «La cornice del cliente»), in un middleware loro la riga è
 `App::setLocale(Cornice::linguaDelCliente() ?? config('app.locale'));` (dalla `v4.14.0`): la stessa lingua, letta con la
 sessione dell'accesso. Sulle pagine di un workspace resta `Cornice::lingua()`, che fa una lettura sola con `Cornice::dati()`.
+Se l'indirizzo ha il prefisso di lingua (`/en/spazio/...`), la pagina e la cornice parlano quella: dalla `v4.15.0` la lingua del
+prefisso si passa a `Cornice::datiDelCliente('en')`, e la sessione resta nella lingua del profilo.
 
 Il middleware della lingua lo dai, nel file delle rotte, al gruppo delle rotte che mostrano una pagina — non al gruppo `web`, che passa anche dalle
 rotte della cornice e dalle tue rotte JSON: lì la riga costa una lettura del backoffice in più a ogni richiesta. Nella

@@ -446,6 +446,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.13.1` | nella cornice del cliente campanella e profilo restano a destra della barra in alto: senza il campo della ricerca scivolavano a sinistra, accanto alla barra laterale (`resources/css/cliente.css`) | niente: il modulo importa già `cliente.css` | niente | `scripts/uat-cornice.mjs --cliente` su `cliente.html` (CL.4) |
 | `v4.13.2` | sotto i 1024 px, con Invio come primo tasto della pagina su «Apri il menu», il fuoco entra nella prima voce del cassetto come con ogni altro tasto prima (#3329, K390.5): il clic lo ascolta il pezzo dei rimedi e non più quello della tastiera | niente | niente | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (K390.5) |
 | `v4.14.0` | `Cornice::linguaDelCliente()` (#3335): la lingua della pagina per il middleware delle pagine «Il mio spazio», letta con la sessione dell'accesso; nella stessa richiesta `Cornice::datiDelCliente()` usa la sua lettura di io.mostra (vedi «La cornice del cliente») | niente; chi monta `CorniceDelCliente` mette la riga nel middleware della lingua di quelle pagine | niente | casi Pest di `CorniceDelClienteTest` |
+| `v4.15.0` | `Cornice::datiDelCliente($lingua)` (#3341): la lingua della pagina per la cornice del cliente; con il prefisso di lingua nell'indirizzo (`/en/spazio/...`) la cornice segue il prefisso, senza resta la lingua del profilo (vedi «La cornice del cliente») | niente; chi ha il prefisso nell'indirizzo passa la sua lingua | niente | casi Pest di `CorniceDelClienteTest` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -2621,7 +2622,10 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
   `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
-  com'è. La lingua di `dati.lingua` è quella del profilo appena letto.
+  com'è. La lingua di `dati.lingua` è quella del profilo appena letto; dalla `v4.15.0` (#3341) `Cornice::datiDelCliente($lingua)`
+  dà invece la lingua della pagina: con il prefisso di lingua nell'indirizzo (`/en/spazio/...`) la cornice segue il prefisso, e
+  la lingua la passa il modulo, che il prefisso lo ha letto. Senza, o con una lingua che non ha la forma di una lingua, resta
+  quella del profilo; la sessione non la prende, perché vale per quella pagina.
 - **`Cornice::linguaDelCliente()`** (dalla `v4.14.0`, #3335) è la lingua della pagina per il middleware delle pagine «Il mio
   spazio», quello che `Cornice::lingua()` è per le pagine di un workspace: senza un workspace `Cornice::lingua()` non rilegge
   io.mostra, e con Inertia le prop condivise (`locale`, le traduzioni) si valutano prima della cornice, quindi dopo un cambio nel
