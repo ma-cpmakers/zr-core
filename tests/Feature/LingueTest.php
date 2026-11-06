@@ -1475,12 +1475,13 @@ it('il controllo trova un tipo di notifica in più, uno in meno e il singolare d
     ]);
 });
 
-it('il testo dell\'avviso senza non lette c\'è nelle tre lingue ed è di zr-core: l\'AppShell non ha una chiave con quel nome (sprint 22 · T2.6)', function () {
+// Dalla `v4.18.0` il numero sceso lo dice l'`AppShell` (richiesta 56), con la chiave `unreadNone`: il testo glielo dà la cornice.
+it('il testo dell\'avviso senza non lette c\'è nelle tre lingue, ed è la chiave `unreadNone` dell\'AppShell (sprint 22 · T2.6; v4.18.0)', function () {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it']['unreadNone'] ?? null, $lingue['en']['unreadNone'] ?? null, $lingue['es']['unreadNone'] ?? null])
         ->toBe(['Nessuna notifica non letta', 'No unread notifications', 'Ninguna notificación sin leer'])
-        ->and(chiaviDiAppShellLabels())->not->toContain('unreadNone');
+        ->and(chiaviDiAppShellLabels())->toContain('unreadNone');
 });
 
 /**
