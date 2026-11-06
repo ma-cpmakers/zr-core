@@ -257,7 +257,7 @@ chiamate che segnano lette le notifiche, che servono solo a pannello aperto e so
 Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la campanella che in assistenza non scrive e la condizione
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.645 byte la campanella, 1.507 i rimedi, 1.797 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.507 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
@@ -283,8 +283,9 @@ che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 
 misura vera), e di altri 21 nella stessa: 1 per le impronte nuove dei nomi dei pezzi, col codice uguale, e 20 di margine
 (zr-pm). Nella `v4.16.0` è salito a 2.330, la misura più 20: il titolo del Gate per esito, 22 byte (sì di zr-pm-07, senza
 contropartita). Nella `v4.20.0` è salito a 2.592, la misura più 20: le due chiamate che segnano lette le notifiche, uscite dal JS
-d'ingresso (Decisione 22247). Nella `v4.24.0` è salito a 2.645, la misura più 20: le quattro righe delle notifiche da cliente
-nel registro e il percorso con gli id in una funzione che usa anche la cornice del cliente (sì di zr-pm-07). Dalla `v2.0.0` l'eccezione per i
+d'ingresso (Decisione 22247). Nella `v4.24.0` è salito a 2.729, la misura più 20: le quattro righe delle notifiche da cliente
+nel registro, la funzione che apre una notifica da cliente in «Il mio spazio» e le due chiamate che segnano lette con le
+rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
