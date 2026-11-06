@@ -1305,6 +1305,12 @@ import * as React from 'react';
     var vals = items.map(function (it) { return typeof it === 'string' ? it : it.value; });
     var stop = vals.indexOf(val) >= 0 ? val : vals[0]; /* una fermata sola del Tab: la linguetta scelta (richieste 151 e 69) */
     function pick(v) { if (!ctrl) st[1](v); if (p.onChange) p.onChange(v); }
+    var ref = useRef(null);
+    useEffect(function () { /* la riga che scorre di lato (underline sotto i 720 px) porta in vista la linguetta scelta, senza muovere la pagina (richiesta 204) */
+      var l = ref.current, b = l && l.querySelector('.is-active'); if (!b || l.scrollWidth <= l.clientWidth) return;
+      var r = b.getBoundingClientRect(), lr = l.getBoundingClientRect();
+      if (r.left < lr.left) l.scrollLeft -= lr.left - r.left + 16; else if (r.right > lr.right) l.scrollLeft += r.right - lr.right + 16;
+    }, [val]);
     function keys(e) {
       var i = vals.indexOf(e.target.getAttribute('data-value')); if (i < 0 || e.altKey || e.ctrlKey || e.metaKey) return; /* Alt+← resta «indietro» del browser */
       var n = e.key === 'ArrowRight' ? (i + 1) % vals.length : e.key === 'ArrowLeft' ? (i + vals.length - 1) % vals.length : e.key === 'Home' ? 0 : e.key === 'End' ? vals.length - 1 : -1;
@@ -1312,7 +1318,7 @@ import * as React from 'react';
       e.preventDefault(); if (vals[n] !== val) pick(vals[n]);
       var b = e.currentTarget.querySelectorAll('[role="tab"]')[n]; if (b) b.focus();
     }
-    return h('div', { className: cx('zr-seg', p.variant === 'underline' && 'is-underline', p.size === 'sm' && 'is-sm', p.className), role: 'tablist', 'aria-label': p['aria-label'], onKeyDown: keys },
+    return h('div', { className: cx('zr-seg', p.variant === 'underline' && 'is-underline', p.size === 'sm' && 'is-sm', p.className), ref: ref, role: 'tablist', 'aria-label': p['aria-label'], onKeyDown: keys },
       items.map(function (it) {
         var v = typeof it === 'string' ? it : it.value, l = typeof it === 'string' ? it : it.label;
         return h('button', { key: v, type: 'button', role: 'tab', 'data-value': v, 'aria-selected': v === val, 'aria-controls': it.panelId, id: it.panelId ? it.panelId + '-tab' : undefined, tabIndex: v === stop ? 0 : -1, className: cx('zr-seg-item', v === val && 'is-active'),
@@ -1403,9 +1409,12 @@ import * as React from 'react';
 
   /* ---------- InlineEdit: un valore che si modifica dove sta — clic, campo, «Salvato» o l'errore (richiesta 142) ---------- */
   var INLINE_EDIT_LABELS = { edit: 'Modifica', empty: 'Aggiungi', saving: 'Salvataggio…', saved: 'Salvato', error: 'Non salvato. Riprova.', required: 'Il campo non può restare vuoto', keys: 'Invio salva, Esc annulla', keysMultiline: 'Ctrl+Invio salva, Esc annulla', invalid: 'Il valore non è valido' };
+  var INLINE_EDIT_TEXTS = { it: INLINE_EDIT_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina (richiesta 205) */
+    en: { edit: 'Edit', empty: 'Add', saving: 'Saving…', saved: 'Saved', error: 'Not saved. Try again.', required: 'This field can\'t be empty', keys: 'Enter saves, Esc cancels', keysMultiline: 'Ctrl+Enter saves, Esc cancels', invalid: 'The value isn\'t valid' },
+    es: { edit: 'Editar', empty: 'Añadir', saving: 'Guardando…', saved: 'Guardado', error: 'No guardado. Inténtalo de nuevo.', required: 'El campo no puede quedar vacío', keys: 'Intro guarda, Esc cancela', keysMultiline: 'Ctrl+Intro guarda, Esc cancela', invalid: 'El valor no es válido' } };
   function InlineEdit(p) {
     var id = useId('ied');
-    var L = Object.assign({}, INLINE_EDIT_LABELS, p.labels || {});
+    var L = useCompLabels(INLINE_EDIT_TEXTS, p.labels);
     var value = p.value == null ? '' : String(p.value);
     /* as="select": una scelta fra opzioni, che salva appena scelta; in vista il nome dell'opzione. format: come si vede un valore (una data) (richiesta 184) */
     var sel = p.as === 'select', opts = (p.options || []).map(function (o) { return typeof o === 'string' ? { value: o, label: o } : o; });
@@ -1619,20 +1628,151 @@ import * as React from 'react';
     return h('div', { ref: rootRef, className: cx('zr-cal', 'is-' + variant, p.className) }, head, body);
   }
 
+  /* ---------- AgendaGrid: la griglia di un'agenda con le ore (richiesta 202) ---------- */
+  var AGENDA_LABELS = { instructions: 'Frecce su e giù per l\'ora, a sinistra e a destra per il giorno; Invio sceglie un\'ora da lì, Esc toglie il segno.', allDay: 'Tutto il giorno', marker: '{day}, {time}' };
+  var AGENDA_TEXTS = { it: AGENDA_LABELS,
+    en: { instructions: 'Up and down arrows for the time, left and right for the day; Enter picks an hour from there, Esc clears the marker.', allDay: 'All day', marker: '{day}, {time}' },
+    es: { instructions: 'Flechas arriba y abajo para la hora, izquierda y derecha para el día; Intro elige una hora desde ahí, Esc quita la marca.', allDay: 'Todo el día', marker: '{day}, {time}' } };
+  var ON_TONE = ['pine', 'citrus', 'coral']; /* i toni che hanno il testo sopra il colore pieno (on-*) */
+  function minOf(t) { var a = String(t || '0:0').split(':'); return (+a[0] || 0) * 60 + (+a[1] || 0); }
+  function hhmm(m) { return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
+  function agendaLanes(list) { /* gli eventi che si sovrappongono si dividono la colonna; quelli passivi stanno sotto, a tutta larghezza */
+    var out = [], group = [], end = -1;
+    function close() { var n = 0; group.forEach(function (g) { n = Math.max(n, g.lane + 1); }); group.forEach(function (g) { g.of = n; }); group = []; }
+    list.slice().sort(function (x, y) { return x.a - y.a || y.b - x.b; }).forEach(function (it) {
+      if (it.a >= end) { close(); end = -1; }
+      var used = group.filter(function (g) { return g.b > it.a; }).map(function (g) { return g.lane; }), lane = 0;
+      while (used.indexOf(lane) >= 0) lane++;
+      it.lane = lane; group.push(it); out.push(it); end = Math.max(end, it.b);
+    });
+    close();
+    return out;
+  }
+  function AgendaGrid(p) {
+    var id = useId('agd'), L = useCompLabels(AGENDA_TEXTS, p.labels);
+    var loc = p.locale || 'it-IT', days = p.days || [], step = p.step || 15, H = p.hourHeight || 48;
+    var today = p.today || localTodayIso(), selectable = !!p.onSelect;
+    var dr = useState(null), drag = dr[0], setDrag = dr[1];
+    var mk = useState(null), mark = mk[0], setMark = mk[1];
+    var colsRef = useRef(null);
+    var starts = [p.startHour != null ? p.startHour : 8], ends = [p.endHour != null ? p.endHour : 19];
+    days.forEach(function (d) { (d.events || []).forEach(function (e) { if (!e.passive) { starts.push(Math.floor(minOf(e.start) / 60)); ends.push(Math.ceil(minOf(e.end) / 60)); } }); }); /* un evento fuori dalle ore le allarga; uno passivo no, si ritaglia */
+    var first = Math.max(0, Math.min.apply(null, starts)), last = Math.min(24, Math.max.apply(null, ends)), lo = first * 60, hi = last * 60;
+    var hours = []; for (var x = first; x < last; x++) hours.push(x);
+    var fmt = function (o) { return new Intl.DateTimeFormat(loc, Object.assign({ timeZone: 'UTC' }, o)); };
+    var fWd = fmt({ weekday: 'short' }), fLong = fmt({ weekday: 'long', day: 'numeric', month: 'long' }), fHour = fmt({ hour: 'numeric', minute: '2-digit' });
+    function tOf(iso) { return tOfIso(iso) + 12 * 3600000; }
+    function fill(t, k, v) { return t.replace(k, function () { return v; }); }
+    function y(m) { return (m - lo) * H / 60; }
+    function minuteAt(e, down) { var r = e.currentTarget.getBoundingClientRect(), q = (e.clientY - r.top) / H * 60 / step; return Math.min(hi, Math.max(lo, lo + (down ? Math.floor(q) : Math.round(q)) * step)); } /* si parte dal quarto d'ora toccato, si arriva al più vicino */
+    function pick(date, a, b) { setMark(null); p.onSelect({ date: date, start: hhmm(a), end: hhmm(b) }); }
+    function nearEvent(e) { /* al tocco un evento cliccabile si prende su 44 px: il più vicino entro (44 − altezza) / 2 sopra o sotto, solo nello spazio libero (il riquadro di un evento è suo) */
+      var best = null, dist = Infinity;
+      [].forEach.call(e.currentTarget.querySelectorAll('button.zr-agenda-ev'), function (b) {
+        var r = b.getBoundingClientRect(), dy = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0;
+        if (e.clientX >= r.left && e.clientX <= r.right && dy <= Math.max(0, (44 - r.height) / 2) && dy < dist) { best = b; dist = dy; }
+      });
+      if (best) best.click(); return !!best;
+    }
+    function hourFrom(a) { return Math.min(a + 60, hi); } /* «un'ora da lì», fino alla fine della griglia (revisione 1, R4) */
+    function tone(e) { return TONES.indexOf(e.tone) >= 0 ? e.tone : 'pine'; }
+    function look(e) { var t = tone(e), v = e.variant === 'solid' && ON_TONE.indexOf(t) >= 0 ? 'solid' : e.variant === 'outline' ? 'outline' : 'soft'; return cx('zr-agenda-ev', 'zr-agenda-' + v, 'zr-agenda-tone-' + t); }
+    function item(e, date, cls, style, body, name, key) {
+      var click = p.onEventClick && !e.passive && e.clickable !== false;
+      return click
+        ? h('button', { key: e.id != null ? e.id : key, type: 'button', className: cls, style: style, 'aria-label': e.label || name,
+            onPointerDown: function (ev) { ev.stopPropagation(); }, onPointerUp: function (ev) { ev.stopPropagation(); }, onClick: function () { p.onEventClick(e, date); } }, body)
+        : h('div', { key: e.id != null ? e.id : key, className: cx(cls, 'is-static'), style: style, 'aria-label': e.label || undefined, role: e.label ? 'img' : undefined }, body); /* senza clic non ferma la scelta: il trascinamento ci passa sotto */
+    }
+    function keys(e, date, i) {
+      if (e.target !== e.currentTarget) return; /* i tasti di un evento dentro la colonna sono suoi */
+      var k = e.key, at = mark && mark.date === date ? mark.at : null;
+      if (k === 'Enter' || k === ' ') { e.preventDefault(); var a = at != null ? at : lo; pick(date, a, hourFrom(a)); return; }
+      if (k === 'ArrowLeft' || k === 'ArrowRight') {
+        var cols = colsRef.current ? colsRef.current.querySelectorAll('.zr-agenda-col') : [], j = i + (k === 'ArrowLeft' ? -1 : 1);
+        if (j < 0 || j >= cols.length) return;
+        e.preventDefault(); cols[j].focus(); if (at != null) setMark({ date: days[j].date, at: at }); return;
+      }
+      var n = k === 'Escape' ? null : k === 'Home' ? lo : k === 'End' ? hi - step : k === 'ArrowDown' ? (at == null ? lo : Math.min(hi - step, at + step)) : k === 'ArrowUp' ? (at == null ? lo : Math.max(lo, at - step)) : undefined;
+      if (n === undefined || (k === 'Escape' && at == null)) return; /* Esc senza segno resta della pagina (un dialogo, un pannello) */
+      e.preventDefault(); if (k === 'Escape') e.stopPropagation();
+      setMark(n == null ? null : { date: date, at: n });
+    }
+    var grid = { gridTemplateColumns: 'var(--zr-agenda-hours) repeat(' + Math.max(1, days.length) + ', minmax(var(--zr-agenda-col-min), 1fr))' };
+    var hasAllDay = days.some(function (d) { return (d.allDay || []).length; });
+    var sel = p.selection;
+    var markDay = mark && days.filter(function (d) { return d.date === mark.date; })[0];
+    return h('div', { className: cx('zr-agenda', p.className), style: { '--zr-agenda-hour': H + 'px' }, role: 'group', 'aria-label': p['aria-label'] },
+      selectable ? h('span', { id: id + '-i', className: 'zr-visually-hidden' }, L.instructions) : null,
+      selectable ? h('span', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, markDay ? fill(fill(L.marker, '{day}', fLong.format(tOf(markDay.date))), '{time}', hhmm(mark.at)) : '') : null,
+      h('div', { className: 'zr-agenda-scroll' },
+        h('div', { ref: colsRef, className: 'zr-agenda-grid', style: grid },
+          h('div', { className: 'zr-agenda-corner' }),
+          days.map(function (d) {
+            var t = tOf(d.date), now = d.date === today;
+            return h('div', { key: 'h' + d.date, className: cx('zr-agenda-head', now && 'is-today'), 'aria-current': now ? 'date' : undefined },
+              h('span', { className: 'zr-agenda-dow' }, fWd.format(t)), h('strong', { className: 'zr-agenda-num' }, new Date(t).getUTCDate()));
+          }),
+          hasAllDay ? h('div', { className: 'zr-agenda-corner is-allday' }, h('span', { className: 'zr-visually-hidden' }, L.allDay)) : null,
+          hasAllDay ? days.map(function (d) {
+            return h('div', { key: 'a' + d.date, className: 'zr-agenda-allday' }, (d.allDay || []).map(function (e, k) {
+              return item(e, d.date, look(e), undefined, h('span', { className: 'zr-agenda-ev-line' }, e.title), e.title, 'a' + k);
+            }));
+          }) : null,
+          h('div', { className: 'zr-agenda-hours', style: { height: hours.length * H } }, hours.slice(1).map(function (hr, k) {
+            return h('span', { key: hr, style: { top: (k + 1) * H } }, fHour.format(Date.UTC(2000, 0, 1, hr)));
+          })),
+          days.map(function (d, i) {
+            var list = [];
+            (d.events || []).forEach(function (e, k) {
+              var a = minOf(e.start), b = minOf(e.end);
+              if (e.passive) { a = Math.max(a, lo); b = Math.min(b, hi); }
+              if (b > a) list.push({ e: e, a: a, b: b, k: k });
+            });
+            var back = list.filter(function (o) { return o.e.passive; }), front = agendaLanes(list.filter(function (o) { return !o.e.passive; }));
+            var live = drag && drag.date === d.date ? drag : null, m = mark && mark.date === d.date ? mark : null, s = sel && sel.date === d.date ? sel : null;
+            function box(o) {
+              var e = o.e, top = y(o.a), ht = Math.max((o.b - o.a) * H / 60 - 2, 16), n = o.of || 1, ln = o.lane || 0;
+              var style = { top: top, height: ht, left: 'calc(' + (ln * 100 / n) + '% + 3px)', width: 'calc(' + (100 / n) + '% - 6px)' };
+              var time = e.start + '–' + e.end, name = [e.title, e.subtitle, time].filter(Boolean).join(', ');
+              var body = ht < 36
+                ? h('span', { className: 'zr-agenda-ev-line' }, h('span', { className: 'zr-agenda-ev-time' }, e.start), ' ', e.title) /* corto: una riga, l'ora davanti */
+                : [h('strong', { key: 't' }, e.title), h('span', { key: 's' }, e.subtitle || time)];
+              return item(e, d.date, cx(look(e), e.passive && 'is-passive'), style, body, name, 'e' + o.k);
+            }
+            function band(a, b, text) { a = Math.max(a, lo); b = Math.min(b, hi); if (b <= a) return null; /* una scelta fuori dalle ore mostrate si taglia sulla griglia */ return h('div', { className: 'zr-agenda-sel', 'aria-hidden': true, style: { top: y(a), height: Math.max((b - a) * H / 60, H / 4) } }, text); }
+            return h('div', { key: 'c' + d.date, className: 'zr-agenda-col' + (d.date === today ? ' is-today' : ''), style: { height: hours.length * H },
+                tabIndex: selectable ? 0 : undefined, role: selectable ? 'application' : 'group', 'aria-label': fLong.format(tOf(d.date)), /* application: NVDA e JAWS passano le frecce alla colonna (revisione 1, R2) */ 'aria-describedby': selectable ? id + '-i' : undefined,
+                onPointerDown: selectable ? function (e) { if (e.pointerType === 'mouse' && e.button !== 0) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {} var a = Math.min(minuteAt(e, true), hi - step); setDrag({ date: d.date, a: a, b: a, y0: e.clientY, moved: false }); } : undefined,
+                onPointerMove: selectable ? function (e) { if (live && (live.moved || Math.abs(e.clientY - live.y0) >= 6)) setDrag(Object.assign({}, live, { b: minuteAt(e), moved: true })); } : undefined, /* sotto i 6 px è ancora un tocco (revisione 1, R1) */
+                onPointerUp: selectable ? function (e) { if (!live) return; var a = Math.min(live.a, live.b), b = Math.max(live.a, live.b); setDrag(null);
+                  if (!live.moved && e.pointerType === 'touch' && nearEvent(e)) return; /* un dito vicino a un evento breve lo apre (revisione 2, N1 e N2) */
+                  pick(d.date, a, !live.moved ? hourFrom(a) : Math.max(b, a + step)); } : undefined, /* un tocco senza trascinare: un'ora */
+                onPointerCancel: selectable ? function () { setDrag(null); } : undefined,
+                onKeyDown: selectable ? function (e) { keys(e, d.date, i); } : undefined,
+                onBlur: selectable ? function (e) { if (e.target === e.currentTarget) setMark(function (v) { return v && v.date === d.date ? null : v; }); } : undefined },
+              back.map(box), s ? band(minOf(s.start), minOf(s.end), s.start + '–' + s.end) : null, front.map(box),
+              live ? (function () { var a = Math.min(live.a, live.b), b = live.moved ? Math.max(live.a, live.b, a + step) : hourFrom(a); return band(a, b, hhmm(a) + '–' + hhmm(b)); })() : null, /* la fascia mostra ciò che il rilascio sceglierà: un'ora finché è un tocco (revisione 2, N3) */
+              m ? band(m.at, hourFrom(m.at), null) : null);
+          }))));
+  }
+
   /* ---------- LabelsProvider ---------- */
   /* i testi comuni dei componenti (Chiudi, Annulla, Indietro, Aggiungi, Togli) nella lingua dell'app (richiesta 186): la lingua la dà
      LabelsProvider, altrimenti <html lang> (letto a ogni disegno); una lingua che non c'è prende quella di sopra, poi <html lang>, poi l'inglese (senza nessuna lingua, l'italiano). La prop del
      componente (closeLabel, backLabel, submitLabel…) vince sempre */
   var COMMON_LABELS = {
-    it: { close: 'Chiudi', cancel: 'Annulla', back: 'Indietro', add: 'Aggiungi', remove: 'Togli', unread: 'non letta' },
-    en: { close: 'Close', cancel: 'Cancel', back: 'Back', add: 'Add', remove: 'Remove', unread: 'unread' },
-    es: { close: 'Cerrar', cancel: 'Cancelar', back: 'Atrás', add: 'Añadir', remove: 'Quitar', unread: 'no leída' }
+    it: { lang: 'it', close: 'Chiudi', cancel: 'Annulla', back: 'Indietro', add: 'Aggiungi', remove: 'Togli', unread: 'non letta' },
+    en: { lang: 'en', close: 'Close', cancel: 'Cancel', back: 'Back', add: 'Add', remove: 'Remove', unread: 'unread' },
+    es: { lang: 'es', close: 'Cerrar', cancel: 'Cancelar', back: 'Atrás', add: 'Añadir', remove: 'Quitar', unread: 'no leída' }
   };
   var labelsCtx = null; /* creato al primo uso: nessuna chiamata a React mentre il bundle si carica */
   function labelsContext() { return labelsCtx || (labelsCtx = React.createContext(null)); }
   function labelsLang(l) { var k = String(l || '').toLowerCase().split('-')[0]; return Object.prototype.hasOwnProperty.call(COMMON_LABELS, k) ? k : null; }
   function pageLabels(dichiarata) { var l = typeof document !== 'undefined' && document.documentElement.lang; return COMMON_LABELS[labelsLang(l)] || (l || dichiarata ? COMMON_LABELS.en : COMMON_LABELS.it); } /* una lingua dichiarata che non c'è cade sull'inglese, come la cornice; nessuna lingua: l'italiano di sempre */
   function useLabels() { return React.useContext(labelsContext()) || pageLabels(); }
+  /* i testi propri di un componente (InlineEdit, DataTable, AgendaGrid) nella stessa lingua dei testi comuni; la prop labels vince sempre (richiesta 205) */
+  function useCompLabels(texts, own) { var C = useLabels(); return Object.assign({}, texts[C.lang] || texts.it, own || {}); }
   function LabelsProvider(p) {
     var up = React.useContext(labelsContext()), l = p.labels || {};
     var base = p.lang ? COMMON_LABELS[labelsLang(p.lang)] || up || pageLabels(true) : up || (p.labels ? pageLabels() : null); /* solo testi: la lingua di <html lang>, riletta a ogni disegno */
@@ -1716,55 +1856,65 @@ import * as React from 'react';
   }
 
   /* ---------- Data ---------- */
-  var DATATABLE_LABELS = { selected: '{n} selezionati', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente' };
+  var DATATABLE_LABELS = { selected: '{n} selezionati', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri' };
+  var DATATABLE_TEXTS = { it: DATATABLE_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina (richiesta 205) */
+    en: { selected: '{n} selected', deselect: 'Deselect', selectAll: 'Select all', selectRow: 'Select row', range: '{from}–{to} of {total}', prev: 'Previous page', next: 'Next page', emptyTitle: 'No results', emptyText: 'Try changing the filters.', sortBy: 'Sort by', sortNone: 'Original order', ascending: '{col}, ascending', descending: '{col}, descending', more: 'Show more' },
+    es: { selected: '{n} seleccionados', deselect: 'Deseleccionar', selectAll: 'Seleccionar todos', selectRow: 'Seleccionar fila', range: '{from}–{to} de {total}', prev: 'Página anterior', next: 'Página siguiente', emptyTitle: 'Sin resultados', emptyText: 'Prueba a cambiar los filtros.', sortBy: 'Ordenar por', sortNone: 'Orden inicial', ascending: '{col}, ascendente', descending: '{col}, descendente', more: 'Mostrar más' } };
   function DataTable(p) {
     var cols = p.columns || [], rows = p.rows || [];
-    var L = Object.assign({}, DATATABLE_LABELS, p.labels || {});
+    var L = useCompLabels(DATATABLE_TEXTS, p.labels);
     var loc = p.locale, nf = null;
     if (loc) try { nf = new Intl.NumberFormat(loc); } catch (e) { loc = null; } /* una lingua che il browser non conosce non rompe la tabella: si usa la forma italiana */
     var num = nf ? function (v) { return nf.format(v); } : fmtNum;
     function fill(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
-    var so = useState(p.defaultSort || null), sort = so[0], setSort = so[1];
-    var se = useState([]), sel = se[0], setSel = se[1];
+    /* ordine e selezione li può tenere la pagina (sort/onSort, selected/onSelect): allora la tabella mostra le righe come arrivano, già ordinate dal server, e chiede (richiesta 203) */
+    var so = useState(p.defaultSort || null), sortOwn = p.sort !== undefined, sort = sortOwn ? p.sort : so[0];
+    function setSort(v) { if (!sortOwn) so[1](v); if (p.onSort) p.onSort(v); }
+    var se = useState([]), selOwn = p.selected !== undefined, sel = selOwn ? p.selected || [] : se[0];
+    function setSel(n) { if (!selOwn) se[1](n); if (p.onSelect) p.onSelect(n); }
     var pg = useState(0), page = pg[0], setPage = pg[1];
-    var size = p.pageSize || 8;
+    var more = !!p.onMore; /* con onMore le righe arrivano a blocchi: si mostrano tutte, niente pagine */
+    var size = p.pageSize || 8, from = more ? 0 : page * size;
     var sorted = rows.slice();
-    if (sort) {
+    if (sort && !sortOwn) {
       var c = cols.find(function (x) { return x.key === sort.key; });
       var get = (c && c.sortValue) || function (r) { return r[sort.key]; };
       sorted.sort(function (a, b) { var x = get(a), y = get(b); var r = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), loc || 'it'); return sort.dir === 'asc' ? r : -r; });
     }
-    var pages = Math.max(1, Math.ceil(sorted.length / size));
-    var shown = sorted.slice(page * size, page * size + size);
+    var pages = more ? 1 : Math.max(1, Math.ceil(sorted.length / size));
+    var shown = more ? sorted : sorted.slice(from, from + size), total = p.total != null ? p.total : rows.length;
     var rid = function (r, i) { return r.id != null ? r.id : i; };
     var allOn = shown.length > 0 && shown.every(function (r, i) { return sel.indexOf(rid(r, i)) >= 0; });
-    function all() { var ids = shown.map(rid), n = allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids))); setSel(n); if (p.onSelect) p.onSelect(n); } /* anche «Seleziona tutti» lo dice al modulo, come la casella di una riga */
-    function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); if (p.onSelect) p.onSelect(n); }
+    function all() { var ids = shown.map(rid), n = allOn ? sel.filter(function (x) { return ids.indexOf(x) < 0; }) : Array.from(new Set(sel.concat(ids))); setSel(n); } /* anche «Seleziona tutti» lo dice al modulo, come la casella di una riga */
+    function toggle(id) { var n = sel.indexOf(id) >= 0 ? sel.filter(function (x) { return x !== id; }) : sel.concat([id]); setSel(n); }
     var sortCols = cols.filter(function (c) { return c.sortable !== false; });
     var sortOpts = (sort ? [] : [{ value: '', label: L.sortNone }]).concat([].concat.apply([], sortCols.map(function (c) {
       return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label || c.srLabel || '') }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label || c.srLabel || '') }];
     })));
     return h('div', { className: 'zr-table-wrap' },
       p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(L.selected, '{n}', num(sel.length))), p.bulkActions || null,
-        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); if (p.onSelect) p.onSelect([]); } }, L.deselect)) : null,
+        h(Button, { variant: 'ghost', size: 'sm', onClick: function () { setSel([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
         onChange: function (e) { var v = e.target.value.split(':'); setSort(v[0] ? { key: v[0], dir: v[1] } : null); setPage(0); } }) : null,
       p.selectable && shown.length ? h('div', { className: 'zr-table-selectall' }, h(Checkbox, { label: L.selectAll, checked: allOn, onChange: all })) : null, /* sotto 720 px l'intestazione è nascosta: «Seleziona tutti» sta qui */
       h('div', { className: 'zr-table-scroll' },
-        h('table', { className: 'zr-table' },
+        h('table', { className: cx('zr-table', p.stickyFirst && 'is-sticky-first') }, /* stickyFirst: la prima colonna (con la casella) resta ferma quando la tabella scorre di lato */
           h('thead', null, h('tr', null,
             p.selectable ? h('th', { className: 'zr-td-check' }, h(Checkbox, { 'aria-label': L.selectAll, checked: allOn, onChange: all })) : null,
-            cols.map(function (c) {
+            cols.map(function (c, k) {
               var active = sort && sort.key === c.key;
-              return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right'), style: c.width ? { width: c.width } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
+              return h('th', { key: c.key, className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first'), style: c.width || c.minWidth ? { width: c.width, minWidth: c.minWidth } : undefined, 'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined },
                 c.sortable === false ? (c.label || (c.srLabel ? h('span', { className: 'zr-visually-hidden' }, c.srLabel) : null)) : h('button', { type: 'button', className: cx('zr-th-sort', active && 'is-active'), onClick: function () { setSort({ key: c.key, dir: active && sort.dir === 'desc' ? 'asc' : 'desc' }); } }, c.label || (c.srLabel ? h('span', { className: 'zr-visually-hidden' }, c.srLabel) : null), h(Icon, { name: active ? (sort.dir === 'asc' ? 'chevronUp' : 'chevronDown') : 'sort', size: 14 })));
             }))),
           h('tbody', null, shown.length ? shown.map(function (r, i) {
-            var id = rid(r, page * size + i), on = sel.indexOf(id) >= 0;
+            var id = rid(r, from + i), on = sel.indexOf(id) >= 0;
             return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
               p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': L.selectRow, checked: on, onChange: function () { toggle(id); } })) : null,
-              cols.map(function (c) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right') }, c.render ? c.render(r) : r[c.key]); }));
+              cols.map(function (c, k) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
+      more && rows.length ? h('div', { className: 'zr-pager' }, /* le righe a blocchi: quante sono arrivate sul totale vero, detto quando cambia, e «Mostra altri» finché ne mancano */
+        h('span', { 'aria-live': 'polite' }, fill(fill(fill(L.range, '{from}', num(1)), '{to}', num(rows.length)), '{total}', num(Math.max(total, rows.length)))),
+        rows.length < total ? h(Button, { variant: 'secondary', size: 'sm', busy: p.loadingMore, onClick: p.onMore }, L.more) : null) :
       pages > 1 ? h('div', { className: 'zr-pager' },
         h('span', null, fill(fill(fill(L.range, '{from}', num(page * size + 1)), '{to}', num(Math.min(sorted.length, page * size + size))), '{total}', num(sorted.length))),
         h('div', null,
@@ -1782,6 +1932,73 @@ import * as React from 'react';
       search && p.searchHint ? h('div', { className: 'zr-filter-search-wrap' }, search, h('p', { id: id + '-h', className: 'zr-filter-hint' }, p.searchHint)) : search,
       p.compact ? h('div', { className: 'zr-filter-items' }, p.children) : p.children,
       p.actions ? h('div', { className: 'zr-filter-actions' }, p.actions) : null);
+  }
+
+  /* ---------- ReorderList: un elenco che si riordina trascinando, o coi pulsanti «Sposta su» e «Sposta giù» (richiesta 25) ---------- */
+  var REORDER_LABELS = { up: 'Sposta su', down: 'Sposta giù', moved: '{item}: posizione {n} di {total}' };
+  var REORDER_TEXTS = { it: REORDER_LABELS,
+    en: { up: 'Move up', down: 'Move down', moved: '{item}: position {n} of {total}' },
+    es: { up: 'Subir', down: 'Bajar', moved: '{item}: posición {n} de {total}' } };
+  function ReorderList(p) {
+    var L = useCompLabels(REORDER_TEXTS, p.labels), items = p.items || [];
+    var ms = useState(''), said = ms[0], say = ms[1];
+    var dg = useState(null), drag = dg[0], setDrag = dg[1];
+    var listRef = useRef(null), want = useRef(null), dragRef = useRef(null);
+    function fill(t, k, v) { return t.replace(k, function () { return v; }); }
+    function nameOf(it) { return typeof it.label === 'string' || typeof it.label === 'number' ? String(it.label) : String(it.id); }
+    function move(from, to, how) {
+      if (from === to || to < 0 || to >= items.length) return;
+      var n = items.slice(), it = n.splice(from, 1)[0]; n.splice(to, 0, it);
+      say(fill(fill(fill(L.moved, '{item}', nameOf(it)), '{n}', String(to + 1)), '{total}', String(n.length)));
+      want.current = how ? { id: String(it.id), how: how } : null;
+      if (p.onChange) p.onChange(n);
+    }
+    useEffect(function () { /* la riga spostata coi pulsanti si porta dietro il fuoco; all'estremo passa all'altro pulsante */
+      var w = want.current, u = listRef.current; if (!w || !u) return; want.current = null;
+      var li = [].filter.call(u.children, function (x) { return x.getAttribute('data-id') === w.id; })[0], b = li && li.querySelector('[data-move="' + w.how + '"]');
+      if (b && b.getAttribute('aria-disabled') === 'true') b = li.querySelector('[data-move="' + (w.how === 'up' ? 'down' : 'up') + '"]');
+      if (b) b.focus();
+    });
+    function grab(e, i) {
+      if (e.button > 0 || items.length < 2) return;
+      e.preventDefault();
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) { /* senza cattura si segue lo stesso */ }
+      var rows = [].map.call(listRef.current.children, function (x) { var r = x.getBoundingClientRect(); return { top: r.top, h: r.height }; });
+      dragRef.current = { i: i, to: i, y0: e.clientY, dy: 0, rows: rows, pid: e.pointerId }; setDrag(dragRef.current);
+    }
+    function follow(e) {
+      var d = dragRef.current; if (!d || e.pointerId !== d.pid) return;
+      var dy = e.clientY - d.y0, r = d.rows[d.i], mid = r.top + r.h / 2 + dy, to = 0;
+      d.rows.forEach(function (x, k) { if (k !== d.i && mid > x.top + x.h / 2) to++; });
+      dragRef.current = Object.assign({}, d, { dy: dy, to: to }); setDrag(dragRef.current);
+    }
+    function drop() { var d = dragRef.current; if (!d) return; dragRef.current = null; setDrag(null); move(d.i, d.to, null); }
+    function cancel() { dragRef.current = null; setDrag(null); }
+    useEffect(function () { /* Esc mentre si trascina lascia tutto com'era, e resta suo */
+      if (!drag) return;
+      function k(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); } }
+      document.addEventListener('keydown', k, true); return function () { document.removeEventListener('keydown', k, true); };
+    }, [!!drag]);
+    function shift(k) {
+      if (!drag) return 0;
+      if (k === drag.i) return drag.dy;
+      var hd = drag.rows[drag.i].h;
+      return drag.i < k && k <= drag.to ? -hd : drag.to <= k && k < drag.i ? hd : 0;
+    }
+    return h('div', { className: cx('zr-reorder-wrap', p.className) },
+      h('ul', { ref: listRef, className: cx('zr-reorder', drag && 'is-dragging'), 'aria-label': p['aria-label'] },
+        items.map(function (it, k) {
+          var y = shift(k), last = k === items.length - 1;
+          function mv(dir, off, to) {
+            return h(Button, { variant: 'ghost', size: 'sm', icon: dir === 'up' ? 'chevronUp' : 'chevronDown', 'data-move': dir, 'aria-label': (dir === 'up' ? L.up : L.down) + ': ' + nameOf(it),
+              'aria-disabled': off ? true : undefined, onClick: function () { if (!off) move(k, to, dir); } });
+          }
+          return h('li', { key: it.id, 'data-id': it.id, className: cx('zr-reorder-item', drag && drag.i === k && 'is-dragging'), style: y ? { transform: 'translateY(' + y + 'px)' } : undefined },
+            h('span', { className: 'zr-reorder-handle', 'aria-hidden': true, onPointerDown: function (e) { grab(e, k); }, onPointerMove: follow, onPointerUp: drop, onPointerCancel: cancel }, h(Icon, { name: 'menu', size: 18 })),
+            h('div', { className: 'zr-reorder-body' }, p.render ? p.render(it) : [h('div', { key: 'l', className: 'zr-reorder-label' }, it.label), it.description ? h('div', { key: 'd', className: 'zr-reorder-desc' }, it.description) : null]),
+            h('div', { className: 'zr-reorder-moves' }, mv('up', k === 0, k - 1), mv('down', last, k + 1)));
+        })),
+      h('p', { className: 'zr-visually-hidden zr-reorder-live', 'aria-live': 'polite' }, said));
   }
 
   /* ---------- Charts ---------- */
@@ -2536,6 +2753,8 @@ export {
   INLINE_EDIT_LABELS,
   Calendar,
   CALENDAR_LABELS,
+  AgendaGrid,
+  AGENDA_LABELS,
   Switch,
   Tabs,
   Alert,
@@ -2547,6 +2766,8 @@ export {
   PageHeader,
   DataTable,
   DATATABLE_LABELS,
+  ReorderList,
+  REORDER_LABELS,
   FilterBar,
   StatCard,
   ChartCard,

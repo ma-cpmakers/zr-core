@@ -432,6 +432,8 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-seg.is-underline { background: none; padding: 0; gap: var(--space-4); border-radius: 0; }
 .zr-seg.is-underline .zr-seg-item { height: 40px; padding: 0 2px; border-radius: 0; border-bottom: 2px solid transparent; }
 .zr-seg.is-underline .zr-seg-item.is-active { background: none; box-shadow: none; border-bottom-color: var(--pine); }
+/* sotto i 720 px le linguette sottolineate stanno in una riga che scorre di lato nel suo riquadro, e la scelta resta in vista (richiesta 204); il segno del fuoco sta dentro la linguetta, che il riquadro non lo tagli */
+@media (max-width: 720px) { .zr-seg.is-underline { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; } .zr-seg.is-underline .zr-seg-item { flex: none; outline-offset: -2px; } }
 /* Checkbox con aiuto ed errore (144) */
 .zr-check-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .zr-check-field .zr-check { align-items: flex-start; line-height: 20px; }
@@ -575,6 +577,48 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
   .zr-cal.is-month .zr-cal-ev-citrus { background: var(--citrus); } .zr-cal.is-month .zr-cal-ev-coral { background: var(--coral); } .zr-cal.is-month .zr-cal-ev-sky { background: var(--sky); } .zr-cal.is-month .zr-cal-ev-plum { background: var(--plum); } .zr-cal.is-month .zr-cal-ev-neutral { background: var(--line-strong); }
   .zr-cal.is-month .zr-cal-more { background: var(--ink-muted); }
 }
+/* AgendaGrid: la griglia di un'agenda con le ore (richiesta 202) */
+.zr-agenda { --zr-agenda-hours: 56px; --zr-agenda-col-min: 120px; position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-raised); color: var(--ink); overflow: hidden; }
+.zr-agenda-scroll { overflow-x: auto; }
+.zr-agenda-grid { display: grid; }
+.zr-agenda-corner, .zr-agenda-head { border-bottom: 1px solid var(--line); }
+.zr-agenda-head { display: flex; flex-direction: column; padding: var(--space-2); border-left: 1px solid var(--line); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+.zr-agenda-num { font-family: var(--font-display); font-size: 20px; line-height: 24px; font-weight: 700; color: var(--ink); }
+.zr-agenda-head.is-today .zr-agenda-num { color: var(--pine); }
+.zr-agenda-corner.is-allday { border-bottom: 1px solid var(--line); }
+.zr-agenda-allday { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; padding: var(--space-1); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.zr-agenda-allday .zr-agenda-ev { position: static; width: 100%; }
+.zr-agenda-hours { position: relative; }
+.zr-agenda-hours span { position: absolute; right: var(--space-2); transform: translateY(-50%); font-size: 11px; line-height: 14px; color: var(--ink-muted); white-space: nowrap; }
+.zr-agenda-col { position: relative; border-left: 1px solid var(--line); background-image: repeating-linear-gradient(to bottom, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--zr-agenda-hour)); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.zr-agenda-col[tabindex] { cursor: crosshair; }
+.zr-agenda-col:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.zr-agenda-ev { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; padding: 3px var(--space-1-5); border: 1px solid var(--pine); border-radius: var(--radius-sm); background: var(--pine-soft); color: var(--ink); font: inherit; font-size: 12px; line-height: 15px; text-align: left; overflow: hidden; }
+.zr-agenda-ev > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zr-agenda-ev strong { font-weight: 600; }
+.zr-agenda-ev-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.zr-agenda-ev-time { font-weight: 500; }
+button.zr-agenda-ev { cursor: pointer; }
+button.zr-agenda-ev:hover { box-shadow: var(--shadow-card); }
+button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; z-index: 2; }
+.zr-agenda-ev.is-static { pointer-events: none; }
+.zr-agenda-ev.is-passive { border-color: var(--line); background: var(--surface-sunken); color: var(--ink-muted); }
+.zr-agenda-soft.zr-agenda-tone-citrus { border-color: var(--citrus); background: var(--citrus-soft); }
+.zr-agenda-soft.zr-agenda-tone-coral { border-color: var(--coral); background: var(--coral-soft); }
+.zr-agenda-soft.zr-agenda-tone-sky { border-color: var(--sky); background: var(--sky-soft); }
+.zr-agenda-soft.zr-agenda-tone-plum { border-color: var(--plum); background: var(--plum-soft); }
+.zr-agenda-soft.zr-agenda-tone-neutral { border-color: var(--line-strong); background: var(--surface-sunken); }
+.zr-agenda-outline { background: var(--surface-raised); color: var(--pine); }
+.zr-agenda-outline.zr-agenda-tone-citrus { border-color: var(--citrus); color: var(--citrus-ink); }
+.zr-agenda-outline.zr-agenda-tone-coral { border-color: var(--coral); color: var(--coral); }
+.zr-agenda-outline.zr-agenda-tone-sky { border-color: var(--sky); color: var(--ink); }
+.zr-agenda-outline.zr-agenda-tone-plum { border-color: var(--plum); color: var(--ink); }
+.zr-agenda-outline.zr-agenda-tone-neutral { border-color: var(--line-strong); color: var(--ink); }
+.zr-agenda-solid { background: var(--pine); color: var(--on-pine); }
+.zr-agenda-solid.zr-agenda-tone-citrus { border-color: var(--citrus); background: var(--citrus); color: var(--on-citrus); }
+.zr-agenda-solid.zr-agenda-tone-coral { border-color: var(--coral); background: var(--coral); color: var(--on-coral); }
+.zr-agenda-sel { position: absolute; left: 3px; right: 3px; box-sizing: border-box; padding: 3px var(--space-1-5); border: 1px solid var(--sky); border-radius: var(--radius-sm); background: var(--sky-soft); color: var(--ink); font-size: 12px; line-height: 15px; font-weight: 600; pointer-events: none; opacity: .9; z-index: 1; }
+@media (max-width: 720px) { .zr-agenda { --zr-agenda-hours: 48px; --zr-agenda-col-min: 96px; } }
 @media (prefers-reduced-motion: reduce) { .zr-radio-dot::after, .zr-toggle, .zr-radio-card { transition: none; } }
 
 /* Feedback */
@@ -639,7 +683,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-panel .zr-table-wrap { border: 0; border-radius: 0; margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-5)) calc(-1 * var(--space-5)); }
 .zr-table-scroll { overflow-x: auto; }
 .zr-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; }
-.zr-table th { position: sticky; top: 0; z-index: 1; padding: 0 var(--space-4); height: 40px; text-align: left; font-size: 12px; font-weight: 600; color: var(--ink-muted); background: var(--surface); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.zr-table th { position: sticky; top: 0; z-index: 1; padding: 0 var(--space-4); height: 40px; text-align: left; font-size: 12px; font-weight: 600; color: var(--ink-muted); background: var(--surface); border-bottom: 1px solid var(--line); }
 .zr-table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); vertical-align: middle; }
 .zr-table tr:last-child td { border-bottom: 0; }
 .zr-table .is-right { text-align: right; font-variant-numeric: tabular-nums; }
@@ -648,13 +692,36 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
 .zr-table tr.is-selected { background: var(--pine-soft); }
 .zr-table tr.is-clickable { cursor: pointer; }
 .zr-td-check { width: 40px; padding-right: 0 !important; }
-.zr-th-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.zr-th-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: inherit; cursor: pointer; }
+/* stickyFirst: la prima colonna, e la casella prima di lei, restano ferme quando la tabella scorre di lato (richiesta 203) */
+.zr-table.is-sticky-first .zr-td-first, .zr-table.is-sticky-first .zr-td-check { position: sticky; left: 0; z-index: 1; background: var(--surface-raised); }
+.zr-table.is-sticky-first .zr-td-check { box-sizing: content-box; min-width: 40px; } /* la casella larga quanto il «left» della colonna dopo di lei, anche quando la tabella è stretta */
+.zr-table.is-sticky-first .zr-td-check + .zr-td-first { left: calc(40px + var(--space-4)); }
+.zr-table.is-sticky-first th.zr-td-first, .zr-table.is-sticky-first th.zr-td-check { z-index: 2; background: var(--surface); }
+.zr-table.is-sticky-first tbody tr:hover > td { background: var(--surface); }
+.zr-table.is-sticky-first tr.is-selected > td { background: var(--pine-soft); }
 .zr-th-sort .zr-icon { opacity: .5; }
 .zr-th-sort.is-active { color: var(--ink); } .zr-th-sort.is-active .zr-icon { opacity: 1; }
 .zr-bulk { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--pine-soft); color: var(--ink); font-size: 14px; }
 .zr-bulk strong { margin-right: var(--space-2); }
 .zr-pager { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted); }
 .zr-pager > div { display: flex; gap: var(--space-1); }
+/* ReorderList: un elenco che si riordina trascinando la maniglia, o con «Sposta su» e «Sposta giù» (richiesta 25) */
+.zr-reorder { list-style: none; margin: 0; padding: 0; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.zr-reorder-item { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-bottom: 1px solid var(--line); box-sizing: border-box; }
+.zr-reorder-item:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; } .zr-reorder-item:last-child { border-bottom: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+.zr-reorder-handle { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; color: var(--ink-muted); cursor: grab; touch-action: none; }
+.zr-reorder-body { flex: 1; min-width: 0; }
+.zr-reorder-label { font-size: 14px; line-height: 20px; color: var(--ink); }
+.zr-reorder-desc { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+.zr-reorder-moves { display: flex; gap: var(--space-1); flex: none; }
+.zr-reorder-moves .zr-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.zr-reorder.is-dragging { user-select: none; }
+.zr-reorder.is-dragging .zr-reorder-item { transition: transform .15s ease; }
+.zr-reorder .zr-reorder-item.is-dragging { z-index: 1; transition: none; border-radius: var(--radius-sm-md); box-shadow: var(--shadow-lift); cursor: grabbing; }
+.zr-reorder-item.is-dragging .zr-reorder-handle { cursor: grabbing; color: var(--ink); }
+@media (pointer: coarse) { .zr-reorder-handle { width: 44px; height: 44px; } .zr-reorder-moves { gap: var(--space-3); } } /* le aree di tocco dei due pulsanti non si sovrappongono (revisione 1, R6) */
+@media (prefers-reduced-motion: reduce) { .zr-reorder.is-dragging .zr-reorder-item { transition: none; } }
 .zr-table-sortbar, .zr-table-selectall { display: none; }
 .zr-cell-person { display: inline-flex; align-items: center; gap: var(--space-3); }
 .zr-cell-person > span:last-child { display: flex; flex-direction: column; }
@@ -917,6 +984,7 @@ button.zr-cal-ev:focus-visible, .zr-cal-more:focus-visible { outline: 2px solid 
   .zr-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); }
   .zr-table td.zr-td-check { float: right; width: auto; }
   .zr-table-scroll { overflow: visible; }
+  .zr-table.is-sticky-first .zr-td-first, .zr-table.is-sticky-first .zr-td-check { position: static; background: none; }
 }
 
 /* ---------- AppShell: workspace, ricerca, notifiche, profilo, percorso ---------- */
