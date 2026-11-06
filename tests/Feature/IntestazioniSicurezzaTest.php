@@ -213,6 +213,10 @@ it('una direttiva fuori dalle sei a cui si aggiunge non cambia e non compare, ne
 
     [$csp, $scartate] = IntestazioniSicurezza::componi([$direttiva => ['https://a.example.com'], 'img-src' => ['https://a.example.com']]);
     expect($csp)->toBe(cspDiTuttiCon("img-src 'self'", "img-src 'self' https://a.example.com"))->and($scartate)->toHaveCount(1);
+
+    // La pagina che allarga form-action non apre per questo la direttiva accanto (revisione dello sprint 117, R2).
+    [$csp, $scartate] = IntestazioniSicurezza::componi([], [$direttiva => ['https://a.example.com'], 'form-action' => ['https://a.example.com']]);
+    expect($csp)->toBe(cspDiTuttiCon("form-action 'self'", "form-action 'self' https://a.example.com"))->and($scartate)->toHaveCount(1);
 })->with(['default-src', 'object-src', 'base-uri', 'frame-ancestors', 'worker-src']);
 
 it('ognuna delle sei direttive che si estendono prende un\'origine ammessa al suo posto, dal modulo e dalla pagina (sprint 16 · T1.3)', function (string $direttiva, string $prima, string $dopo) {
@@ -1094,13 +1098,17 @@ it('il modulo non allarga form-action per sempre: la sorgente è scartata, col s
         ->and($scartateConHome)->toBe(['modulo, form-action: si allarga solo per una pagina con nome']);
 })->with(['https://board.example.com', "'self'"]);
 
-it('dal middleware, form-action in zr-core.csp non arriva su nessuna risposta (sprint 117 · T1.3)', function () {
+it('dal middleware, form-action in zr-core.csp non arriva su nessuna risposta, e ogni risposta lascia l\'avviso col suo motivo (sprint 117 · T1.3; revisione, R1)', function () {
     primoDeiGlobali();
     rotteDiProva();
+    logInMemoria();
     config(['zr-core.csp' => [...AGGIUNTE_DI_HOME, ...AGGIUNTE_DELL_ASSISTENZA], 'zr-core.csp_pagine' => ['turnstile' => AGGIUNTE_DI_TURNSTILE]]);
 
     expect($this->get('/prova/pagina')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME])
-        ->and($this->get('/prova/registrati')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE]);
+        ->and($this->get('/prova/registrati')->assertOk()->headers->all('Content-Security-Policy'))->toBe([CSP_DI_HOME_CON_TURNSTILE])
+        ->and(avvisiNelLog())->toHaveCount(2)
+        ->and(avvisiNelLog()[0])->toContain('modulo, form-action: si allarga solo per una pagina con nome')->not->toContain('example.com')
+        ->and(avvisiNelLog()[1])->toBe(avvisiNelLog()[0]);
 });
 
 it('in form-action di una pagina entrano solo \'self\' e le origini https:// scritte per intero: il resto è scartato e la CSP resta quella di tutti (sprint 117 · T1.4)', function (string $sorgente) {

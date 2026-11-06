@@ -39,7 +39,7 @@ final class IntestazioniSicurezza
     /** L'ordine delle direttive nell'intestazione: una che la CSP di tutti non ha (`frame-src`) prende il suo posto qui. */
     private const ORDINE = ['default-src', 'script-src', 'style-src', 'img-src', 'font-src', 'connect-src', 'frame-src', 'object-src', 'base-uri', 'form-action', 'frame-ancestors'];
 
-    /** Le sole direttive a cui un modulo o una pagina aggiungono sorgenti. Le altre sono uguali per tutti. */
+    /** Le direttive a cui aggiungono sorgenti sia il modulo sia una pagina; a SOLO_PER_UNA_PAGINA la pagina sola. Le altre sono uguali per tutti. */
     private const ESTENDIBILI = ['script-src', 'style-src', 'img-src', 'font-src', 'connect-src', 'frame-src'];
 
     /** Le direttive a cui aggiunge sorgenti solo una pagina, chiesta per nome: mai il modulo per sempre (dalla v4.24.0). */

@@ -3017,7 +3017,8 @@ nome. Un nome che la configurazione non dichiara non aggiunge niente, e lascia u
 zr-superadmin che consegna l'«Accedi come» col POST agli host dei moduli. Le sorgenti sono quelle di sempre, `'self'` o
 un'origine `https://` scritta per intero (niente `http:`, jolly, sottodomini con `*`, percorsi), ed escono dopo `'self'`, che
 la CSP di tutti ha già. Le altre pagine restano a `form-action 'self'`. In `csp`, per sempre, `form-action` è scartata, con un
-avviso nel log: un modulo non la allarga su ogni risposta.
+avviso nel log: un modulo non la allarga su ogni risposta. Chromium applica `form-action` anche ai rimandi che seguono
+l'invio: se l'host che riceve il modulo rimanda a un altro host, anche quello va nell'insieme.
 
 ```php
 'csp_pagine' => [
