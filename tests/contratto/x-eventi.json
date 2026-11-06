@@ -1,6 +1,6 @@
 {
-    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. L'invito di Bookings su bd078afd (05/11/2026), con la fonte di zr-backoffice-c6. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
-    "versione": "bd078afd",
+    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. L'invito di Bookings su bd078afd (05/11/2026), con la fonte di zr-backoffice-c6. La fattura del CRM su 8e80fafb (06/11/2026), con la fonte di zr-backoffice-ab. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
+    "versione": "8e80fafb",
     "tipi": [
         "com.zeiras.app.modificata",
         "com.zeiras.board.board.creata",
@@ -60,6 +60,7 @@
         "com.zeiras.crm.elenco.modificato",
         "com.zeiras.crm.esito.creato",
         "com.zeiras.crm.esito.modificato",
+        "com.zeiras.crm.fattura.creata",
         "com.zeiras.crm.indirizzo_spedizione.creato",
         "com.zeiras.crm.indirizzo_spedizione.modificato",
         "com.zeiras.crm.installazione.creata",
@@ -169,6 +170,7 @@
         "com.zeiras.workspace.eliminato": "Registro::archivia mette in archivio i membri prima di Scrittura::notifiche(): nessuna riga, e il workspace non si apre più",
         "com.zeiras.workspace.esportazione.creata": "EsportazioneWorkspace::notifica() è false: l'evento resta nel registro",
         "com.zeiras.crm.consenso.revocato": "zr-backoffice-66, 04/11/2026: non è nel Catalogo delle notifiche e il backoffice non prevede destinatari (porta il solo id del documento: evento di sistema per chi si abbona agli eventi)",
-        "com.zeiras.crm.documento.firmato": "zr-backoffice-66, 04/11/2026: non è nel Catalogo delle notifiche e il backoffice non prevede destinatari (porta il solo id del documento: evento di sistema per chi si abbona agli eventi)"
+        "com.zeiras.crm.documento.firmato": "zr-backoffice-66, 04/11/2026: non è nel Catalogo delle notifiche e il backoffice non prevede destinatari (porta il solo id del documento: evento di sistema per chi si abbona agli eventi)",
+        "com.zeiras.crm.fattura.creata": "zr-backoffice-ab su 8e80fafb (06/11/2026): Fattura::notifica() è false, il tipo non è nel Catalogo delle notifiche né fra le personali; è un evento per le app, non per i colleghi"
     }
 }
