@@ -169,6 +169,18 @@ it('`non_lette` è 0 quando io.mostra non dà un intero da 0 in su: null, senza,
     'un decimale' => [fn () => ['notifiche_non_lette' => 2.5] + ioDelCliente()['data']],
 ]);
 
+// Sprint 116 · T4 (voce #3398): le chiavi dei dati sono quelle che la cornice del cliente legge. Il T3 leggeva
+// `notifiche_non_lette` e il server dà `non_lette`: con la demo scritta a mano, numero e campanella sembravano giusti.
+it('ogni chiave dei dati del cliente è una proprietà di `DatiDelCliente` in cliente.tsx, `non_lette` compresa (sprint 116 · T4)', function () {
+    sessioneAMano(null);
+    backofficeDelCliente(['/v1/io' => ['data' => ['notifiche_non_lette' => 3] + ioDelCliente()['data']]]);
+    preg_match('/export interface DatiDelCliente \{(.*?)\n\}/s', (string) file_get_contents(__DIR__.'/../../resources/js/cliente.tsx'), $tipo);
+    preg_match_all('/^    (\w+)\??:/m', $tipo[1] ?? '', $proprieta);
+
+    expect(array_values(array_diff(array_keys(Cornice::datiDelCliente() ?? []), $proprieta[1])))->toBe([])
+        ->and($proprieta[1])->toContain('non_lette', 'accettazione_richiesta');
+});
+
 it('col 403 accettazione_richiesta dà la persona della sessione, senza foto e senza aziende, con accettazione_richiesta (sprint 110 · T1.4)', function () {
     Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00.000000', 'UTC'));
     sessioneAMano(null);

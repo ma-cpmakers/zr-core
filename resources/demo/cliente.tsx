@@ -63,7 +63,7 @@ function Pagina() {
         persona: { nome: 'UAT Marta Rossi', email: 'uat-cliente@example.com', impronta: null, ...(scelti.get('foto') === '1' ? { foto: '/apple-touch-icon.png' } : {}) },
         aziende: scelti.get('aziende') === '1' ? [{ id: 'uat-a1', nome: 'UAT Acme', workspace: [{ id: 'uat-w1', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-w2', nome: 'UAT Ricerca', slug: 'uat-ricerca' }], nuovo_workspace: false }] : [],
         aggiornati_il: '2026-11-06T21:00:00.000000Z',
-        notifiche_non_lette: notifiche.filter((una) => !una.letta).length,
+        non_lette: notifiche.filter((una) => !una.letta).length,
     };
     const [attiva, setAttiva] = useState('home');
     const [ultima, setUltima] = useState('');

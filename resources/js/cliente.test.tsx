@@ -190,8 +190,8 @@ describe('la cornice del cliente', () => {
     });
 
     // Fino alla `v4.23` la campanella era vuota e non chiamava niente; dalla `v4.24.0` (sprint 116 · T3) apre le notifiche da
-    // cliente: qui senza `notifiche_non_lette` e senza notifiche, e i casi suoi sono in fondo.
-    it('T2.4 senza `notifiche_non_lette` la campanella non ha numero, e senza notifiche il pannello ha il testo vuoto del cliente', async () => {
+    // cliente: qui senza `non_lette` e senza notifiche, e i casi suoi sono in fondo.
+    it('T2.4 senza `non_lette` la campanella non ha numero, e senza notifiche il pannello ha il testo vuoto del cliente', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [], persona: persona.email })));
         await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci} />);
 
@@ -346,7 +346,7 @@ describe('la campanella del cliente (sprint 116 · T3)', () => {
         id: 'n-2', creata_il: new Date(adesso - 60_000).toISOString(), letta: false, app: 'bookings', tipo: 'bookings.cliente.prenotazione.promemoria',
         autore_nome: null, risorsa_nome: null, per_me: null, quando: { il: '2026-11-11T08:00:00Z', fuso: 'Europe/Rome' }, azienda: null, ids: {},
     };
-    const conNumero = (nonLette: number): DatiDelCliente => ({ ...dati, notifiche_non_lette: nonLette });
+    const conNumero = (nonLette: number): DatiDelCliente => ({ ...dati, non_lette: nonLette });
 
     /** Le rotte del cliente: l'elenco, la lettura di una (riuscita) e «Segna tutte» (con `altre`). Ogni altra è un 404. */
     function rotte(elenco: unknown[], altre = false) {
@@ -378,7 +378,7 @@ describe('la campanella del cliente (sprint 116 · T3)', () => {
         await arrivate();
     }
 
-    it('T3.1 la campanella mostra `notifiche_non_lette`, «99+» oltre 99, nessun numero a 0; nessuna rotta prima di aprirla', async () => {
+    it('T3.1 la campanella mostra `non_lette`, «99+» oltre 99, nessun numero a 0; nessuna rotta prima di aprirla', async () => {
         const finto = rotte([]);
         const numeri: (string | null)[] = [];
         for (const nonLette of [3, 99, 100, 0]) {

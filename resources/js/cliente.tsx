@@ -48,7 +48,7 @@ export interface DatiDelCliente {
     aziende: { id: string; nome: string; workspace: WorkspaceDeiDati[]; nuovo_workspace?: boolean | undefined }[];
     aggiornati_il?: string | undefined;
     /** Quante notifiche da cliente la persona non ha letto (dalla `v4.24.0`): il numero sulla campanella. Senza, nessun numero. */
-    notifiche_non_lette?: number | undefined;
+    non_lette?: number | undefined;
     /**
      * I documenti legali in vigore non sono accettati: i dati sono ridotti (nessuna azienda, nessuna foto, nessun numero sulla
      * campanella, che non si apre), e la pagina la decide il modulo.
@@ -117,9 +117,9 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
 
     // La campanella (dalla `v4.24.0`, voce 3398). Il numero è quello dei dati, finché un clic non lo fa scendere: vale per quei dati,
     // e i dati di una visita nuova (un altro `aggiornati_il`, un altro numero) lo riportano a sé. I dati ridotti non hanno numero.
-    const diQuestiDati = `${dati.aggiornati_il}|${dati.notifiche_non_lette}`;
+    const diQuestiDati = `${dati.aggiornati_il}|${dati.non_lette}`;
     const [sceso, setSceso] = useState<{ di: string; n: number }>();
-    const nonLette = dati.accettazione_richiesta ? 0 : sceso?.di === diQuestiDati ? sceso.n : (dati.notifiche_non_lette ?? 0);
+    const nonLette = dati.accettazione_richiesta ? 0 : sceso?.di === diQuestiDati ? sceso.n : (dati.non_lette ?? 0);
     // L'elenco si chiede a ogni apertura del pannello, e conta l'ultima richiesta partita. Con le notifiche arrivano le frasi della
     // lingua, dal pezzo della campanella; a elenco vuoto non servono. Una risposta che non è un elenco, o le frasi che non arrivano,
     // sono lo stato d'errore del pannello, con «Riprova».
