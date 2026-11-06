@@ -38,6 +38,11 @@ export interface NotificaDellaCornice {
      * l'istante e il fuso in cui si legge. `null` quando il backoffice non lo dà, o non nella forma concordata.
      */
     quando?: QuandoDellaCornice | null;
+    /**
+     * Com'è stata decisa la cosa che la notifica racconta (dalla `v4.16.0`: l'esito di un Gate, `approvato`, `con_prescrizioni`,
+     * `respinto`): un testo di lettere minuscole e `_`, o `null` quando il backoffice non lo dà, o non in quella forma.
+     */
+    esito?: string | null;
 }
 
 /** Un istante come lo danno le rotte della cornice (dalla `v3.6.0`): `il` in UTC, con la `Z`; `fuso`, il nome IANA in cui si legge (`Europe/Rome`). */
