@@ -27,7 +27,8 @@ use Zeiras\Core\Segno;
  * cornice non mostra un prodotto. Anche il tipo passa com'è, pure uno che /v1 oggi non ha: qui non si traduce e non si
  * confronta con un elenco. `soggetto` resta qui, e di `dati` passano i soli id che alla cornice servono per aprire la risorsa
  * della notifica (`ids`): quelli del percorso che si apre — il primo che il registro dei moduli dà al suo tipo e che `dati`
- * soddisfa per intero —, e nessuno per un tipo che il registro non ha, o quando il percorso non chiede un id. Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
+ * soddisfa per intero —, e nessuno per un tipo che il registro non ha, o quando il percorso non chiede un id. Dalla `v4.16.0` passa
+ * anche `esito`, com'è stata decisa la cosa (un Gate), se ha la forma di un pezzo di chiave (`esitoDi()`). Segnarle lette tutte insieme è una richiesta sola del browser, fino a un istante, non una per notifica: il backoffice ne
  * segna 5000 per chiamata, e la parte server lo richiama finché ne restano, entro due tetti. Senza un workspace nella sessione
  * risponde ConWorkspace; un backoffice che non risponde è BackofficeNonRisponde, cioè un errore, mai un elenco vuoto. Se la
  * persona non ha ancora accettato i documenti legali in vigore il backoffice risponde 403 `accettazione_richiesta`, e le tre
@@ -394,8 +395,22 @@ final class NotificheDellaCornice
             'autore_nome' => $notifica['autore']['nome'] ?? null, 'risorsa_nome' => $notifica['risorsa_nome'] ?? null,
             'per_me' => $notifica['per_me'] ?? null,
             'azioni' => $notifica['azioni'] ?? 1, 'board_nome' => $notifica['board']['nome'] ?? null,
-            'quando' => Quando::di($notifica['quando'] ?? null),
+            'quando' => Quando::di($notifica['quando'] ?? null), 'esito' => self::esitoDi($notifica['dati'] ?? null),
         ];
+    }
+
+    /**
+     * Com'è stata decisa la cosa che una notifica racconta, dai suoi `dati` (dalla `v4.16.0`, #3302): `esito`, che il backoffice
+     * dà a `board.gate.deciso` (`approvato`, `con_prescrizioni`, `respinto`). Passa solo come un testo di lettere minuscole e `_`,
+     * da 1 a 40, perché nel browser è un pezzo della chiave di una frase (`notificationTitleOutcome.<tipo>.<esito>`); ogni altra
+     * forma, o l'esito che manca, è null, e la notifica passa lo stesso. Quali esiti hanno un titolo lo dicono le lingue, non questo
+     * metodo: un esito nuovo arriva al browser, che gli dà il titolo del suo tipo.
+     */
+    private static function esitoDi(mixed $dati): ?string
+    {
+        $esito = is_array($dati) ? ($dati['esito'] ?? null) : null;
+
+        return is_string($esito) && preg_match('/\A[a-z_]{1,40}\z/', $esito) === 1 ? $esito : null;
     }
 
     /**
