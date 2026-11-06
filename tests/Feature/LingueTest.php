@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\File;
 /** @return list<string> le chiavi di `AppShellLabels` in index.d.ts, nel loro ordine */
 function chiaviDiAppShellLabels(): array
 {
-    preg_match('/^export interface AppShellLabels \{([^}]*)\}/m', File::get(__DIR__.'/../../resources/zeiras/index.d.ts'), $trovato);
+    // L'interfaccia sta su una riga, fino all'ultima graffa: dal lotto 0518 un commento ha «{n}» dentro (`searchCount`).
+    preg_match('/^export interface AppShellLabels \{(.*)\}\s*$/m', File::get(__DIR__.'/../../resources/zeiras/index.d.ts'), $trovato);
     preg_match_all('/(\w+)\?: string/', $trovato[1] ?? '', $chiavi);
 
     return $chiavi[1];
