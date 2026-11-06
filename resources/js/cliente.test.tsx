@@ -12,6 +12,8 @@ import { nelWorkspace, registro } from './registro';
 import clienteInglese from '../lingue/cliente/en.json';
 import clienteSpagnolo from '../lingue/cliente/es.json';
 import clienteItaliano from '../lingue/cliente/it.json';
+import frasiItaliane from '../lingue/notifiche/it.json';
+import { rigaConLeFrasi } from './campanella';
 
 // Sprint 110 (voce #3319, Decisione 21687 di zr-pm-07, da zr-home #3317): la cornice di chi è solo cliente, per le pagine «Il mio
 // spazio» di zr-home, coi dati di `Cornice::datiDelCliente()`. Il selettore «Come cliente › Il mio spazio», niente piano, il menu
@@ -21,6 +23,8 @@ import clienteItaliano from '../lingue/cliente/it.json';
 
 let contenitore: HTMLDivElement;
 let radice: Root;
+/** Il `fetch` di ogni caso che non sceglie le sue rotte: una chiamata è un difetto. */
+let nessunaRotta: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
     contenitore = document.createElement('div');
@@ -28,14 +32,16 @@ beforeEach(() => {
     radice = createRoot(contenitore);
     vi.spyOn(console, 'error');
     // La cornice del cliente non chiama nessuna rotta (né /cornice/notifiche né /cornice/ricerca): una chiamata è un difetto.
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('nessuna rotta'); }));
+    // Dalla `v4.23.0` (sprint 116 · T3) la campanella chiama le rotte del cliente all'apertura: i suoi casi hanno le loro.
+    nessunaRotta = vi.fn(async () => { throw new Error('nessuna rotta'); });
+    vi.stubGlobal('fetch', nessunaRotta);
 });
 
 afterEach(async () => {
     await act(async () => radice.unmount());
     contenitore.remove();
     expect(console.error).not.toHaveBeenCalled();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(nessunaRotta).not.toHaveBeenCalled();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
@@ -183,11 +189,15 @@ describe('la cornice del cliente', () => {
         expect(naviga).toHaveBeenCalledWith(nelWorkspace(dashboard.indirizzo, 'interni'));
     });
 
-    it('T2.4 la campanella non ha numero e il pannello è vuoto, col testo del cliente; nessuna rotta della cornice', async () => {
+    // Fino alla `v4.22` la campanella era vuota e non chiamava niente; dalla `v4.23.0` (sprint 116 · T3) apre le notifiche da
+    // cliente: qui senza `non_lette` e senza notifiche, e i casi suoi sono in fondo.
+    it('T2.4 senza `non_lette` la campanella non ha numero, e senza notifiche il pannello ha il testo vuoto del cliente', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [], persona: persona.email })));
         await mostra(<CorniceDelCliente dati={dati} nav={nav} onLogout={esci} />);
 
         expect(uno('.zr-bell-count')).toBeNull();
         await clic(uno('.zr-bell'));
+        await arrivate();
         expect(uno('.zr-notif')?.textContent).toContain(clienteItaliano.notificationsEmptyText);
         expect(tutti('.zr-notif li')).toEqual([]);
     });
@@ -233,6 +243,8 @@ describe('la cornice del cliente', () => {
         // Una lingua che zr-core non ha: l'inglese, per il cliente come per la cornice.
         ['de', clienteInglese, 'en'],
     ])('T2.5 in %s i testi del cliente vengono dal loro file, il resto dalla cornice', async (lingua, delCliente, base) => {
+        // La campanella, dalla `v4.23.0`, chiede le notifiche da cliente: qui nessuna, e il pannello dice il testo vuoto del cliente.
+        vi.stubGlobal('fetch', vi.fn(async () => risposta({ data: [], persona: persona.email })));
         await mostra(<CorniceDelCliente dati={{ ...dati, lingua }} nav={nav} nuovoWorkspace="/spazio/nuovo-workspace" onLogout={esci} />);
 
         expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe(delCliente.personalGroup);
@@ -242,6 +254,7 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-ws-new')?.textContent).toBe(delCliente.firstWorkspace);
 
         await clic(uno('.zr-bell'));
+        await arrivate();
         expect(uno('.zr-notif')?.textContent).toContain(delCliente.notificationsEmptyText);
 
         await clic(uno('.zr-avatar-btn'));
@@ -303,5 +316,234 @@ describe('tastiera e salto della cornice del cliente', () => {
         voce.setAttribute('href', `${location.origin}/uat`);
         await act(async () => voce.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
         expect([document.querySelector('.zr-shell > main')?.getAttribute('aria-label'), naviga.mock.calls]).toStrictEqual([testi('en').mainContent, [[`${location.origin}/uat`]]]);
+    });
+});
+
+function risposta(corpo: unknown, stato = 200): Response {
+    return { ok: stato >= 200 && stato < 300, status: stato, headers: new Headers(), json: async () => corpo } as Response;
+}
+
+/** Le risposte già pronte, e il pezzo della campanella con le frasi, arrivano. */
+async function arrivate(): Promise<void> {
+    for (let giro = 0; giro < 3; giro++) {
+        await act(async () => {
+            await vi.dynamicImportSettled();
+            await new Promise((fatto) => setTimeout(fatto, 0));
+        });
+    }
+}
+
+// Sprint 116 · T3 (voce 3398, Decisione 22367 di zr-pm-07): la campanella della cornice del cliente, con le notifiche da cliente
+// delle rotte `/cornice/cliente/…` (T1), i titoli delle frasi e la destinazione in «Il mio spazio» (T2).
+describe('la campanella del cliente (sprint 116 · T3)', () => {
+    const adesso = Date.now();
+    const confermata = {
+        id: 'n-1', creata_il: new Date(adesso - 3 * 3_600_000).toISOString(), letta: false, app: 'bookings', tipo: 'bookings.cliente.prenotazione.confermata',
+        autore_nome: null, risorsa_nome: 'Personal training', per_me: null, quando: { il: '2026-11-10T17:30:00Z', fuso: 'Europe/Rome' }, azienda: 'Palestra Fit Arezzo', ids: { id: 'pr-1' },
+    };
+    // La più recente, seconda nell'elenco: «Segna tutte come lette» arriva fino a lei.
+    const promemoria = {
+        id: 'n-2', creata_il: new Date(adesso - 60_000).toISOString(), letta: false, app: 'bookings', tipo: 'bookings.cliente.prenotazione.promemoria',
+        autore_nome: null, risorsa_nome: null, per_me: null, quando: { il: '2026-11-11T08:00:00Z', fuso: 'Europe/Rome' }, azienda: null, ids: {},
+    };
+    // I dati letti adesso: le notifiche dei casi sono di prima, e il numero dei dati le conta (revisione dello sprint 116, R3).
+    const conNumero = (nonLette: number): DatiDelCliente => ({ ...dati, aggiornati_il: new Date(adesso).toISOString(), non_lette: nonLette });
+
+    /** Le rotte del cliente: l'elenco, la lettura di una (riuscita) e «Segna tutte» (con `altre`). Ogni altra è un 404. */
+    function rotte(elenco: unknown[], altre = false) {
+        const finto = vi.fn(async (indirizzo: string, opzioni?: RequestInit) => {
+            const metodo = opzioni?.method ?? 'GET';
+            if (metodo === 'GET' && indirizzo === '/cornice/cliente/notifiche') {
+                return risposta({ data: elenco, aggiornati_il: '2026-11-06T21:00:00.000000Z', persona: persona.email });
+            }
+            if (metodo === 'PATCH' && /^\/cornice\/cliente\/notifiche\/[^/]+\/lettura$/.test(indirizzo)) {
+                return risposta({ data: { letta: true }, segnata_il: '2026-11-06T21:00:01.000000Z', persona: persona.email });
+            }
+            if (metodo === 'POST' && indirizzo === '/cornice/cliente/notifiche/letture') {
+                return risposta({ data: { fino_a: JSON.parse(String(opzioni?.body)).fino_a, altre }, segnate_il: '2026-11-06T21:00:02.000000Z', persona: persona.email });
+            }
+
+            return risposta({ errore: 'non_trovato' }, 404);
+        });
+        vi.stubGlobal('fetch', finto);
+
+        return finto;
+    }
+
+    const chiamate = (finto: ReturnType<typeof rotte>) => finto.mock.calls.map(([indirizzo, opzioni]) => `${opzioni?.method ?? 'GET'} ${indirizzo}`);
+
+    async function aperta(finto: ReturnType<typeof rotte>, elemento: ReactElement): Promise<void> {
+        await mostra(elemento);
+        expect(finto).not.toHaveBeenCalled();
+        await clic(uno('.zr-bell'));
+        await arrivate();
+    }
+
+    it('T3.1 la campanella mostra `non_lette`, «99+» oltre 99, nessun numero a 0; nessuna rotta prima di aprirla', async () => {
+        const finto = rotte([]);
+        const numeri: (string | null)[] = [];
+        for (const nonLette of [3, 99, 100, 0]) {
+            await mostra(<CorniceDelCliente dati={conNumero(nonLette)} nav={nav} onLogout={esci} />);
+            numeri.push(uno('.zr-bell-count')?.textContent ?? null);
+        }
+
+        expect(numeri).toStrictEqual(['3', '99', '99+', null]);
+        expect(finto).not.toHaveBeenCalled();
+    });
+
+    it('T3.1 coi dati ridotti (`accettazione_richiesta`) la campanella non ha numero e aprirla non chiama niente', async () => {
+        const finto = rotte([confermata]);
+        await mostra(<CorniceDelCliente dati={{ ...conNumero(3), accettazione_richiesta: true }} nav={nav} onLogout={esci} />);
+
+        expect(uno('.zr-bell-count')).toBeNull();
+        await clic(uno('.zr-bell'));
+        await arrivate();
+        expect(finto).not.toHaveBeenCalled();
+    });
+
+    it('T3.2 aperta, chiede GET /cornice/cliente/notifiche (mai /cornice/notifiche): titolo delle frasi, l\'azienda sotto, l\'ora, non lette', async () => {
+        const finto = rotte([confermata, promemoria]);
+        await aperta(finto, <CorniceDelCliente dati={conNumero(2)} nav={nav} onLogout={esci} />);
+
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche']);
+        const righe = tutti('.zr-notif li .zr-notif-item');
+        expect(righe.map((riga) => [riga.querySelector('.zr-notif-title')?.textContent, riga.querySelector('.zr-notif-sub')?.textContent ?? null, riga.classList.contains('is-unread')])).toStrictEqual([
+            [rigaConLeFrasi(frasiItaliane, confermata, 'it').titolo, 'Palestra Fit Arezzo', true],
+            [rigaConLeFrasi(frasiItaliane, promemoria, 'it').titolo, null, true],
+        ]);
+        // Il servizio nel titolo quando c'è, mai «null» quando non c'è; l'ora, senza il nome di un prodotto di Zeiras.
+        expect(righe[0]!.querySelector('.zr-notif-title')?.textContent).toContain('Personal training');
+        expect(righe[1]!.querySelector('.zr-notif-title')?.textContent).not.toContain('null');
+        expect(righe.map((riga) => riga.querySelector('.zr-notif-meta')?.textContent)).toStrictEqual(['3 h fa', '1 min fa']);
+        // L'icona di Bookings, il calendario (design zr-account--il-mio-spazio, schermata 5).
+        expect(righe.map((riga) => riga.querySelector('.zr-iconbox')?.className)).toStrictEqual(['zr-iconbox zr-iconbox-sm zr-label-sky', 'zr-iconbox zr-iconbox-sm zr-label-sky']);
+    });
+
+    it('T3.2 un errore della rotta è lo stato d\'errore del pannello, e «Riprova» chiede di nuovo', async () => {
+        const finto = vi.fn(async () => risposta({ errore: 'backoffice_non_risponde' }, 502));
+        vi.stubGlobal('fetch', finto);
+        await mostra(<CorniceDelCliente dati={conNumero(1)} nav={nav} onLogout={esci} />);
+        await clic(uno('.zr-bell'));
+        await arrivate();
+
+        expect(uno('.zr-notif [role="alert"]')?.textContent).toContain(testi('it').notificationsError);
+        await clic([...contenitore.querySelectorAll('.zr-notif button')].find((pulsante) => pulsante.textContent === testi('it').retry) ?? null);
+        await arrivate();
+        expect(finto).toHaveBeenCalledTimes(2);
+    });
+
+    it('T3.3 il clic su una riga con l\'id la segna letta (PATCH del cliente) e apre la prenotazione in «Il mio spazio»; il numero scende', async () => {
+        const finto = rotte([confermata, promemoria]);
+        const naviga = vi.fn();
+        await aperta(finto, <CorniceDelCliente dati={conNumero(2)} nav={nav} naviga={naviga} onLogout={esci} />);
+
+        await clic(tutti('.zr-notif li .zr-notif-item')[0]!);
+        await arrivate();
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche', 'PATCH /cornice/cliente/notifiche/n-1/lettura']);
+        expect(JSON.parse(String(finto.mock.calls[1]![1]?.body))).toStrictEqual({ letta: true });
+        expect(naviga.mock.calls).toStrictEqual([[`${dashboard.indirizzo}/spazio/prenotazioni/pr-1`]]);
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+    });
+
+    it('T3.3 una riga senza l\'id (una notifica che il backoffice non dice da cliente) si segna letta e non apre niente', async () => {
+        const finto = rotte([promemoria, { ...confermata, id: 'n-3', ids: {} }]);
+        const naviga = vi.fn();
+        await aperta(finto, <CorniceDelCliente dati={conNumero(2)} nav={nav} naviga={naviga} onLogout={esci} />);
+
+        await clic(tutti('.zr-notif li .zr-notif-item')[1]!);
+        await arrivate();
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche', 'PATCH /cornice/cliente/notifiche/n-3/lettura']);
+        expect(naviga).not.toHaveBeenCalled();
+    });
+
+    it('T3.4 «Segna tutte come lette» manda alla rotta del cliente `fino_a`, la più recente delle caricate; senza `altre` il numero va a 0', async () => {
+        const finto = rotte([confermata, promemoria]);
+        await aperta(finto, <CorniceDelCliente dati={conNumero(5)} nav={nav} onLogout={esci} />);
+
+        await clic([...contenitore.querySelectorAll('.zr-notif button')].find((pulsante) => pulsante.textContent === testi('it').markAllRead) ?? null);
+        await arrivate();
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche', 'POST /cornice/cliente/notifiche/letture']);
+        expect(JSON.parse(String(finto.mock.calls[1]![1]?.body))).toStrictEqual({ fino_a: promemoria.creata_il });
+        expect([uno('.zr-bell-count'), tutti('.zr-notif li .zr-notif-item.is-unread')]).toStrictEqual([null, []]);
+    });
+
+    it('T3.4 con `altre` il numero resta, e l\'elenco si chiede di nuovo', async () => {
+        const finto = rotte([confermata, promemoria], true);
+        await aperta(finto, <CorniceDelCliente dati={conNumero(5)} nav={nav} onLogout={esci} />);
+
+        await clic([...contenitore.querySelectorAll('.zr-notif button')].find((pulsante) => pulsante.textContent === testi('it').markAllRead) ?? null);
+        await arrivate();
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche', 'POST /cornice/cliente/notifiche/letture', 'GET /cornice/cliente/notifiche']);
+        expect(uno('.zr-bell-count')?.textContent).toBe('5');
+    });
+
+    // Revisione dello sprint 116 (R2-R5): ciò che la `Cornice` fa già, e la cornice del cliente non faceva.
+    const segnaTutte = () => clic([...contenitore.querySelectorAll('.zr-notif button')].find((pulsante) => pulsante.textContent === testi('it').markAllRead) ?? null);
+
+    it('R2 in assistenza la lettura risponde 403 `azione_non_consentita_in_assistenza`: la riga apre lo stesso, e il numero resta', async () => {
+        const finto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) =>
+            (opzioni?.method ?? 'GET') === 'GET' ? risposta({ data: [confermata], aggiornati_il: '2026-11-06T21:00:00.000000Z', persona: persona.email }) : risposta({ errore: 'azione_non_consentita_in_assistenza' }, 403),
+        );
+        vi.stubGlobal('fetch', finto);
+        const naviga = vi.fn();
+        await mostra(<CorniceDelCliente dati={conNumero(1)} nav={nav} naviga={naviga} onLogout={esci} />);
+        await clic(uno('.zr-bell'));
+        await arrivate();
+
+        await clic(tutti('.zr-notif li .zr-notif-item')[0]!);
+        await arrivate();
+        expect(naviga.mock.calls).toStrictEqual([[`${dashboard.indirizzo}/spazio/prenotazioni/pr-1`]]);
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+    });
+
+    it('R3 una notifica nata dopo la lettura dei dati non è nel loro numero: letta, non lo fa scendere', async () => {
+        const nuova = { ...confermata, id: 'n-4', creata_il: new Date(adesso + 60_000).toISOString() };
+        const finto = rotte([nuova, confermata]);
+        await aperta(finto, <CorniceDelCliente dati={conNumero(1)} nav={nav} naviga={vi.fn()} onLogout={esci} />);
+
+        await clic(tutti('.zr-notif li .zr-notif-item')[0]!);
+        await arrivate();
+        expect(chiamate(finto)).toStrictEqual(['GET /cornice/cliente/notifiche', 'PATCH /cornice/cliente/notifiche/n-4/lettura']);
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+    });
+
+    it('R4 «Segna tutte» in volo: un secondo clic non manda un\'altra richiesta, e una notifica più recente di `fino_a`, arrivata intanto, resta da leggere', async () => {
+        let rispondi: (corpo: Response) => void = () => undefined;
+        const nuova = { ...confermata, id: 'n-5', creata_il: new Date(adesso - 1_000).toISOString() };
+        let elenchi = 0;
+        const finto = vi.fn(async (_indirizzo: string, opzioni?: RequestInit) => {
+            if ((opzioni?.method ?? 'GET') === 'GET') {
+                elenchi++;
+                return risposta({ data: elenchi === 1 ? [confermata, promemoria] : [nuova, confermata, promemoria], aggiornati_il: '2026-11-06T21:00:00.000000Z', persona: persona.email });
+            }
+            return new Promise<Response>((fatto) => (rispondi = fatto));
+        });
+        vi.stubGlobal('fetch', finto);
+        await mostra(<CorniceDelCliente dati={conNumero(2)} nav={nav} onLogout={esci} />);
+        await clic(uno('.zr-bell'));
+        await arrivate();
+
+        await segnaTutte();
+        await segnaTutte();
+        expect(finto.mock.calls.filter(([, opzioni]) => opzioni?.method === 'POST')).toHaveLength(1);
+        // Il pannello si chiude e si riapre mentre la richiesta è in volo: l'elenco nuovo ha una notifica più recente di `fino_a`.
+        await clic(uno('.zr-bell'));
+        if (!uno('.zr-notif')) {
+            await clic(uno('.zr-bell'));
+        }
+        await arrivate();
+        await act(async () => rispondi(risposta({ data: { fino_a: promemoria.creata_il, altre: false }, segnate_il: '2026-11-06T21:00:02.000000Z', persona: persona.email })));
+        await arrivate();
+
+        expect(tutti('.zr-notif li .zr-notif-item').map((riga) => riga.classList.contains('is-unread'))).toStrictEqual([true, false, false]);
+        expect(uno('.zr-bell-count')?.textContent).toBe('1');
+    });
+
+    it('R5 senza `quando` il servizio non è nel titolo: sotto restano il servizio e l\'azienda', async () => {
+        const finto = rotte([{ ...confermata, quando: null }]);
+        await aperta(finto, <CorniceDelCliente dati={conNumero(1)} nav={nav} onLogout={esci} />);
+
+        expect(uno('.zr-notif li .zr-notif-sub')?.textContent).toBe(`${rigaConLeFrasi(frasiItaliane, { ...confermata, quando: null }, 'it').sotto} · Palestra Fit Arezzo`);
+        expect(uno('.zr-notif li .zr-notif-sub')?.textContent).toContain('Personal training');
     });
 });

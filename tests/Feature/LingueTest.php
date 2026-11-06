@@ -185,7 +185,7 @@ function tipiDiNotificaDelContratto(): array
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti()), ...array_keys(titoloDellaNotificaDelGateDeciso())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoliDelleNotificheDaClienteDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti()), ...array_keys(titoloDellaNotificaDelGateDeciso())];
 }
 
 /**
@@ -383,6 +383,24 @@ function titoliDelleNotificheDiBookings(): array
         'bookings.prenotazione.creata' => ['it' => 'Nuova prenotazione', 'en' => 'New booking', 'es' => 'Nueva reserva'],
         'bookings.prenotazione.spostata' => ['it' => 'Prenotazione spostata', 'en' => 'Booking moved', 'es' => 'Reserva movida'],
         'bookings.prenotazione.annullata' => ['it' => 'Prenotazione annullata', 'en' => 'Booking cancelled', 'es' => 'Reserva cancelada'],
+    ];
+}
+
+/**
+ * I titoli delle quattro notifiche da cliente di Bookings (contratto 8e80fafb, zr-backoffice #3323): la prenotazione di chi è
+ * cliente di un'azienda confermata, spostata, annullata, e il suo promemoria. Le legge chi ha prenotato, nella cornice del
+ * cliente, con le sue parole: nessuno è il titolo di un altro tipo, nemmeno dei tre di Bookings dello staff. Non sono eventi del
+ * contratto: il `tipo` arriva senza `com.zeiras.` davanti. Scritti qui, non letti dai file delle lingue (sprint 116 · T2.1).
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDelleNotificheDaClienteDiBookings(): array
+{
+    return [
+        'bookings.cliente.prenotazione.confermata' => ['it' => 'La tua prenotazione è confermata', 'en' => 'Your booking is confirmed', 'es' => 'Tu reserva está confirmada'],
+        'bookings.cliente.prenotazione.spostata' => ['it' => 'La tua prenotazione è stata spostata', 'en' => 'Your booking was moved', 'es' => 'Tu reserva ha sido movida'],
+        'bookings.cliente.prenotazione.annullata' => ['it' => 'La tua prenotazione è stata annullata', 'en' => 'Your booking was cancelled', 'es' => 'Tu reserva ha sido cancelada'],
+        'bookings.cliente.prenotazione.promemoria' => ['it' => 'Promemoria della tua prenotazione', 'en' => 'Booking reminder', 'es' => 'Recordatorio de tu reserva'],
     ];
 }
 
@@ -706,6 +724,11 @@ function frasiDelleNotificheSenzaChiConLaData(): array
         'bookings.prenotazione.creata' => ['it' => 'Nuova prenotazione: {what}, {when}', 'en' => 'New booking: {what}, {when}', 'es' => 'Nueva reserva: {what}, {when}'],
         'bookings.prenotazione.spostata' => ['it' => 'Prenotazione spostata: {what}, a {when}', 'en' => 'Booking moved: {what}, to {when}', 'es' => 'Reserva movida: {what}, al {when}'],
         'bookings.prenotazione.annullata' => ['it' => 'Prenotazione annullata: {what}, {when}', 'en' => 'Booking cancelled: {what}, {when}', 'es' => 'Reserva cancelada: {what}, {when}'],
+        // Sprint 116 · T2.1: le quattro da cliente, con le parole di chi ha prenotato.
+        'bookings.cliente.prenotazione.confermata' => ['it' => 'La tua prenotazione è confermata: {what}, {when}', 'en' => 'Your booking is confirmed: {what}, {when}', 'es' => 'Tu reserva está confirmada: {what}, {when}'],
+        'bookings.cliente.prenotazione.spostata' => ['it' => 'La tua prenotazione è stata spostata: {what}, a {when}', 'en' => 'Your booking was moved: {what}, to {when}', 'es' => 'Tu reserva ha sido movida: {what}, al {when}'],
+        'bookings.cliente.prenotazione.annullata' => ['it' => 'La tua prenotazione è stata annullata: {what}, {when}', 'en' => 'Your booking was cancelled: {what}, {when}', 'es' => 'Tu reserva ha sido cancelada: {what}, {when}'],
+        'bookings.cliente.prenotazione.promemoria' => ['it' => 'Promemoria: {what}, {when}', 'en' => 'Reminder: {what}, {when}', 'es' => 'Recordatorio: {what}, {when}'],
     ];
 }
 
@@ -722,6 +745,11 @@ function frasiDelleNotificheConLaSolaData(): array
         'bookings.prenotazione.creata' => ['it' => 'Nuova prenotazione, {when}', 'en' => 'New booking, {when}', 'es' => 'Nueva reserva, {when}'],
         'bookings.prenotazione.spostata' => ['it' => 'Prenotazione spostata a {when}', 'en' => 'Booking moved to {when}', 'es' => 'Reserva movida al {when}'],
         'bookings.prenotazione.annullata' => ['it' => 'Prenotazione annullata, {when}', 'en' => 'Booking cancelled, {when}', 'es' => 'Reserva cancelada, {when}'],
+        // Sprint 116 · T2.1: le quattro da cliente.
+        'bookings.cliente.prenotazione.confermata' => ['it' => 'La tua prenotazione è confermata, {when}', 'en' => 'Your booking is confirmed, {when}', 'es' => 'Tu reserva está confirmada, {when}'],
+        'bookings.cliente.prenotazione.spostata' => ['it' => 'La tua prenotazione è stata spostata a {when}', 'en' => 'Your booking was moved to {when}', 'es' => 'Tu reserva ha sido movida al {when}'],
+        'bookings.cliente.prenotazione.annullata' => ['it' => 'La tua prenotazione è stata annullata, {when}', 'en' => 'Your booking was cancelled, {when}', 'es' => 'Tu reserva ha sido cancelada, {when}'],
+        'bookings.cliente.prenotazione.promemoria' => ['it' => 'Promemoria: la tua prenotazione, {when}', 'en' => 'Reminder: your booking, {when}', 'es' => 'Recordatorio: tu reserva, {when}'],
     ];
 }
 
@@ -1016,14 +1044,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 59 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciannove che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato e il Gate deciso —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 63 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i ventitré che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato, il Gate deciso e le quattro da cliente di Bookings —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0; sprint 116 · T2.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(40)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(59)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(63)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1225,6 +1253,30 @@ it('le tre notifiche di Bookings hanno il titolo della tabella nella lingua, sot
         ->and($testi)->not->toHaveKey('notificationTitle.bookings.prenotazione');
 })->with(['it', 'en', 'es']);
 
+// Sprint 116 · T2.1 (voce #3398). Le quattro notifiche da cliente di Bookings hanno un titolo per tipo nella lingua, sotto il tipo
+// com'è nel backoffice, senza `com.zeiras.` davanti; nessun'altra notifica si chiama così, e nemmeno una frase con la data è
+// quella di un altro tipo: i tre di Bookings dello staff hanno le loro.
+it('le quattro notifiche da cliente di Bookings hanno il titolo della tabella nella lingua, sotto il tipo senza `com.zeiras.` davanti, e nessun titolo né frase con la data è quella di un altro tipo, i tre di Bookings dello staff compresi (sprint 116 · T2.1)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $daCliente = titoliDelleNotificheDaClienteDiBookings();
+
+    expect(array_keys($daCliente))->toBe(['bookings.cliente.prenotazione.confermata', 'bookings.cliente.prenotazione.spostata', 'bookings.cliente.prenotazione.annullata', 'bookings.cliente.prenotazione.promemoria']);
+    foreach (['notificationTitle', 'notificationTitleWhatWhen', 'notificationTitleWhen'] as $forma) {
+        $dellaForma = array_filter($testi, fn (string $chiave) => str_starts_with($chiave, "$forma."), ARRAY_FILTER_USE_KEY);
+        foreach (array_keys($daCliente) as $tipo) {
+            $testo = $testi["$forma.$tipo"] ?? null;
+            expect([$forma, $tipo, is_string($testo) && trim($testo) !== ''])->toBe([$forma, $tipo, true])
+                ->and([$forma, $tipo, array_keys($dellaForma, $testo, true)])->toBe([$forma, $tipo, ["$forma.$tipo"]])
+                ->and(array_key_exists("$forma.com.zeiras.$tipo", $testi))->toBe(false);
+        }
+    }
+    foreach ($daCliente as $tipo => $titolo) {
+        expect($testi["notificationTitle.$tipo"] ?? null)->toBe($titolo[$codice])
+            ->and($titolo[$codice])->not->toBe($testi['notificationTitle'] ?? null)
+            ->and(tipiDiNotificaDelContratto())->not->toContain($tipo);
+    }
+})->with(['it', 'en', 'es']);
+
 // Sprint 79 · T1.1 (voce 2820). Gli sprint di Project Management hanno un titolo per tipo nella lingua, sotto il tipo dell'evento
 // col prefisso: senza `com.zeiras.` davanti, o col tipo a metà, resta il ripiego.
 it('i due tipi degli sprint hanno il titolo della tabella nella lingua, sotto il tipo dell\'evento con `com.zeiras.` davanti: senza il prefisso o con un pezzo del tipo restano senza titolo, e nessun\'altra notifica si chiama così (sprint 79 · T1.1)', function (string $codice) {
@@ -1273,20 +1325,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 103 tipi della versione bd078afd e l\'elenco 63, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings (sprint 79 · T2.1, T2.2, T2.3; 05/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 104 tipi della versione 8e80fafb e l\'elenco 64, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings e la fattura del CRM (sprint 79 · T2.1, T2.2, T2.3; 06/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('bd078afd')
-        ->and($contratto['tipi'])->toHaveCount(103)
-        // L'impronta dei tipi di bd078afd, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('8e80fafb')
+        ->and($contratto['tipi'])->toHaveCount(104)
+        // L'impronta dei tipi di 8e80fafb, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('7494f588dc7c5e634d0cc9672d412146d0e374f58347e2f71fd9bf9f6adf7d30')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(103)
-        ->and($contratto['non_arrivano'])->toHaveCount(63)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('17cab5fc31ef40f4582cb14518a3cdf50be95de19a38d515dca8782b05308500')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(104)
+        ->and($contratto['non_arrivano'])->toHaveCount(64)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
@@ -1296,6 +1348,8 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.apertura.eliminata')
         // bookings.inviti.crea emette l'invito col solo id e non fa notifiche (zr-backoffice su bd078afd).
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.invito.creato')
+        // crm.fatture.crea emette la fattura per le app: Fattura::notifica() è false (zr-backoffice-ab su 8e80fafb).
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.fattura.creata')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')
         ->and(array_filter($contratto['non_arrivano'], fn (string $fonte) => trim($fonte) === ''))->toBe([])
@@ -1870,7 +1924,7 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     // quelle con la data, senza chi (frasiDelleNotificheSenzaChiConLaData(), frasiDelleNotificheConLaSolaData()).
     // v3.6.0: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che il backoffice manda da sé, senza chi.
     // v4.12.0: nemmeno il Gate deciso, che ha un titolo solo.
-    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso']));
+    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), array_keys(titoliDelleNotificheDaClienteDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso']));
     sort($conLeFrasi);
     sort($conUnTitolo);
 
@@ -1885,7 +1939,7 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
         // la sola data l'hanno solo i tre di Bookings, e ognuno ha anche quella col nome del servizio e la data.
         ->and($delleFrasi)->not->toHaveKey('notificationTitleWhoWhat.bookings.prenotazione.creata')
         ->and(array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWhoWhatWhen.'), ARRAY_FILTER_USE_KEY))->toBe([])
-        ->and(array_keys(frasiDelleNotificheConLaSolaData()))->toBe(array_keys(titoliDelleNotificheDiBookings()))
+        ->and(array_keys(frasiDelleNotificheConLaSolaData()))->toBe([...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoliDelleNotificheDaClienteDiBookings())])
         ->and(array_diff_key(frasiDelleNotificheConLaSolaData(), frasiDelleNotificheSenzaChiConLaData()))->toBe([])
         ->and(array_filter($testi, fn (string $chiave) => str_starts_with($chiave, 'notificationTitleWhen.'), ARRAY_FILTER_USE_KEY))
         ->toBe(array_map(fn (array $frase) => $frase[$codice], array_combine(array_map(fn (string $tipo) => "notificationTitleWhen.$tipo", array_keys(frasiDelleNotificheConLaSolaData())), frasiDelleNotificheConLaSolaData())))

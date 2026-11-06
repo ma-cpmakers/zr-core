@@ -4528,7 +4528,7 @@ it('il README dice che dal 12/10/2026 il contratto ha 37 tipi di evento, che il 
         ->and(substr_count(suUnaRiga($readme), 'i titoli sono 42'))->toBe(0)
         ->and(preg_match('/43 titoli|titoli (?:sono|restano) 43|i 37 tipi di evento (?:del contratto )?hanno un titolo/', suUnaRiga($readme)))->toBe(0)
         ->and(array_keys($titoli))->toBe(['en', 'es', 'it'])
-        ->and(array_map('count', $titoli))->toBe(['en' => 59, 'es' => 59, 'it' => 59])
+        ->and(array_map('count', $titoli))->toBe(['en' => 63, 'es' => 63, 'it' => 63])
         ->and(array_filter($titoli, fn (array $chiavi): bool => in_array('notificationTitle.com.zeiras.crm.persona.anonimizzata', $chiavi, true)))->toBe([]);
 });
 
@@ -5142,7 +5142,7 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
 });
 
-it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `CorniceDelCliente`, il CSS che nasconde la ricerca, e che aziende da cliente e campanella aspettano #3320 e #3323 (sprint 110 · T4.1)', function () {
+it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `CorniceDelCliente`, il CSS che nasconde la ricerca, e che le aziende da cliente aspettano #3320 (sprint 110 · T4.1); dalla v4.23.0 la campanella del cliente, le sue rotte e `non_lette` (sprint 116 · T4.1)', function () {
     $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
     preg_match('/### La cornice del cliente (.*?)(?= ## | ### )/', $readme, $trovata);
     $sezione = $trovata[1] ?? '';
@@ -5151,7 +5151,15 @@ it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `Cornice
         ->and($sezione)->toContain('<CorniceDelCliente')
         ->and($sezione)->toContain("import '../../vendor/zeiras/zr-core/resources/css/cliente.css';")
         ->and($sezione)->toContain('le aziende di cui la persona è cliente arrivano con zr-backoffice #3320')
-        ->and($sezione)->toContain('le sue notifiche da cliente con zr-backoffice #3323')
+        // Fino alla v4.22.0 qui c'era «le sue notifiche da cliente con zr-backoffice #3323» e la campanella vuota: dalla v4.23.0
+        // (sprint 116 · T4.1, voce 3398) le notifiche ci sono, e la frase di prima non si dice più.
+        ->and($sezione)->not->toContain('le sue notifiche da cliente con zr-backoffice #3323')
+        ->and($sezione)->toContain('- **La campanella del cliente** (dalla `v4.23.0`, #3398')
+        ->and($sezione)->toContain('chiede `GET /cornice/cliente/notifiche`')
+        ->and($sezione)->toContain('`https://app.zeiras.com/spazio/prenotazioni/<id>`, con `naviga`')
+        ->and($sezione)->toContain('`non_lette` (dalla `v4.23.0`, #3398')
+        ->and($readme)->toContain('`PATCH /cornice/cliente/notifiche/{id}/lettura` con `{letta}`. La parte server le gira al backoffice col gettone dell\'accesso')
+        ->and($readme)->toContain('con `/spazio/prenotazioni/{id}`: aprono la prenotazione in «Il mio spazio» di zr-home')
         ->and($sezione)->toContain('`scripts/uat-cornice.mjs` la prova con `--cliente`');
 });
 
@@ -5645,8 +5653,8 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
     // v4.16.0 (voce #3302): la campanella a 2.330, la misura più 20 (sì di zr-pm-07, 06/11). v4.18.0 (lettura della PR #187, R2):
-    // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074).
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.592 byte la campanella, 1.507 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
+    // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074). v4.23.0 (sprint 116 · T2 e T3): la campanella a 2.729.
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.507 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

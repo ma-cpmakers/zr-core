@@ -223,7 +223,7 @@ it('la rotta risponde a una GET senza `Persona` e senza `X-Zr-Persona`, come la 
     expect($risposta->getContent())->toBe(BYTE_DELLA_FOTO);
 })->with(['nel workspace' => [true], 'senza workspace' => [false]]);
 
-it('fra le rotte della cornice la foto è la sola fuori da StessaPersona e da ConWorkspace; ha la guardia di zr-auth e non SoloDallaPersona, come le altre (sprint 99 · T1.5)', function () {
+it('fra le rotte della cornice la foto è la sola fuori da StessaPersona, e con le tre del cliente fuori da ConWorkspace; ha la guardia di zr-auth e non SoloDallaPersona, come le altre (sprint 99 · T1.5)', function () {
     // Gruppi e priorità arrivano al router quando nasce il kernel HTTP, come in `Rotte::senzaGuardia()` di zr-auth.
     app(Kernel::class);
     $router = app('router');
@@ -232,10 +232,11 @@ it('fra le rotte della cornice la foto è la sola fuori da StessaPersona e da Co
         ->reject(fn ($rotta) => in_array($classe, $router->gatherRouteMiddleware($rotta), true))
         ->map(fn ($rotta) => implode('|', array_diff($rotta->methods(), ['HEAD'])).' '.$rotta->uri())->values()->all();
 
+    // Dalla `v4.23.0` fuori da ConWorkspace stanno anche le tre del cliente, col gettone dell'accesso (sprint 116 · T1.3).
     expect($senza(StessaPersona::class))->toBe(['GET cornice/foto'])
-        ->and($senza(ConWorkspace::class))->toBe(['GET cornice/foto'])
+        ->and($senza(ConWorkspace::class))->toBe(['GET cornice/cliente/notifiche', 'POST cornice/cliente/notifiche/letture', 'PATCH cornice/cliente/notifiche/{notifica}/lettura', 'GET cornice/foto'])
         ->and($senza(ConGettone::class))->toBe([])
-        ->and(count($senza(SoloDallaPersona::class)))->toBe(5);
+        ->and(count($senza(SoloDallaPersona::class)))->toBe(8);
 
     // Il controllo nei due versi: un'altra rotta della cornice fuori da StessaPersona si vede.
     Route::middleware('web')->get('cornice/scoperta', fn () => 'senza la persona');

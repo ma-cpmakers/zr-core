@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 63,0 KB | 13,9 KB |
-| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 63,0 KB | 13,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 191,1 KB | 61,5 KB | 63,0 KB | 13,9 KB |
+| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 67,2 KB | 13,9 KB |
+| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 67,2 KB | 13,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 193,7 KB | 62,6 KB | 67,4 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -257,7 +257,7 @@ chiamate che segnano lette le notifiche, che servono solo a pannello aperto e so
 Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la campanella che in assistenza non scrive e la condizione
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.592 byte la campanella, 1.507 i rimedi, 1.797 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.507 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
@@ -283,7 +283,9 @@ che il pezzo porta e che si comprimono peggio (un'eccezione di zr-pm, Decisione 
 misura vera), e di altri 21 nella stessa: 1 per le impronte nuove dei nomi dei pezzi, col codice uguale, e 20 di margine
 (zr-pm). Nella `v4.16.0` è salito a 2.330, la misura più 20: il titolo del Gate per esito, 22 byte (sì di zr-pm-07, senza
 contropartita). Nella `v4.20.0` è salito a 2.592, la misura più 20: le due chiamate che segnano lette le notifiche, uscite dal JS
-d'ingresso (Decisione 22247). Dalla `v2.0.0` l'eccezione per i
+d'ingresso (Decisione 22247). Nella `v4.23.0` è salito a 2.729, la misura più 20: le quattro righe delle notifiche da cliente
+nel registro, la funzione che apre una notifica da cliente in «Il mio spazio» e le due chiamate che segnano lette con le
+rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -467,6 +469,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.20.0` | il design system `ds-1793976975-045a`, i lotti 0520 e 0521 (richieste 209, 211-217): `KanbanCard` col numero della scheda (`number`, «#12») davanti al titolo; `SiteFooter` e `Zeiras.PUBLISHER` senza REA e col telefono +39 0575 146 0000; nell'`AppShell` il menu Moduli si chiude anche col clic fuori e quando il fuoco esce col Tab; `DataTable` con `rowName(row)` («Seleziona Mario Rossi»), «1 selezionato» con una riga sola (`labels.selectedOne`) e `selectionDisabled`; una `Checkbox` con `disabled` si vede spenta; `Menu` alto quanto il lato con più spazio e dentro la finestra, con `returnFocus`. Le due chiamate che segnano lette le notifiche passano nel pezzo della campanella: il JS d'ingresso misura 19.257 byte, sotto il tetto di 19.282 (Decisione 22247) | `composer update zeiras/zr-core`, poi la build; il CRM può lasciare la sua barra di selezione per quella di `DataTable`; Board può togliere l'involucro suo del `Menu` (#3112) | i test del frontend: con una riga scelta `DataTable` dice «1 selezionato» (prima «1 selezionati»); un `Menu` lungo resta nella finestra con lo scroll; il menu Moduli aperto si chiude a un clic fuori o al Tab che esce; nel piè del sito niente REA e il telefono nuovo | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 | `v4.21.0` | il design system `ds-1793981459-3e66`, la richiesta 218 (decisa da Luciano, caricata da sola): `SiteFooter` e `Zeiras.PUBLISHER` con l'ufficio del Registro delle Imprese dopo il capitale sociale, «Registro delle Imprese: Arezzo-Siena n. 02453920510» (art. 2250 c.c.); `company.registry` e `company.registryNumber` per un altro titolare, `labels.registry` e `labels.registryNo` per le etichette. Un titolare che passa un'altra P. IVA senza `registry` non eredita l'ufficio di Zeiras | `composer update zeiras/zr-core`, poi la build; zr-sito può togliere la riga del Registro scritta da sé, se ce l'ha | i test del frontend che leggono la riga societaria del piè: dopo il capitale c'è la riga del Registro delle Imprese | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` |
 | `v4.22.0` | l'assistenza (#2909): quando lo staff entra con «Accedi come», i dati della cornice portano `assistenza` (la persona assistita e `sola_lettura`, da `accessi.corrente.mostra`), sopra la pagina c'è la fascia di assistenza col pulsante «Termina l'assistenza» (`onLogout`), e la campanella mostra senza scrivere: niente «Segna tutte come lette», una notifica aperta non si segna letta, e il 403 `azione_non_consentita_in_assistenza` alla lettura apre lo stesso la risorsa. Per ogni altra sessione niente cambia | `composer update zeiras/zr-core zeiras/zr-auth` (serve zr-auth 0.12.139), poi la build | ogni pagina con la cornice legge anche `GET /v1/accessi/corrente`: il backoffice finto di zr-auth lo conosce dalla 0.12.139; un finto scritto a mano (`Http::fake`) risponde con `{data: {accesso_id, scade_il, impersonificazione: null}}`, e un caso che conta le richieste al backoffice ne conta una in più. Per una sessione che non è di assistenza le chiavi dei dati e la cornice sono quelle di prima | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html`; `layout.html?assistenza=1` e `?assistenza=lettura` |
+| `v4.23.0` | la campanella del cliente (#3398): nella `CorniceDelCliente` il numero delle notifiche da cliente non lette (`non_lette` nei dati di `Cornice::datiDelCliente()`), l'elenco all'apertura con l'azienda sotto il titolo, il clic che le segna lette e apre la prenotazione in «Il mio spazio» (`https://app.zeiras.com/spazio/prenotazioni/<id>`), «Segna tutte come lette»; le rotte `cornice/cliente/notifiche` col gettone dell'accesso; i titoli dei quattro tipi da cliente di Bookings (`bookings.cliente.prenotazione.*`) nelle tre lingue e la loro riga nella voce `home` del registro. E il design system `ds-1793997272-d6e5`, la richiesta 84: in `KanbanColumn` una scheda per lista nel giro del Tab, ↑ ↓ Home Fine fra le schede, ← → alla lista accanto (`KanbanTexts.cardKeys`). Per la `Cornice` e la `CorniceDelloStaff` niente cambia | `composer update zeiras/zr-core`, poi la build | zr-home: la campanella apre `/spazio/prenotazioni/{id}` (zr-home #274), che deve esserci; un caso che conta le chiavi dei dati del cliente ne trova una in più, `non_lette`, e un caso che conta le rotte della cornice tre in più | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (con le notifiche da cliente; `?notifiche=0` senza) |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -795,6 +798,18 @@ portava `persona`, l'email della sessione. Un backoffice
 che non risponde è un errore (5xx), mai un elenco vuoto. Il prefisso `cornice/` è di zr-core: il frontend non lo usa per le
 sue rotte, e nel suo test delle rotte (`Rotte::senzaGuardia()` di zr-auth) quelle di zr-core non escono, perché hanno la
 guardia.
+
+Dalla `v4.23.0` (#3398) le stesse tre rotte delle notifiche ci sono anche per la cornice del cliente, sotto `cornice/cliente/`:
+`GET /cornice/cliente/notifiche`, `POST /cornice/cliente/notifiche/letture` con `{fino_a, persona}` e
+`PATCH /cornice/cliente/notifiche/{id}/lettura` con `{letta}`. La parte server le gira al backoffice col gettone dell'accesso,
+anche senza un workspace nella sessione e mai col gettone di quello che c'è, e il backoffice dà solo le notifiche da cliente. Le
+risposte sono quelle della tabella, con due differenze nell'elenco: non c'è `workspace`, e ogni notifica porta anche `azienda`,
+il nome dell'azienda di cui la persona è cliente (`workspace_nome` della notifica, `null` se il backoffice non lo dà), e `ids`
+solo per una notifica che il backoffice dice da cliente (`spazio_cliente`), un oggetto vuoto per ogni altra. Senza sessione
+rispondono 401, a una pagina di un'altra persona 409 `persona_diversa`, col 403 `accettazione_richiesta` come le altre; il 403
+`gettone_senza_workspace` qui non c'è. In una sessione col solo gettone di un workspace e senza accesso, quella che apre il
+ricevitore di un modulo, rispondono invece 403 `{errore: "gettone_senza_accesso"}` senza chiamare il backoffice: lì zr-auth
+manderebbe il gettone del workspace, e l'elenco e le letture sarebbero quelli del workspace.
 
 Dalla `v4.1.0` c'è una quinta rotta, `GET /cornice/foto`: la foto della persona della sessione, letta da
 `io.foto.file.mostra` col gettone della persona, per l'`<img>` del suo avatar. L'indirizzo lo danno i dati della cornice
@@ -1509,6 +1524,9 @@ cornice === null ? pagina : (
   titolo non dice chi. Senza un `quando` che la cornice sa scrivere — `null`, a metà, o con un fuso che il browser non
   conosce — il titolo è quello del tipo, col nome della cosa sotto. Le tre di Bookings aprono la prenotazione,
   `/prenotazioni/{id}`.
+  Dalla `v4.23.0` (#3398) hanno le stesse tre frasi le quattro notifiche da cliente di Bookings, per la cornice del cliente:
+  `bookings.cliente.prenotazione.confermata`, `….spostata`, `….annullata` e `….promemoria`, con le parole di chi ha prenotato
+  («La tua prenotazione è confermata: Personal training, mer 4 nov, 10:00», «Promemoria: Personal training, mer 4 nov, 10:00»).
   Dalla `v2.1.0`, quando sotto il titolo non c'è il nome della cosa, la seconda riga dice quante azioni la notifica
   racconta e in quale board sta la cosa: «3 volte, nella board «Lancio»» (`notificationUnder.countBoard`, coi segnaposto
   `{n}` e `{board}`), «3 volte» senza board (`notificationUnder.count`), «Nella board «Lancio»» con una sola azione
@@ -2014,7 +2032,10 @@ non è nel percorso. Dalla `v3.6.1` Project Management ha anche le scadenze di u
 un percorso può finire con un parametro, uno, col suo segnaposto. Dalla `v4.12.0` anche il Gate deciso
 (`board.gate.deciso`), con `/c/{id}`: il Gate è una scheda. E la voce della Dashboard, `home`, la prima del file,
 ha l'invito accettato (`io.invito.accettato`), con `/impostazioni/membri`: una notifica senza app (`app: null`) si cerca
-lì, e l'app `home` non c'è. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
+lì, e l'app `home` non c'è. Dalla `v4.23.0` (#3398) la voce `home` ha anche le quattro notifiche da cliente di
+Bookings (`bookings.cliente.prenotazione.confermata`, `….spostata`, `….annullata`, `….promemoria`), con `/spazio/prenotazioni/{id}`:
+aprono la prenotazione in «Il mio spazio» di zr-home, e `pagina_id` e `calendario_id`, che i `dati` portano, non sono nel percorso;
+la cornice del cliente le cerca lì solo per una notifica che il backoffice dice da cliente. Dalla `v2.25.3` la voce del CRM ha anche il credito di un pacchetto sotto zero
 (`crm.acquisto.scoperto`), con `/contatti/{persona_id}`: apre il contatto, e l'`id` dell'acquisto, che i `dati` portano,
 non è nel percorso. Dalla `v3.0.0` il CRM ha anche le due notifiche delle scadenze: il preavviso
 (`crm.scadenza.in_preavviso`), con `/contatti/{persona_id}`, altrimenti `/aziende/{organizzazione_id}`, altrimenti
@@ -2674,8 +2695,10 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
 
 - **`Cornice::datiDelCliente()`** legge io.mostra col gettone dell'accesso, aggiorna la sessione (`Sessione::aggiorna`) e dà
   `lingua`, `persona` (`nome`, `email`, `impronta`, e `foto` se la persona ne ha una, come in `Cornice::dati()`), `aziende` — le
-  aziende in cui la persona è anche membro, coi loro workspace e `nuovo_workspace`, vuota per chi è solo cliente — e
-  `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
+  aziende in cui la persona è anche membro, coi loro workspace e `nuovo_workspace`, vuota per chi è solo cliente —,
+  `non_lette` (dalla `v4.23.0`, #3398: le notifiche da cliente non lette, `notifiche_non_lette` della stessa lettura di io.mostra,
+  senza chiamate in più; un intero da 0 in su, e 0 quando il backoffice non lo dà o
+  in una sessione col solo gettone di un workspace) e `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
   com'è. La lingua di `dati.lingua` è quella del profilo appena letto; dalla `v4.15.0` (#3341) `Cornice::datiDelCliente($lingua)`
@@ -2730,15 +2753,28 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   la prop che non mostra la ricerca (richiesta 201 al design system). Dalla `v4.18.0` la cornice passa `search={false}`
   all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta fino alla prossima
   versione maggiore perché l'import non si rompa, e il modulo lo può già togliere.
-- **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), le
-  sue notifiche da cliente con zr-backoffice #3323. Fino ad allora la campanella resta, vuota, col testo del cliente («Qui
-  arrivano gli avvisi delle tue aziende: appuntamenti, fatture, risposte.»), perché l'`AppShell` la disegna sempre (richiesta 64
-  al design system).
+- **La campanella del cliente** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è
+  `non_lette` dei dati, «99+» oltre 99 e nessuno a 0. All'apertura la cornice chiede `GET /cornice/cliente/notifiche` (vedi «Le
+  rotte della cornice») e mostra le righe con le frasi della `Cornice` (i quattro tipi da cliente di Bookings, vedi «La
+  cornice»); sotto il titolo il servizio, quando non è nel titolo, e l'azienda, quando il backoffice la dà; e l'ora. Il clic su
+  una riga la segna letta e apre la prenotazione in «Il mio spazio» di zr-home,
+  `https://app.zeiras.com/spazio/prenotazioni/<id>`, con `naviga`; una notifica che il backoffice non dice da cliente si segna
+  letta e non apre niente. In assistenza la lettura non si segna (403 `azione_non_consentita_in_assistenza`) e la riga apre lo
+  stesso, come nella `Cornice`; il numero scende solo per una notifica che i dati contavano, non per una nata dopo la loro
+  lettura. «Segna tutte come lette» segna lette quelle nate fino alla più recente caricata, una volta sola anche con due clic.
+  Senza notifiche resta il testo del cliente («Qui arrivano gli avvisi delle tue aziende: appuntamenti, fatture, risposte.»);
+  coi dati ridotti (`accettazione_richiesta`) nessun numero, e il pannello si apre vuoto, senza chiamare niente. Righe e frasi
+  le compone il pezzo della campanella, chiesto solo quando arrivano notifiche: il JS d'ingresso dell'app che prende la
+  `Cornice` pesa come prima, e il pezzo della campanella, che chiede anche lei, cresce di 137 byte.
+- **Cosa manca, e perché**: le aziende di cui la persona è cliente arrivano con zr-backoffice #3320 (`io.fornitori.elenca`), e il
+  nome dell'azienda di una notifica con zr-backoffice #3399 (`workspace_nome`): fino ad allora la riga esce senza. Le notifiche
+  delle fatture e delle risposte del design non ci sono, perché il backoffice non ha quei tipi.
 - **I testi** del cliente stanno in `resources/lingue/cliente/` (italiano, spagnolo, inglese; in una lingua che zr-core non ha,
   l'inglese), fuori dalle lingue della cornice: un'app che non monta questa cornice non li porta nella build, e l'app che prende
   la `Cornice` pesa come prima. Il resto — «Salta al contenuto», i rimedi di tastiera — è quello della `Cornice`.
 
-La pagina di prova è `cliente.html` (`?lingua=`, `?aziende=1` per le aziende, `?nuovo=1` per «Crea il tuo workspace», `?foto=1`),
+La pagina di prova è `cliente.html` (`?lingua=`, `?aziende=1` per le aziende, `?nuovo=1` per «Crea il tuo workspace», `?foto=1`;
+dalla `v4.23.0` con tre notifiche da cliente, e `?notifiche=0` senza),
 e `scripts/uat-cornice.mjs` la prova con `--cliente` (righe CL.1-CL.3, senza le righe della ricerca; dalla `v4.13.1` CL.4, campanella
 e profilo a destra a 1280 e a 390 px). Prima del tag zr-core lo
 lancia su `cliente.html` in italiano, inglese e spagnolo, e su `cliente.html?aziende=1&nuovo=1`. Nella `v4.13.0` lì una riga è ❌,

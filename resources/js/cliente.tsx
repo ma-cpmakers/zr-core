@@ -1,8 +1,10 @@
-import { useLayoutEffect, type MouseEvent, type ReactNode } from 'react';
-import type { MenuItem, ShellCrumb } from '../zeiras/index';
-import { nelSelettore, pagineDiApp, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
-import { DELL_INGRESSO, fileDelleLingue, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
-import { nelWorkspace, registro } from './registro';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import type { MenuItem, ShellCrumb, ShellNotification } from '../zeiras/index';
+import { chiama, mostra } from './chiamate';
+import { nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
+import { campanella, chiediLaCampanella, DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, nomePulito, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
+import { nelWorkspace, prodottoDelRegistro, registro } from './registro';
+import type { NotificaDellaCornice } from './servizi';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/cliente/en.json';
 
@@ -10,10 +12,10 @@ import inglese from '../lingue/cliente/en.json';
 // system per chi entra in Zeiras come cliente di un'azienda, senza un workspace suo — le pagine «Il mio spazio» di zr-home
 // (design zr-account--il-mio-spazio). La riempiono i dati di `Cornice::datiDelCliente()`, letti col gettone dell'accesso, e il
 // modulo con le voci della barra. Nel selettore «Come cliente › Il mio spazio», attivo, e le aziende in cui la persona è anche
-// membro; niente riquadro del piano, niente menu Moduli. La campanella resta vuota, perché l'`AppShell` la disegna sempre
-// (richiesta 64 al design system) e le notifiche del cliente aspettano zr-backoffice #3323; la ricerca non si vede: per il cliente
-// il backoffice non ne ha una (`search={false}`, dalla `v4.18.0`: niente campo né Ctrl/Cmd+K, che resta della pagina). Delle rotte
-// della cornice usa solo quella della foto, nell'avatar.
+// membro; niente riquadro del piano, niente menu Moduli. La campanella, dalla `v4.23.0` (voce 3398), ha le notifiche da cliente
+// delle rotte `/cornice/cliente/…` (fino alla `v4.22` era vuota); la ricerca non si vede: per il cliente il backoffice non ne ha
+// una (`search={false}`, dalla `v4.18.0`: niente campo né Ctrl/Cmd+K, che resta della pagina). Delle altre rotte della cornice usa
+// solo quella della foto, nell'avatar.
 
 /** I testi del cliente, per lingua: un file loro (`resources/lingue/cliente/`), fuori dalle lingue della cornice, come quelli dello staff. */
 const file = import.meta.glob<TestiDelCliente>('../lingue/cliente/*.json', { eager: true, import: 'default' });
@@ -45,7 +47,12 @@ export interface DatiDelCliente {
     /** Le aziende in cui la persona è membro, coi loro workspace: vuota per chi è solo cliente. */
     aziende: { id: string; nome: string; workspace: WorkspaceDeiDati[]; nuovo_workspace?: boolean | undefined }[];
     aggiornati_il?: string | undefined;
-    /** I documenti legali in vigore non sono accettati: i dati sono ridotti (nessuna azienda, nessuna foto), e la pagina la decide il modulo. */
+    /** Quante notifiche da cliente la persona non ha letto (dalla `v4.23.0`): il numero sulla campanella. Senza, nessun numero. */
+    non_lette?: number | undefined;
+    /**
+     * I documenti legali in vigore non sono accettati: i dati sono ridotti (nessuna azienda, nessuna foto, nessun numero sulla
+     * campanella, che non si apre), e la pagina la decide il modulo.
+     */
     accettazione_richiesta?: true | undefined;
 }
 
@@ -84,6 +91,12 @@ export interface CorniceDelClienteProps {
 /** La Dashboard: le pagine di account stanno al suo indirizzo, e un workspace del selettore si apre lì. */
 const dashboard = registro.find((voce) => voce.id === 'home')!;
 
+/** Le rotte delle notifiche da cliente (dalla `v4.23.0`): le stesse tre della `Cornice`, col gettone dell'accesso e senza workspace. */
+const DEL_CLIENTE = '/cornice/cliente';
+
+/** Una notifica da cliente come la dà GET /cornice/cliente/notifiche: quella della `Cornice`, più l'azienda di cui la persona è cliente. */
+type NotificaDelCliente = NotificaDellaCornice & { azienda?: string | null };
+
 /**
  * La cornice del cliente nella sua lingua, come quella dei moduli: finché la lingua non è pronta non si disegna, e con lei la
  * pagina dentro; a un cambio di lingua resta in quella di prima finché la nuova non è pronta (`useLinguaPronta`).
@@ -96,8 +109,109 @@ export function CorniceDelCliente(props: CorniceDelClienteProps) {
 
 function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogout, naviga = (indirizzo) => location.assign(indirizzo), children, ...pagina }: CorniceDelClienteProps & { lingua: string }) {
     const t = testi(lingua);
+    const { persona } = dati;
     // I rimedi provvisori di tastiera, come per la `Cornice`: arrivano a cornice montata.
     useLayoutEffect(() => void import('./rimedi').catch(() => undefined), []);
+    // Chi è a schermo, come per la `Cornice` (`mostra`): una lettura che risponde quando la cornice è di un'altra persona non apre niente.
+    useLayoutEffect(() => (mostra(persona), () => mostra(persona, 1)), [persona.email]);
+
+    // La campanella (dalla `v4.23.0`, voce 3398). Il numero è quello dei dati, finché un clic non lo fa scendere: vale per quei dati,
+    // e i dati di una visita nuova (un altro `aggiornati_il`, un altro numero) lo riportano a sé. I dati ridotti non hanno numero.
+    const diQuestiDati = `${dati.aggiornati_il}|${dati.non_lette}`;
+    const [sceso, setSceso] = useState<{ di: string; n: number }>();
+    const nonLette = dati.accettazione_richiesta ? 0 : sceso?.di === diQuestiDati ? sceso.n : (dati.non_lette ?? 0);
+    // L'elenco si chiede a ogni apertura del pannello, e conta l'ultima richiesta partita. Con le notifiche arrivano le frasi della
+    // lingua, dal pezzo della campanella; a elenco vuoto non servono. Una risposta che non è un elenco, o le frasi che non arrivano,
+    // sono lo stato d'errore del pannello, con «Riprova».
+    const [notifiche, setNotifiche] = useState<{ stato: 'ready' | 'loading' | 'error'; elenco: NotificaDelCliente[] }>({ stato: 'ready', elenco: [] });
+    const ultima = useRef(0);
+    const carica = () => {
+        const questa = ++ultima.current;
+        const allUltima = (stato: typeof notifiche) => questa === ultima.current && setNotifiche(stato);
+        allUltima({ stato: 'loading', elenco: [] });
+        chiama(DEL_CLIENTE + '/notifiche', persona)
+            .then((corpo) => {
+                const elenco = (corpo as { data?: unknown } | null)?.data;
+                if (!Array.isArray(elenco)) {
+                    throw new Error(`GET ${DEL_CLIENTE}/notifiche: data`);
+                }
+
+                return elenco.length > 0 ? chiediLaCampanella().then((pezzo) => pezzo.caricaFrasi(lingua)).then(() => elenco) : elenco;
+            })
+            .then((elenco) => allUltima({ stato: 'ready', elenco }), () => allUltima({ stato: 'error', elenco: [] }));
+    };
+    // Le frasi sono di una lingua: se la lingua cambia con l'elenco in pagina, il pannello aspetta quelle della nuova.
+    const frasi = campanella?.frasiPronte(lingua);
+    const senzaFrasi = notifiche.stato === 'ready' && notifiche.elenco.length > 0 && !frasi;
+    useEffect(() => {
+        if (senzaFrasi) {
+            chiediLaCampanella().then((pezzo) => pezzo.caricaFrasi(lingua)).then(() => setNotifiche((prima) => ({ ...prima })), () => setNotifiche({ stato: 'error', elenco: [] }));
+        }
+    }, [senzaFrasi, lingua]);
+    // Una riga: il titolo delle frasi (il servizio e la data, quando ci sono), sotto ciò che le frasi mettono sotto (il servizio, se
+    // non è nel titolo) e l'azienda, l'ora, l'icona e il tono del prodotto da cui viene; non il suo nome, che è di Zeiras e non dell'azienda.
+    const adesso = new Date();
+    const righe: ShellNotification[] = frasi
+        ? notifiche.elenco.map((notifica) => {
+              const riga = campanella!.rigaConLeFrasi(frasi, notifica, lingua);
+              const delProdotto = prodottoDelRegistro(notifica.app);
+
+              return senzaUndefined({ id: notifica.id, title: riga.titolo, text: [riga.sotto, nomePulito(notifica.azienda)].filter(Boolean).join(' · ') || undefined, time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso), icon: delProdotto?.icona, tone: delProdotto?.tono, unread: !notifica.letta });
+          })
+        : [];
+    // Il clic su una riga la segna letta, letta o no, e alla lettura riuscita apre la sua pagina in «Il mio spazio», se ne ha una
+    // (`destinazioneDellaNotificaDelCliente`: solo con l'id che la parte server dà a una notifica da cliente). Il pezzo c'è: le righe
+    // si mostrano con le sue frasi. In assistenza la parte server non la segna, col 403 `azione_non_consentita_in_assistenza`: si
+    // apre lo stesso, come nella `Cornice`. Il numero scende solo per una notifica che i dati contavano: una nata dopo la loro
+    // lettura non c'era (revisione dello sprint 116, R2 e R3).
+    const apri = ({ id }: ShellNotification) => {
+        const notifica = notifiche.elenco.find((una) => una.id === id)!;
+        const risorsa = () => {
+            const indirizzo = campanella!.destinazioneDellaNotificaDelCliente(notifica);
+            if (indirizzo) {
+                naviga(indirizzo);
+            }
+        };
+        const contata = !(Date.parse(notifica.creata_il) > Date.parse(dati.aggiornati_il ?? ''));
+        campanella!.segnaLetta(id, persona, DEL_CLIENTE).then(
+            () => {
+                if (!notifica.letta) {
+                    setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((una) => (una.id === id ? { ...una, letta: true } : una)) }));
+                    if (contata) {
+                        setSceso((prima) => ({ di: diQuestiDati, n: Math.max(0, (prima?.di === diQuestiDati ? prima.n : (dati.non_lette ?? 0)) - 1) }));
+                    }
+                }
+                risorsa();
+            },
+            (errore) => void (errore?.errore === 'azione_non_consentita_in_assistenza' && risorsa()),
+        );
+    };
+    // «Segna tutte come lette» fino alla più recente delle caricate: se la parte server dice che ne restano, il numero resta e
+    // l'elenco si chiede di nuovo; altrimenti si segnano lette le notifiche fino a lì, e il numero è quello delle non lette più
+    // recenti, arrivate nell'elenco mentre la richiesta era in volo. Un secondo clic in volo non manda niente, e una richiesta che
+    // non riesce non cambia niente (revisione dello sprint 116, R4).
+    const finoA = piuRecente(notifiche.elenco);
+    const elencoOra = useRef(notifiche.elenco);
+    elencoOra.current = notifiche.elenco;
+    const segnando = useRef(false);
+    const segnaTutte = () => {
+        if (segnando.current) {
+            return;
+        }
+        segnando.current = true;
+        const fino = finoA!;
+        const primaDi = (una: NotificaDelCliente) => !(Date.parse(una.creata_il) > Date.parse(fino));
+        void campanella!
+            .segnaLetteFinoA(fino, undefined, persona, DEL_CLIENTE)
+            .then(({ altre }) => {
+                if (altre) {
+                    return carica();
+                }
+                setSceso({ di: diQuestiDati, n: elencoOra.current.filter((una) => !una.letta && !primaDi(una)).length });
+                setNotifiche((prima) => ({ ...prima, elenco: prima.elenco.map((una) => (primaDi(una) ? { ...una, letta: true } : una)) }));
+            }, () => undefined)
+            .finally(() => (segnando.current = false));
+    };
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi del cliente, come per lo staff.
     const dello = testiDelCliente(linguaPronta(lingua) ? lingua : DELL_INGRESSO);
     const account = (pagina: keyof typeof pagineDiApp) => () => naviga(dashboard.indirizzo + pagineDiApp[pagina]);
@@ -130,7 +244,11 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
             search={false}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             accountItems={menu}
-            notifications={[]}
+            unreadCount={nonLette}
+            notifications={righe}
+            notificationsState={senzaFrasi ? 'loading' : notifiche.stato}
+            // Coi dati ridotti la campanella non si apre su niente: le rotte risponderebbero 403.
+            {...(dati.accettazione_richiesta ? {} : { onNotificationsOpen: carica, onRetryNotifications: carica, onOpenNotification: apri, ...(finoA && { onMarkAllRead: segnaTutte }) })}
             labels={{ ...t, ...dello }}
         >
             {children}

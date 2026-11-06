@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
 use Zeiras\Auth\Errori\ErroreApi;
@@ -203,9 +204,16 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
     $gettone = Api::staff()->post('/v1/staff/accessi/verifica', ['sfida' => $sfida, 'codice' => BackofficeFinto::CODICE_TOTP_DELLO_STAFF])['data']['gettone'];
     $codice = Api::staff($gettone)->post("/v1/staff/utenti/{$anna['id']}/impersonificazioni", ['app' => 'pm'])['data']['codice'];
 
-    // Il codice lo scambia solo il client dell'app (`board` per `pm`), come nel modulo della board.
+    // Il codice lo scambia solo il client dell'app (`board` per `pm`), come nel modulo della board. Dalla 0.12.141 di zr-auth
+    // (#3386) il ricevitore lo scambia solo da un POST del pannello dello staff, con un 303 (la rotta
+    // `zr-auth.ricevitore.assistenza`, registrata solo da lì); prima da un GET, con un 302.
     config(['zr-auth.cliente' => 'board']);
-    $this->get('/ingresso/ritorno?'.http_build_query(['codice' => $codice]))->assertStatus(302);
+    if (Route::has('zr-auth.ricevitore.assistenza')) {
+        $this->withHeaders(['Sec-Fetch-Site' => 'same-site', 'Origin' => config('zr-auth.admin')])
+            ->post('/ingresso/ritorno', ['codice' => $codice])->assertStatus(303);
+    } else {
+        $this->get('/ingresso/ritorno?'.http_build_query(['codice' => $codice]))->assertStatus(302);
+    }
 
     expect(Sessione::workspace()['slug'] ?? null)->toBe($studio['slug']);
     $dati = Cornice::dati();

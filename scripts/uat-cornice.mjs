@@ -618,7 +618,9 @@ async function sopraIlPannello(page) {
     await page.waitForSelector('.zr-top-actions > .zr-pop', { timeout: 5000 }).catch(() => undefined);
     await pausa(500);
     // Un pannello senza «Vedi tutte» (lo staff, a cui non arrivano notifiche: voce #2986) si prova con la sua ultima linguetta.
-    const piede = !(await pannelloVuoto(page));
+    // Così anche quello del cliente, dalla v4.23.0 con le notifiche da cliente (voce 3398): ha le righe, ma una pagina delle
+    // notifiche del cliente non c'è, e il piede nemmeno.
+    const piede = !colCliente && !(await pannelloVuoto(page));
     const [notifiche, comeNotifiche] = await coperto('.zr-top-actions > .zr-pop', piede ? '.zr-top-actions > .zr-pop .zr-pop-foot button' : '.zr-top-actions > .zr-pop [role=tab]');
     scrivi(notifiche ? '✅' : '❌', 'D.2', 'il pannello delle notifiche sta sopra il pannello di dettaglio (riga 102)', `${piede ? '«Vedi tutte»' : 'senza «Vedi tutte», l\'ultima linguetta'}: ${comeNotifiche}`);
     await page.screenshot({ path: join(cartella, 'pannello-notifiche-1280.png') });

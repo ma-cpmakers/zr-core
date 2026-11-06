@@ -135,12 +135,32 @@ final class NotificheDellaCornice
      */
     public function elenco(): JsonResponse
     {
+        return self::elencoPer(false);
+    }
+
+    /**
+     * GET /cornice/cliente/notifiche (dalla `v4.23.0`, #3398): le notifiche da cliente della persona, per la cornice di chi è solo
+     * cliente (`CorniceDelCliente`), lette col gettone dell'accesso (Api::persona), anche senza un workspace nella sessione e mai
+     * col gettone di quello che c'è: a quel gettone il backoffice dà solo le notifiche da cliente, di ogni azienda. Le notifiche
+     * hanno la forma dell'elenco di sopra, più `azienda`, il nome del workspace dell'azienda di cui la persona è cliente
+     * (`workspace_nome` della notifica, null se non è un testo); `workspace_id` resta qui. Gli `ids` sono quelli della voce della
+     * Dashboard del registro (`home`, le pagine «Il mio spazio» di zr-home), e solo per una notifica che il backoffice dice da
+     * cliente (`spazio_cliente` true): per ogni altra un oggetto vuoto. La risposta non ha `workspace`.
+     */
+    public function elencoDelCliente(): JsonResponse
+    {
+        return self::senzaAccesso() ?? self::elencoPer(true);
+    }
+
+    /** L'elenco della cornice (`elenco()`) o di quella del cliente (`elencoDelCliente()`): cambiano il gettone e ciò che si aggiunge. */
+    private static function elencoPer(bool $delCliente): JsonResponse
+    {
         $aggiornatiIl = Segno::adesso();
-        $workspace = Sessione::workspace()['slug'] ?? null;
+        $workspace = $delCliente ? null : (Sessione::workspace()['slug'] ?? null);
         $persona = StessaPersona::chiRisponde();
 
         try {
-            $notifiche = Api::workspace()->get('/v1/io/notifiche')['data'] ?? null;
+            $notifiche = self::api($delCliente)->get('/v1/io/notifiche')['data'] ?? null;
         } catch (ErroreApi $errore) {
             return Accettazione::rispostaA($errore, $persona);
         }
@@ -150,16 +170,44 @@ final class NotificheDellaCornice
         }
 
         return new JsonResponse([
-            'data' => array_map(function (mixed $notifica): array {
+            'data' => array_map(function (mixed $notifica) use ($delCliente): array {
                 $perLaCornice = self::perLaCornice($notifica, 'GET /v1/io/notifiche');
+
+                if ($delCliente) {
+                    $azienda = $notifica['workspace_nome'] ?? null;
+                    $ids = ($notifica['spazio_cliente'] ?? null) === true ? self::idsDellaNotifica(null, $perLaCornice['tipo'], $notifica['dati'] ?? null) : [];
+
+                    return [...$perLaCornice, 'azienda' => is_string($azienda) ? $azienda : null, 'ids' => (object) $ids];
+                }
 
                 // Un oggetto anche quando è vuoto: nel browser `ids` ha una forma sola.
                 return [...$perLaCornice, 'ids' => (object) self::idsDellaNotifica($perLaCornice['app'], $perLaCornice['tipo'], $notifica['dati'] ?? null)];
             }, $notifiche),
             'aggiornati_il' => $aggiornatiIl,
-            'workspace' => $workspace,
+            ...($delCliente ? [] : ['workspace' => $workspace]),
             'persona' => $persona,
         ]);
+    }
+
+    /**
+     * Le rotte del cliente leggono col gettone dell'accesso, e `Api::persona()` di zr-auth, quando quel gettone non c'è, manda
+     * quello del workspace. In una sessione nata dal ricevitore di un modulo (`Sessione::entra`: un workspace e nessun accesso)
+     * l'elenco del cliente sarebbe quello del workspace, e «Segna tutte come lette» segnerebbe lette le sue notifiche: lì le
+     * rotte del cliente rispondono 403 `gettone_senza_accesso`, senza chiamare il backoffice (revisione dello sprint 116, R1).
+     * La sessione ristretta di un cliente (`Sessione::entraCliente`) non ha un workspace, e passa.
+     */
+    private static function senzaAccesso(): ?JsonResponse
+    {
+        return Sessione::workspace() !== null && Sessione::accesso() === null ? new JsonResponse(['errore' => 'gettone_senza_accesso'], 403) : null;
+    }
+
+    /**
+     * Il client del backoffice: col gettone del workspace della sessione per la cornice, con quello dell'accesso per la cornice del
+     * cliente (dalla `v4.23.0`), che un workspace non lo guarda mai.
+     */
+    private static function api(bool $delCliente): Api
+    {
+        return $delCliente ? Api::persona() : Api::workspace();
     }
 
     /**
@@ -215,6 +263,20 @@ final class NotificheDellaCornice
      */
     public function lettura(Request $richiesta, string $notifica): JsonResponse
     {
+        return self::letturaPer($richiesta, $notifica, false);
+    }
+
+    /**
+     * PATCH /cornice/cliente/notifiche/{notifica}/lettura (dalla `v4.23.0`, #3398): la stessa, per una notifica da cliente, col
+     * gettone dell'accesso (io.notifiche.lettura.modifica). Una notifica che a quel gettone il backoffice non dà è il suo 404.
+     */
+    public function letturaDelCliente(Request $richiesta, string $notifica): JsonResponse
+    {
+        return self::senzaAccesso() ?? self::letturaPer($richiesta, $notifica, true);
+    }
+
+    private static function letturaPer(Request $richiesta, string $notifica, bool $delCliente): JsonResponse
+    {
         // Solo dal corpo JSON, e solo un booleano: `"true"` e `1` non lo sono, e il backoffice non legge la query.
         $letta = $richiesta->json('letta');
 
@@ -227,7 +289,7 @@ final class NotificheDellaCornice
         $persona = StessaPersona::chiRisponde();
 
         try {
-            $segnata = self::perLaCornice(Api::workspace()->patch($percorso, ['letta' => $letta])['data'] ?? null, "PATCH {$percorso}");
+            $segnata = self::perLaCornice(self::api($delCliente)->patch($percorso, ['letta' => $letta])['data'] ?? null, "PATCH {$percorso}");
         } catch (ErroreApi $errore) {
             // Una notifica di un'altra persona, di un altro workspace, o che non c'è: per il backoffice sono lo stesso 404.
             if ($errore->stato === 404 && $errore->codice === 'non_trovato') {
@@ -265,17 +327,32 @@ final class NotificheDellaCornice
      */
     public function letture(Request $richiesta): JsonResponse
     {
+        return self::lettureFinoA($richiesta, false);
+    }
+
+    /**
+     * POST /cornice/cliente/notifiche/letture (dalla `v4.23.0`, #3398): le stesse, per le notifiche da cliente, col gettone
+     * dell'accesso (io.notifiche.letture.crea), con lo stesso blocco della sessione e gli stessi tetti. Il corpo porta solo
+     * `fino_a`: il cliente non è in un workspace, e un workspace della sessione qui non conta.
+     */
+    public function lettureDelCliente(Request $richiesta): JsonResponse
+    {
+        return self::senzaAccesso() ?? self::lettureFinoA($richiesta, true);
+    }
+
+    private static function lettureFinoA(Request $richiesta, bool $delCliente): JsonResponse
+    {
         // Solo dal corpo JSON, e solo un istante col suo fuso: il backoffice non legge la query.
         $finoA = $richiesta->json('fino_a');
         $workspace = $richiesta->json('workspace');
 
-        if (! is_string($finoA) || preg_match(self::ISTANTE, $finoA) !== 1 || ! is_string($workspace) || $workspace === '') {
+        if (! is_string($finoA) || preg_match(self::ISTANTE, $finoA) !== 1 || (! $delCliente && (! is_string($workspace) || $workspace === ''))) {
             return new JsonResponse(['errore' => 'dati_non_validi'], 422);
         }
 
         // La sessione ha un workspace solo: se da un'altra scheda la persona è entrata in un altro, la pagina che chiede mostra
         // ancora quello di prima, e l'istante è delle sue notifiche. Qui segnerebbe lette quelle dell'altro, mai viste.
-        if ($workspace !== (Sessione::workspace()['slug'] ?? null)) {
+        if (! $delCliente && $workspace !== (Sessione::workspace()['slug'] ?? null)) {
             return new JsonResponse(['errore' => 'workspace_diverso'], 409);
         }
 
@@ -306,7 +383,7 @@ final class NotificheDellaCornice
             // Il ciclo finisce su ogni strada: il backoffice dice che non ne restano, il tetto delle chiamate, quello del
             // tempo, o un'eccezione. Le guardie di sopra valgono per tutte le chiamate: fra l'una e l'altra non si rifanno.
             do {
-                $segnate = self::segnaFinoA($finoA);
+                $segnate = self::segnaFinoA($finoA, $delCliente);
                 $chiamate++;
             } while ($segnate['altre'] && $chiamate < self::CHIAMATE && Carbon::now('UTC')->lessThanOrEqualTo($nessunaDopo));
         } catch (ErroreApi $errore) {
@@ -334,14 +411,14 @@ final class NotificheDellaCornice
     }
 
     /**
-     * Una chiamata a io.notifiche.letture.crea col gettone del workspace: l'istante del backoffice e se ne restano. `altre` è
+     * Una chiamata a io.notifiche.letture.crea col gettone del workspace, o con quello dell'accesso per il cliente: l'istante del backoffice e se ne restano. `altre` è
      * un booleano o la risposta non è di /v1: senza, o con un altro valore, è un guasto, mai «non ne restano».
      *
      * @return array{fino_a: string, altre: bool}
      */
-    private static function segnaFinoA(string $finoA): array
+    private static function segnaFinoA(string $finoA, bool $delCliente): array
     {
-        $segnate = Api::workspace()->post('/v1/io/notifiche/letture', ['fino_a' => $finoA])['data'] ?? null;
+        $segnate = self::api($delCliente)->post('/v1/io/notifiche/letture', ['fino_a' => $finoA])['data'] ?? null;
 
         if (! is_array($segnate) || ! is_string($segnate['fino_a'] ?? null) || ! is_bool($segnate['altre'] ?? null)) {
             throw new BackofficeNonRisponde('La risposta di POST /v1/io/notifiche/letture non è una lettura di /v1.');

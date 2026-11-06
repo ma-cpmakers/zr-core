@@ -33,10 +33,31 @@ export function destinazioneDellaNotifica(notifica: { app?: unknown; tipo?: unkn
     if (typeof slug !== 'string' || !FORMA_DI_UNO_SLUG.test(slug) || voce === undefined || delTipo === undefined || voce.presto || (voce.id !== 'home' && !raggiungibile(prodotti[voce.id]))) {
         return undefined;
     }
-    const { ids } = notifica;
-    for (const percorso of [delTipo.percorso, ...(delTipo.altrimenti ?? [])]) {
+    const percorso = conGliId([delTipo.percorso, ...(delTipo.altrimenti ?? [])], notifica.ids);
+
+    return percorso === undefined ? undefined : nelWorkspace(voce.indirizzo, slug) + percorso;
+}
+
+/**
+ * L'indirizzo che apre una notifica da cliente (dalla `v4.23.0`, #3398), nella cornice di chi è solo cliente: la sua pagina in
+ * «Il mio spazio» di zr-home, nella voce della Dashboard del registro e fuori da ogni workspace — il cliente non è membro di
+ * quello dell'azienda —, per una prenotazione `https://app.zeiras.com/spazio/prenotazioni/<id>`. Si apre solo un percorso
+ * che chiede un id e lo trova negli `ids`, che la parte server dà solo a una notifica che il backoffice dice da cliente: per
+ * ogni altra, o senza l'id, niente, nemmeno un percorso della Dashboard che non chiede id. L'app della notifica non conta.
+ */
+export function destinazioneDellaNotificaDelCliente(notifica: { app?: unknown; tipo?: unknown; ids?: unknown }): string | undefined {
+    const voce = registro[0];
+    const delTipo = voce && (righe as Record<string, NotificaDelProdotto[] | undefined>)[voce.id]?.find(({ tipo }) => tipo === notifica.tipo);
+    const percorso = delTipo && conGliId([delTipo.percorso, ...(delTipo.altrimenti ?? [])].filter((uno) => uno.includes('{')), notifica.ids);
+
+    return voce && percorso && voce.indirizzo + percorso;
+}
+
+/** Il primo dei percorsi, in ordine, che ha tutti i suoi id negli `ids`, coi segnaposto al loro posto; niente se nessuno li ha. */
+export function conGliId(percorsi: string[], ids: unknown): string | undefined {
+    for (const percorso of percorsi) {
         let intero = true;
-        const conGliId = percorso.replace(SEGNAPOSTO, (_segnaposto, chiave: string) => {
+        const pieno = percorso.replace(SEGNAPOSTO, (_segnaposto, chiave: string) => {
             const id: unknown = typeof ids === 'object' && ids !== null && Object.hasOwn(ids, chiave) ? (ids as Record<string, unknown>)[chiave] : undefined;
             if (typeof id !== 'string' || !FORMA_DI_UN_ID.test(id)) {
                 intero = false;
@@ -47,7 +68,7 @@ export function destinazioneDellaNotifica(notifica: { app?: unknown; tipo?: unkn
             return encodeURIComponent(id);
         });
         if (intero) {
-            return nelWorkspace(voce.indirizzo, slug) + conGliId;
+            return pieno;
         }
     }
 

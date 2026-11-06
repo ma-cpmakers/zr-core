@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Zeiras\Auth\Persona;
 use Zeiras\Auth\Testing\Gettone;
+use Zeiras\Core\Http\ConWorkspace;
 
 // Sprint 40 · T2 (voce #2051): una regola sola per le rotte della cornice. In una scheda rimasta ferma la sessione può essere
 // passata a un'altra persona dello stesso workspace: la pagina mostra ancora chi c'era, e ciò che chiede lo chiede per lei.
@@ -20,14 +21,16 @@ const CORPO_PER_OGNI_ROTTA = ['letta' => true, 'q' => 'uat', 'fino_a' => '2026-1
 
 /**
  * Le rotte della cornice lette dal router, non scritte qui: di ognuna il metodo e l'indirizzo, con un id al posto di un
- * parametro. Una rotta nuova sotto `cornice/` entra da sé nei casi di questo file; la foto no.
+ * parametro. Una rotta nuova sotto `cornice/` entra da sé nei casi di questo file; la foto no. Con `$soloNelWorkspace` solo quelle
+ * dietro ConWorkspace: dalla `v4.23.0` le tre del cliente (`cornice/cliente/`) non lo sono, e senza workspace non rispondono 403.
  *
  * @return list<array{string, string}>
  */
-function rotteDellaCorniceDalRouter(): array
+function rotteDellaCorniceDalRouter(bool $soloNelWorkspace = false): array
 {
     return collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($rotta) => str_starts_with($rotta->uri(), 'cornice/'))
+        ->filter(fn ($rotta) => ! $soloNelWorkspace || in_array(ConWorkspace::class, $rotta->gatherMiddleware(), true))
         // La foto (dalla `v4.1.0`, sprint 99 · T1.5) la chiede un `<img>`, senza intestazioni: sta fuori da StessaPersona, ed è la
         // sola (FotoTest lo prova nei due versi).
         ->reject(fn ($rotta) => $rotta->uri() === 'cornice/foto' && in_array('GET', $rotta->methods(), true))
@@ -78,8 +81,11 @@ it('ogni rotta della cornice, letta dal router, a una richiesta di un\'altra per
     // Dalla `v2.23.0` di chi è la pagina lo dice l'impronta, non l'email: la pagina di Ada porta quella di Ada.
     $intestazioni += [Persona::INTESTAZIONE => improntaDi('uat-ada')];
 
-    // Le quattro di oggi ci sono tutte: un elenco vuoto non proverebbe niente.
+    // Le sette di oggi ci sono tutte: un elenco vuoto non proverebbe niente. Dalla `v4.23.0` anche le tre del cliente.
     expect(array_map(fn (array $rotta) => implode(' ', $rotta), rotteDellaCorniceDalRouter()))->toEqualCanonicalizing([
+        'GET cornice/notifiche', 'POST cornice/notifiche/letture', 'PATCH cornice/notifiche/uat-n3/lettura', 'POST cornice/ricerca',
+        'GET cornice/cliente/notifiche', 'POST cornice/cliente/notifiche/letture', 'PATCH cornice/cliente/notifiche/uat-n3/lettura',
+    ])->and(array_map(fn (array $rotta) => implode(' ', $rotta), rotteDellaCorniceDalRouter(true)))->toEqualCanonicalizing([
         'GET cornice/notifiche', 'POST cornice/notifiche/letture', 'PATCH cornice/notifiche/uat-n3/lettura', 'POST cornice/ricerca',
     ])->and(rotteCheNonRispondono(409, $diGrace, $corpo, $intestazioni))->toBe([]);
     Http::assertNothingSent();
@@ -247,6 +253,9 @@ it('l\'ordine dei rifiuti è lo stesso su ogni rotta: il 401 della guardia viene
         allaCornice($metodo, $indirizzo, [], $diAda)->assertStatus(409)->assertExactJson(['errore' => 'persona_diversa', 'persona' => '']);
         allaCornice($metodo, $indirizzo)->assertStatus(422)->assertExactJson(['errore' => 'persona_mancante', 'persona' => '']);
         allaCornice($metodo, $indirizzo, ['persona' => 7], ['Persona' => 'uat-grace%40example.com'])->assertStatus(422)->assertExactJson(['errore' => 'dati_non_validi']);
+    }
+    // Il 403 è delle rotte dietro ConWorkspace: quelle del cliente, dalla `v4.23.0`, un workspace non lo chiedono.
+    foreach (rotteDellaCorniceDalRouter(true) as [$metodo, $indirizzo]) {
         allaCornice($metodo, $indirizzo, [], ['Persona' => 'uat-grace%40example.com'])->assertForbidden()->assertExactJson(['errore' => 'gettone_senza_workspace']);
     }
 
@@ -285,9 +294,12 @@ it('con la sessione ma senza workspace la richiesta di un\'altra persona riceve 
     sessioneAMano(null, 'it', GRACE_NELLA_SESSIONE);
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
         // Il corpo intero, carattere per carattere: né nome, né lingua, né workspace, né un'email.
-        expect(allaCornice($metodo, $indirizzo, [], $diAda)->assertStatus(409)->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
-        expect(allaCornice($metodo, $indirizzo, [], $diGrace)->assertForbidden()->getContent())->toBe('{"errore":"gettone_senza_workspace"}')
+        expect(allaCornice($metodo, $indirizzo, [], $diAda)->assertStatus(409)->getContent())->toBe('{"errore":"persona_diversa","persona":""}')
             ->and(allaCornice($metodo, $indirizzo)->assertStatus(422)->getContent())->toBe('{"errore":"persona_mancante","persona":""}');
+    }
+    // Il 403 è delle rotte dietro ConWorkspace: quelle del cliente, dalla `v4.23.0`, un workspace non lo chiedono.
+    foreach (rotteDellaCorniceDalRouter(true) as [$metodo, $indirizzo]) {
+        expect(allaCornice($metodo, $indirizzo, [], $diGrace)->assertForbidden()->getContent())->toBe('{"errore":"gettone_senza_workspace"}');
     }
     Http::assertNothingSent();
 });

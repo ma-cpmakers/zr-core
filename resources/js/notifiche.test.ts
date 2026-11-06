@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import righe from '../registro/notifiche.json';
 import { destinazioneDellaNotifica } from './frasi';
+import { destinazioneDellaNotificaDelCliente } from './notifiche';
 import { registro, type DatiDellaCornice } from './index';
 
 // Sprint 21 · T3 (voce #1641). Dove si apre una notifica: lo dice il registro dei prodotti (`notifiche` della voce), col tipo
@@ -44,7 +45,8 @@ describe('la destinazione di una notifica', () => {
         // Sprint 74 · T1.3: anche Bookings, con le tre righe delle prenotazioni. v3.6.1: e per prima la Dashboard, con l'invito
         // accettato.
         expect(Object.keys(righe)).toStrictEqual(['home', 'pm', 'crm', 'bookings']);
-        expect(righe.home).toStrictEqual([{ tipo: 'io.invito.accettato', percorso: '/impostazioni/membri' }]);
+        // Sprint 116 · T2.2: e dopo le quattro da cliente di Bookings, che aprono «Il mio spazio».
+        expect(righe.home).toStrictEqual([{ tipo: 'io.invito.accettato', percorso: '/impostazioni/membri' }, ...['confermata', 'spostata', 'annullata', 'promemoria'].map((fine) => ({ tipo: `bookings.cliente.prenotazione.${fine}`, percorso: '/spazio/prenotazioni/{id}' }))]);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
         // Sprint 26 · T6 (voce #1773): la quarta, una menzione in un commento, apre la scheda del commento.
         expect(righe.pm).toStrictEqual([
@@ -216,6 +218,31 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'bookings', tipo: `com.zeiras.bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
         expect(apre({ app: 'bookings', tipo: 'bookings.prenotazione.cambiata', ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+    });
+
+    // Sprint 116 · T2.2 (voce #3398). Le quattro notifiche da cliente aprono la prenotazione in «Il mio spazio» di zr-home, nella
+    // voce della Dashboard e fuori da ogni workspace: il cliente non è membro di quello dell'azienda. Gli `ids` sono quelli che la
+    // parte server ha preso dalla voce della Dashboard, e solo per una notifica da cliente: senza, non si apre niente — nemmeno
+    // un percorso della Dashboard che non chiede id —, e la stessa notifica nella cornice di un workspace non ha una destinazione.
+    it.each(['confermata', 'spostata', 'annullata', 'promemoria'])('una notifica da cliente `bookings.cliente.prenotazione.%s` apre la prenotazione in «Il mio spazio», `app.zeiras.com/spazio/prenotazioni/<id>`, fuori dal workspace; senza l\'id, con un id fuori forma, o con la sua app nella cornice di un workspace no (sprint 116 · T2.2)', (fine) => {
+        const tipo = `bookings.cliente.prenotazione.${fine}`;
+
+        expect(destinazioneDellaNotificaDelCliente({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } })).toBe('https://app.zeiras.com/spazio/prenotazioni/uat-prenotazione-1');
+        expect(destinazioneDellaNotificaDelCliente({ app: null, tipo, ids: { id: 'uat-prenotazione-1' } })).toBe('https://app.zeiras.com/spazio/prenotazioni/uat-prenotazione-1');
+        expect(destinazioneDellaNotificaDelCliente({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1', calendario_id: 'uat-calendario-1' } })).toBe('https://app.zeiras.com/spazio/prenotazioni/uat-prenotazione-1');
+        for (const ids of [{}, { calendario_id: 'uat-calendario-1' }, { id: '../x' }, { id: 7 }, undefined, null]) {
+            expect([ids, destinazioneDellaNotificaDelCliente({ app: 'bookings', tipo, ids })]).toStrictEqual([ids, undefined]);
+        }
+        expect(destinazioneDellaNotificaDelCliente({ app: 'bookings', tipo: `com.zeiras.${tipo}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+        expect(apre({ app: 'bookings', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+    });
+
+    it('nella cornice del cliente non si apre una notifica che non è da cliente: i tre tipi di Bookings dello staff, l\'invito accettato (che non chiede id) e uno del CRM (sprint 116 · T2.2)', () => {
+        for (const [app, tipo] of [['bookings', 'bookings.prenotazione.creata'], [null, 'io.invito.accettato'], ['crm', 'com.zeiras.crm.persona.creata']] as const) {
+            for (const ids of [{}, { id: 'uat-1' }]) {
+                expect([tipo, ids, destinazioneDellaNotificaDelCliente({ app, tipo, ids })]).toStrictEqual([tipo, ids, undefined]);
+            }
+        }
     });
 
     it('una notifica della richiesta sul preventivo apre il preventivo col suo `id`; senza `id`, con la sola opportunità, con un id fuori forma o col tipo col prefisso, il pannello apre la pagina delle notifiche (v3.2.2)', () => {

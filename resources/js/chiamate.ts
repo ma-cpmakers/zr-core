@@ -57,7 +57,7 @@ export let aSchermo: string | undefined;
  */
 export interface Persona {
     email: string;
-    impronta?: string | null;
+    impronta?: string | null | undefined;
 }
 
 const montate: Persona[] = [];

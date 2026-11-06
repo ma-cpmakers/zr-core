@@ -218,7 +218,7 @@ type SenzaUndefined<T> = { [K in keyof T as undefined extends T[K] ? never : K]:
  * design system una chiave facoltativa manca, non vale `undefined` (`exactOptionalPropertyTypes`), e l'`AppShell` legge allo
  * stesso modo una chiave che manca e una che vale `undefined`: nessun valore cambia, e non arriva una chiave in più.
  */
-function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
+export function senzaUndefined<T extends object>(oggetto: T): SenzaUndefined<T> {
     return Object.fromEntries(Object.entries(oggetto).filter((voce) => voce[1] !== undefined)) as SenzaUndefined<T>;
 }
 
@@ -235,7 +235,7 @@ export function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
  * Quando è arrivata una notifica, nella forma corta dei design di zr-home (dalla `v3.6.0`, Decisione 18231): «ora», «5 min fa»,
  * «3 h fa», «ieri», poi «1 ott» (con l'anno se non è quest'anno). Un istante che non si legge non ha ora.
  */
-function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
+export function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
     const data = new Date(istante);
     if (isNaN(+data)) {
         return undefined;
@@ -295,7 +295,7 @@ function nelPannello(notifica: NotificaDellaCornice, riga: { titolo: string; sot
  * confrontano gli istanti, non le stringhe: l'elenco può avere fusi diversi, e la più recente può non essere la prima. Una
  * `creata_il` che non si legge non conta; senza nessuna che si legge non c'è un istante.
  */
-function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
+export function piuRecente(elenco: NotificaDellaCornice[]): string | undefined {
     let scelta: string | undefined;
     let istante = -Infinity;
     for (const { creata_il: creataIl } of elenco) {
