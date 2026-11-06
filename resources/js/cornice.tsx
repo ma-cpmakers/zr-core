@@ -101,6 +101,12 @@ export interface DatiDellaCornice {
      */
     accettazione_richiesta?: boolean | undefined;
     /**
+     * L'assistenza (dalla `v4.22.0`, #2909): c'è solo quando lo staff è entrato con «Accedi come», e dice chi è la persona
+     * assistita e se l'assistenza è di sola lettura. Allora la campanella mostra e non scrive: niente «Segna tutte come lette», e
+     * una notifica aperta non si segna letta. La parte server non la manda mai vuota: senza, non è un'assistenza.
+     */
+    assistenza?: { persona: { nome: string; cognome: string | null; email: string }; sola_lettura: boolean } | undefined;
+    /**
      * `true` finché i dati letti dal backoffice non sono arrivati (dalla `v2.1.0`): lo mette `LayoutDellaCornice` quando ha
      * `subito` e non ancora `dopo`. La cornice esce ridotta e senza avviso, con campanella e ricerca nello stato di caricamento. Se
      * la cornice ha già dati letti di quel workspace restano quelli, finché non arrivano i nuovi.
@@ -114,7 +120,7 @@ export interface DatiDellaCornice {
 }
 
 /** I dati che la parte server legge dalla sola sessione (`Cornice::subito()`). */
-export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il' | 'lingua_il'>;
+export type DatiSubito = Pick<DatiDellaCornice, 'lingua' | 'persona' | 'workspace' | 'sessione_il' | 'lingua_il' | 'assistenza'>;
 /**
  * I dati che la parte server legge dal backoffice (`Cornice::dopo()`), o `non_letti` col suo segno se il backoffice non ha
  * risposto — dalla `v2.7.0` anche lui con lingua, persona, workspace e `sessione_il`. Dalla `v2.4.0` dicono di chi sono: lingua, persona e il segno di quella lettura (`sessione_il`), che nel layout
@@ -704,8 +710,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
 
                 return id;
             },
-            // La notifica resta da leggere, e il numero com'era.
-            (errore) => (errore ? seDaAccettare(errore) : new Promise(() => {})),
+            // La notifica resta da leggere, e il numero com'era. In assistenza (una pagina aperta prima che i dati lo dicessero) la
+            // parte server non la segna, col 403 `azione_non_consentita_in_assistenza` (dalla `v4.22.0`): si apre lo stesso.
+            (errore) => (errore?.errore === 'azione_non_consentita_in_assistenza' ? id : errore ? seDaAccettare(errore) : new Promise(() => {})),
         );
     };
     // Il giro di letture può finire altrove — un'altra scheda segna le rimaste —, e allora lo dicono i dati: quelli letti dopo la
@@ -907,6 +914,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         const notifica = elenco.find(({ id }) => id === aperta.id);
         const elencoDi = notifiche.workspace;
         const risorsa = notifica === undefined || elencoDi === undefined ? undefined : campanella?.destinazioneDellaNotifica(notifica, elencoDi, elencoDi === dati.workspace.slug ? dati.prodotti : inUnAltroWorkspace);
+        // In assistenza la notifica si apre senza segnarla letta (dalla `v4.22.0`).
+        if (risorsa !== undefined && dati.assistenza) return naviga(risorsa);
         // Una destinazione c'è solo con la notifica e col workspace del suo elenco.
         if (risorsa !== undefined) {
             letturaInVolo.current = true;
@@ -987,7 +996,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // Senza il numero dei dati, quello delle non lette caricate: lo dà la cornice e non lo conta il design system
                 // dalle righe, che mancano finché non ci sono le frasi della lingua (a pannello chiuso non si chiedono).
                 unreadCount: ridotta ? 0 : nonLette ?? (elenco.length > 0 ? sullaCampanella : undefined),
-                onMarkAllRead: ridotta ? undefined : segnaTutteLette,
+                onMarkAllRead: ridotta || dati.assistenza ? undefined : segnaTutteLette,
                 onRetryNotifications: ridotta ? undefined : () => carica(true),
                 onNotificationsOpen: avvisoSopraLaPagina ? undefined : carica,
                 onOpenNotification: ridotta ? undefined : apriNotifica,

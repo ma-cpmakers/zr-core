@@ -219,3 +219,24 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
     expect($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => $anna['cognome'], 'email' => 'anna@example.com'], 'sola_lettura' => true])
         ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
 })->skip(fn () => ! fintoDellAssistenza(), 'il finto dell\'«Accedi come» c\'è dalla zr-auth 0.12.139');
+
+it('in assistenza il backoffice nega le letture con 403 `azione_non_consentita_in_assistenza`: le due rotte che segnano lette rispondono 403 con quel codice, non un guasto (sprint 115 · T2.3)', function (string $metodo, string $indirizzo, array $corpo) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => problemaDelBackoffice(403, 'azione_non_consentita_in_assistenza')]);
+
+    senzaGettone($this->json($metodo, $indirizzo, $corpo))
+        ->assertForbidden()->assertExactJson(['errore' => 'azione_non_consentita_in_assistenza']);
+    Http::assertSentCount(1);
+})->with([
+    'una notifica' => ['PATCH', 'cornice/notifiche/uat-n3/lettura', ['letta' => true]],
+    'tutte fino a un istante' => ['POST', 'cornice/notifiche/letture', ['fino_a' => '2026-10-08T10:00:00.000Z', 'workspace' => 'uat-marketing']],
+]);
+
+it('un altro 403 del backoffice sulle letture resta com\'era: il codice dell\'assistenza non apre gli altri (sprint 115 · T2.3)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => problemaDelBackoffice(403, 'azione_non_consentita')]);
+
+    $risposta = senzaGettone($this->patchJson('cornice/notifiche/uat-n3/lettura', ['letta' => true]));
+
+    expect($risposta->json('errore'))->not->toBe('azione_non_consentita_in_assistenza');
+});
