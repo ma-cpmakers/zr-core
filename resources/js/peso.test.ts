@@ -782,7 +782,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // l'accessibilità vale più di 55 byte, Decisione 19411; se una contropartita libera byte, il tetto riscende di tanto).
         // v3.14.3: un dialogo senza niente che prenda il fuoco lo prende su di sé (misura del 01/11: 2.055; tetto 2.058, Decisione 19428).
         // v4.13.2 (voce #3329): il clic di «Apri il menu» che porta il fuoco nel cassetto passa qui dal pezzo della tastiera, che col
-        // primo tasto Invio arrivava dopo il clic (misura del 06/11: 2.077, +71; la tastiera scende di 31; tetto 2.097, la misura più 20,
+        // primo tasto Invio arrivava dopo il clic (misura del 06/11: 2.006 prima, 2.077 dopo, +71; la tastiera scende di 31; tetto 2.097, la misura più 20,
         // sì di zr-pm-07 del 06/11).
         expect(gzip(rimedi)).toBeLessThanOrEqual(2_097);
     });
