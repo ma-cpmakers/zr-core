@@ -223,23 +223,33 @@ async function ricerca(page, largo) {
         scrivi(esito, 'R.2', 'sei parole: dal tasto il pannello è in caricamento fino alla risposta, mai «Nessun risultato» né i risultati di prima (#2062)', `${perche}${giudizi.map(({ prova }) => prova).join(' · ')}`);
     }
     let nelPannello = false;
+    let nascoste;
     if (stato !== 'risultati') {
         scrivi('➖', `${id}.3`, 'il pannello coi risultati nel giro del Tab (#2720)', `«${parola}» non trova niente (stato: ${stato}): rilanciare con --parola`);
     } else {
         const pannello = await page.evaluate(() => {
             const elemento = document.querySelector('.zr-shell .zr-top > .zr-search > .zr-search-panel');
-            return [elemento?.getAttribute('tabindex'), elemento?.getAttribute('role'), elemento?.getAttribute('aria-label')];
+            return [elemento?.getAttribute('tabindex'), elemento?.getAttribute('role'), elemento?.getAttribute('aria-label'), !!elemento && elemento.scrollHeight > elemento.clientHeight];
         });
+        // R390.4 col fuoco ancora nel campo: dalla v4.18.0 il Tab da un pannello che non scorre esce dalla ricerca e la chiude.
+        if (!largo) {
+            nascoste = await page.evaluate(() => {
+                const azioni = document.querySelector('.zr-shell .zr-top > .zr-top-actions');
+                return azioni ? getComputedStyle(azioni).visibility : 'nessuna';
+            });
+        }
         await page.keyboard.press('Tab');
         await pausa(200);
         const fuocoNelPannello = await page.evaluate(() => document.activeElement?.matches('.zr-search-panel') ?? false);
         nelPannello = fuocoNelPannello;
-        const bene = pannello[0] === '0' && pannello[1] === 'group' && !!pannello[2] && fuocoNelPannello;
-        scrivi(bene ? '✅' : '❌', `${id}.3`, 'il pannello coi risultati è una fermata del Tab, un gruppo col suo nome (#2720)', `tabindex=${pannello[0]}, role=${pannello[1]}, nome «${pannello[2]}», Tab dal campo → ${fuocoNelPannello ? 'pannello' : 'altrove'}`);
+        // Dalla v4.18.0 (lotto 0518, richieste 129 e 131) la fermata la dà l'`AppShell` finché il pannello scorre: un pannello che
+        // non scorre non è una fermata (axe `scrollable-region-focusable` non lo chiede), e il Tab va oltre.
+        const bene = pannello[1] === 'group' && !!pannello[2] && (pannello[3] ? pannello[0] === '0' && fuocoNelPannello : pannello[0] === null && !fuocoNelPannello);
+        scrivi(bene ? '✅' : '❌', `${id}.3`, 'il pannello coi risultati, quando scorre, è una fermata del Tab, un gruppo col suo nome (#2720)', `${pannello[3] ? 'scorre' : 'non scorre'}, tabindex=${pannello[0]}, role=${pannello[1]}, nome «${pannello[2]}», Tab dal campo → ${fuocoNelPannello ? 'pannello' : 'altrove'}`);
         await page.screenshot({ path: join(cartella, `ricerca-tab-${largo ? 1280 : 390}.png`) });
     }
     if (!largo) {
-        const nascoste = await page.evaluate(() => {
+        nascoste ??= await page.evaluate(() => {
             const azioni = document.querySelector('.zr-shell .zr-top > .zr-top-actions');
             return azioni ? getComputedStyle(azioni).visibility : 'nessuna';
         });
@@ -352,10 +362,12 @@ async function campanella(page, largo) {
         aperto: !!document.querySelector('.zr-notif'),
         fuoco: !!document.activeElement?.closest('.zr-notif'),
         testa: document.querySelector('.zr-notif .zr-pop-head')?.getAttribute('role') ?? null,
+        tag: document.querySelector('.zr-notif .zr-pop-head')?.tagName.toLowerCase(),
         ore: [...document.querySelectorAll('.zr-notif .zr-notif-meta')].map((riga) => riga.textContent ?? ''),
     }));
     scrivi(pannello.aperto && pannello.fuoco ? '✅' : '❌', `${id}.1`, 'la campanella apre il pannello e il fuoco entra nel pannello', `aperto: ${pannello.aperto}, fuoco dentro: ${pannello.fuoco}`);
-    scrivi(pannello.testa === 'none' ? '✅' : '❌', `${id}.2`, 'la testa del pannello non è un punto di riferimento (#2627)', `role=${pannello.testa}`);
+    // Dalla v4.18.0 (lotto 0518, richiesta 124) la testa è un `div` dell'`AppShell`, senza ruolo; prima un `header` con `role="none"`.
+    scrivi(pannello.testa === 'none' || (pannello.testa === null && pannello.tag === 'div') ? '✅' : '❌', `${id}.2`, 'la testa del pannello non è un punto di riferimento (#2627)', `<${pannello.tag}> role=${pannello.testa}`);
     if (largo) {
         const lunghe = pannello.ore.filter((ora) => /minut|minute|\bore\b|\bora fa|hour|hora/i.test(ora));
         scrivi(!pannello.ore.length ? '➖' : lunghe.length ? '❌' : '✅', 'C.3', 'l\'ora delle notifiche è corta, «10 min fa», «1 h fa» (#2718)', pannello.ore.length ? pannello.ore.slice(0, 4).join(' | ') : 'nessuna notifica nel pannello');
@@ -924,7 +936,8 @@ async function quantiRisultati(page) {
     await pausa(200);
     const letto = await page.evaluate(() => ({
         righe: document.querySelectorAll('.zr-shell .zr-search-panel [role=option]').length,
-        zone: [...document.querySelectorAll('body > p[role=status]')].map((zona) => zona.textContent),
+        // Dalla v4.18.0 (lotto 0518) la zona è dell'`AppShell`, dentro la ricerca; prima un `p` della cornice in fondo al `body`.
+        zone: [...document.querySelectorAll('body > p[role=status], .zr-shell .zr-search > [role=status]')].map((zona) => zona.textContent).filter(Boolean),
     }));
     const ok = stato !== 'errore' && letto.zone.length === 1 && /\d/.test(letto.zone[0] ?? '') && letto.zone[0].includes(String(letto.righe));
     scrivi(stato === 'errore' ? '➖' : ok ? '✅' : '❌', 'Q.1', 'a ricerca finita la zona di stato dice quanti risultati ci sono, nella lingua della cornice (#2801)', `«${parola}»: ${stato}, ${letto.righe} righe, zona: ${letto.zone.map((zona) => `«${zona}»`).join(', ') || 'nessuna'}`);
@@ -1488,7 +1501,8 @@ async function ilCliente(page, larghezza) {
             azioni: !!azioni && getComputedStyle(azioni).visibility !== 'hidden',
         };
     });
-    scrivi(campo.c && !campo.visibile && dopo.fuoco !== 'nascosto' && !dopo.aperta && dopo.azioni ? '✅' : '❌', `${id}.1`, `a ${larghezza} px il campo della ricerca non si vede; Ctrl+K non la apre, non porta il fuoco su un elemento nascosto e lascia campanella e profilo`, `campo: ${campo.c ? (campo.visibile ? 'visibile' : 'nascosto') : 'assente'}, dopo Ctrl+K: fuoco ${dopo.fuoco}, ricerca aperta: ${dopo.aperta}, azioni visibili: ${dopo.azioni}`);
+    // Dalla v4.18.0 (`search={false}`, richiesta 201) il campo non c'è proprio: non si vede lo stesso.
+    scrivi(!campo.visibile && dopo.fuoco !== 'nascosto' && !dopo.aperta && dopo.azioni ? '✅' : '❌', `${id}.1`, `a ${larghezza} px il campo della ricerca non si vede; Ctrl+K non la apre, non porta il fuoco su un elemento nascosto e lascia campanella e profilo`, `campo: ${campo.c ? (campo.visibile ? 'visibile' : 'nascosto') : 'assente'}, dopo Ctrl+K: fuoco ${dopo.fuoco}, ricerca aperta: ${dopo.aperta}, azioni visibili: ${dopo.azioni}`);
     // CL.4 (dalla v4.13.1): senza il campo della ricerca, campanella e profilo restano in fondo a destra della barra in alto, come
     // nella `Cornice`, e non scivolano a sinistra accanto alla barra laterale.
     const posto = await page.evaluate(() => {
