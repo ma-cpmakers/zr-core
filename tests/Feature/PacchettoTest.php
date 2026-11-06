@@ -5620,7 +5620,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 18.589 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.136 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.8.1 (#3055, Decisione 21220): l'Alert nel pezzo degli avvisi, il tetto scende di 110, alla misura più 20.
     'i pesi: i 110 byte della v4.8.1' => ['pesi', 'Dalla `v4.8.1` è sceso di 110 byte, alla misura più 20: l\'Alert del design system, che la cornice usa solo per l\'avviso della cornice ridotta, arriva col pezzo degli avvisi, dal suo modulo'],
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta in un pezzo a richiesta, il tetto scende di 404, alla misura più 20.
@@ -5725,20 +5725,16 @@ it('README e guida dicono a chi rifà i moduli nei casi che `frasiInMemoria` si 
 it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design system: fra i file che si installano i CSS sono quelli di prima, la classe che nasconde è del bundle e la cornice la usa per nome (sprint 28 · T4.5)', function () {
     $css = array_values(array_filter(fileDelloZipDiHead(), fn (string $file): bool => str_ends_with($file, '.css')));
     $cornice = (string) file_get_contents(__DIR__.'/../../resources/js/cornice.tsx');
-    // Dalla `v3.16.0` (voce #2944) il pulsante sta in un modulo suo, `salto.tsx`, che mettono la `Cornice` e la cornice dello staff.
-    $salto = (string) file_get_contents(__DIR__.'/../../resources/js/salto.tsx');
+    // Dalla `v4.18.0` il salto è il link dell'`AppShell` (richiesta 5 al design system): `salto.tsx` non c'è più.
 
     // Sprint 75 · T1.1: dalla `v3.3.0` ci sono anche i CSS che `npm run componenti` divide da bundle.css, righe del bundle.
     // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
     // Sprint 110 · T2.4 (voce #3319): dalla `v4.13.0` la regola che nasconde la ricerca nella cornice del cliente, provvisoria.
     expect($css)->toBe(['resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
-        // Lettura della PR #61, R13: il pulsante è un componente suo, col suo stato, e la `Cornice` lo rende una volta.
-        ->and(substr_count($salto, "colFuoco ? undefined : 'zr-visually-hidden'"))->toBe(1)
-        ->and(preg_match('/<Button variant="secondary" size="sm" onClick=\{\(\) => fuocoAlContenuto\(contenitore\.current\)\}>\{testo\}<\/Button>/', $salto))->toBe(1)
-        ->and(substr_count($cornice, '<SaltaAlContenuto testo={t.skipToContent} />'))->toBe(1)
-        // Lettura della PR #61, R3: il `main` si cerca dal pulsante, non dal documento.
-        ->and(str_contains($cornice.$salto, "document.querySelector('main')"))->toBe(false);
+        ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
+        ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)
+        ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.js'), "className: 'zr-btn zr-btn-secondary zr-btn-sm zr-skip'"))->toBe(1);
 });
 
 // Sprint 27 · T5.2 (lettura della PR #59, R7). La copia del registro che `Registro` tiene è una per tutte le rotte e per tutti i

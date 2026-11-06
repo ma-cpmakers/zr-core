@@ -814,13 +814,15 @@ function italianoAtteso(): array
  * dello staff, con le sue lingue, quando cerca all'invio (voce #2965). Dal lotto 0512 del design system anche «Da attivare» (`off`,
  * richiesta 78) e «Impostazioni del workspace» (`workspaceSettings`, richiesta 128): la cornice non segna moduli `off` e non passa
  * le impostazioni del workspace. Dal design system 1793914149-8632 anche i tre testi dello spazio cliente di zr-account («Il mio
- * spazio», «Come cliente», «Crea il tuo workspace»): la cornice non passa `personal`, e senza aziende non ha il selettore.
+ * spazio», «Come cliente», «Crea il tuo workspace»): la cornice non passa `personal`, e senza aziende non ha il selettore. Dal
+ * lotto 0518 (`v4.18.0`) anche quanti risultati ha la ricerca (`searchCount`): non sta nelle lingue della cornice ma coi testi del
+ * pezzo della ricerca (`resources/lingue/ricerca/`), che la cornice dà all'`AppShell` solo coi risultati.
  *
  * @return list<string>
  */
 function testiDellAppShellCheLaCorniceNonUsa(): array
 {
-    return ['searchSubmitHint', 'searchPressEnter', 'off', 'workspaceSettings', 'personal', 'personalGroup', 'firstWorkspace'];
+    return ['searchSubmitHint', 'searchPressEnter', 'searchCount', 'off', 'workspaceSettings', 'personal', 'personalGroup', 'firstWorkspace'];
 }
 
 /**
@@ -1530,14 +1532,14 @@ it('i tre testi di quando Zeiras non risponde ci sono nelle tre lingue, sono di 
     'campanella e ricerca spente' => ['downOff', ['Non disponibile finché Zeiras non risponde.', 'Not available until Zeiras responds.', 'No disponible hasta que Zeiras responda.']],
 ]);
 
-// Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. L'`AppShell` non ne ha uno:
-// il testo è di zr-core, finché il design system non porta il suo.
-it('il testo di «Salta al contenuto» c\'è nelle tre lingue ed è di zr-core: l\'AppShell non ha una chiave con quel nome (sprint 28 · T4.1)', function () {
+// Sprint 28 · T4 (voce #1828): «Salta al contenuto», il primo elemento della cornice da tastiera. Dalla `v4.18.0` è dell'`AppShell`
+// (richiesta 5), che ha la chiave `skipToContent`: il testo, nelle lingue di zr-core, glielo dà la cornice.
+it('il testo di «Salta al contenuto» c\'è nelle tre lingue, ed è la chiave `skipToContent` dell\'AppShell (sprint 28 · T4.1; v4.18.0)', function () {
     $lingue = lingueDellaCornice();
 
     expect([$lingue['it']['skipToContent'] ?? null, $lingue['en']['skipToContent'] ?? null, $lingue['es']['skipToContent'] ?? null])
         ->toBe(['Salta al contenuto', 'Skip to content', 'Saltar al contenido'])
-        ->and(chiaviDiAppShellLabels())->not->toContain('skipToContent')
+        ->and(chiaviDiAppShellLabels())->toContain('skipToContent')
         ->and(problemiDelleLingue(array_map(fn (array $testi): array => array_diff_key($testi, ['skipToContent' => true]), $lingue)))->not->toBe([]);
 });
 
