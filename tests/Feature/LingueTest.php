@@ -1044,14 +1044,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 59 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i diciannove che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato e il Gate deciso —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 63 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i ventitré che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato, il Gate deciso e le quattro da cliente di Bookings —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0; sprint 116 · T2.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(40)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(59)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(63)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 

@@ -1836,7 +1836,7 @@ describe('le notifiche di Bookings, con la data', () => {
     });
 });
 
-// Sprint 116 · T2 (voce #3398). Le quattro notifiche da cliente di Bookings (contratto 8e80fafb, #3323): la prenotazione di chi
+// Sprint 116 · T2 (voce 3398). Le quattro notifiche da cliente di Bookings (contratto 8e80fafb, zr-backoffice 3323): la prenotazione di chi
 // è cliente di un'azienda confermata, spostata, annullata, e il suo promemoria. Le legge chi ha prenotato, non lo staff: le
 // parole sono sue («la tua prenotazione»), e nessun titolo è quello di un altro tipo, nemmeno dei tre di Bookings dello staff.
 // Come quelli, col servizio (`risorsa_nome`) e la data, o con la sola data quando il servizio non c'è.

@@ -1884,6 +1884,11 @@ it('per ogni notifica del registro la rotta dà gli id che il suo percorso chied
     $attesi = [];
     foreach (registroDeiProdotti() as $voce) {
         foreach ($voce['notifiche'] ?? [] as $notifica) {
+            // Le notifiche da cliente (sprint 116, #3398) non passano da questa rotta: i loro id li dà /cornice/cliente/notifiche
+            // (NotificheDelClienteTest).
+            if (str_starts_with($notifica['tipo'], 'bookings.cliente.')) {
+                continue;
+            }
             // Con tutti gli id in `dati` si apre `percorso`, il primo: quelli di `altrimenti` hanno i loro casi, in fondo al file.
             preg_match_all('/\{([^{}]*)\}/', $notifica['percorso'], $segnaposto);
             // Un segnaposto con un nome nuovo vuole il suo id qui sopra: senza, questo caso non proverebbe quella destinazione.

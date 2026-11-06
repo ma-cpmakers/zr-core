@@ -38,9 +38,11 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * nella voce di quell'app, col tipo intero. Un tipo scritto sotto un'altra voce avrebbe il suo titolo, e non si aprirebbe mai.
  * Un tipo che non è un evento — ciò che il CRM manda a chi diventa responsabile — arriva senza `com.zeiras.` davanti: `crm.`
  * è del CRM (sprint 23 · T3), e `board.` di Project Management, per la scheda assegnata (sprint 24 · T3). Dallo sprint 74 anche
- * Bookings, coi tre tipi delle prenotazioni: `bookings.` davanti, senza `com.zeiras.` (zr-backoffice-55, #2652).
+ * Bookings, coi tre tipi delle prenotazioni: `bookings.` davanti, senza `com.zeiras.` (zr-backoffice-55, #2652). Dallo sprint 116 le
+ * notifiche da cliente, `bookings.cliente.`, sono della Dashboard: le apre «Il mio spazio» di zr-home (#3398). Vince l'inizio più lungo,
+ * che sta dopo.
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'io.' => 'home'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'bookings.cliente.' => 'home', 'io.' => 'home'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
