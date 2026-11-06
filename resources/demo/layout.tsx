@@ -160,8 +160,34 @@ function Lunga({ visita }: Props) {
             <p>UAT ultimo clic: <output data-uat="ultimo-clic" ref={ultimoClic} /></p>
             <Collegamenti />
             <DialogoDelModulo aperto={dialogo} onChiudi={() => setDialogo(false)} />
+            {scelti.get('dialogo') === '1' && <DialogoDelDesignSystem />}
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
+        </>
+    );
+}
+
+/**
+ * Con `?dialogo=1`, un `Dialog` del design system che si apre col clic, per le righe G.1 e G.2 della UAT: dal lotto 0522 (richiesta
+ * 4) il fuoco lo prende e lo rende il `Dialog`. Prima della «×» nessuna fermata; nel corpo un campo nascosto e un pulsante spento,
+ * che il fuoco non prende. «Salva» lo chiude e apre un «Attendi» senza elementi, che si chiude dopo due secondi.
+ */
+function DialogoDelDesignSystem() {
+    const [aperto, setAperto] = useState<'no' | 'dialogo' | 'attendi'>('no');
+    useEffect(() => {
+        const tempo = aperto === 'attendi' ? setTimeout(() => setAperto('no'), 2000) : undefined;
+
+        return () => clearTimeout(tempo);
+    }, [aperto]);
+
+    return (
+        <>
+            <button type="button" data-uat="apre-ds" onClick={() => setAperto('dialogo')}>UAT apre il Dialog</button>
+            <Zeiras.Dialog open={aperto === 'dialogo'} title="UAT" onClose={() => setAperto('no')} footer={<button type="button" data-uat="salva-ds" onClick={() => setAperto('attendi')}>Salva</button>}>
+                <input type="hidden" name="uat" />
+                <button type="button" disabled>Spento</button>
+            </Zeiras.Dialog>
+            <Zeiras.Dialog open={aperto === 'attendi'} title="UAT Attendi"><p>Attendi</p></Zeiras.Dialog>
         </>
     );
 }
