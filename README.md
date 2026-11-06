@@ -195,10 +195,10 @@ legali, e Zeiras che non risponde —, e dalla `v4.8.1` l'Alert del design syste
 pezzo della tastiera (circa 1,2 KB con gzip nella `v3.8.0`, circa 1,4 KB dalla `v3.8.1`): i rimedi che servono solo a chi preme un tasto — «Tab dentro un dialogo aperto» e
 Esc col fuoco nel pannello della ricerca, sotto —, usciti da quello dei rimedi (che scende a circa 1,4 KB con gzip nella `v3.8.0`, ed è a circa 1,8 KB dalla `v3.8.1`), che lo
 chiede al primo tasto premuto: chi usa solo il mouse non lo scarica. I tasti premuti prima che arrivi non si perdono: il pezzo
-dei rimedi li tiene e glieli ripete quando arriva. Un Tab lo ferma quando un `Dialog` aperto, o un `DetailPanel` a tutta pagina
-sotto 720 px, trattiene il fuoco, perché il fuoco non ne esca prima del rimedio (arrivato il pezzo, ogni Tab porta il fuoco dove
-l'avrebbe portato il browser, o lo tiene nel dialogo; se nel frattempo il dialogo si è chiuso, il fuoco resta dov'è), e gli altri
-tasti premuti dopo quel Tab, finché il pezzo non arriva e il dialogo resta aperto, si fermano e si perdono: arriverebbero
+dei rimedi li tiene e glieli ripete quando arriva. Un Tab lo ferma quando un `DetailPanel` a tutta pagina sotto 720 px trattiene
+il fuoco (un `Dialog` aperto lo trattiene da sé, dalla `v4.23.0`), perché il fuoco non ne esca prima del rimedio (arrivato il
+pezzo, ogni Tab porta il fuoco dove l'avrebbe portato il browser, o lo tiene nel pannello; se nel frattempo il pannello si è
+chiuso, il fuoco resta dov'è), e gli altri tasti premuti dopo quel Tab, finché il pezzo non arriva e il pannello resta aperto, si fermano e si perdono: arriverebbero
 all'elemento da cui il Tab voleva uscire. Altrove il Tab resta del browser (dalla `v3.8.1`: nella `v3.8.0` si fermava in tutta la
 pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto premuto prima che arrivi
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
@@ -258,8 +258,12 @@ Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la c
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Dalla `v4.25.0` sono 40 byte in più, la misura più 20 (Decisione 22468): la prop `spazio` e la condizione che mette «Il mio
 spazio» nel selettore dei workspace; i due testi nelle tre lingue e il clic stanno nel pezzo degli avvisi.
+Dalla `v4.26.0` sono 206 byte in più, la misura più 20: il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
+trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Label` nelle tre lingue, il «+» che si chiude senza
+voci e l'Esc che non chiude anche il cassetto; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
+scende a 1.362 byte.
 Hanno
-un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.507 i rimedi, 1.797 la
+un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.362 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
@@ -474,6 +478,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.23.0` | la campanella del cliente (#3398): nella `CorniceDelCliente` il numero delle notifiche da cliente non lette (`non_lette` nei dati di `Cornice::datiDelCliente()`), l'elenco all'apertura con l'azienda sotto il titolo, il clic che le segna lette e apre la prenotazione in «Il mio spazio» (`https://app.zeiras.com/spazio/prenotazioni/<id>`), «Segna tutte come lette»; le rotte `cornice/cliente/notifiche` col gettone dell'accesso; i titoli dei quattro tipi da cliente di Bookings (`bookings.cliente.prenotazione.*`) nelle tre lingue e la loro riga nella voce `home` del registro. E il design system `ds-1793997272-d6e5`, la richiesta 84: in `KanbanColumn` una scheda per lista nel giro del Tab, ↑ ↓ Home Fine fra le schede, ← → alla lista accanto (`KanbanTexts.cardKeys`). Per la `Cornice` e la `CorniceDelloStaff` niente cambia | `composer update zeiras/zr-core`, poi la build | zr-home: la campanella apre `/spazio/prenotazioni/{id}` (zr-home #274), che deve esserci; un caso che conta le chiavi dei dati del cliente ne trova una in più, `non_lette`, e un caso che conta le rotte della cornice tre in più | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (con le notifiche da cliente; `?notifiche=0` senza) |
 | `v4.24.0` | `form-action` si allarga per una pagina sola: un insieme di `csp_pagine` chiesto con `perLaPagina` aggiunge origini https:// anche a `form-action` (zr-superadmin #2942, la pagina che consegna l'«Accedi come» col POST); in `zr-core.csp` resta scartata, e le altre pagine restano a `'self'`. zr-auth dalla 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST del pannello dello staff (Decisioni 22412 e 22413). Per una CSP che non scrive `form-action` in un insieme niente cambia | `composer update zeiras/zr-core zeiras/zr-auth`, prima che zr-superadmin passi al POST: un modulo con una zr-auth più vecchia non riceve più l'assistenza | un caso che prova il ritorno dell'«Accedi come» con un GET: dalla 0.12.141 è un POST con 303 | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (la CSP di tutti invariata) |
 | `v4.25.0` | «Il mio spazio» nella cornice dei membri (#3417, per zr-home #3416): con la prop facoltativa `spazio` (`{ href }`) di `Cornice` e di `LayoutDellaCornice` il selettore dei workspace ha in cima il gruppo «Come cliente» con «Il mio spazio», non attiva, che porta all'indirizzo (un clic semplice con `naviga`); i due testi nelle tre lingue arrivano col pezzo degli avvisi, che la cornice chiede solo con la prop. Senza `spazio` niente cambia | `composer update zeiras/zr-core`, poi la build; `spazio` lo passa chi sa che la persona è anche cliente di un'azienda con lo spazio acceso (in zr-home, `io.fornitori.elenca`) | niente: la prop è nuova e facoltativa | `scripts/uat-cornice.mjs` su `layout.html?spazio=1` (riga SP, in italiano, spagnolo e inglese), `layout.html`, `staff.html` e `cliente.html` |
+| `v4.26.0` | il design system del lotto 0522 (richieste 4, 16, 28, 58, 116, 136, 219): il `Dialog` prende il fuoco quando si apre (`data-autofocus`, o il primo elemento, o il dialogo), trattiene il Tab e alla chiusura rende il fuoco a chi lo aveva (o a `returnFocus`), anche fuori dalla cornice; `EmptyState` con `headingLevel` (2, 3 o 4); `Label` senza nome scrive il nome del suo colore, e i nomi dei colori di `Label` e `ColorPicker` seguono la lingua dell'app (`colorNames`); `Breadcrumb` senza voci non mostra niente; il «+» senza voci si chiude; col cassetto aperto un Esc già gestito o dato in un `<dialog>` modale non chiude anche il cassetto; il `Menu` aperto segue il suo pulsante quando la pagina scorre o la finestra cambia misura. I rimedi della cornice per il fuoco del `Dialog` (riga 4) e per l'Esc del cassetto (riga 136) sono tolti: un `<dialog>` del browser aperto senza `showModal()` non ferma più l'Esc del cassetto. Il modulo non deve fare niente. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1163,7 +1168,8 @@ cornice === null ? pagina : (
   fuoco nel campo della ricerca, che l'`AppShell` lasciava fuori, e il fuoco che era sulle sue voci torna ad «Apri il menu»
   (#2807): prima restava su una voce nascosta. Con un dialogo aperto, o un menu della barra (profilo, campanella, «+», Moduli)
   o il selettore aperti, Esc chiude prima quelli e il cassetto resta; dalla `v3.12.0` resta anche con un Esc dato in un `<dialog>`
-  del browser o già gestito dalla pagina (`preventDefault`): si chiude solo il dialogo (riga 136, #2826). Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
+  del browser o già gestito dalla pagina (`preventDefault`): si chiude solo il dialogo (riga 136, #2826). Dalla `v4.23.0` lo fa
+  l'`AppShell`, per un `<dialog>` aperto con `showModal()`. Aperto con Invio o con lo spazio, il fuoco va alla prima voce del cassetto (col mouse resta
   sul pulsante), anche quando Invio è il primo tasto della pagina (dalla `v4.13.2`, #3329), e finché è aperto il Tab gira fra le voci e «Apri il menu», che lo chiude; da fuori rientra sulla prima voce
   (#2806: prima il Tab usciva verso la ricerca); se la finestra si allarga a 1024 px o più col cassetto aperto, dove il pulsante non
   si vede, il Tab torna del browser. Il menu del profilo, il menu «+» e il pannello delle notifiche si chiudono

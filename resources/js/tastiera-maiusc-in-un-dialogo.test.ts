@@ -1,11 +1,14 @@
 import { expect, it, vi } from 'vitest';
 
-// v3.8.1 (seconda lettura della revisione 381, N7): Maiusc+Tab premuto prima che arrivi il pezzo di tastiera, con un dialogo
-// aperto e il fuoco su un elemento fuori dal giro nel mezzo del dialogo: arrivato il pezzo il fuoco va all'ultima fermata prima
+// v3.8.1 (seconda lettura della revisione 381, N7): Maiusc+Tab premuto prima che arrivi il pezzo di tastiera, con un pannello di dettaglio
+// aperto e il fuoco su un elemento fuori dal giro nel mezzo del pannello: arrivato il pezzo il fuoco va all'ultima fermata prima
 // di lui, come col browser, non alla prima della pagina né a quella dopo. In un file suo: il pezzo arriva una volta sola.
 
-it('Maiusc+Tab da un elemento fuori dal giro nel mezzo di un dialogo, prima del pezzo, porta il fuoco alla fermata prima di lui nel dialogo (v3.8.1, N7)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"><button id="fuori">Fuori</button><div class="zr-scrim"><div class="zr-dialog"><button id="prima">Prima</button><h2 id="titolo" tabindex="-1">Titolo</h2><button id="dopo">Dopo</button></div></div></div>';
+it('Maiusc+Tab da un elemento fuori dal giro nel mezzo di un pannello di dettaglio, prima del pezzo, porta il fuoco alla fermata prima di lui nel pannello (v3.8.1, N7)', async () => {
+    // Dal lotto 0522 (richiesta 4) il `Dialog` trattiene il Tab da sé: chi lo trattiene qui è il pannello di dettaglio, a tutta
+    // pagina sotto 720 px.
+    vi.stubGlobal('matchMedia', (domanda: string) => ({ matches: domanda === '(max-width: 720px)', addEventListener: () => {}, removeEventListener: () => {} }));
+    document.body.innerHTML = '<div class="zr-shell"><button id="fuori">Fuori</button><aside class="zr-detail"><button id="prima">Prima</button><h2 id="titolo" tabindex="-1">Titolo</h2><button id="dopo">Dopo</button></aside></div>';
     await import('./rimedi');
     document.getElementById('titolo')?.focus();
     const tasto = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });

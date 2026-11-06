@@ -201,9 +201,11 @@ describe('con un Dialog aperto il Toast sta dentro il dialogo, dove arrivano il 
         const annulla = document.querySelector<HTMLButtonElement>('.zr-toast-action')!;
         annulla.focus();
 
+        // Dal lotto 0522 (richiesta 4) il dialogo che si apre prende il fuoco: «Annulla» lo riprende dentro il dialogo.
         await act(async () => radice.render(<ConDialogo aperto />));
         expect(doveSta()).toBe(document.querySelector('.zr-dialog'));
         expect(document.querySelector('.zr-toast-action')).toBe(annulla);
+        annulla.focus();
         expect(document.activeElement).toBe(annulla);
 
         await act(async () => radice.render(<ConDialogo aperto={false} />));

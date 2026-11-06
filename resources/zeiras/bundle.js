@@ -120,11 +120,13 @@
   var TONES = ['pine', 'citrus', 'coral', 'sky', 'plum', 'neutral'];
   function Label(p) {
     var tone = TONES.indexOf(p.tone) >= 0 ? p.tone : 'neutral', vid = useId('lbl'), C = useLabels();
+    /* un'etichetta scelta senza nome scrive il nome del suo colore: la tinta da sola sta a 1,1-1,2:1 sul fondo, e il colore da solo non dice niente a chi non lo vede (richiesta 58) */
+    var text = p.children == null || p.children === '' || p.children === false ? Object.assign({}, COLOR_TEXTS[C.lang] || COLOR_TEXTS.it, p.colorNames)[tone] : p.children;
     /* variant="type": il tipo di una cosa (Storia, Bug…), a contorno col puntino del tono, da non confondere con le etichette scelte (richiesta 154) */
     if (p.variant === 'type') return h('span', { className: cx('zr-label', 'zr-label-type', p.wrap && 'is-wrap', p.className) }, h('span', { className: cx('zr-label-dot', 'is-' + tone), 'aria-hidden': true }), p.children);
     /* un'etichetta che si aggiunge («+») o si toglie («×»): il nome del pulsante dice anche quale, col testo dell'etichetta anche quando è un nodo (richiesta 143); wrap: una frase lunga va a capo (richiesta 161) */
     if (p.onAdd) return h('button', { type: 'button', className: cx('zr-label', 'zr-label-add', p.wrap && 'is-wrap', p.className), onClick: p.onAdd }, h(Icon, { name: 'plus', size: 14 }), h('span', { className: 'zr-visually-hidden' }, (p.addLabel || C.add) + ': '), p.children);
-    return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.wrap && 'is-wrap', p.onRemove && 'has-remove', p.className) }, p.onRemove ? h('span', { id: vid + '-t' }, p.children) : p.children,
+    return h('span', { className: cx('zr-label', 'zr-label-' + tone, p.wrap && 'is-wrap', p.onRemove && 'has-remove', p.className) }, p.onRemove ? h('span', { id: vid + '-t' }, text) : text,
       p.onRemove ? h('button', { type: 'button', className: 'zr-label-x', onClick: p.onRemove, 'aria-labelledby': vid + ' ' + vid + '-t' }, h('span', { id: vid, className: 'zr-visually-hidden' }, (p.removeLabel || C.remove) + ':'), h(Icon, { name: 'close', size: 12 })) : null);
   }
 
@@ -272,8 +274,12 @@
     var avatarRef = useRef(null), searchRef = useRef(null), inputRef = useRef(null), timer = useRef(null), mainRef = useRef(null);
     var ids = useRef(null); if (!ids.current) { uid += 1; ids.current = 'zr-shell-' + uid; }
     var sid = ids.current;
+    /* il menu «+» se ne va con le sue voci: create vuoto lo chiude, e non torna da solo quando le voci tornano (richiesta 28) */
+    var hasCreate = !!(p.create && p.create.length);
+    useEffect(function () { if (!hasCreate) setCreateAt(null); }, [hasCreate]);
 
-    useEffect(function () { if (!drawer) return; function k(e) { if (e.key === 'Escape' && !document.querySelector('.zr-scrim') && !pop) setDrawer(false); } document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, [drawer, pop]);
+    /* un Esc già gestito da altri, o dato con un <dialog> del browser aperto sopra, non chiude anche il cassetto (richiesta 136) */
+    useEffect(function () { if (!drawer) return; function k(e) { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.zr-scrim, dialog:modal') && !pop) setDrawer(false); } document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, [drawer, pop]);
     /* Ctrl+K / Cmd+K apre la ricerca da ogni pagina; con search={false} la ricerca non c'è e il tasto resta della pagina (richiesta 201) */
     var noSearch = p.search === false;
     useEffect(function () {
@@ -523,13 +529,13 @@
       h('a', { className: 'zr-btn zr-btn-secondary zr-btn-sm zr-skip', href: '#' + sid + '-main', onClick: skipToMain }, L.skipToContent),
       drawer ? h('div', { className: 'zr-side-scrim', 'aria-hidden': 'true', onClick: function () { setDrawer(false); setPop(null); } }) : null,
       h('aside', { className: cx('zr-side', drawer && 'is-open'), id: sid + '-side', 'aria-label': L.nav },
-        h('div', { className: cx('zr-brand', 'zr-brand-v2', p.create && 'has-create') },
+        h('div', { className: cx('zr-brand', 'zr-brand-v2', hasCreate && 'has-create') },
           h('div', { className: 'zr-brand-row' },
             h(Logo, { size: 24 }),
-            p.create && p.create.length ? h(Button, { variant: 'ghost', size: 'sm', icon: 'plus', className: 'zr-create', 'aria-label': p.createLabel || L.create, 'aria-haspopup': 'menu', 'aria-expanded': createAt ? 'true' : 'false',
+            hasCreate ? h(Button, { variant: 'ghost', size: 'sm', icon: 'plus', className: 'zr-create', 'aria-label': p.createLabel || L.create, 'aria-haspopup': 'menu', 'aria-expanded': createAt ? 'true' : 'false',
               onClick: function (e) { setCreateAt(createAt ? null : e.currentTarget); } }) : null),
           wsSwitch),
-        createAt ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
+        createAt && hasCreate ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
         h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-hidden': behind ? 'true' : undefined },
           groups.map(function (g) {
@@ -902,7 +908,9 @@
 
   /* ---------- Breadcrumb: percorso delle pagine pubbliche ---------- */
   function Breadcrumb(p) {
-    var items = p.items || [{ label: 'Zeiras', href: '/it/' }, { label: 'Settori', href: '/it/settori/' }, { label: 'Palestre e personal trainer' }];
+    /* senza items non c'è percorso: niente voci d'esempio, che una pagina senza percorso suo mostrerebbe come vere (richiesta 116) */
+    var items = p.items || [];
+    if (!items.length) return null;
     return h('nav', { className: cx('zr-breadcrumb', p.className), 'aria-label': p.label || 'Percorso' },
       h('ol', null, items.map(function (it, i) {
         var last = i === items.length - 1;
@@ -1391,10 +1399,13 @@
 
   /* ---------- ColorPicker: il colore di un'opzione o di un workspace, fra i toni (richiesta 104) ---------- */
   var COLOR_NAMES = { pine: 'Verde', citrus: 'Giallo', coral: 'Rosso', sky: 'Blu', plum: 'Viola', neutral: 'Grigio' };
+  var COLOR_TEXTS = { it: COLOR_NAMES, /* nella lingua dell'app, come i testi comuni (richiesta 58) */
+    en: { pine: 'Green', citrus: 'Yellow', coral: 'Red', sky: 'Blue', plum: 'Purple', neutral: 'Grey' },
+    es: { pine: 'Verde', citrus: 'Amarillo', coral: 'Rojo', sky: 'Azul', plum: 'Morado', neutral: 'Gris' } };
   function ColorPicker(p) {
     var id = useId('clr');
     var tones = (p.tones || ['pine', 'citrus', 'coral', 'sky', 'plum']).filter(function (t) { return TONES.indexOf(t) >= 0; });
-    var names = Object.assign({}, COLOR_NAMES, p.names);
+    var names = useCompLabels(COLOR_TEXTS, p.names);
     var ctrl = p.value !== undefined;
     var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
@@ -1845,16 +1856,46 @@
   }
 
   function Dialog(p) {
-    var id = useId('dlg'), C = useLabels();
+    var id = useId('dlg'), C = useLabels(), ref = useRef(null), last = useRef(p); last.current = p;
     useEffect(function () {
       if (!p.open) return;
       function k(e) { if (e.key === 'Escape' && p.onClose) p.onClose(); }
       document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); };
     }, [p.open]);
+    /* il fuoco entra all'apertura e torna a chi lo aveva alla chiusura (richiesta 4): a [data-autofocus], o al primo elemento che lo prende
+       (la «×» Chiudi), o al dialogo stesso se non ha niente; il fuoco già dentro (autoFocus di React, o il modulo) resta dov'è. L'anteprima (inline) non lo tocca */
+    var inline = !!p.inline, from = useRef(null);
+    if (!p.open) from.current = null; else if (!from.current) from.current = { el: typeof document !== 'undefined' ? document.activeElement : null }; /* chi aveva il fuoco prima che un autoFocus del contenuto lo prenda */
+    useEffect(function () {
+      if (!p.open || inline || !ref.current) return;
+      var box = ref.current, origin = from.current && from.current.el;
+      if (!origin || !document.contains(origin)) origin = box.contains(document.activeElement) ? null : document.activeElement; /* un dialogo che ne sostituisce un altro: il pulsante di quello è uscito, e il fuoco è già tornato alla pagina */
+      if (!box.contains(document.activeElement)) {
+        var t = box.querySelector('[data-autofocus]') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
+        try { t.focus({ preventScroll: true }); } catch (e) {}
+      }
+      return function () {
+        if (document.contains(box)) return; /* il dialogo è ancora nella pagina (il doppio effetto di StrictMode): niente da rendere */
+        var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf, back = target || origin;
+        var a = document.activeElement; /* a chi ha preso il fuoco nel frattempo, fuori dal dialogo, non si toglie */
+        if (back && back !== document.body && document.contains(back) && back.focus && (!a || a === document.body || box.contains(a) || !document.contains(a))) try { back.focus({ preventScroll: true }); } catch (e) {}
+      };
+    }, [p.open, inline]);
+    /* il Tab resta dentro: dall'ultimo elemento torna al primo, e da Maiusc+Tab sul primo all'ultimo (richiesta 4) */
+    function trap(e) {
+      if (e.key !== 'Tab' || inline || e.defaultPrevented || !ref.current || !ref.current.contains(e.target)) return;
+      var box = ref.current, els = Array.prototype.filter.call(box.querySelectorAll(FOCUSABLE), function (el) {
+        if (el.type === 'radio' && el.name && !el.checked && Array.prototype.some.call(box.querySelectorAll('input[type="radio"]'), function (o) { return o.name === el.name && o.checked; })) return false; /* di un gruppo di radio con una scelta il Tab si ferma solo sulla scelta */
+        return el.getClientRects().length > 0; });
+      if (!els.length) { e.preventDefault(); box.focus(); return; }
+      var first = els[0], lastEl = els[els.length - 1], a = document.activeElement, inLast = a === lastEl || (lastEl.type === 'radio' && a.type === 'radio' && a.name === lastEl.name), inFirst = a === first || (first.type === 'radio' && a.type === 'radio' && a.name === first.name);
+      if (e.shiftKey && (inFirst || a === box)) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && inLast) { e.preventDefault(); first.focus(); }
+    }
     if (!p.open) return null;
     /* size="sm": una domanda sì/no resta piccola e al centro anche al telefono (richiesta 53) */
     return h('div', { className: cx('zr-scrim', p.inline && 'is-inline', p.size === 'sm' && 'is-compact'), onMouseDown: function (e) { if (e.target === e.currentTarget && p.onClose) p.onClose(); } },
-      h('div', { className: cx('zr-dialog', p.size === 'lg' && 'is-lg', p.size === 'sm' && 'is-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id },
+      h('div', { ref: ref, tabIndex: -1, className: cx('zr-dialog', p.size === 'lg' && 'is-lg', p.size === 'sm' && 'is-sm'), role: 'dialog', 'aria-modal': true, 'aria-labelledby': id, onKeyDown: trap },
         h('header', { className: 'zr-dialog-head' }, h('h2', { id: id }, p.title), p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }) : null),
         p.description ? h('p', { className: 'zr-dialog-desc' }, p.description) : null,
         h('div', { className: 'zr-dialog-body' }, p.children),
@@ -1864,7 +1905,7 @@
   function EmptyState(p) {
     return h('div', { className: cx('zr-empty', p.compact && 'is-compact') },
       h('span', { className: cx('zr-iconbox', 'zr-label-' + (p.tone || 'pine')) }, h(Icon, { name: p.icon || 'folder', size: 22 })),
-      h('h3', null, p.title),
+      h(p.headingLevel === 2 ? 'h2' : p.headingLevel === 4 ? 'h4' : 'h3', { className: 'zr-empty-title' }, p.title), /* il livello del titolo lo dice la pagina: h3 se non lo dice (richiesta 16) */
       p.text ? h('p', null, p.text) : null,
       p.action || null);
   }
@@ -2639,15 +2680,25 @@
       var first = ref.current && (ref.current.querySelector('[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])') || ref.current.querySelector('[role^="menuitem"]:not(:disabled)')); if (first) try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); }
       return function () { clearTimeout(t); document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key, true); };
     }, []);
+    /* aperto, segue il pulsante quando la pagina (o un contenitore) scorre e quando la finestra cambia misura: si rimisura a ogni fotogramma che ne ha uno (richiesta 219) */
+    var follow = useState(0)[1];
+    React.useEffect(function () {
+      if (p.inline) return;
+      var raf = 0;
+      function f(e) { if (e && e.type === 'scroll' && ref.current && e.target instanceof Node && ref.current.contains(e.target)) return; if (!raf) raf = requestAnimationFrame(function () { raf = 0; follow(function (n) { return n + 1; }); }); }
+      window.addEventListener('resize', f); document.addEventListener('scroll', f, true);
+      return function () { window.removeEventListener('resize', f); document.removeEventListener('scroll', f, true); if (raf) cancelAnimationFrame(raf); };
+    }, [p.inline]);
     var items = p.items || [];
-    var r = p.anchor && p.anchor.getBoundingClientRect ? p.anchor.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 };
+    function anchorRect() { return p.anchor && p.anchor.getBoundingClientRect ? p.anchor.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 }; }
+    var r = anchorRect();
     var W = 240, vw = window.innerWidth || 1024, vh = window.innerHeight || 768;
     var left = Math.max(8, Math.min(p.align === 'end' ? r.right - W : r.left, vw - W - 8));
     var top = r.bottom + 6;
     /* il fuoco torna a returnFocus se è nella pagina (richiesta 217, come DetailPanel), altrimenti al pulsante che ha aperto il menu */
     function back() { var q = last.current, rf = q.returnFocus, t = rf && rf.current !== undefined ? rf.current : rf; if (!(t && t.focus && document.contains(t))) t = q.anchor; if (t && t.focus && document.contains(t)) t.focus(); }
     /* misurato (le righe del perché, richiesta 83; la testa): sotto se ci sta, altrimenti sopra se ci sta, altrimenti dal lato con più spazio, alto quanto quel lato e con lo scroll; dentro la finestra a 8 px dai bordi, anche col pulsante fuori vista o una voce lunga (richiesta 216) */
-    React.useLayoutEffect(function () { var m = ref.current; if (p.inline || !m) return; var st = m.scrollTop, cs = getComputedStyle(m); m.style.maxHeight = ''; m.style.overflowY = ''; m.style.maxWidth = ''; m.style.left = '0px'; /* misurato a sinistra: la larghezza non dipende da dov'era */
+    React.useLayoutEffect(function () { var m = ref.current; if (p.inline || !m || (p.anchor && !document.contains(p.anchor))) return; r = anchorRect(); /* un pulsante uscito dalla pagina non sposta il menu */ vw = window.innerWidth || 1024; vh = window.innerHeight || 768; /* misurato dopo il commit: un pulsante spostato nello stesso disegno porta il menu con sé (richiesta 219) */ var st = m.scrollTop, cs = getComputedStyle(m); m.style.maxHeight = ''; m.style.overflowY = ''; m.style.maxWidth = ''; m.style.left = '0px'; /* misurato a sinistra: la larghezza non dipende da dov'era */
       var b = m.getBoundingClientRect(); if (b.width > vw - 16) { m.style.maxWidth = Math.max(vw - 16 - (b.width - parseFloat(cs.width)), 0) + 'px'; b = m.getBoundingClientRect(); } /* il max-width del CSS non conta padding e bordo */
       var hgt = b.height, lo = Math.max(8, r.bottom + 6), hi = Math.min(vh - 8, r.top - 6), below = vh - 8 - lo, above = hi - 8;
       if (hgt <= below) m.style.top = lo + 'px';
