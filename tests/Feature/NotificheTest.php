@@ -58,6 +58,8 @@ const SENZA_ID = ['ids' => []];
  */
 const UNA_SOLA_AZIONE = ['azioni' => 1, 'board_nome' => null];
 const SENZA_DATA = ['quando' => null];
+/** L'esito di una notifica che non lo ha (sprint 114 · T1, voce #3302): nella risposta sta dopo `quando` e prima di `ids`. */
+const SENZA_ESITO = ['esito' => null];
 
 /**
  * Una notifica come la dava /v1 prima del #1670 (schema Notifica, senza `autore`, `risorsa_nome` e `per_me`): tipo, soggetto e
@@ -226,9 +228,9 @@ it('GET /cornice/notifiche dà la prima pagina delle notifiche del workspace del
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T01:15:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
     expect($risposta->json('data.*.id'))->toBe(['uat-n3', 'uat-n2', 'uat-n1']);
     // Una richiesta sola e senza parametri: la prima pagina, e il cursore non si segue.
@@ -600,7 +602,7 @@ it('aggiornati_il di GET /cornice/notifiche è l\'istante in cui la parte server
     });
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson([
-        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID],
+        'data' => [['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID],
         'aggiornati_il' => '2026-10-10T01:15:07.000321Z',
         'workspace' => 'uat-marketing',
         'persona' => 'uat-ada@example.com',
@@ -712,9 +714,9 @@ it('GET /cornice/notifiche dà di ogni notifica anche il tipo, quello del backof
     ], 'successivo' => null])]);
 
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
+        ['id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.scheda.eliminata'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n2', 'creata_il' => '2026-10-07T09:02:00.123Z', 'letta' => true, 'app' => 'uat-ignota', 'tipo' => 'com.zeiras.UAT.Tipo ignoto.v2'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z', 'letta' => false, 'app' => null, 'tipo' => 'com.zeiras.workspace.membro.creato'] + SENZA_CHI_E_COSA + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-10T05:20:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     // Dell'evento esce il tipo; di `dati`, in `ids`, i soli id che servono ad aprire la risorsa (sprint 21 · T3.5), e queste non
@@ -1333,16 +1335,16 @@ it('GET /cornice/notifiche dà di ogni notifica undici chiavi: le cinque di prim
 
     $diPrima = ['creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata'];
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->assertExactJson(['data' => [
-        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
-        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID,
+        ['id' => 'uat-n5'] + $diPrima + ['autore_nome' => 'UAT Bruno', 'risorsa_nome' => 'UAT Clienti', 'per_me' => true] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n4'] + $diPrima + ['autore_nome' => 'UAT Marta Rossi', 'risorsa_nome' => null, 'per_me' => false] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n3'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => 'UAT Lancio Q4', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n2'] + $diPrima + ['autore_nome' => 'UAT Ada', 'risorsa_nome' => 'pm', 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
+        ['id' => 'uat-n1', 'creata_il' => '2026-10-07T09:01:00.123Z'] + $diPrima + ['autore_nome' => null, 'risorsa_nome' => null, 'per_me' => null] + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID,
     ], 'aggiornati_il' => '2026-10-11T06:40:07.000321Z', 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
     // Le stesse undici chiavi per ogni notifica, anche quando valgono null: mai una chiave in meno, mai `autore` com'è.
     foreach ($risposta->json('data') as $notifica) {
-        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
     }
     // `false` e null non sono la stessa cosa: «non è per te» e «non si sa».
     expect($risposta->json('data.1.per_me'))->toBeFalse()->and($risposta->json('data.2.per_me'))->toBeNull();
@@ -1373,7 +1375,7 @@ it('una notifica a cui manca una sola delle tre chiavi non è un guasto: quella 
 
     expect($risposta->json('data.0'))->toBe([
         'id' => 'uat-n3', 'creata_il' => '2026-10-07T09:03:00.123Z', 'letta' => false, 'app' => 'pm', 'tipo' => 'com.zeiras.board.cartella.creata',
-    ] + $attesa + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ID);
+    ] + $attesa + UNA_SOLA_AZIONE + SENZA_DATA + SENZA_ESITO + SENZA_ID);
 })->with([
     'senza autore' => ['autore', 'autore_nome'],
     'senza risorsa_nome' => ['risorsa_nome', 'risorsa_nome'],
@@ -1441,7 +1443,7 @@ it('GET /cornice/notifiche dà in creata_il l\'istante dell\'ultima azione di un
         'uat-n3' => '2026-10-12T08:58:00.456Z', 'uat-n2' => '2026-10-12T08:50:00.000Z', 'uat-n1' => '2026-10-12T08:40:00.789Z',
     ]);
     foreach ($risposta->json('data') as $notifica) {
-        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
     }
     // «Segna tutte come lette» arriva all'istante più avanti fra quelli in pagina: non sta prima della nascita di nessuna.
     $finoA = max(array_map(fn (array $notifica): int => Carbon::parse($notifica['creata_il'])->getTimestampMs(), $risposta->json('data')));
@@ -1479,7 +1481,7 @@ it('senza `ultima_azione_il`, o con null, la notifica non è rifiutata e creata_
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
 
     expect($risposta->json('data.0.creata_il'))->toBe('2026-10-12T08:00:00.123Z')
-        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
 })->with([
     'il backoffice di prima: la chiave non c\'è' => [array_diff_key(notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', null), ['ultima_azione_il' => true, 'azioni' => true, 'board' => true])],
     'la chiave c\'è e vale null' => [notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', null)],
@@ -1539,7 +1541,7 @@ it('GET /cornice/notifiche dà il conto delle azioni e il nome della board; senz
 
     expect($risposta->json('data.0.azioni'))->toBe($azioni)
         ->and($risposta->json('data.0.board_nome'))->toBe($boardNome)
-        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
 })->with([
     'tre azioni in una board' => [notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', '2026-10-12T08:58:00.456Z', 3), 3, 'UAT Lancio accorpato'],
     'una sola azione in una board' => [notificaAccorpata('uat-n3', '2026-10-12T08:00:00.123Z', '2026-10-12T08:00:00.123Z', 1), 1, 'UAT Lancio accorpato'],
@@ -1762,7 +1764,7 @@ it('GET /cornice/notifiche dà, di `dati`, i soli id che servono ad aprire la ri
     ]);
     // `ids` è la nona chiave di ogni notifica, dopo le otto di prima.
     foreach ($risposta->json('data') as $notifica) {
-        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        expect(array_keys($notifica))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
     }
     // Degli id che il percorso non chiede, del resto di `dati` e del soggetto (`/v1/board/cartelle/uat-cartella-…`), né la chiave
     // né il valore.
@@ -2665,7 +2667,7 @@ it('GET /cornice/notifiche passa `quando` alla pagina com\'è nella forma concor
     $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
 
     expect($risposta->json('data.0.quando'))->toBe($quando)
-        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'ids']);
+        ->and(array_keys($risposta->json('data.0')))->toBe(['id', 'creata_il', 'letta', 'app', 'tipo', 'autore_nome', 'risorsa_nome', 'per_me', 'azioni', 'board_nome', 'quando', 'esito', 'ids']);
 })->with([
     'Roma' => [['il' => '2026-11-04T09:00:00Z', 'fuso' => 'Europe/Rome']],
     'coi millesimi' => [['il' => '2026-11-04T09:00:00.123Z', 'fuso' => 'America/Argentina/Buenos_Aires']],
@@ -2711,6 +2713,56 @@ it('un backoffice di prima non manda `quando`, e la pagina ha `quando` null (spr
     Http::fake(['*' => Http::response(['data' => [notificaConChiECosa('uat-n3', ['nome' => 'UAT Bruno'], 'UAT Clienti', true)], 'successivo' => null])]);
 
     expect(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.0'))->toHaveKey('quando', null);
+});
+
+// Sprint 114 · T1 (voce #3302). Di un Gate deciso il backoffice dice com'è stato deciso: `esito` in `dati` di `board.gate.deciso`
+// (`{id, board_id, esito}`, senza il motivo). La parte server lo passa alla pagina, in `esito`, accanto agli id e dopo `quando`,
+// solo come un testo di lettere minuscole e `_`, da 1 a 40: è un pezzo della chiave di una frase, nel browser. Ogni altra forma, o
+// l'esito che manca, è null, e la notifica passa lo stesso. Del resto di `dati` non passa niente.
+
+it('GET /cornice/notifiche passa l\'esito di un Gate deciso, dopo `quando` e prima di `ids`, e niente altro dei `dati` (sprint 114 · T1.1)', function (string $esito) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', ['id' => 'uat-gate-1', 'board_id' => 'uat-board-1', 'esito' => $esito, 'motivo' => 'uat-motivo-segreto'], 'board.gate.deciso', 'pm')], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect($risposta->json('data.0.esito'))->toBe($esito)
+        ->and(array_slice(array_keys($risposta->json('data.0')), -3))->toBe(['quando', 'esito', 'ids'])
+        ->and(substr_count((string) $risposta->getContent(), 'uat-motivo-segreto'))->toBe(0)
+        ->and(substr_count((string) $risposta->getContent(), 'uat-board-1'))->toBe(0);
+})->with(['approvato', 'con_prescrizioni', 'respinto', 'uat_di_domani']);
+
+it('GET /cornice/notifiche dà `esito` null per un esito fuori forma, o che manca, e la notifica passa lo stesso (sprint 114 · T1.2)', function (mixed $dati) {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, 'board.gate.deciso', 'pm')], 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+
+    expect($risposta->json('data.0.id'))->toBe('uat-n3')
+        ->and(array_key_exists('esito', $risposta->json('data.0')))->toBe(true)
+        ->and($risposta->json('data.0.esito'))->toBeNull()
+        ->and(substr_count((string) $risposta->getContent(), 'uat_fuori'))->toBe(0);
+})->with([
+    'vuoto' => [['id' => 'uat-gate-1', 'esito' => '']],
+    'con un punto' => [['id' => 'uat-gate-1', 'esito' => 'uat_fuori.approvato']],
+    'con le maiuscole' => [['id' => 'uat-gate-1', 'esito' => 'UAT_FUORI']],
+    'con uno spazio' => [['id' => 'uat-gate-1', 'esito' => 'uat_fuori x']],
+    'con un a capo in fondo' => [['id' => 'uat-gate-1', 'esito' => "uat_fuori\n"]],
+    'con le cifre' => [['id' => 'uat-gate-1', 'esito' => 'uat_fuori_2']],
+    'lungo 41 caratteri' => [['id' => 'uat-gate-1', 'esito' => 'uat_fuori'.str_repeat('a', 32)]],
+    'un numero' => [['id' => 'uat-gate-1', 'esito' => 2]],
+    'una lista' => [['id' => 'uat-gate-1', 'esito' => ['uat_fuori']]],
+    'null' => [['id' => 'uat-gate-1', 'esito' => null]],
+    'senza `esito`' => [['id' => 'uat-gate-1', 'board_id' => 'uat-board-1']],
+    'senza `dati`' => [null],
+    '`dati` un testo' => ['uat_fuori'],
+]);
+
+it('l\'esito più lungo che passa ha 40 caratteri (sprint 114 · T1.2)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', ['id' => 'uat-gate-1', 'esito' => str_repeat('a', 40)], 'board.gate.deciso', 'pm')], 'successivo' => null])]);
+
+    expect(senzaGettone($this->getJson('cornice/notifiche'))->assertOk()->json('data.0.esito'))->toBe(str_repeat('a', 40));
 });
 
 // Sprint 26 · T3 (lettura della PR #56, N6). Il registro lo legge una classe sola, `Registro`, e la copia che tiene è una per

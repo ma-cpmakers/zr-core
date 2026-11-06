@@ -103,6 +103,12 @@ export type FrasiDelleNotifiche = {
     /** La stessa frase senza il nome della cosa, col solo `{who}`: per quando il nome non c'è, o per un tipo di cui il backoffice non dà il nome. La ha ogni tipo che ha il titolo, fuori dai tre di Bookings, che non dicono mai chi (dalla `v3.6.0`). */
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
     /**
+     * Il titolo di una notifica di quel tipo con l'esito della cosa (dalla `v4.16.0`): `notificationTitleOutcome.<tipo>.<esito>`
+     * (`notificationTitleOutcome.board.gate.deciso.respinto`). La ha chi ha anche il titolo del tipo, e solo un tipo senza le frasi
+     * con chi, che cosa o la data: è l'ultimo ripiego del titolo (`rigaConLeFrasi`).
+     */
+    [conEsito: `notificationTitleOutcome.${string}`]: string | undefined;
+    /**
      * La riga sotto il titolo quando lì non c'è il nome della cosa: quante azioni la notifica racconta e in quale board sta la
      * cosa (`notificationUnder.countBoard`, con `{n}` e `{board}`), il solo conto (`notificationUnder.count`), la sola board
      * (`notificationUnder.board`).

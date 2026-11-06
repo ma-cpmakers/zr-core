@@ -443,6 +443,71 @@ describe('le lingue della cornice', () => {
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });
 
+    // Sprint 114 · T2 (voce #3302): dalla v4.16.0 il titolo del Gate dice com'è stato deciso, dall'esito che la parte server passa
+    // (`esito`) o, in una pagina che legge le notifiche dal backoffice, da `dati.esito`. Le parole sono quelle di zr-board (`gate.esito.*`).
+    const DEL_GATE: Record<'it' | 'en' | 'es', [esito: string, titolo: string][]> = {
+        it: [['approvato', 'Gate approvato'], ['con_prescrizioni', 'Gate approvato con prescrizioni'], ['respinto', 'Gate respinto']],
+        es: [['approvato', 'Gate aprobado'], ['con_prescrizioni', 'Gate aprobado con prescripciones'], ['respinto', 'Gate rechazado']],
+        en: [['approvato', 'Gate approved'], ['con_prescrizioni', 'Gate approved with prescriptions'], ['respinto', 'Gate rejected']],
+    };
+    const frasiDellaLingua = { it: frasiItaliane, es: frasiSpagnole, en: frasiInglesi } as Record<'it' | 'en' | 'es', FrasiDelleNotifiche>;
+
+    it.each(['it', 'es', 'en'] as const)('con la lingua "%s" nel pannello il Gate deciso ha il titolo del suo esito: approvato, con prescrizioni, respinto (sprint 114 · T2.1)', (lingua) => {
+        const titoli = DEL_GATE[lingua].map(([esito]) => rigaConLeFrasi(frasiDellaLingua[lingua], { tipo: 'board.gate.deciso', esito, autore_nome: 'Giulia Bianchi', risorsa_nome: 'Lancio corso' }, lingua).titolo);
+
+        expect(titoli).toStrictEqual(DEL_GATE[lingua].map(([, titolo]) => titolo));
+        expect(new Set(titoli).size).toBe(3);
+    });
+
+    it.each(['it', 'es', 'en'] as const)('con la lingua "%s" il Gate senza esito, con un esito che zr-core non ha o che non è un testo, ha il titolo di prima; un esito non cambia il titolo di un altro tipo (sprint 114 · T2.2)', (lingua) => {
+        const diPrima = frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso'];
+        // Un esito che non è un testo lo ferma chi chiama (la parte server, `./frasi`): T2.3.
+        const esiti: unknown[] = [undefined, null, '', 'in_approvazione', 'in_preparazione', 'uat_ignoto', 'APPROVATO', 'approvato.poi', 42, { esito: 'approvato' }];
+
+        expect(diPrima).toBeTruthy();
+        expect(esiti.map((esito) => rigaConLeFrasi(frasiDellaLingua[lingua], { tipo: 'board.gate.deciso', esito }, lingua).titolo)).toStrictEqual(esiti.map(() => diPrima));
+        expect(rigaConLeFrasi(frasiDellaLingua[lingua], { tipo: 'board.todo.promemoria', esito: 'approvato' }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.todo.promemoria']);
+        expect(rigaConLeFrasi(frasiDellaLingua[lingua], { tipo: 'com.zeiras.uat.ignoto', esito: 'approvato' }, lingua).titolo).toBe(diRipiego[lingua]);
+        // Una frase per esito vuota non è un titolo: resta quello del tipo.
+        expect(rigaConLeFrasi({ 'notificationTitle.uat.tipo': 'UAT titolo', 'notificationTitleOutcome.uat.tipo.si': '' }, { tipo: 'uat.tipo', esito: 'si' }, lingua).titolo).toBe('UAT titolo');
+    });
+
+    it.each(['it', 'es', 'en'] as const)('con la lingua "%s" rigaDellaNotifica e titoloDellaNotifica, per le pagine, danno il titolo dell\'esito, da `esito` o da `dati.esito` (sprint 114 · T2.3)', async (lingua) => {
+        const { rigaDellaNotifica, titoloDellaNotifica } = await import('./frasi');
+
+        for (const [esito, titolo] of DEL_GATE[lingua]) {
+            expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: { id: 'uat-gate-1', board_id: 'uat-board-1', esito } }, lingua).titolo).toBe(titolo);
+            expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', esito }, lingua).titolo).toBe(titolo);
+            expect(titoloDellaNotifica('board.gate.deciso', lingua, esito)).toBe(titolo);
+        }
+        expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: null }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
+        expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: 'respinto' }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
+        // Un esito col punto non si incastra col tipo: `board.gate` col suo «deciso.approvato» resta un tipo che zr-core non ha.
+        expect(rigaDellaNotifica({ tipo: 'board.gate', dati: { esito: 'deciso.approvato' } }, lingua).titolo).toBe(diRipiego[lingua]);
+        expect(titoloDellaNotifica('board.gate', lingua, 'deciso.approvato')).toBe(diRipiego[lingua]);
+        for (const fuori of [['respinto'], { toString: () => 'respinto' }, 42, 'RESPINTO', 'respinto\n', 'a'.repeat(41)]) {
+            expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', esito: fuori }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
+            expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: { esito: fuori } }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
+            expect(titoloDellaNotifica('board.gate.deciso', lingua, fuori)).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
+        }
+    });
+
+    it('ogni titolo per esito (`notificationTitleOutcome.<tipo>.<esito>`) è di un tipo che ha il suo titolo, e le tre lingue hanno gli stessi (sprint 114 · T2.4)', () => {
+        const perEsito = (frasi: object) => Object.keys(frasi).filter((chiave) => chiave.startsWith('notificationTitleOutcome.')).sort();
+
+        expect(perEsito(frasiItaliane)).toStrictEqual(['notificationTitleOutcome.board.gate.deciso.approvato', 'notificationTitleOutcome.board.gate.deciso.con_prescrizioni', 'notificationTitleOutcome.board.gate.deciso.respinto']);
+        expect(perEsito(frasiSpagnole)).toStrictEqual(perEsito(frasiItaliane));
+        expect(perEsito(frasiInglesi)).toStrictEqual(perEsito(frasiItaliane));
+        for (const frasi of [frasiItaliane, frasiSpagnole, frasiInglesi] as FrasiDelleNotifiche[]) {
+            for (const chiave of perEsito(frasi)) {
+                const tipo = chiave.slice('notificationTitleOutcome.'.length).replace(/\.[a-z_]+$/, '');
+                expect([chiave, typeof frasi[`notificationTitle.${tipo}`], typeof frasi[chiave as `notificationTitleOutcome.${string}`]]).toStrictEqual([chiave, 'string', 'string']);
+                // Il titolo per esito è l'ultimo ripiego (`rigaConLeFrasi`): un tipo con le frasi con chi, che cosa o la data non lo userebbe mai.
+                expect([chiave, ...['Who', 'WhoWhat', 'When', 'WhatWhen'].map((famiglia) => frasi[`notificationTitle${famiglia}.${tipo}` as `notificationTitleWho.${string}`])]).toStrictEqual([chiave, undefined, undefined, undefined, undefined]);
+            }
+        }
+    });
+
     it.each(['it', 'es', 'en'] as const)('con la lingua "%s", titoloDellaNotifica dà il titolo di ripiego a un tipo che zr-core non conosce, vuoto, mancante o che non è un testo: mai il codice del tipo, mai un testo vuoto (sprint 16 · T5.2)', async (lingua) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const tipi: unknown[] = [
@@ -1152,7 +1217,8 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('il titolo di ripiego è fra i testi della cornice e non fra le frasi; fra i testi non c\'è nessuna frase (T1.9)', () => {
-        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?|WhatWhen|When)?|Under)\../.test(chiave);
+        // Dalla v4.16.0 (sprint 114 · T2.4) anche i titoli per esito, `notificationTitleOutcome.`.
+        const eUnaFrase = (chiave: string) => /^notification(Title(Who(What)?|WhatWhen|When|Outcome)?|Under)\../.test(chiave);
 
         for (const [testiDelFile, frasiDelFile] of [[italiano, frasiItaliane], [spagnolo, frasiSpagnole], [inglese, frasiInglesi]] as const) {
             expect(typeof testiDelFile.notificationTitle).toBe('string');

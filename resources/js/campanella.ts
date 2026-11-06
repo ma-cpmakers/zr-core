@@ -162,10 +162,13 @@ export const { pronte: frasiPronte, carica: caricaFrasi } = frasiARichiesta(
 /**
  * Il titolo di una notifica in una lingua, con le frasi di quella lingua: quello del suo tipo (`notificationTitle.<tipo>`).
  * Quali tipi zr-core conosce lo dicono le lingue, non il codice: un tipo che non hanno — nuovo nel contratto, vuoto, mancante,
- * o che non è un testo — ha il titolo di ripiego, che è un testo della cornice, e il codice del tipo non si mostra mai.
+ * o che non è un testo — ha il titolo di ripiego, che è un testo della cornice, e il codice del tipo non si mostra mai. Dalla
+ * `v4.16.0`, con l'esito della cosa (`esito`, un Gate approvato o respinto), il titolo di quell'esito
+ * (`notificationTitleOutcome.<tipo>.<esito>`) quando le lingue lo hanno; un esito che non hanno lascia quello del tipo.
+ * Che sia un testo lo dicono la parte server (`NotificheDellaCornice`) e, per le pagine, `./frasi`: qui non si guarda.
  */
-export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, lingua: string): string {
-    const delTipo = typeof tipo === 'string' ? frasi[`notificationTitle.${tipo}`] : undefined;
+export function titoloConLeFrasi(frasi: FrasiDelleNotifiche, tipo: unknown, lingua: string, esito?: unknown): string {
+    const delTipo = typeof tipo === 'string' ? frasi[`notificationTitleOutcome.${tipo}.${esito}`] || frasi[`notificationTitle.${tipo}`] : undefined;
 
     return typeof delTipo === 'string' && delTipo ? delTipo : testi(lingua).notificationTitle;
 }
@@ -229,14 +232,15 @@ function dataDi(quando: any, lingua: string, forma: Intl.DateTimeFormatOptions):
  * hanno chi — ha, col nome della cosa, la frase con che cosa e la data (`notificationTitleWhatWhen.<tipo>`: il solo giorno al
  * posto di `{date}`, il giorno e l'ora al posto di `{when}`), e senza il nome della cosa quella con la sola data
  * (`notificationTitleWhen.<tipo>`), che si prova prima di quella con solo chi: con la data, il titolo non dice chi.
- * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, e sotto
+ * In ogni altro caso — senza chi, o per un tipo che zr-core non conosce — è la riga di prima: `titoloConLeFrasi`, con l'esito della
+ * notifica (`esito`, dalla `v4.16.0`), e sotto
  * `risorsaDellaNotifica`. Quando sotto il titolo non c'è il nome della cosa — è nel titolo, o manca — la riga di sotto dice
  * quante azioni la notifica racconta e in quale board sta la cosa (`contoEBoard`), se c'è qualcosa da dire. I due nomi sono puliti (`nomePulito`) dovunque stiano, anche nella riga di sotto, e nella frase sono
  * isolati (`fraseConINomi`); quello di chi ha fatto, nel titolo, è al più di 60 caratteri (`nomeNelTitolo`). È la funzione del
  * pannello delle notifiche della cornice: `rigaDellaNotifica` (`./frasi`) dà gli stessi testi a chi mostra le notifiche in una
  * pagina sua.
  */
-export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown; quando?: any }, lingua: string): { titolo: string; sotto?: string } {
+export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown; quando?: any; esito?: unknown }, lingua: string): { titolo: string; sotto?: string } {
     const cosa = risorsaDellaNotifica(notifica, lingua);
     // Le frasi sono di un tipo che è un testo: senza, chi ha fatto non entra nel titolo.
     const chi = typeof notifica.tipo === 'string' ? nomeNelTitolo(nomePulito(notifica.autore_nome)) : undefined;
@@ -244,7 +248,7 @@ export function rigaConLeFrasi(frasi: FrasiDelleNotifiche, notifica: { tipo?: un
     const giorno = dataDi(notifica.quando, lingua, { dateStyle: 'long' });
     // `quando` e `giorno` vengono dallo stesso istante e dallo stesso fuso: o ci sono tutti e due, o nessuno.
     const conCosa = cosa === undefined ? undefined : (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWhoWhat.${notifica.tipo}`], chi, cosa)) ?? (quando && fraseConINomi(frasi[`notificationTitleWhatWhen.${notifica.tipo}`], '', cosa, quando, giorno));
-    const titolo = conCosa ?? (quando && fraseConINomi(frasi[`notificationTitleWhen.${notifica.tipo}`], '', cosa, quando, giorno)) ?? (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua);
+    const titolo = conCosa ?? (quando && fraseConINomi(frasi[`notificationTitleWhen.${notifica.tipo}`], '', cosa, quando, giorno)) ?? (chi === undefined ? undefined : fraseConINomi(frasi[`notificationTitleWho.${notifica.tipo}`], chi)) ?? titoloConLeFrasi(frasi, notifica.tipo, lingua, notifica.esito);
     const sotto = (conCosa === undefined ? cosa : undefined) ?? contoEBoard(frasi, notifica);
 
     return sotto === undefined ? { titolo } : { titolo, sotto };
