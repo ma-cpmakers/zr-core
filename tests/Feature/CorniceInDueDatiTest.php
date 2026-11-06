@@ -71,7 +71,8 @@ it('Cornice::dopo() dà ciò che Cornice::dati() dà, nello stesso ordine e con 
     expect($dopo)->toBe([...datiAttesi('2026-10-09T21:31:05.123456Z'), 'sessione_il' => '2026-10-09T21:31:05.123456Z', 'lingua_il' => '2026-10-09T21:31:05.123456Z'])
         ->and(array_keys((array) $dopo))->toBe(['lingua', 'persona', 'workspace', 'prodotti', 'aziende', 'non_lette', 'aggiornati_il', 'sessione_il', 'lingua_il'])
         ->and(((array) $dopo)['workspace'])->toBe(((array) Cornice::subito())['workspace'])
-        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
+        // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso, per ultima (sprint 115 · T1.3).
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2, '/v1/accessi/corrente' => 1]);
 });
 
 it('Cornice::dopo() dice di chi sono i dati che dà: se fra la subito() di una pagina e la sua dopo() nella sessione entra un\'altra persona, dopo() porta nome, email e lingua di questa, le sue non lette e l\'istante della sua lettura; la subito() di prima resta di chi c\'era (sprint 37 · T2.3)', function () {
@@ -620,7 +621,8 @@ it('la richiesta rimandata non rilegge io.mostra: Cornice::dopo() dopo la Cornic
     Carbon::setTestNow(Carbon::parse('2026-10-14 13:30:02.000000', 'UTC'));
 
     expect(Cornice::dopo())->toBe([...datiAttesi('2026-10-14T13:30:00.000000Z'), 'sessione_il' => '2026-10-14T13:30:00.000000Z', 'lingua_il' => '2026-10-14T13:30:00.000000Z'])
-        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2]);
+        // Dalla `v4.22.0` anche accessi.corrente.mostra, una volta per accesso, per ultima (sprint 115 · T1.3).
+        ->and(array_count_values(percorsiChiamati()))->toBe(['/v1/io' => 1, '/v1/app' => 1, '/v1/io/aziende' => 1, '/v1/io/workspace' => 2, '/v1/accessi/corrente' => 1]);
 });
 
 it('la lettura della pagina vale per una richiesta rimandata sola: una seconda Cornice::dopo() rilegge io.mostra (sprint 54 · T1.2)', function () {
