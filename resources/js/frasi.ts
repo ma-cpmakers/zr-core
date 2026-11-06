@@ -17,6 +17,13 @@ export { destinazioneDellaNotifica, risorsaDellaNotifica } from './campanella';
 const file = import.meta.glob<FrasiDelleNotifiche>('../lingue/notifiche/*.json', { eager: true, import: 'default' });
 let diOgniLingua: ((lingua: string) => Readonly<FrasiDelleNotifiche>) | undefined;
 
+/**
+ * Un esito com'è nella parte server della cornice (`NotificheDellaCornice`): un testo di lettere minuscole e `_`, da 1 a 40; ogni
+ * altro valore non c'è. Nel pezzo della campanella non c'è un controllo che pesi: lo fanno la parte server e, per le pagine, questo
+ * modulo. Senza, un esito col punto si incastrerebbe col tipo (`board.gate` e `deciso.approvato`).
+ */
+const inForma = (esito: unknown): string | undefined => (typeof esito === 'string' && /^[a-z_]{1,40}$/.test(esito) ? esito : undefined);
+
 /** Le frasi di una lingua: quelle che non ha, e quelle di una lingua che zr-core non ha, sono in inglese. */
 function frasi(lingua: string): Readonly<FrasiDelleNotifiche> {
     diOgniLingua ??= frasiDiOgniLingua(file, inglesi);
@@ -31,7 +38,7 @@ function frasi(lingua: string): Readonly<FrasiDelleNotifiche> {
  * l'esito della cosa (`esito`, quello di `dati.esito` di un Gate deciso), e allora il titolo dice com'è stata decisa.
  */
 export function titoloDellaNotifica(tipo: unknown, lingua: string, esito?: unknown): string {
-    return titoloConLeFrasi(frasi(lingua), tipo, lingua, typeof esito === 'string' ? esito : undefined);
+    return titoloConLeFrasi(frasi(lingua), tipo, lingua, inForma(esito));
 }
 
 /**
@@ -43,9 +50,6 @@ export function titoloDellaNotifica(tipo: unknown, lingua: string, esito?: unkno
  * il titolo di un Gate deciso dice com'è stato deciso. Sono gli stessi testi del pannello delle notifiche della cornice.
  */
 export function rigaDellaNotifica(notifica: { tipo?: unknown; autore_nome?: unknown; risorsa_nome?: unknown; azioni?: unknown; board_nome?: unknown; quando?: unknown; esito?: unknown; dati?: unknown }, lingua: string): { titolo: string; sotto?: string } {
-    // La notifica com'è nel backoffice ha l'esito in `dati`; quella della parte server della cornice, in `esito`. Solo un testo:
-    // la parte server della cornice lo dà già così, e nel pezzo della campanella non c'è un controllo che pesi.
-    const esito = notifica.esito ?? (notifica.dati as { esito?: unknown } | null | undefined)?.esito;
-
-    return rigaConLeFrasi(frasi(lingua), { ...notifica, esito: typeof esito === 'string' ? esito : undefined }, lingua);
+    // La notifica com'è nel backoffice ha l'esito in `dati`; quella della parte server della cornice, in `esito`.
+    return rigaConLeFrasi(frasi(lingua), { ...notifica, esito: inForma(notifica.esito ?? (notifica.dati as { esito?: unknown } | null | undefined)?.esito) }, lingua);
 }

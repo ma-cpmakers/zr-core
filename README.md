@@ -1359,7 +1359,7 @@ cornice === null ? pagina : (
   i diciotto che non sono eventi. Nessuno dei due ha una destinazione: un clic apre la pagina delle notifiche. Gli altri tipi
   di evento che il contratto ha dal 27/10/2026 non generano notifiche e non hanno un titolo. Dalla `v4.12.0` ha un titolo
   anche il Gate deciso di Project Management, «Gate deciso» (`board.gate.deciso`), che non è un evento: senza chi l'ha
-  fatto e senza l'esito, che il titolo non dice ancora. Un clic apre il Gate, che è una scheda (`/c/{id}`). Con lui i titoli
+  fatto e, fino alla `v4.15.0`, senza l'esito. Un clic apre il Gate, che è una scheda (`/c/{id}`). Con lui i titoli
   sono 59: 40 tipi di evento e i diciannove che non sono eventi. Dalla `v4.16.0` il titolo del Gate dice com'è stato deciso,
   dall'esito che il backoffice dà nei `dati` della notifica (`esito`): «Gate approvato», «Gate approvato con prescrizioni» e
   «Gate respinto», con le parole di zr-board (`notificationTitleOutcome.board.gate.deciso.<esito>`); senza l'esito, o con uno

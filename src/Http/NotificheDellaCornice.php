@@ -369,10 +369,11 @@ final class NotificheDellaCornice
      * data è un di più del titolo: senza, la notifica si mostra lo stesso). Se il browser non conosce il fuso, il titolo è
      * quello senza la data.
      *
-     * `dati` non è fra le chiavi che fanno una notifica, e qui non si legge: gli id che servono ad aprire la risorsa li aggiunge
-     * l'elenco (`ids`), che delle rotte delle notifiche è la sola a usare il registro dei moduli. La lettura di una notifica risponde senza.
+     * `dati` non è fra le chiavi che fanno una notifica: gli id che servono ad aprire la risorsa li aggiunge l'elenco (`ids`), che
+     * delle rotte delle notifiche è la sola a usare il registro dei moduli. Di `dati` qui si legge solo `esito` (dalla `v4.16.0`,
+     * `esitoDi()`), che passa come le altre chiavi facoltative: null quando manca o non ha la forma. La lettura di una notifica risponde senza.
      *
-     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null, quando: array{il: string, fuso: string}|null}
+     * @return array{id: string, creata_il: string, letta: bool, app: string|null, tipo: string, autore_nome: string|null, risorsa_nome: string|null, per_me: bool|null, azioni: int, board_nome: string|null, quando: array{il: string, fuso: string}|null, esito: string|null}
      */
     private static function perLaCornice(mixed $notifica, string $metodo): array
     {

@@ -104,7 +104,8 @@ export type FrasiDelleNotifiche = {
     [conChi: `notificationTitleWho.${string}`]: string | undefined;
     /**
      * Il titolo di una notifica di quel tipo con l'esito della cosa (dalla `v4.16.0`): `notificationTitleOutcome.<tipo>.<esito>`
-     * (`notificationTitleOutcome.board.gate.deciso.respinto`). La ha chi ha anche il titolo del tipo.
+     * (`notificationTitleOutcome.board.gate.deciso.respinto`). La ha chi ha anche il titolo del tipo, e solo un tipo senza le frasi
+     * con chi, che cosa o la data: è l'ultimo ripiego del titolo (`rigaConLeFrasi`).
      */
     [conEsito: `notificationTitleOutcome.${string}`]: string | undefined;
     /**

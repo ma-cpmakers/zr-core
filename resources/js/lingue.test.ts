@@ -482,7 +482,10 @@ describe('le lingue della cornice', () => {
         }
         expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: null }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
         expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: 'respinto' }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
-        for (const fuori of [['respinto'], { toString: () => 'respinto' }, 42]) {
+        // Un esito col punto non si incastra col tipo: `board.gate` col suo «deciso.approvato» resta un tipo che zr-core non ha.
+        expect(rigaDellaNotifica({ tipo: 'board.gate', dati: { esito: 'deciso.approvato' } }, lingua).titolo).toBe(diRipiego[lingua]);
+        expect(titoloDellaNotifica('board.gate', lingua, 'deciso.approvato')).toBe(diRipiego[lingua]);
+        for (const fuori of [['respinto'], { toString: () => 'respinto' }, 42, 'RESPINTO', 'respinto\n', 'a'.repeat(41)]) {
             expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', esito: fuori }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
             expect(rigaDellaNotifica({ tipo: 'board.gate.deciso', dati: { esito: fuori } }, lingua).titolo).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
             expect(titoloDellaNotifica('board.gate.deciso', lingua, fuori)).toBe(frasiDellaLingua[lingua]['notificationTitle.board.gate.deciso']);
@@ -499,6 +502,8 @@ describe('le lingue della cornice', () => {
             for (const chiave of perEsito(frasi)) {
                 const tipo = chiave.slice('notificationTitleOutcome.'.length).replace(/\.[a-z_]+$/, '');
                 expect([chiave, typeof frasi[`notificationTitle.${tipo}`], typeof frasi[chiave as `notificationTitleOutcome.${string}`]]).toStrictEqual([chiave, 'string', 'string']);
+                // Il titolo per esito è l'ultimo ripiego (`rigaConLeFrasi`): un tipo con le frasi con chi, che cosa o la data non lo userebbe mai.
+                expect([chiave, ...['Who', 'WhoWhat', 'When', 'WhatWhen'].map((famiglia) => frasi[`notificationTitle${famiglia}.${tipo}` as `notificationTitleWho.${string}`])]).toStrictEqual([chiave, undefined, undefined, undefined, undefined]);
             }
         }
     });

@@ -4676,7 +4676,8 @@ it('il README dice, dalla v4.12.0, il titolo e il tipo del Gate deciso, che non 
         ->and(str_contains($testo, $frase))->toBe(true);
 })->with([
     'il titolo e il tipo' => ['Dalla `v4.12.0` ha un titolo anche il Gate deciso di Project Management, «Gate deciso» (`board.gate.deciso`), che non è un evento'],
-    'senza chi e senza esito' => ['senza chi l\'ha fatto e senza l\'esito, che il titolo non dice ancora'],
+    // v4.16.0 (revisione della PR #185, R3): l'esito c'è dalla v4.16.0, e la frase della v4.12.0 dice fino a quando mancava.
+    'senza chi e senza esito' => ['senza chi l\'ha fatto e, fino alla `v4.15.0`, senza l\'esito'],
     'dove si apre' => ['Un clic apre il Gate, che è una scheda (`/c/{id}`)'],
     'quanti sono i titoli' => ['Con lui i titoli sono 59: 40 tipi di evento e i diciannove che non sono eventi'],
 ]);
