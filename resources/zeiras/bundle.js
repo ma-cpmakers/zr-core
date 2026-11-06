@@ -615,7 +615,7 @@
 
   /* ---------- KanbanCard ---------- */
   /* i testi della board nella lingua del modulo; il default è l'italiano (richiesta 149) */
-  var KANBAN_TEXTS = { overdue: 'Scaduta · {date}', checklist: 'Checklist', comments: 'Commenti', wipLimit: 'Limite WIP {n}', overLimit: 'Oltre il limite', listActions: 'Azioni lista {title}', addCard: 'Aggiungi scheda', addList: 'Aggiungi lista', newList: 'Nuova lista', cardTitle: 'Titolo della scheda…', cardTitleLabel: 'Titolo della nuova scheda', add: 'Aggiungi', cancel: 'Annulla', cardActions: 'Azioni rapide', vote: 'Vota', unvote: 'Togli il voto', votes: '{n} voti', oneVote: '1 voto', voted: 'hai votato', crumbs: 'Percorso', board: 'Board', list: 'Lista', calendar: 'Calendario', filter: 'Filtra', share: 'Condividi' };
+  var KANBAN_TEXTS = { overdue: 'Scaduta · {date}', checklist: 'Checklist', comments: 'Commenti', wipLimit: 'Limite WIP {n}', overLimit: 'Oltre il limite', listActions: 'Azioni lista {title}', addCard: 'Aggiungi scheda', addList: 'Aggiungi lista', newList: 'Nuova lista', cardTitle: 'Titolo della scheda…', cardTitleLabel: 'Titolo della nuova scheda', add: 'Aggiungi', cancel: 'Annulla', cardActions: 'Azioni rapide', cardKeys: 'Frecce su e giù fra le schede, a sinistra e a destra fra le liste', vote: 'Vota', unvote: 'Togli il voto', votes: '{n} voti', oneVote: '1 voto', voted: 'hai votato', crumbs: 'Percorso', board: 'Board', list: 'Lista', calendar: 'Calendario', filter: 'Filtra', share: 'Condividi' };
   function kanbanTexts(t) { var o = Object.assign({}, KANBAN_TEXTS); if (t) Object.keys(t).forEach(function (k) { if (t[k] != null) o[k] = t[k]; }); return o; } /* un testo undefined o null resta quello di default */
   function textOf(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
   function KanbanCard(p) {
@@ -653,18 +653,53 @@
   }
 
   /* ---------- KanbanColumn ---------- */
+  /* la tastiera fra le schede (richiesta 84): un Tab per lista, sulla scheda dove si era rimasti (la prima la prima volta); ↑ ↓ Home Fine nella lista, ← → la lista accanto */
+  function colCards(body, all) { /* le schede della lista; senza all, non quelle nascoste (hidden, aria-hidden) */
+    return body ? Array.prototype.filter.call(body.querySelectorAll('.zr-card'), function (c) { var x; return c.closest('.zr-col-body') === body && (all || !(x = c.closest('[hidden], [aria-hidden="true"]')) || !body.contains(x)); }) : []; /* conta solo ciò che si nasconde dentro la lista: un dialogo che nasconde il resto della pagina non le toglie */
+  }
+  function setAttr(el, k, v) { if (v == null) { if (el.hasAttribute(k)) el.removeAttribute(k); } else if (el.getAttribute(k) !== v) el.setAttribute(k, v); }
+  function roveCards(body, cur, hint) { /* nel giro del Tab una sola scheda della lista, cur o la prima; il voto delle altre fuori; a tutte il suggerimento dei tasti, se il modulo non ne dà uno suo */
+    var cs = colCards(body); if (cs.indexOf(cur) < 0) cur = cs[0] || null;
+    colCards(body, true).forEach(function (c) { var on = c === cur; /* una nascosta resta fuori dal Tab */ setAttr(c, 'tabindex', on ? '0' : '-1'); var d = c.getAttribute('aria-describedby'); if (hint && (!d || d === c.getAttribute('data-zr-keys'))) { setAttr(c, 'aria-describedby', hint); setAttr(c, 'data-zr-keys', hint); }
+      Array.prototype.forEach.call(c.querySelectorAll('.zr-card-vote'), function (v) { setAttr(v, 'tabindex', on ? null : '-1'); }); });
+    return cur;
+  }
+  function besideCard(body, i, dir) { /* la scheda nella stessa posizione della lista accanto, o la sua ultima; le liste vuote si saltano */
+    var col = body.closest('.zr-col'), box = col && (col.closest('.zr-lanes') || col.parentNode);
+    if (box && !box.classList.contains('zr-lanes')) while (box && box.querySelectorAll('.zr-col').length < 2) box = box.parentNode; /* fuori da .zr-lanes, anche con ogni lista dentro un contenitore suo */
+    var cols = box ? Array.prototype.slice.call(box.querySelectorAll('.zr-col')) : [];
+    for (var k = cols.indexOf(col) + dir; k >= 0 && k < cols.length; k += dir) { var cs = colCards(cols[k].querySelector('.zr-col-body')); if (cs.length) return cs[Math.min(i, cs.length - 1)]; }
+    return null;
+  }
   function KanbanColumn(p) {
     var count = p.count != null ? p.count : React.Children.count(p.children);
     var over = p.limit && count > p.limit;
     var T = kanbanTexts(p.texts);
     var rest = omit(p, ['title', 'count', 'limit', 'children', 'onAdd', 'isOver', 'composer', 'className', 'texts']);
+    var body = useRef(null), cur = useRef(null), hint = useId('zr-keys');
+    useEffect(function () { /* le schede che arrivano, se ne vanno o cambiano posto restano fuori dal Tab, tranne quella corrente */
+      var el = body.current; if (!el) return;
+      function fix() { cur.current = roveCards(el, cur.current, hint); }
+      fix(); var mo = new MutationObserver(fix); mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden'] }); /* anche una scheda che il filtro del modulo nasconde o rimostra */
+      return function () { mo.disconnect(); };
+    }, []);
+    function onFocus(e) { var c = e.target.closest && e.target.closest('.zr-card'); if (c && c !== cur.current && colCards(body.current).indexOf(c) >= 0) cur.current = roveCards(body.current, c, hint); }
+    function onKeyDown(e) { /* dopo l'onKeyDown della scheda: un tasto che il modulo ha già usato non si muove */
+      var c = e.target, k = e.key; if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey || !c.classList || !c.classList.contains('zr-card')) return;
+      var cs = colCards(body.current), i = cs.indexOf(c); if (i < 0) return;
+      var to = k === 'ArrowDown' ? cs[i + 1] : k === 'ArrowUp' ? cs[i - 1] : k === 'Home' ? cs[0] : k === 'End' ? cs[cs.length - 1] : k === 'ArrowLeft' || k === 'ArrowRight' ? besideCard(body.current, i, k === 'ArrowRight' ? 1 : -1) : undefined;
+      if (to === undefined && !/^(Arrow(Up|Down|Left|Right)|Home|End)$/.test(k)) return;
+      e.preventDefault(); /* la pagina non scorre, nemmeno in fondo alla lista */
+      if (to) to.focus();
+    }
     return h('section', Object.assign({}, rest, { className: cx('zr-col', p.isOver && 'is-over', p.className), 'aria-label': p.title }),
       h('header', { className: 'zr-col-head' },
         h('h3', null, p.title),
         h('span', { className: cx('zr-count', over && 'is-over'), title: p.limit ? textOf(T.wipLimit, '{n}', p.limit) : undefined }, p.limit ? count + '/' + p.limit : count),
         over ? h('span', { className: 'zr-col-warn' }, T.overLimit) : null,
         h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': textOf(T.listActions, '{title}', p.title) })),
-      h('div', { className: 'zr-col-body' }, p.children),
+      h('div', { ref: body, className: 'zr-col-body', onFocus: onFocus, onKeyDown: onKeyDown }, p.children),
+      h('span', { id: hint, hidden: true }, T.cardKeys), /* letto solo come descrizione delle schede */
       p.composer || h('button', { type: 'button', className: 'zr-col-add', onClick: p.onAdd }, h(Icon, { name: 'plus', size: 16 }), h('span', null, T.addCard)));
   }
 
