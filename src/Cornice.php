@@ -680,7 +680,10 @@ final class Cornice
             self::ricordaLaLingua($io, $segno);
             $esito = true;
             $foto = self::fotoAggiornataIl($io, $di);
-            $nonLette = is_int($io['notifiche_non_lette'] ?? null) && $io['notifiche_non_lette'] >= 0 ? $io['notifiche_non_lette'] : 0;
+            // Senza l'accesso, in una sessione con un workspace (quella del ricevitore di un modulo), io.mostra si è letto col gettone
+            // del workspace, e le sue non lette sono quelle del workspace: per il cliente 0 (revisione di sicurezza dello sprint 116, S1).
+            $soloDelWorkspace = Sessione::workspace() !== null && Sessione::accesso() === null;
+            $nonLette = ! $soloDelWorkspace && is_int($io['notifiche_non_lette'] ?? null) && $io['notifiche_non_lette'] >= 0 ? $io['notifiche_non_lette'] : 0;
         } catch (BackofficeNonRisponde|ErroreApi $errore) {
             $esito = $errore;
             $foto = null;

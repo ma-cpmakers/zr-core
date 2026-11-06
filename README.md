@@ -2697,7 +2697,8 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
   `lingua`, `persona` (`nome`, `email`, `impronta`, e `foto` se la persona ne ha una, come in `Cornice::dati()`), `aziende` — le
   aziende in cui la persona è anche membro, coi loro workspace e `nuovo_workspace`, vuota per chi è solo cliente —,
   `non_lette` (dalla `v4.23.0`, #3398: le notifiche da cliente non lette, `notifiche_non_lette` della stessa lettura di io.mostra,
-  senza chiamate in più; un intero da 0 in su, e 0 quando il backoffice non lo dà) e `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
+  senza chiamate in più; un intero da 0 in su, e 0 quando il backoffice non lo dà o
+  in una sessione col solo gettone di un workspace) e `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
   com'è. La lingua di `dati.lingua` è quella del profilo appena letto; dalla `v4.15.0` (#3341) `Cornice::datiDelCliente($lingua)`

@@ -171,6 +171,18 @@ it('`non_lette` è 0 quando io.mostra non dà un intero da 0 in su: null, senza,
 
 // Sprint 116 · T4 (voce #3398): le chiavi dei dati sono quelle che la cornice del cliente legge. Il T3 leggeva
 // `notifiche_non_lette` e il server dà `non_lette`: con la demo scritta a mano, numero e campanella sembravano giusti.
+// Revisione di sicurezza dello sprint 116, S1: in una sessione col solo gettone del workspace (quella del ricevitore di un modulo)
+// io.mostra si legge con quello, e `notifiche_non_lette` sono le notifiche del workspace: nei dati del cliente `non_lette` è 0,
+// come le rotte del cliente, che lì rispondono 403 `gettone_senza_accesso`.
+it('in una sessione col solo gettone del workspace `non_lette` è 0: il numero di io.mostra è quello del workspace (sprint 116, revisione S1)', function () {
+    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    Sessione::entra(['gettone' => 'zr_uat_solo_workspace', 'scade_il' => now()->addHour()->toIso8601String(), 'utente' => $utente, 'workspace' => ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'], 'ruolo' => 'membro']);
+    backofficeDelCliente(['/v1/io' => ['data' => ['notifiche_non_lette' => 3] + ioDelCliente()['data']]]);
+
+    expect(Sessione::accesso())->toBeNull()
+        ->and(Cornice::datiDelCliente()['non_lette'] ?? null)->toBe(0);
+});
+
 it('ogni chiave dei dati del cliente è una proprietà di `DatiDelCliente` in cliente.tsx, `non_lette` compresa (sprint 116 · T4)', function () {
     sessioneAMano(null);
     backofficeDelCliente(['/v1/io' => ['data' => ['notifiche_non_lette' => 3] + ioDelCliente()['data']]]);
