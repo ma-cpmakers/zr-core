@@ -20,7 +20,8 @@
  *
  * Dalla v4.4.0 le righe R.L guardano la lingua della cornice dalla prima pagina aperta (con un Chromium suo, a cache vuota):
  * la lingua di `<html lang>`; sulle pagine di prova `?lingua=es` (e `&precarico=0` per la pagina senza la riga nel Blade).
- * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1).
+ * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
+ * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */

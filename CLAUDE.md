@@ -15,7 +15,9 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
 ## Cosa scrive questa sessione
 - **I componenti React della cornice**: `AppShell` (sidebar, menu Moduli esteso o chiuso, topbar, percorso), il
   selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
-  «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano.
+  «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano. Accanto alla `Cornice`, la
+  cornice dello staff (`CorniceDelloStaff`, dalla `v3.16.0`) e, dalla `v4.13.0`, quella di chi è solo cliente (`CorniceDelCliente`,
+  coi dati di `Cornice::datiDelCliente()`, per «Il mio spazio» di zr-home).
 - **Il design system nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua). I
   componenti sono un modulo ES generato dal `bundle.js` del design system (`resources/js/zeiras/componenti.js`, vedi «Stack
   e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
@@ -119,7 +121,8 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde, e prima del tag `scripts/uat-cornice.mjs` in un Chromium vero sulle pagine di
-prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale con la CSP di tutti da `node scripts/servi-demo.mjs`, e dalla `v4.0.0` anche R.C ✅, e dalla `v4.4.0` R.L ✅ su `layout.html` e `staff.html`, in italiano e con `?lingua=es`, e dalla `v4.5.1` anche con `?lingua=en`), con R.0 ✅ — il campo della ricerca tiene tutti i
+prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale con la CSP di tutti da `node scripts/servi-demo.mjs`, e dalla `v4.0.0` anche R.C ✅, e dalla `v4.4.0` R.L ✅ su `layout.html` e `staff.html`, in italiano e con `?lingua=es`, e dalla `v4.5.1` anche con `?lingua=en`; dalla `v4.13.0` anche
+`cliente.html` con `--cliente`), con R.0 ✅ — il campo della ricerca tiene tutti i
 caratteri scritti: un difetto che vitest non vede (sprint 74, #2062; zr-pm 26/10); e, da solo, `node scripts/tipi-del-contratto.mjs`
 con esito 0: un tipo di evento nuovo del contratto ha un titolo o sta nell'elenco dei tipi che non arrivano alla campanella
 (dalla `v3.11.0`, #2820). Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo

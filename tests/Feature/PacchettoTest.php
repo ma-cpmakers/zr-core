@@ -5109,10 +5109,23 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'ToastDellaCornice'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
+});
+
+it('il README dice la cornice del cliente: `Cornice::datiDelCliente()`, `CorniceDelCliente`, il CSS che nasconde la ricerca, e che aziende da cliente e campanella aspettano #3320 e #3323 (sprint 110 · T4.1)', function () {
+    $readme = (string) preg_replace('/\s+/', ' ', File::get(__DIR__.'/../../README.md'));
+    preg_match('/### La cornice del cliente (.*?)(?= ## | ### )/', $readme, $trovata);
+    $sezione = $trovata[1] ?? '';
+
+    expect($sezione)->toContain("'cornice' => fn () => Cornice::datiDelCliente()")
+        ->and($sezione)->toContain('<CorniceDelCliente')
+        ->and($sezione)->toContain("import '../../vendor/zeiras/zr-core/resources/css/cliente.css';")
+        ->and($sezione)->toContain('le aziende di cui la persona è cliente arrivano con zr-backoffice #3320')
+        ->and($sezione)->toContain('le sue notifiche da cliente con zr-backoffice #3323')
+        ->and($sezione)->toContain('`scripts/uat-cornice.mjs` la prova con `--cliente`');
 });
 
 it('il README dice, in «Come si installa in un frontend», i due ingressi, il passaggio, che cosa dall\'ingresso per le app non si scrive, che i due non si mescolano, i pesi e come misurarli (sprint 25 · T2.5)', function (string $frase) {
