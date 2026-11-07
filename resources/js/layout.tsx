@@ -71,7 +71,7 @@ const lui = (persona: DatiDellaCornice['persona']) => `${persona.email} ${person
  */
 const stessaPersona = (uno: DatiDellaCornice, altro: DatiDellaCornice) => !!uno.persona.email && lui(uno.persona) === lui(altro.persona);
 
-export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano }: LayoutDellaCorniceProps) {
+export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano, spazio }: LayoutDellaCorniceProps) {
     // Con `subito` i dati della cornice si compongono qui: quelli della sessione, e quelli del backoffice quando ci sono.
     // `dopo` sta sopra, con tutto ciò che porta (dalla `v2.9.0` meno la lingua, se `subito` è della stessa persona ed è più recente: qui sotto): è letto in un'altra richiesta, e dice di chi è (lingua, persona e il loro
     // segno) e di quale workspace. Così i dati di una persona non stanno sotto il nome che `subito` aveva di un'altra.
@@ -139,7 +139,7 @@ export function LayoutDellaCornice({ cornice: intera, subito, dopo, children, pr
 
     // Per nome, una per una: Inertia dà al layout anche le props della pagina, e una che non è della cornice non deve arrivare
     // all'`AppShell`. Se `Cornice` ne prende una nuova, tsc si ferma qui finché il layout non la passa.
-    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
+    const dellaCornice = { product, nav, active, onNavigate, crumbs, onCrumb, create, createLabel, actions, flush, onLogout, naviga, piano, spazio } satisfies Record<keyof Omit<CorniceProps, 'dati' | 'children'>, unknown>;
 
     // La `key` è lo slug del workspace: ciò che la cornice tiene fra una pagina e l'altra (la ricerca coi suoi risultati, i
     // pannelli, le notifiche) è di quel workspace, e quando una visita ne porta un altro la cornice si rifà, e la pagina con

@@ -843,7 +843,8 @@ function italianoAtteso(): array
  * dello staff, con le sue lingue, quando cerca all'invio (voce #2965). Dal lotto 0512 del design system anche «Da attivare» (`off`,
  * richiesta 78) e «Impostazioni del workspace» (`workspaceSettings`, richiesta 128): la cornice non segna moduli `off` e non passa
  * le impostazioni del workspace. Dal design system 1793914149-8632 anche i tre testi dello spazio cliente di zr-account («Il mio
- * spazio», «Come cliente», «Crea il tuo workspace»): la cornice non passa `personal`, e senza aziende non ha il selettore. Dal
+ * spazio», «Come cliente», «Crea il tuo workspace»): nelle lingue della cornice non ci sono, e senza aziende non ha il selettore;
+ * dalla `v4.25.0` (#3417) la cornice dei membri passa `personal` con la prop `spazio`, e i due testi stanno nel pezzo degli avvisi. Dal
  * lotto 0518 (`v4.18.0`) anche quanti risultati ha la ricerca (`searchCount`): non sta nelle lingue della cornice ma coi testi del
  * pezzo della ricerca (`resources/lingue/ricerca/`), che la cornice dà all'`AppShell` solo coi risultati.
  *
@@ -1451,16 +1452,17 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
  * I sette testi dei due avvisi della cornice ridotta — chi non ha accettato i documenti legali e Zeiras che non risponde —:
  * dalla `v3.7.0` stanno in resources/lingue/avvisi, un file per lingua col nome del file dei testi, e la cornice li chiede in un
  * pezzo a richiesta (`resources/js/avvisi.ts`) solo in quei due stati, fuori dal JS d'ingresso (zr-pm, 26/10/2026). Dalla `v4.22.0`
- * (#2909) anche i quattro della fascia di assistenza, e il pezzo si chiede anche in assistenza.
+ * (#2909) anche i quattro della fascia di assistenza, e il pezzo si chiede anche in assistenza. Dalla `v4.25.0` (#3417) anche i due
+ * di «Il mio spazio» per il selettore della cornice dei membri, e il pezzo si chiede anche con la prop `spazio`.
  *
  * @return list<string>
  */
 function chiaviDegliAvvisi(): array
 {
-    return ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'assistTitle', 'assistText', 'assistReadOnly', 'assistEnd'];
+    return ['acceptanceTitle', 'acceptanceText', 'acceptanceAction', 'acceptanceOff', 'downTitle', 'downText', 'downOff', 'assistTitle', 'assistText', 'assistReadOnly', 'assistEnd', 'personal', 'personalGroup'];
 }
 
-it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni lingua dei testi con lo stesso nome, coi soli testi degli avvisi, sette e dalla v4.22.0 i quattro della fascia di assistenza; fra i testi della cornice non ci sono più (v3.7.0)', function () {
+it('i testi dei due avvisi stanno in resources/lingue/avvisi, un file per ogni lingua dei testi con lo stesso nome, coi soli testi degli avvisi, sette e dalla v4.22.0 i quattro della fascia di assistenza, e dalla v4.25.0 i due di «Il mio spazio»; fra i testi della cornice non ci sono più (v3.7.0)', function () {
     $testi = fileDelleLingue('');
     $avvisi = fileDelleLingue('avvisi/');
 

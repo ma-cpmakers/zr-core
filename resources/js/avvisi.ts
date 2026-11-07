@@ -5,9 +5,10 @@
 // riesporta niente da qui. Dalla `v4.8.1` (#3055, Decisione 21220) il pezzo porta anche l'Alert del design system, dal suo
 // modulo: l'avviso è il solo posto della cornice che lo usa, e il JS d'ingresso non lo porta più. Dalla `v4.22.0` (#2909) porta
 // anche i testi della fascia di assistenza, che la cornice mette sopra la pagina quando lo staff è entrato con «Accedi come»: la
-// cornice chiede il pezzo anche quando i dati hanno `assistenza`.
+// cornice chiede il pezzo anche quando i dati hanno `assistenza`. Dalla `v4.25.0` (#3417) porta anche «Il mio spazio» per il selettore
+// della cornice dei membri, i due testi e il clic: la cornice chiede il pezzo anche quando il frontend le dà `spazio`.
 
-import { createElement as h } from 'react';
+import { createElement as h, type MouseEvent } from 'react';
 import inglesi from '../lingue/avvisi/en.json';
 import type { DatiDellaCornice } from './cornice';
 import { linguaDeiTesti } from './lingue';
@@ -59,6 +60,13 @@ export interface TestiDegliAvvisi {
     assistReadOnly: string;
     /** Il pulsante della stessa fascia: termina l'assistenza uscendo, come «Esci» (`onLogout`). */
     assistEnd: string;
+    /**
+     * La voce dello spazio del cliente nel selettore dei workspace (dalla `v4.25.0`, #3417): la cornice dei membri la mostra in
+     * cima al selettore quando il frontend le dà `spazio`, cioè quando la persona è anche cliente di un'azienda con lo spazio acceso.
+     */
+    personal: string;
+    /** Il titolo del gruppo di quella voce, sopra le aziende. */
+    personalGroup: string;
 }
 
 const file = import.meta.glob<Partial<TestiDegliAvvisi>>('../lingue/avvisi/*.json', { eager: true, import: 'default' });
@@ -68,6 +76,31 @@ export function testiDegliAvvisi(lingua: string): TestiDegliAvvisi {
     const scelti = file[`../lingue/avvisi/${linguaDeiTesti(lingua)}.json`] ?? {};
 
     return Object.fromEntries(Object.entries(inglesi).map(([chiave, inglese]) => [chiave, scelti[chiave as keyof TestiDegliAvvisi]?.trim() || inglese])) as unknown as TestiDegliAvvisi;
+}
+
+/**
+ * «Il mio spazio» per il selettore della cornice dei membri (dalla `v4.25.0`, #3417): la voce dell'`AppShell` (`personal`), non
+ * attiva, che punta a `href`, e il titolo del suo gruppo (`personalGroup` in `labels`, fra i testi dell'`AppShell`). Un clic semplice su un
+ * indirizzo di questa origine passa da `naviga`, come le voci della barra: Ctrl, Cmd, Maiusc, Alt, il tasto centrale e un'altra
+ * origine restano del browser. Sta qui e non nella cornice perché serve solo a chi ha lo spazio.
+ */
+export function ilMioSpazio(lingua: string, href: string, naviga: (indirizzo: string) => void) {
+    const t = testiDegliAvvisi(lingua);
+
+    return {
+        personal: {
+            label: t.personal,
+            href,
+            onSelect: (clic: MouseEvent) => {
+                const a = clic.currentTarget as HTMLAnchorElement;
+                if (!clic.defaultPrevented && !clic.button && !clic.ctrlKey && !clic.metaKey && !clic.shiftKey && !clic.altKey && a.host === location.host && a.protocol === location.protocol) {
+                    clic.preventDefault();
+                    naviga(a.href);
+                }
+            },
+        },
+        labels: { personalGroup: t.personalGroup },
+    };
 }
 
 /**

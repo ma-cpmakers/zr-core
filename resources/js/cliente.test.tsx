@@ -336,7 +336,10 @@ async function arrivate(): Promise<void> {
 // Sprint 116 · T3 (voce 3398, Decisione 22367 di zr-pm-07): la campanella della cornice del cliente, con le notifiche da cliente
 // delle rotte `/cornice/cliente/…` (T1), i titoli delle frasi e la destinazione in «Il mio spazio» (T2).
 describe('la campanella del cliente (sprint 116 · T3)', () => {
-    const adesso = Date.now();
+    // Un orologio fermo a mezzogiorno: «3 h fa» dopo la mezzanotte diventava «ieri», e il caso T3.2 era rosso fra le 00 e le 03 (07/11/2026).
+    const adesso = Date.parse('2026-11-06T12:00:00Z');
+    beforeEach(() => vi.useFakeTimers({ toFake: ['Date'], now: adesso }));
+    afterEach(() => vi.useRealTimers());
     const confermata = {
         id: 'n-1', creata_il: new Date(adesso - 3 * 3_600_000).toISOString(), letta: false, app: 'bookings', tipo: 'bookings.cliente.prenotazione.confermata',
         autore_nome: null, risorsa_nome: 'Personal training', per_me: null, quando: { il: '2026-11-10T17:30:00Z', fuso: 'Europe/Rome' }, azienda: 'Palestra Fit Arezzo', ids: { id: 'pr-1' },
