@@ -540,7 +540,8 @@ select.zr-inline-edit-field { appearance: none; padding-right: calc(var(--space-
 .zr-cal.is-picker { width: max-content; max-width: 100%; }
 .zr-cal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .zr-cal-title { font-size: 15px; line-height: 22px; font-weight: 600; }
-.zr-cal-nav { display: flex; gap: var(--space-2); } /* le aree di tocco dei due pulsanti non si coprono (150) */
+.zr-cal-nav { display: flex; gap: var(--space-2); }
+@media (pointer: coarse) { .zr-cal-nav { gap: var(--space-3); } } /* al tocco 12 px fra «Mese precedente» e «Mese successivo», sm a sola icona: le aree da 44 si toccano senza coprirsi (richiesta 233) */
 .zr-cal-grid { border-collapse: collapse; table-layout: fixed; }
 .zr-cal-grid th { padding: 0 0 var(--space-1-5); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); text-align: center; text-transform: capitalize; }
 .zr-cal-cell { padding: 1px; vertical-align: top; text-align: center; }
