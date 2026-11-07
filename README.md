@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 67,9 KB | 14,5 KB |
-| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 67,9 KB | 14,6 KB |
-| la stessa cornice, dall'ingresso di sempre | 193,7 KB | 62,6 KB | 67,9 KB | 14,3 KB |
+| solo la cornice, dall'ingresso per le app | 55,0 KB | 19,2 KB | 67,5 KB | 14,4 KB |
+| la cornice e due componenti per nome | 64,0 KB | 22,0 KB | 67,5 KB | 14,4 KB |
+| la stessa cornice, dall'ingresso di sempre | 196,2 KB | 63,4 KB | 67,4 KB | 14,4 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.434 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.649 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -258,7 +258,7 @@ Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la c
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Dalla `v4.25.0` sono 40 byte in più, la misura più 20 (Decisione 22468): la prop `spazio` e la condizione che mette «Il mio
 spazio» nel selettore dei workspace; i due testi nelle tre lingue e il clic stanno nel pezzo degli avvisi.
-Dalla `v4.26.0` sono 206 byte in più, la misura più 20: il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
+Dalla `v4.26.0` sono 215 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
 trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Label` nelle tre lingue, il «+» che si chiude senza
 voci e l'Esc che non chiude anche il cassetto; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
 scende a 1.362 byte.
