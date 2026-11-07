@@ -630,6 +630,7 @@
     moveList: 'Trascina la lista {title}', listKeys: 'Per prendere la lista premi Spazio. Poi spostala con le frecce destra e sinistra. Premi Spazio per lasciarla, Esc per rimetterla dov’era.',
     listTaken: 'Hai preso la lista {title}.', listAt: 'Lista {title} al posto {n} di {total}.', listDropped: 'Lista {title} lasciata al posto {n} di {total}.',
     listCancelled: 'Spostamento annullato: la lista {title} è tornata dov’era.', listBack: 'Non spostata: la lista {title} è tornata al posto {n} di {total}.',
+    listWait: 'La lista {title} aspetta ancora la conferma dello spostamento.',
     moveLeft: 'Sposta a sinistra', moveRight: 'Sposta a destra', rename: 'Rinomina', listName: 'Nome della lista', jumpTo: 'Vai alla lista' };
   function kanbanTexts(t) { var o = Object.assign({}, KANBAN_TEXTS); if (t) Object.keys(t).forEach(function (k) { if (t[k] != null) o[k] = t[k]; }); return o; } /* un testo undefined o null resta quello di default */
   function textOf(t, k, v) { return t.replace(k, function () { return v; }); } /* il testo del modulo entra com'è, anche con «$&» */
@@ -812,7 +813,7 @@
     var ld = useState(null), lift = ld[0], setLift = ld[1], liftRef = useRef(null); /* la lista presa: { i, to, dx, rows, pid | kb } */
     var lanes = useRef(null), edge = useRef(null), refocus = useRef(null), lastJ = useRef(null), live = useRef(true), seq = useRef(100);
     var pl = useState(null), busyList = pl[0], pendList = useRef(null); /* la lista spostata che aspetta il modulo: { id, to } */
-    var dragRef = useRef(null), held = useRef(false), moved = useRef(false); /* la scheda trascinata resta dov'è finché il trascinamento non finisce, anche se il modulo la sposta */
+    var dragRef = useRef(null), held = useRef(false), moved = useRef(false), lost = useRef(false); /* la scheda trascinata resta dov'è finché il trascinamento non finisce, anche se il modulo la sposta */
     var keysId = useId('zr-listkeys');
     useEffect(function () { live.current = true; return function () { live.current = false; if (edge.current) cancelAnimationFrame(edge.current.raf); }; }, []);
 
@@ -830,7 +831,8 @@
       var n = kanbanCopy(src);
       Object.keys(pend.current).forEach(function (id) { var w = kanbanWhere(n, id), q = pend.current[id]; if (w && w.list.id !== q.to) n = kanbanPut(n, id, q.to, q.at); });
       var d = dragRef.current, w0 = d && kanbanWhere(cur.current, d), w1 = d && kanbanWhere(n, d);
-      if (w0 && (!w1 || w1.list.id !== w0.list.id)) {
+      if (w0 && (!w1 || w1.list.id !== w0.list.id) && !n.some(function (l) { return l.id === w0.list.id; })) lost.current = true; /* la lista da cui parte non c'è più: la scheda va dove la mette il modulo, e il trascinamento finisce */
+      else if (w0 && (!w1 || w1.list.id !== w0.list.id)) {
         held.current = true;
         if (w1) n = kanbanPut(n, d, w0.list.id, w0.index);
         else n = n.map(function (l) { if (l.id !== w0.list.id) return l; var cs = l.cards.slice(); cs.splice(Math.min(w0.index, cs.length), 0, w0.card); return Object.assign({}, l, { cards: cs }); });
@@ -846,6 +848,7 @@
       if (j === lastJ.current) return;
       lastJ.current = j;
       set(synced(p.lists));
+      if (lost.current) { lost.current = false; dragRef.current = null; held.current = false; moved.current = false; refusedRef.current = null; setRefused(null); setDragId(null); setOverId(null); edgeStop(); } /* la scheda si rismonta: dragend non arriverebbe */
     }, [p.lists, controlled]);
     function release() { /* fine del trascinamento di una scheda: se il modulo l'aveva spostata e il rilascio non l'ha mossa, vale la sua lista */
       var h0 = held.current, m0 = moved.current; dragRef.current = null; held.current = false; moved.current = false;
@@ -977,7 +980,7 @@
     /* dalla tastiera, sulla maniglia: Spazio prende, ← → spostano, Spazio o Invio lasciano, Esc rimette dov'era */
     function handleKey(e, i) {
       var k = e.key, d = liftRef.current;
-      if (!d) { if ((k === ' ' || k === 'Spacebar') && cur.current.length > 1) { e.preventDefault(); if (pendList.current) return; liftRef.current = { i: i, to: i, kb: true, rows: measure() }; setLift(liftRef.current); say(textOf(T.listTaken, '{title}', cur.current[i].title)); } return; }
+      if (!d) { if ((k === ' ' || k === 'Spacebar') && cur.current.length > 1) { e.preventDefault(); if (pendList.current) { say(textOf(T.listWait, '{title}', titleOf(pendList.current.id))); return; } liftRef.current = { i: i, to: i, kb: true, rows: measure() }; setLift(liftRef.current); say(textOf(T.listTaken, '{title}', cur.current[i].title)); } return; }
       if (!d.kb) return;
       if (k === 'ArrowLeft' || k === 'ArrowRight') {
         e.preventDefault(); var to = Math.max(0, Math.min(cur.current.length - 1, d.to + (k === 'ArrowRight' ? 1 : -1)));
