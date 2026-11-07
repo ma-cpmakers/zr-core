@@ -171,6 +171,13 @@ export interface CorniceProps {
      * che non c'è. Il frontend la accende quando la pagina del piano esiste su app.zeiras.com.
      */
     piano?: boolean | undefined;
+    /**
+     * «Il mio spazio» (dalla `v4.25.0`, #3417): l'indirizzo dello spazio del cliente, che il frontend dà quando la persona è anche
+     * cliente di un'azienda con lo spazio acceso. Con questa prop il selettore dei workspace ha in cima il gruppo «Come cliente»
+     * con la voce, non attiva; i due testi arrivano col pezzo degli avvisi, che allora si chiede, e finché non è arrivato la voce
+     * non c'è. Senza, la cornice è quella di sempre. Il selettore c'è solo se il workspace dei dati sta in un'azienda, come prima.
+     */
+    spazio?: { href: string } | undefined;
     children?: ReactNode;
 }
 
@@ -449,7 +456,7 @@ function NellaSuaLingua(props: CorniceProps & { dati: DatiDellaCornice; chi: Pic
 const lui = (questi: DatiDellaCornice) => [questi.persona.email, questi.persona.impronta] + '';
 
 /** La cornice di una persona: `dati` sono quelli che valgono (sopra), `chi` dice il nome e la lingua di adesso. */
-function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
+function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], active, onLogout, naviga = (indirizzo) => location.assign(indirizzo), piano = false, spazio, ...pagina }: CorniceProps & { chi: Pick<DatiDellaCornice, 'lingua' | 'persona'> }) {
     // Chi non ha accettato i documenti legali in vigore vede la cornice ridotta. Lo dicono i dati (`accettazione_richiesta`), o
     // lo ha detto una rotta della cornice, col suo 403, mentre la cornice aveva questi dati: il segnale arriva fuori dal render
     // (`loDiceUnaRotta`) e si lega qui ai dati di quel momento, mentre si rende. Vale finché i dati della cornice non sono più
@@ -483,13 +490,19 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
     };
     const t = testi(lingua);
+    // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
+    // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
+    // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
+    const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     // I testi dei due avvisi stanno in un pezzo a richiesta (dalla `v3.7.0`), chiesto la prima volta che la cornice è ridotta
     // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
     // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
     // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
-    // Dalla `v4.22.0` (#2909) lo stesso pezzo porta i testi della fascia di assistenza, e si chiede anche in assistenza.
+    // Dalla `v4.22.0` (#2909) lo stesso pezzo porta i testi della fascia di assistenza, e si chiede anche in assistenza; dalla
+    // `v4.25.0` (#3417) quelli di «Il mio spazio», e si chiede anche con `spazio` quando c'è il selettore, cioè il workspace dei dati
+    // sta in un'azienda: senza, la voce non si mostra (revisione dello sprint 118, rilievo 1).
     const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
-    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza;
+    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza || !!(spazio && delWorkspace);
     useLayoutEffect(() => {
         if (chiediGliAvvisi && !avvisi) {
             const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
@@ -544,13 +557,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }),
     };
 
-    // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
-    // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
-    // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
-    const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     const companies = delWorkspace
         ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))
         : undefined;
+    // «Il mio spazio» in cima al selettore, che c'è solo con le aziende: col pezzo degli avvisi, quando è arrivato (dalla `v4.25.0`).
+    const mio = companies && spazio && avvisi?.ilMioSpazio(lingua, spazio.href, naviga);
     // «Nuovo workspace» in fondo al selettore solo se la parte server dice che la persona può crearne uno in quell'azienda: proprio
     // `true`, perché i dati di una parte server di prima non lo dicono. Apre la pagina di zr-home nel workspace dei dati, che è
     // una pagina di app.zeiras.com anche da un prodotto: il dialogo è suo, e se la persona può davvero lo decide il backoffice.
@@ -989,6 +1000,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 onNewWorkspace: nuovoWorkspace,
                 // La foto della persona, se ce l'ha (dalla `v4.2.0`): senza, l'`Avatar` mette le iniziali.
                 userPhoto: persona.foto,
+                personal: mio?.personal,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
@@ -1053,8 +1065,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             // quanti sono (`searchCount`, dal pezzo della ricerca, che c'è se ci sono risultati), che l'`AppShell` dice nella sua zona
             // viva (dalla `v4.18.0`, richiesta 134).
             labels={avvisoSopraLaPagina
-                ? { ...t, ...dellaRicerca, notificationsError: spenta, searchHint: spenta, searchError: spenta }
-                : { ...t, ...dellaRicerca, ...(risultati.length > 0 && { searchCount: laRicerca!.quantiRisultati(lingua, t) }), markAllRead: sulPulsante }}
+                ? { ...t, ...dellaRicerca, ...mio?.labels, notificationsError: spenta, searchHint: spenta, searchError: spenta }
+                : { ...t, ...dellaRicerca, ...mio?.labels, ...(risultati.length > 0 && { searchCount: laRicerca!.quantiRisultati(lingua, t) }), markAllRead: sulPulsante }}
             settingsHref={dashboard.indirizzo + pagineDiApp.settings}
             onAccount={suAccount}
         />

@@ -9,5 +9,7 @@
     "assistTitle": "You're using Zeiras as {name}",
     "assistText": "{email} · Changes you make count as made by {firstName}",
     "assistReadOnly": "{email} · Read only: you can look, not change",
-    "assistEnd": "End assistance"
+    "assistEnd": "End assistance",
+    "personal": "My space",
+    "personalGroup": "As a customer"
 }

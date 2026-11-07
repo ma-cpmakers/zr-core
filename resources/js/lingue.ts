@@ -18,8 +18,8 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * Non ci sono nemmeno i due testi dell'`AppShell` che mostra solo la ricerca all'invio (`searchOn: 'submit'`, dalla `v4.2.0`), che la
  * cornice non chiede, né quelli del modulo «Da attivare» (`off`) e di «Impostazioni del workspace» (`workspaceSettings`, dal lotto
  * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace. Né i tre dello spazio
- * cliente di zr-account (`personal`, `personalGroup`, `firstWorkspace`, dal design system 1793914149-8632): la cornice non passa
- * `personal`, e senza aziende non ha il selettore. Né quanti risultati ha la ricerca (`searchCount`, dal lotto 0518): lo dice
+ * cliente di zr-account (`personal`, `personalGroup`, `firstWorkspace`, dal design system 1793914149-8632): la cornice dei membri
+ * passa `personal` solo con la prop `spazio` (dalla `v4.25.0`), coi due testi dal pezzo degli avvisi, e senza aziende non ha il selettore. Né quanti risultati ha la ricerca (`searchCount`, dal lotto 0518): lo dice
  * l'`AppShell` solo coi risultati, che arrivano col pezzo della ricerca, e il testo sta coi suoi (`resources/lingue/ricerca/`).
  */
 export type TestiDellaCornice = Required<
