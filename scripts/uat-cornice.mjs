@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -47,6 +47,9 @@ const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.i
 // senza «+»: girano axe, i menu, le linguette della campanella vuota, il selettore, il percorso, il cassetto, i font, la CSP e le
 // righe CL. Prima del tag zr-core la lancia su `cliente.html`, e su `cliente.html?aziende=1&nuovo=1` per il selettore con le aziende.
 const colCliente = argomenti.includes('--cliente') && argomenti.splice(argomenti.indexOf('--cliente'), 1).length > 0;
+// --spazio (dalla v4.25.0, #3417): la cornice dei membri ha la prop `spazio`, e girano le righe SP. Prima del tag zr-core la lancia
+// su `layout.html?spazio=1` in italiano, spagnolo e inglese.
+const colloSpazio = argomenti.includes('--spazio') && argomenti.splice(argomenti.indexOf('--spazio'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1468,6 +1471,10 @@ async function uat(page, apri) {
     await tornaAllaPagina();
     await selettore(page);
     await tornaAllaPagina();
+    if (colloSpazio) {
+        await ilMioSpazio(page);
+        await tornaAllaPagina();
+    }
     await campanella(page, true);
     await tornaAllaPagina();
     await sopraIlPannello(page);
@@ -1486,6 +1493,47 @@ async function uat(page, apri) {
 // parte che non si veda; CL.2 il selettore dice «Come cliente › Il mio spazio» e non c'è il riquadro del piano; CL.3 il menu del
 // profilo è Profilo, Impostazioni, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova scrive in `#uat-ultima`); CL.4
 // (dalla v4.13.1) campanella e profilo stanno a destra della barra in alto, a 1280 e a 390 px.
+// SP (dalla v4.25.0, #3417): «Il mio spazio» nella cornice dei membri, con `--spazio`. SP.1 aperto il selettore, il primo gruppo è
+// «Come cliente» nella lingua della pagina (dal parametro `lingua`, o da `lang` del documento), con «Il mio spazio» che porta a un
+// indirizzo e non è attiva, e il pulsante del selettore dice ancora azienda › workspace; SP.2 un clic semplice sulla voce non
+// ricarica la pagina (un segno messo nella finestra prima del clic c'è ancora dopo).
+async function ilMioSpazio(page) {
+    const qui = new URL(page.url());
+    const lingua = (qui.searchParams.get('lingua') || (await page.evaluate(() => document.documentElement.lang)) || 'it').slice(0, 2);
+    const dalFile = (codice) => {
+        try {
+            return JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/avvisi/${codice}.json`, import.meta.url)), 'utf8'));
+        } catch {
+            return null;
+        }
+    };
+    const attesi = dalFile(lingua) ?? dalFile('en');
+    await page.click('.zr-shell .zr-ws-switch');
+    await pausa(300);
+    const visto = await page.evaluate(() => {
+        const gruppo = document.querySelector('.zr-shell .zr-ws-menu .zr-ws-group');
+        const voce = gruppo?.querySelector('.zr-ws-item');
+        return {
+            titolo: gruppo?.querySelector('.zr-ws-group-title')?.textContent?.trim() ?? null,
+            voce: voce?.textContent?.trim() ?? null,
+            href: voce?.getAttribute('href') ?? null,
+            attiva: !!voce && (voce.matches('.is-active') || voce.hasAttribute('aria-current')),
+            selettore: document.querySelector('.zr-shell .zr-ws-switch')?.getAttribute('aria-label') ?? '',
+        };
+    });
+    await page.screenshot({ path: join(cartella, 'selettore-spazio-1280.png') });
+    scrivi(visto.titolo === attesi.personalGroup && visto.voce === attesi.personal && !!visto.href && !visto.attiva && !visto.selettore.includes(attesi.personalGroup) ? '✅' : '❌', 'SP.1', `aperto il selettore, in cima «${attesi.personalGroup}» con «${attesi.personal}», non attiva; il selettore dice azienda › workspace`, `gruppo «${visto.titolo}», voce «${visto.voce}» → ${visto.href}, attiva: ${visto.attiva}; selettore «${visto.selettore}»`);
+    if (!visto.href) {
+        scrivi('➖', 'SP.2', 'un clic semplice sulla voce non ricarica la pagina', 'la voce non c\'è');
+        return;
+    }
+    await page.evaluate(() => (window.__uatSpazio = 1));
+    await page.locator('.zr-shell .zr-ws-menu .zr-ws-group').first().locator('.zr-ws-item').click();
+    await pausa(800);
+    const dopo = await page.evaluate(() => ({ segno: window.__uatSpazio === 1, dove: location.href }));
+    scrivi(dopo.segno ? '✅' : '❌', 'SP.2', 'un clic semplice sulla voce non ricarica la pagina', `segno nella finestra dopo il clic: ${dopo.segno}; indirizzo ${dopo.dove}`);
+}
+
 async function ilCliente(page, larghezza) {
     const id = larghezza > 720 ? 'CL' : 'CL390';
     const campo = await page.evaluate(() => {
@@ -1526,6 +1574,13 @@ async function ilCliente(page, larghezza) {
     await page.click('.zr-shell .zr-avatar-btn');
     await pausa(300);
     const voci = await page.evaluate(() => [...document.querySelectorAll('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep')].map((voce) => (voce.matches('.zr-menu-sep') ? '—' : voce.textContent?.trim())));
+    // Su una pagina vera (senza `#uat-ultima`, che c'è solo sulla pagina di prova) «Esci» chiuderebbe la sessione di chi lancia
+    // lo script, e il giro a 390 px non entrerebbe più (giro di zr-bookings-f6 su app.zeiras.com, 07/11/2026): lì non si clicca.
+    if (!(await page.locator('#uat-ultima').count())) {
+        await page.keyboard.press('Escape');
+        scrivi(voci.length === 4 && voci[2] === '—' ? '➖' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; «Esci» non cliccato: la pagina non è quella di prova`);
+        return;
+    }
     await page.locator('.zr-profile-menu [role="menuitem"]').last().click();
     await pausa(300);
     const uscito = await page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');

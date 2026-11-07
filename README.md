@@ -175,9 +175,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 67,2 KB | 13,9 KB |
-| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 67,2 KB | 13,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 193,7 KB | 62,6 KB | 67,4 KB | 14,3 KB |
+| solo la cornice, dall'ingresso per le app | 54,2 KB | 18,7 KB | 67,9 KB | 14,5 KB |
+| la cornice e due componenti per nome | 62,9 KB | 21,4 KB | 67,9 KB | 14,6 KB |
+| la stessa cornice, dall'ingresso di sempre | 193,7 KB | 62,6 KB | 67,9 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.394 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.434 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -256,9 +256,11 @@ alto quanto lo spazio, con `returnFocus`, e il menu Moduli che si chiude col cli
 chiamate che segnano lette le notifiche, che servono solo a pannello aperto e sono uscite dal JS d'ingresso, nel pezzo della campanella.
 Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la campanella che in assistenza non scrive e la condizione
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
+Dalla `v4.25.0` sono 40 byte in più, la misura più 20 (Decisione 22468): la prop `spazio` e la condizione che mette «Il mio
+spazio» nel selettore dei workspace; i due testi nelle tre lingue e il clic stanno nel pezzo degli avvisi.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.507 i rimedi, 1.797 la
-ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
@@ -471,6 +473,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.22.0` | l'assistenza (#2909): quando lo staff entra con «Accedi come», i dati della cornice portano `assistenza` (la persona assistita e `sola_lettura`, da `accessi.corrente.mostra`), sopra la pagina c'è la fascia di assistenza col pulsante «Termina l'assistenza» (`onLogout`), e la campanella mostra senza scrivere: niente «Segna tutte come lette», una notifica aperta non si segna letta, e il 403 `azione_non_consentita_in_assistenza` alla lettura apre lo stesso la risorsa. Per ogni altra sessione niente cambia | `composer update zeiras/zr-core zeiras/zr-auth` (serve zr-auth 0.12.139), poi la build | ogni pagina con la cornice legge anche `GET /v1/accessi/corrente`: il backoffice finto di zr-auth lo conosce dalla 0.12.139; un finto scritto a mano (`Http::fake`) risponde con `{data: {accesso_id, scade_il, impersonificazione: null}}`, e un caso che conta le richieste al backoffice ne conta una in più. Per una sessione che non è di assistenza le chiavi dei dati e la cornice sono quelle di prima | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html`; `layout.html?assistenza=1` e `?assistenza=lettura` |
 | `v4.23.0` | la campanella del cliente (#3398): nella `CorniceDelCliente` il numero delle notifiche da cliente non lette (`non_lette` nei dati di `Cornice::datiDelCliente()`), l'elenco all'apertura con l'azienda sotto il titolo, il clic che le segna lette e apre la prenotazione in «Il mio spazio» (`https://app.zeiras.com/spazio/prenotazioni/<id>`), «Segna tutte come lette»; le rotte `cornice/cliente/notifiche` col gettone dell'accesso; i titoli dei quattro tipi da cliente di Bookings (`bookings.cliente.prenotazione.*`) nelle tre lingue e la loro riga nella voce `home` del registro. E il design system `ds-1793997272-d6e5`, la richiesta 84: in `KanbanColumn` una scheda per lista nel giro del Tab, ↑ ↓ Home Fine fra le schede, ← → alla lista accanto (`KanbanTexts.cardKeys`). Per la `Cornice` e la `CorniceDelloStaff` niente cambia | `composer update zeiras/zr-core`, poi la build | zr-home: la campanella apre `/spazio/prenotazioni/{id}` (zr-home #274), che deve esserci; un caso che conta le chiavi dei dati del cliente ne trova una in più, `non_lette`, e un caso che conta le rotte della cornice tre in più | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (con le notifiche da cliente; `?notifiche=0` senza) |
 | `v4.24.0` | `form-action` si allarga per una pagina sola: un insieme di `csp_pagine` chiesto con `perLaPagina` aggiunge origini https:// anche a `form-action` (zr-superadmin #2942, la pagina che consegna l'«Accedi come» col POST); in `zr-core.csp` resta scartata, e le altre pagine restano a `'self'`. zr-auth dalla 0.12.141: il codice dell'«Accedi come» arriva al modulo solo da un POST del pannello dello staff (Decisioni 22412 e 22413). Per una CSP che non scrive `form-action` in un insieme niente cambia | `composer update zeiras/zr-core zeiras/zr-auth`, prima che zr-superadmin passi al POST: un modulo con una zr-auth più vecchia non riceve più l'assistenza | un caso che prova il ritorno dell'«Accedi come» con un GET: dalla 0.12.141 è un POST con 303 | `scripts/uat-cornice.mjs` su `layout.html`, `staff.html` e `cliente.html` (la CSP di tutti invariata) |
+| `v4.25.0` | «Il mio spazio» nella cornice dei membri (#3417, per zr-home #3416): con la prop facoltativa `spazio` (`{ href }`) di `Cornice` e di `LayoutDellaCornice` il selettore dei workspace ha in cima il gruppo «Come cliente» con «Il mio spazio», non attiva, che porta all'indirizzo (un clic semplice con `naviga`); i due testi nelle tre lingue arrivano col pezzo degli avvisi, che la cornice chiede solo con la prop. Senza `spazio` niente cambia | `composer update zeiras/zr-core`, poi la build; `spazio` lo passa chi sa che la persona è anche cliente di un'azienda con lo spazio acceso (in zr-home, `io.fornitori.elenca`) | niente: la prop è nuova e facoltativa | `scripts/uat-cornice.mjs` su `layout.html?spazio=1` (riga SP, in italiano, spagnolo e inglese), `layout.html`, `staff.html` e `cliente.html` |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1891,6 +1894,13 @@ cornice === null ? pagina : (
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
   la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
   (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
+- **«Il mio spazio»** (dalla `v4.25.0`, #3417): a chi è membro di un workspace e anche cliente di un'azienda con lo spazio
+  acceso, il frontend dà la prop `spazio` (`<Cornice spazio={{ href: '/spazio' }} … />`, o sul layout della cornice), e il
+  selettore dei workspace ha in cima il gruppo «Come cliente» con «Il mio spazio» (design dcc4, schermata 13): la voce porta
+  all'indirizzo, non è attiva, e un clic semplice su un indirizzo di questa origine passa da `naviga`. Chi lo è lo sa il
+  frontend (zr-home lo legge da `io.fornitori.elenca`), non la cornice. I due testi («Come cliente» e «Il mio spazio» nelle tre
+  lingue) arrivano col pezzo degli avvisi, che la cornice chiede solo con la prop: finché non è arrivato la voce non c'è. Il
+  selettore c'è solo se il workspace dei dati sta in un'azienda, come prima. Senza `spazio` la cornice è quella di sempre.
 - **Chi non ha accettato i documenti legali** in vigore vede la cornice ridotta, dalla `v1.14.0`: coi dati che portano
   `accettazione_richiesta: true`, o dopo che una rotta della cornice ha risposto 403 `accettazione_richiesta` (finché i
   dati della cornice non sono più recenti di quelli che aveva allora: gli stessi, o dello stesso workspace con un segno non
