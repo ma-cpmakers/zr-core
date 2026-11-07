@@ -5636,9 +5636,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.649 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
-    // v4.26.0 (sì di zr-pm-07 del 07/11): +215 byte, il lotto 0522 del design system, coi rimedi delle righe 4 e 136 tolti.
-    'i pesi: i 215 byte della v4.26.0' => ['pesi', 'Dalla `v4.26.0` sono 215 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog`'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.672 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    // v4.26.0 (sì di zr-pm-07 del 07/11): +238 byte, i lotti 0522 e 0523 del design system, coi rimedi delle righe 4 e 136 tolti.
+    'i pesi: i 238 byte della v4.26.0' => ['pesi', 'Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog`'],
     // v4.25.0 (Decisione 22468 di zr-pm): +40 byte, «Il mio spazio» nella cornice dei membri, coi testi nel pezzo degli avvisi.
     'i pesi: i 40 byte della v4.25.0' => ['pesi', 'Dalla `v4.25.0` sono 40 byte in più, la misura più 20 (Decisione 22468): la prop `spazio` e la condizione che mette «Il mio'],
     // v4.20.0 (Decisione 22247 di zr-pm): +146 byte, i lotti 0520 e 0521, con le due chiamate che segnano lette nel pezzo della campanella.

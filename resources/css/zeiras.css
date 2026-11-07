@@ -136,6 +136,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-crumbs { display: flex; align-items: center; gap: var(--space-1); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .zr-crumbs a { color: var(--ink-muted); text-decoration: none; }
 .zr-crumbs a:hover { color: var(--ink); text-decoration: underline; }
+.zr-crumbs a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 .zr-crumbs [aria-current] { color: var(--ink); font-weight: 500; }
 .zr-board-titlebar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
 .zr-board-title { margin: 0; font-family: var(--font-display); font-size: 26px; line-height: 32px; font-weight: 650; letter-spacing: -.01em; }
@@ -1073,6 +1074,7 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-crumbbar { flex: none; padding: var(--space-3) var(--space-6) 0; }
 .zr-shell-crumbs { flex-wrap: wrap; row-gap: 2px; }
 .zr-shell-crumbs a, .zr-shell-crumbs [aria-current] { overflow-wrap: anywhere; }
+@media (pointer: coarse) { .zr-breadcrumb ol, .zr-shell-crumbs { row-gap: 26px; } .zr-breadcrumb a, .zr-crumbs a { position: relative; } .zr-breadcrumb a::after, .zr-crumbs a::after { content: ''; position: absolute; left: 50%; top: -12px; bottom: -14px; width: max(100%, 44px); transform: translateX(-50%); } .zr-board-head .zr-crumbs a::after { top: -14px; bottom: -12px; } } /* al tocco le voci del percorso si prendono su 44 px senza cambiare aspetto: 12 px sopra, nel margine del percorso dentro la cornice, e 14 sotto (nella board 14 sopra e 12 sotto, fra percorso e titolo); su due righe le righe si distanziano perché le aree non si coprano (richiesta 221) */
 .zr-main-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-4) var(--space-6) var(--space-6); }
 .zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible, .zr-search-panel[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* «Salta al contenuto»: nascosto finché non ha il fuoco, poi in alto a sinistra sopra la cornice (richiesta 5) */
@@ -1097,6 +1099,8 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
   .zr-crumbbar { padding: var(--space-3) var(--space-4) 0; }
   .zr-main-body { padding: var(--space-3) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
 }
+@media (pointer: coarse) { .zr-crumbbar, .zr-main.is-flush .zr-crumbbar { padding-bottom: 14px; } .zr-main-body { padding-top: 2px; } } /* al tocco i 14 px sotto il percorso sono della barra del percorso, non del corpo che scorre: il contenuto scorso non finisce sotto l'area delle voci; la distanza dal contenuto resta 16 px (con flush 14, prima 8: richiesta 221) */
+@media (pointer: coarse) and (max-width: 720px) { .zr-main-body { padding-top: 0; } } /* sotto 720 px: 14 al posto di 12 */
 @media (prefers-reduced-motion: reduce) { .zr-ws-chev { transition: none; } }
 .zr-notif-item .zr-avatar { width: 32px; height: 32px; flex: none; font-size: 12px; }
 

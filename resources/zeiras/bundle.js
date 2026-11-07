@@ -186,7 +186,7 @@
     notificationsEmpty: 'Nessuna notifica', notificationsEmptyText: 'Ti avviseremo qui quando qualcuno ti menziona o ti assegna qualcosa.',
     notificationsError: 'Non riusciamo a caricare le notifiche.', retry: 'Riprova', loading: 'Caricamento',
     account: 'Il tuo account', profile: 'Profilo', accountSettings: 'Impostazioni', plan: 'Piano', company: 'Azienda', logout: 'Esci',
-    crumbs: 'Percorso', mainContent: 'Contenuto', skipToContent: 'Salta al contenuto'
+    crumbs: 'Percorso', mainContent: 'Contenuto', skipToContent: 'Salta al contenuto', sideNav: 'Moduli e pagine'
   };
   var IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 
@@ -537,7 +537,7 @@
           wsSwitch),
         createAt && hasCreate ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
-        h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-hidden': behind ? 'true' : undefined },
+        h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
           groups.map(function (g) {
             return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || (g.group === 'Prodotti' || g.group === 'Moduli')) && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),

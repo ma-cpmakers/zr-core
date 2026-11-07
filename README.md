@@ -204,7 +204,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.649 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.672 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -258,9 +258,9 @@ Dalla `v4.22.0` sono 112 byte in più, la misura più 20 (Decisione 22312): la c
 che mette la fascia di assistenza sopra la pagina; la fascia, coi suoi testi nelle tre lingue, sta nel pezzo degli avvisi.
 Dalla `v4.25.0` sono 40 byte in più, la misura più 20 (Decisione 22468): la prop `spazio` e la condizione che mette «Il mio
 spazio» nel selettore dei workspace; i due testi nelle tre lingue e il clic stanno nel pezzo degli avvisi.
-Dalla `v4.26.0` sono 215 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
+Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
 trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Label` nelle tre lingue, il «+» che si chiude senza
-voci e l'Esc che non chiude anche il cassetto; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
+voci e l'Esc che non chiude anche il cassetto, e il lotto 0523 il nome «Moduli e pagine» del `nav` della barra; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
 scende a 1.362 byte.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.362 i rimedi, 1.797 la
@@ -306,8 +306,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 102,9 KB | 16,9 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 99,7 KB | 16,5 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 103,7 KB | 16,9 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 100,5 KB | 16,5 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
