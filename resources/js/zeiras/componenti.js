@@ -688,13 +688,13 @@ import * as React from 'react';
   }
   function KanbanColumn(p) {
     var count = p.count != null ? p.count : React.Children.count(p.children);
-    var lim = p.limit, over = lim && count > lim, full = !over && lim && p.blocks && count == lim; /* con blocks, piena al limite: «Al limite» (richiesta 227) */
+    var lim = p.limit, over = lim && count > lim, full = !over && lim && p.blocks && count == lim, stop = lim && p.blocks && count >= lim; /* con blocks, piena al limite: «Al limite», e «Aggiungi scheda» spento (richiesta 227) */
     var T = kanbanTexts(p.texts);
-    var rest = omit(p, ['title', 'count', 'limit', 'children', 'onAdd', 'isOver', 'composer', 'className', 'texts', 'blocks', 'kind', 'threshold', 'rules', 'actions', 'refused', 'handle', 'action', 'editing', 'onEditingChange', 'onRename', 'menuRef']);
-    var body = useRef(null), cur = useRef(null), hint = useId('zr-keys');
+    var rest = omit(p, ['title', 'count', 'limit', 'children', 'onAdd', 'isOver', 'composer', 'className', 'texts', 'blocks', 'kind', 'threshold', 'rules', 'actions', 'refused', 'handle', 'action', 'editing', 'onEditingChange', 'onRename', 'menuRef', 'transitions', 'cards']);
+    var body = useRef(null), cur = useRef(null), hint = useId('zr-keys'), fullId = useId('zr-full');
     var ms = useState(false), menu = ms[0], mb = useRef(null);
     var acts = p.actions && p.actions.length ? p.actions : null;
-    var below = p.kind === 'ready' && p.threshold > 0 && typeof count === 'number' && count < p.threshold; /* «Pronte» sotto la soglia (richiesta 228) */
+    var watch = p.kind === 'ready' && p.threshold > 0, below = watch && typeof count === 'number' && count < p.threshold; /* «Pronte» sotto la soglia (richiesta 228) */
     function menuRef(el) { mb.current = el; if (typeof p.menuRef === 'function') p.menuRef(el); }
     useEffect(function () { /* le schede che arrivano, se ne vanno o cambiano posto restano fuori dal Tab, tranne quella corrente */
       var el = body.current; if (!el) return;
@@ -725,12 +725,13 @@ import * as React from 'react';
         acts ? h('button', { ref: menuRef, type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-sm zr-btn-icon zr-col-menu', 'aria-label': name, 'aria-haspopup': 'menu', 'aria-expanded': menu, onClick: function () { ms[1](!menu); } }, h(Icon, { name: 'more', size: 16 }))
           : h(Button, { variant: 'ghost', size: 'sm', icon: 'more', 'aria-label': name })),
       p.rules && p.rules.length ? h('ul', { className: 'zr-col-rules', 'aria-label': T.rules }, p.rules.map(function (r, i) { return h('li', { key: i }, r.icon ? h(Icon, { name: r.icon, size: 14 }) : null, h('span', null, r.label)); })) : null, /* le regole accese della lista, sotto l'intestazione (richiesta 226) */
-      below ? h('p', { className: 'zr-col-threshold', role: 'status' }, textOf(textOf(T.belowThreshold, '{n}', String(count)), '{threshold}', String(p.threshold))) : null,
+      watch ? h('p', { className: below ? 'zr-col-threshold' : 'zr-visually-hidden', role: 'status' }, below ? textOf(textOf(T.belowThreshold, '{n}', String(count)), '{threshold}', String(p.threshold)) : '') : null, /* la zona viva resta montata: cambia solo il testo */
       p.action ? h(Button, { variant: 'secondary', size: 'sm', icon: p.action.icon, className: 'zr-col-action', onClick: p.action.onClick }, p.action.label) : null,
       p.refused ? h('div', { className: 'zr-col-refused' }, h(Icon, { name: 'alert', size: 16 }), h('span', null, T.refused)) : null, /* durante il trascinamento: qui la scheda non entra (richieste 225-227) */
       h('div', { ref: body, className: 'zr-col-body', onFocus: onFocus, onKeyDown: onKeyDown }, p.children),
       h('span', { id: hint, hidden: true }, T.cardKeys), /* letto solo come descrizione delle schede */
-      p.composer || h('button', { type: 'button', className: 'zr-col-add', onClick: p.onAdd }, h(Icon, { name: 'plus', size: 16 }), h('span', null, T.addCard)),
+      p.composer || h('button', { type: 'button', className: 'zr-col-add', onClick: stop ? undefined : p.onAdd, 'aria-disabled': stop || undefined, 'aria-describedby': stop ? fullId : undefined }, h(Icon, { name: 'plus', size: 16 }), h('span', null, T.addCard)),
+      stop ? h('span', { id: fullId, hidden: true }, textOf(textOf(lim == 1 ? T.atLimitOne : T.atLimit, '{list}', p.title), '{n}', String(lim))) : null, /* la lista piena che blocca non prende schede nuove, e dice perché */
       menu && acts ? h(Menu, { anchor: mb.current, align: 'end', label: name, items: acts, onClose: function () { ms[1](false); } }) : null);
   }
 
@@ -810,6 +811,8 @@ import * as React from 'react';
     var pd = useState({}), busy = pd[0], setBusy = pd[1], pend = useRef({});
     var ld = useState(null), lift = ld[0], setLift = ld[1], liftRef = useRef(null); /* la lista presa: { i, to, dx, rows, pid | kb } */
     var lanes = useRef(null), edge = useRef(null), refocus = useRef(null), lastJ = useRef(null), live = useRef(true), seq = useRef(100);
+    var pl = useState(null), busyList = pl[0], pendList = useRef(null); /* la lista spostata che aspetta il modulo: { id, to } */
+    var dragRef = useRef(null), held = useRef(false), moved = useRef(false); /* la scheda trascinata resta dov'è finché il trascinamento non finisce, anche se il modulo la sposta */
     var keysId = useId('zr-listkeys');
     useEffect(function () { live.current = true; return function () { live.current = false; if (edge.current) cancelAnimationFrame(edge.current.raf); }; }, []);
 
@@ -819,21 +822,40 @@ import * as React from 'react';
     function say(x) { setSaid(function (v) { return v === x ? x + '\u00a0' : x; }); } /* lo stesso testo detto due volte si sente due volte */
     function titleOf(id) { var l = cur.current.filter(function (x) { return x.id === id; })[0]; return l ? l.title : ''; }
 
-    /* liste controllate: quando il modulo ne passa di diverse (la risposta del server) la board le prende; gli spostamenti che aspettano il modulo restano dove vanno (richiesta 230) */
+    /* liste controllate: con onMove o onMoveList, quando il modulo passa liste diverse (la risposta del server) la board le prende;
+       gli spostamenti che aspettano il modulo restano dove vanno, e la scheda trascinata resta dov'è fino al rilascio (richiesta 230).
+       Senza, la board copia le liste una volta, come prima */
+    var controlled = !!(p.lists && (p.onMove || p.onMoveList));
+    function synced(src) {
+      var n = kanbanCopy(src);
+      Object.keys(pend.current).forEach(function (id) { var w = kanbanWhere(n, id), q = pend.current[id]; if (w && w.list.id !== q.to) n = kanbanPut(n, id, q.to, q.at); });
+      var d = dragRef.current, w0 = d && kanbanWhere(cur.current, d), w1 = d && kanbanWhere(n, d);
+      if (w0 && (!w1 || w1.list.id !== w0.list.id)) {
+        held.current = true;
+        if (w1) n = kanbanPut(n, d, w0.list.id, w0.index);
+        else n = n.map(function (l) { if (l.id !== w0.list.id) return l; var cs = l.cards.slice(); cs.splice(Math.min(w0.index, cs.length), 0, w0.card); return Object.assign({}, l, { cards: cs }); });
+      }
+      var q = pendList.current, i = q ? n.map(function (l) { return l.id; }).indexOf(q.id) : -1;
+      if (i >= 0 && i !== q.to) { var m = n.slice(), x = m.splice(i, 1)[0]; m.splice(Math.min(q.to, m.length), 0, x); n = m; }
+      return n;
+    }
     useEffect(function () {
-      if (!p.lists) return;
+      if (!controlled) return;
       var j = JSON.stringify(p.lists);
       if (lastJ.current === null) { lastJ.current = j; return; }
       if (j === lastJ.current) return;
       lastJ.current = j;
-      var n = kanbanCopy(p.lists);
-      Object.keys(pend.current).forEach(function (id) { var w = kanbanWhere(n, id), q = pend.current[id]; if (w && w.list.id !== q.to) n = kanbanPut(n, id, q.to, q.at); });
-      set(n);
-    }, [p.lists]);
+      set(synced(p.lists));
+    }, [p.lists, controlled]);
+    function release() { /* fine del trascinamento di una scheda: se il modulo l'aveva spostata e il rilascio non l'ha mossa, vale la sua lista */
+      var h0 = held.current, m0 = moved.current; dragRef.current = null; held.current = false; moved.current = false;
+      if (h0 && !m0 && controlled && live.current) set(synced(p.lists));
+    }
+    function colOf(id) { var cs = cols(); for (var i = 0; i < cs.length; i++) if (cs[i].getAttribute('data-list-id') === String(id)) return cs[i]; return null; }
     /* il fuoco dopo uno spostamento della lista (dal menu o dalla tastiera): torna al suo pulsante, anche se la lista ha cambiato posto */
     useEffect(function () {
       var r = refocus.current; if (!r || !lanes.current) return; refocus.current = null;
-      var col = lanes.current.querySelector('[data-list-id="' + String(r.id).replace(/["\\]/g, '') + '"]'), t = col && col.querySelector(r.what === 'menu' ? '.zr-col-menu' : '.zr-col-handle');
+      var col = colOf(r.id), t = col && col.querySelector(r.what === 'menu' ? '.zr-col-menu' : '.zr-col-handle');
       if (t && document.activeElement !== t) t.focus();
     });
 
@@ -846,6 +868,7 @@ import * as React from 'react';
       if (now.list.id === w.list.id && now.index === w.index) return; /* lasciata dov'era */
       var r; if (p.onMove) { try { r = p.onMove(withVotes(w.card), toList, w.list.id, typeof at === 'string' ? at : null); } catch (e) { r = false; } }
       if (r === false) { say(textOf(textOf(T.cardBack, '{card}', w.card.title), '{list}', w.list.title)); return; }
+      if (cardId === dragRef.current) moved.current = true;
       commit(n);
       if (!r || typeof r.then !== 'function') return;
       pend.current[cardId] = { to: toList, at: now.index }; setBusy(Object.assign({}, pend.current));
@@ -861,6 +884,8 @@ import * as React from 'react';
     function addCard(listId) {
       var t = draft.trim();
       if (!t) { setAddingIn(null); return; }
+      var to = cur.current.filter(function (l) { return l.id === listId; })[0];
+      if (to && to.blocks && to.limit != null && to.cards.length + 1 > to.limit) { say(textOf(T.refusedSay, '{reason}', textOf(textOf(to.limit == 1 ? T.atLimitOne : T.atLimit, '{list}', to.title), '{n}', String(to.limit)))); return; } /* piena col limite che blocca: il testo resta (richiesta 227) */
       seq.current += 1;
       commit(cur.current.map(function (l) { return l.id === listId ? Object.assign({}, l, { cards: l.cards.concat([{ id: 'n' + seq.current, title: t }]) }) : l; }));
       setDraft('');
@@ -874,6 +899,7 @@ import * as React from 'react';
     function placeSay(k, l, n) { return textOf(textOf(textOf(T[k], '{title}', l.title), '{n}', String(n + 1)), '{total}', String(cur.current.length)); }
     function moveList(from, to, how) {
       var ls = cur.current, l = ls[from];
+      if (pendList.current) return; /* un altro spostamento di lista aspetta il modulo */
       if (!l || from === to || to < 0 || to >= ls.length) { if (l && (how === 'keys' || how === 'pointer')) say(placeSay('listDropped', l, from)); return; } /* lasciata dov'era */
       var r; if (p.onMoveList) { try { r = p.onMoveList(l, to, from); } catch (e) { r = false; } }
       if (how) refocus.current = { id: l.id, what: how === 'menu' ? 'menu' : 'handle' };
@@ -881,8 +907,11 @@ import * as React from 'react';
       var n = ls.slice(); n.splice(from, 1); n.splice(to, 0, l); commit(n);
       say(placeSay('listDropped', l, to));
       if (!r || typeof r.then !== 'function') return;
+      pendList.current = { id: l.id, to: to }; pl[1](l.id);
       function end(ok) {
-        if (!live.current || ok !== false) return;
+        if (!live.current) return;
+        pendList.current = null; pl[1](null);
+        if (ok !== false) return;
         var c = cur.current, i = c.indexOf(c.filter(function (x) { return x.id === l.id; })[0]); if (i < 0) return;
         var m = c.slice(); m.splice(i, 1); m.splice(Math.min(from, m.length), 0, c[i]); commit(m);
         say(placeSay('listBack', l, from));
@@ -899,11 +928,12 @@ import * as React from 'react';
         var r = el.getBoundingClientRect(), band = r.width * EDGE_BAND, v = 0, dt = e.t ? Math.min(EDGE_STEP, (now - e.t) / 1000) : 0; e.t = now;
         if (band > 0 && e.dir < 0 && e.x < r.left + band) v = -EDGE_SPEED * Math.min(1, (r.left + band - e.x) / band);
         if (band > 0 && e.dir > 0 && e.x > r.right - band) v = EDGE_SPEED * Math.min(1, (e.x - (r.right - band)) / band);
-        if (v && dt) {
-          if (e.pos == null || Math.abs(el.scrollLeft - e.pos) > 1) e.pos = el.scrollLeft; /* qualcos'altro l'ha spostata: si riparte da lì */
-          e.pos = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, e.pos + v * dt)); el.scrollLeft = e.pos;
-          if (liftRef.current && !liftRef.current.kb) follow(e.x);
-        }
+        if (band > 0 && (e.x < r.left + band || e.x > r.right - band)) { /* nella fascia lo scorrimento è solo della board: quello del browser, che in Chromium si somma, si annulla a ogni fotogramma */
+          if (e.pos == null) e.pos = el.scrollLeft;
+          if (v && dt) e.pos = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, e.pos + v * dt));
+          if (el.scrollLeft !== e.pos) el.scrollLeft = e.pos;
+          if (v && dt && liftRef.current && !liftRef.current.kb) follow(e.x);
+        } else e.pos = null;
         e.raf = requestAnimationFrame(tick);
       }
       e.raf = requestAnimationFrame(tick);
@@ -921,7 +951,7 @@ import * as React from 'react';
     function cols() { return lanes.current ? Array.prototype.filter.call(lanes.current.children, function (x) { return x.classList.contains('zr-col'); }) : []; }
     function measure() { var el = lanes.current, b = el.getBoundingClientRect(); return cols().map(function (c) { var r = c.getBoundingClientRect(); return { left: r.left - b.left + el.scrollLeft, w: r.width }; }); }
     function grab(e, i) {
-      if (e.button > 0 || cur.current.length < 2 || liftRef.current) return;
+      if (e.button > 0 || cur.current.length < 2 || liftRef.current || pendList.current) return;
       e.preventDefault();
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) { /* senza cattura si segue lo stesso */ }
       var el = lanes.current, b = el.getBoundingClientRect();
@@ -947,7 +977,7 @@ import * as React from 'react';
     /* dalla tastiera, sulla maniglia: Spazio prende, ← → spostano, Spazio o Invio lasciano, Esc rimette dov'era */
     function handleKey(e, i) {
       var k = e.key, d = liftRef.current;
-      if (!d) { if ((k === ' ' || k === 'Spacebar') && cur.current.length > 1) { e.preventDefault(); liftRef.current = { i: i, to: i, kb: true, rows: measure() }; setLift(liftRef.current); say(textOf(T.listTaken, '{title}', cur.current[i].title)); } return; }
+      if (!d) { if ((k === ' ' || k === 'Spacebar') && cur.current.length > 1) { e.preventDefault(); if (pendList.current) return; liftRef.current = { i: i, to: i, kb: true, rows: measure() }; setLift(liftRef.current); say(textOf(T.listTaken, '{title}', cur.current[i].title)); } return; }
       if (!d.kb) return;
       if (k === 'ArrowLeft' || k === 'ArrowRight') {
         e.preventDefault(); var to = Math.max(0, Math.min(cur.current.length - 1, d.to + (k === 'ArrowRight' ? 1 : -1)));
@@ -982,11 +1012,11 @@ import * as React from 'react';
         if (Date.now() - told.current.at < 2000) setTimeout(function () { if (live.current) say(textOf(T.refusedSay, '{reason}', r.reason)); }, 150); /* lasciata subito dopo l'annuncio: la ragione si ridice */
         if (p.onRefuse) { var to = cur.current.filter(function (l) { return l.id === r.list; })[0]; if (to) p.onRefuse(withVotes(card), to, r.reason); }
       }
-      refusedRef.current = null; setRefused(null); told.current.text = ''; setDragId(null); setOverId(null); edgeStop();
+      refusedRef.current = null; setRefused(null); told.current.text = ''; setDragId(null); setOverId(null); edgeStop(); release();
     }
 
     function jump(l) { /* «Vai alla lista»: il fuoco sulla scheda corrente della lista scelta, o sul suo «Aggiungi scheda» (richiesta 229) */
-      var col = lanes.current && lanes.current.querySelector('[data-list-id="' + String(l.id).replace(/["\\]/g, '') + '"]'); if (!col) return;
+      var col = colOf(l.id); if (!col) return;
       var t = col.querySelector('.zr-col-body .zr-card[tabindex="0"]') || col.querySelector('.zr-col-add, .zr-composer textarea') || col.querySelector('.zr-col-menu');
       if (t) { t.focus(); if (t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
     }
@@ -1026,23 +1056,24 @@ import * as React from 'react';
             h('div', { className: 'zr-composer-row' },
               h(Button, { size: 'sm', onClick: function () { addCard(l.id); } }, T.add),
               h(Button, { size: 'sm', variant: 'ghost', icon: 'close', 'aria-label': p.closeLabel || T.cancel, onClick: function () { setAddingIn(null); setDraft(''); } }))) : null;
-          var acts = (p.onRenameList ? [{ icon: 'edit', label: T.rename, onClick: function () { setEditingId(l.id); } }] : []).concat(l.actions || []);
+          var src = (p.lists || []).filter(function (x) { return x.id === l.id; })[0] || l, wait = busyList === l.id; /* le funzioni di action e actions sono quelle del modulo di adesso, non della copia */
+          var acts = (p.onRenameList ? [{ icon: 'edit', label: T.rename, onClick: function () { setEditingId(l.id); } }] : []).concat(src.actions || []);
           if (lists.length > 1) acts = acts.concat(acts.length ? [{ sep: true }] : [], [
-            { icon: 'chevronLeft', label: T.moveLeft, disabled: i === 0, onClick: function () { moveList(i, i - 1, 'menu'); } },
-            { icon: 'chevron', label: T.moveRight, disabled: i === lists.length - 1, onClick: function () { moveList(i, i + 1, 'menu'); } }]);
+            { icon: 'chevronLeft', label: T.moveLeft, disabled: i === 0 || !!busyList, onClick: function () { moveList(i, i - 1, 'menu'); } },
+            { icon: 'chevron', label: T.moveRight, disabled: i === lists.length - 1 || !!busyList, onClick: function () { moveList(i, i + 1, 'menu'); } }]);
           var y = shiftOf(i), lifted = lift && lift.i === i;
-          var handle = lists.length > 1 ? h('button', { type: 'button', className: 'zr-col-handle', 'aria-label': textOf(T.moveList, '{title}', l.title), 'aria-describedby': keysId,
+          var handle = lists.length > 1 ? h('button', { type: 'button', className: 'zr-col-handle', 'aria-disabled': busyList ? true : undefined, 'aria-label': textOf(T.moveList, '{title}', l.title), 'aria-describedby': keysId,
             onPointerDown: function (e) { grab(e, i); }, onPointerMove: pointerMove, onPointerUp: drop, onPointerCancel: function () { cancelLift(false); },
             onKeyDown: function (e) { handleKey(e, i); }, onBlur: function () { if (liftRef.current && liftRef.current.kb) cancelLift(true); } }, h(Icon, { name: 'menu', size: 16 })) : null;
           return h(KanbanColumn, {
-            key: l.id, 'data-list-id': l.id, title: l.title, count: l.cards.length, limit: l.limit, blocks: l.blocks, kind: l.kind, threshold: l.threshold, rules: l.rules, action: l.action, texts: p.texts,
+            key: l.id, 'data-list-id': l.id, title: l.title, count: l.cards.length, limit: l.limit, blocks: l.blocks, kind: l.kind, threshold: l.threshold, rules: l.rules, action: src.action, texts: p.texts, 'aria-busy': wait || undefined,
             isOver: overId === l.id && dragId != null, refused: refused && refused.list === l.id ? refused.reason : null,
             className: lifted ? 'is-lifted' : undefined, style: y ? { transform: 'translateX(' + y + 'px)' } : undefined,
             handle: handle, actions: acts,
             editing: editingId === l.id, onEditingChange: function (v) { if (!v) { setEditingId(null); refocus.current = { id: l.id, what: 'menu' }; } },
             onRename: p.onRenameList ? function (v) {
               var r = p.onRenameList(l, v);
-              function apply() { commit(cur.current.map(function (x) { return x.id === l.id ? Object.assign({}, x, { title: v }) : x; })); }
+              function apply() { if (!live.current) return; commit(cur.current.map(function (x) { return x.id === l.id ? Object.assign({}, x, { title: v }) : x; })); }
               if (r && typeof r.then === 'function') return r.then(function (x) { apply(); return x; });
               apply();
             } : undefined,
@@ -1058,14 +1089,14 @@ import * as React from 'react';
               if (overId !== l.id) setOverId(l.id);
             },
             onDragLeave: function (e) { if (!e.currentTarget.contains(e.relatedTarget)) { setOverId(null); if (refusedRef.current && refusedRef.current.list === l.id && e.relatedTarget) { refusedRef.current = null; setRefused(null); } } },
-            onDrop: function (e) { e.preventDefault(); if (dragId) move(dragId, l.id, null); setOverId(null); setDragId(null); edgeStop(); }
+            onDrop: function (e) { e.preventDefault(); if (dragId) move(dragId, l.id, null); setOverId(null); setDragId(null); edgeStop(); release(); }
           }, l.cards.map(function (c) {
             var wait = !!busy[c.id];
             return h(KanbanCard, Object.assign({ key: c.id, texts: p.texts }, c, {
               votes: p.lists ? votes[c.id] : c.votes, draggable: !wait, dragging: dragId === c.id, 'aria-busy': wait || undefined,
-              onDragStart: function (e) { setDragId(c.id); told.current = { text: '', at: 0 }; edgeStart(e.clientX); try { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} },
+              onDragStart: function (e) { setDragId(c.id); dragRef.current = c.id; held.current = false; moved.current = false; told.current = { text: '', at: 0 }; edgeStart(e.clientX); try { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} },
               onDragEnd: function (e) { endDrag(e, c); },
-              onDrop: function (e) { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== c.id) move(dragId, l.id, c.id); setOverId(null); setDragId(null); edgeStop(); },
+              onDrop: function (e) { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== c.id) move(dragId, l.id, c.id); setOverId(null); setDragId(null); edgeStop(); release(); },
               onClick: p.onOpenCard ? function () { p.onOpenCard(withVotes(c)); } : undefined
             }));
           }));
