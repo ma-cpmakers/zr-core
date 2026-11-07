@@ -146,6 +146,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-tab { display: inline-flex; align-items: center; gap: var(--space-1-5); height: 40px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink-muted); cursor: pointer; margin-bottom: -1px; }
 .zr-tab:hover { color: var(--ink); }
 .zr-tab.is-active { color: var(--ink); border-bottom-color: var(--pine); font-weight: 600; }
+@media (pointer: coarse) { .zr-tab { min-height: 44px; min-width: 44px; justify-content: center; } } /* al tocco ogni linguetta è alta un dito e larga almeno quanto: le viste della KanbanBoard, la campanella dell'AppShell anche sopra i 1024 px (richiesta 232) */
 .zr-lanes { flex: 1; min-height: 0; display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-5) var(--space-6) var(--space-6); overflow-x: auto; }
 
 .zr-col { flex: none; width: var(--column-width); max-height: 100%; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); background: var(--surface-sunken); border: 1px solid transparent; border-radius: var(--radius-lg); box-sizing: border-box; transition: background-color .15s, border-color .15s; }
@@ -437,6 +438,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-seg.is-underline .zr-seg-item.is-active { background: none; box-shadow: none; border-bottom-color: var(--pine); }
 /* sotto i 720 px le linguette sottolineate stanno in una riga che scorre di lato nel suo riquadro, e la scelta resta in vista (richiesta 204); il segno del fuoco sta dentro la linguetta, che il riquadro non lo tagli */
 @media (max-width: 720px) { .zr-seg.is-underline { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; } .zr-seg.is-underline .zr-seg-item { flex: none; outline-offset: -2px; } }
+@media (pointer: coarse) { .zr-seg-item { min-height: 44px; min-width: 44px; justify-content: center; } } /* al tocco ogni voce di Tabs è alta un dito e larga almeno quanto, anche con size="sm" e sottolineata: il segmentato cresce a 52 px, 44 più il margine interno (richiesta 232) */
 /* Checkbox con aiuto ed errore (144) */
 .zr-check-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .zr-check-field .zr-check { align-items: flex-start; line-height: 20px; }
@@ -710,6 +712,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-bulk strong { margin-right: var(--space-2); }
 .zr-pager { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted); }
 .zr-pager > div { display: flex; gap: var(--space-1); }
+@media (pointer: coarse) { .zr-pager > div { gap: var(--space-3); } } /* al tocco 12 px fra i pulsanti sm della paginazione: le aree da 44 (6 px per lato) si toccano senza coprirsi (richiesta 233) */
 /* ReorderList: un elenco che si riordina trascinando la maniglia, o con «Sposta su» e «Sposta giù» (richiesta 25) */
 .zr-reorder { list-style: none; margin: 0; padding: 0; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .zr-reorder-item { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-bottom: 1px solid var(--line); box-sizing: border-box; }
