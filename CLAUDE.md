@@ -126,7 +126,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
 ## Come esce una versione
 Un tag `vX.Y.Z` su `main` con la CI verde, e prima del tag `scripts/uat-cornice.mjs` in un Chromium vero sulle pagine di
 prova costruite dal commit (`npm run demo`, `dist/demo` servito in locale con la CSP di tutti da `node scripts/servi-demo.mjs`, e dalla `v4.0.0` anche R.C ✅, e dalla `v4.4.0` R.L ✅ su `layout.html` e `staff.html`, in italiano e con `?lingua=es`, e dalla `v4.5.1` anche con `?lingua=en`; dalla `v4.13.0` anche
-`cliente.html` con `--cliente`), con R.0 ✅ — il campo della ricerca tiene tutti i
+`cliente.html` con `--cliente`, e dalla `v4.25.0` `layout.html?spazio=1` con `--spazio` in italiano, spagnolo e inglese), con R.0 ✅ — il campo della ricerca tiene tutti i
 caratteri scritti: un difetto che vitest non vede (sprint 74, #2062; zr-pm 26/10); e, da solo, `node scripts/tipi-del-contratto.mjs`
 con esito 0: un tipo di evento nuovo del contratto ha un titolo o sta nell'elenco dei tipi che non arrivano alla campanella
 (dalla `v3.11.0`, #2820). Un frontend installa zr-core da questo repo pubblico (repository `vcs` nel suo

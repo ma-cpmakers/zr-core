@@ -490,14 +490,19 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }
     };
     const t = testi(lingua);
+    // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
+    // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
+    // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
+    const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     // I testi dei due avvisi stanno in un pezzo a richiesta (dalla `v3.7.0`), chiesto la prima volta che la cornice è ridotta
     // per l'accettazione o per `non_letti`: finché non arriva non c'è l'avviso, e campanella e ricerca dicono i testi di sempre.
     // Se non arriva si richiede ogni 5 secondi finché la cornice resta ridotta e la scheda è in primo piano, con l'attesa e
     // l'indirizzo degli altri pezzi (`pezzoARichiesta`): dalla `v3.8.1`, R5 della revisione 381 (zr-pm, 26/10/2026).
     // Dalla `v4.22.0` (#2909) lo stesso pezzo porta i testi della fascia di assistenza, e si chiede anche in assistenza; dalla
-    // `v4.25.0` (#3417) quelli di «Il mio spazio», e si chiede anche con `spazio`.
+    // `v4.25.0` (#3417) quelli di «Il mio spazio», e si chiede anche con `spazio` quando c'è il selettore, cioè il workspace dei dati
+    // sta in un'azienda: senza, la voce non si mostra (revisione dello sprint 118, rilievo 1).
     const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
-    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza || !!spazio;
+    const chiediGliAvvisi = ridotta === 'error' || !!dati.assistenza || !!(spazio && delWorkspace);
     useLayoutEffect(() => {
         if (chiediGliAvvisi && !avvisi) {
             const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
@@ -552,10 +557,6 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         }),
     };
 
-    // Il selettore «Azienda › workspace» solo se il workspace dei dati sta in un'azienda: altrimenti l'`AppShell` segnerebbe attivo
-    // il primo workspace della prima, e il workspace resta testo. Il tono di ogni workspace viene dal suo id (il backoffice non dà
-    // grafica). L'azienda del workspace è l'ultima che lo ha: la stessa che l'`AppShell` mostra in cima al selettore.
-    const delWorkspace = dati.aziende?.filter((azienda) => azienda.workspace.some((ws) => ws.slug === dati.workspace.slug)).at(-1);
     const companies = delWorkspace
         ? dati.aziende?.map((azienda) => ({ id: azienda.id, name: azienda.nome, workspaces: azienda.workspace.map(nelSelettore) }))
         : undefined;

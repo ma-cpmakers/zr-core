@@ -90,15 +90,22 @@ const finoAlGruppo = async (titolo: string) => {
             await new Promise((fatto) => setTimeout(fatto, 10));
         });
     }
+    throw new Error(`in cima al selettore non è arrivato «${titolo}»: il pezzo si apre nel primo caso, che va lanciato prima`);
 };
 
 describe('«Il mio spazio» nel selettore della cornice dei membri (sprint 118)', () => {
-    it('senza `spazio` né gruppo «Come cliente» né pezzo chiesto; con `spazio` la voce arriva col pezzo, che si chiede una volta (T1.2, T1.3)', async () => {
+    it('senza `spazio` né gruppo «Come cliente» né pezzo chiesto, e nemmeno con `spazio` quando il selettore non c\'è (il workspace dei dati non sta in un\'azienda); con `spazio` la voce arriva col pezzo, che si chiede una volta (T1.2, T1.3)', async () => {
         await mostra(dati);
         await mostra(dati, { spazio: undefined });
         await act(() => vi.dynamicImportSettled());
         expect([chiesto.volte, await gruppi()]).toStrictEqual([0, [['Acme', ['Marketing', null, true]]]]);
         await act(async () => contenitore.querySelector<HTMLButtonElement>('.zr-ws-switch')!.click());
+
+        for (const aziende of [[], [{ ...acme, workspace: [{ id: 'ws-2', nome: 'Altro', slug: 'acme-altro' }] }]]) {
+            await mostra({ ...dati, aziende }, { spazio: { href: '/spazio' } });
+            await act(() => vi.dynamicImportSettled());
+            expect([chiesto.volte, contenitore.querySelector('.zr-ws-switch')]).toStrictEqual([0, null]);
+        }
 
         await mostra(dati, { spazio: { href: '/spazio' } });
         expect([chiesto.volte, await gruppi()]).toStrictEqual([1, [['Acme', ['Marketing', null, true]]]]);
@@ -148,15 +155,6 @@ describe('«Il mio spazio» nel selettore della cornice dei membri (sprint 118)'
         }
         await voce('https://altro.example.com/spazio');
         expect([naviga.mock.calls, clic]).toStrictEqual([[[`${location.origin}/spazio`]], [true, false, false, false, false, false, false]]);
-    });
-
-    it('senza aziende il selettore non c\'è, nemmeno con `spazio`: il workspace resta testo', async () => {
-        await mostra({ ...dati, aziende: [] }, { spazio: { href: '/spazio' } });
-        await act(async () => {
-            await vi.dynamicImportSettled();
-            await new Promise((fatto) => setTimeout(fatto, 50));
-        });
-        expect(contenitore.querySelector('.zr-ws-switch')).toBeNull();
     });
 
     it('`LayoutDellaCornice` passa `spazio` alla cornice (T1.1)', async () => {
