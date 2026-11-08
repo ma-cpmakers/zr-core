@@ -822,9 +822,9 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
     // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
     // non dà altre forme: un contatto senza azienda né ruolo ha `null`.
-    // Sprint 27 · T2 (voce #1787): di un membro la rotta vera lascia uscire il solo `ruolo`, e il backoffice lo dà come codice: la
-    // rotta finta non gli dà altre chiavi (mai l'email), e il suo ruolo è uno dei codici del registro.
-    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null`, e un membro ha il solo ruolo, come codice del registro (sprint 26 · T1.3; sprint 27 · T2.5)', async () => {
+    // Sprint 27 · T2 (voce #1787): di un membro la rotta vera lascia uscire il `ruolo`, che il backoffice dà come codice, e dallo
+    // sprint 119 l'`email`: la rotta finta non gli dà altre chiavi, e il suo ruolo è uno dei codici del registro.
+    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null`, e un membro ha il ruolo, come codice del registro, e l\'email (sprint 26 · T1.3; sprint 27 · T2.5)', async () => {
         const { registro } = await import('../js/registro');
         const risorsaDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo);
         const chiaviDi = (tipo: unknown) => risorsaDi(tipo)?.contesto ?? [];

@@ -1817,10 +1817,11 @@ cornice === null ? pagina : (
   della persona: «Proprietario», «Amministratore», «Membro» (in inglese «Owner», «Admin», «Member», in spagnolo
   «Propietario», «Administrador», «Miembro»). Il backoffice dà un codice (`proprietario`, `amministratore`, `membro`), e la
   cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha
-  solo il nome. Dalla `v4.27.0` dopo il ruolo sta l'email del membro, com'è arrivata: «Amministratore ·
-  marta@example.com». Il backoffice la dà da zr-backoffice #2917, e trova un membro anche da un pezzo della sua email
-  («marta@exa»), che la cornice manda com'è scritto. Di `contesto` la parte server lascia passare il `ruolo` e l'`email` del
-  solo membro; fino alla `v4.26.1` passava il solo `ruolo`, e l'email di un membro non usciva. Dalla `v1.18.0` un'opportunità chiusa mostra anche l'esito, per terzo: «Vendite · Proposta · Vinta», o
+  solo il nome (dalla `v4.27.0` sotto resta l'email, se c'è). Dalla `v4.27.0` dopo il ruolo sta l'email del membro,
+  pulita come un nome: «Amministratore · marta@example.com». Il backoffice la dà da zr-backoffice #2917, e trova un
+  membro anche da un pezzo della sua email («marta@exa»), che la cornice manda com'è scritto. Di `contesto` la parte
+  server lascia passare il `ruolo` e l'`email` del solo membro; fino alla `v4.26.1` passava il solo `ruolo`, e l'email di
+  un membro non usciva. Dalla `v1.18.0` un'opportunità chiusa mostra anche l'esito, per terzo: «Vendite · Proposta · Vinta», o
   «… · Persa» (in inglese «Won» e «Lost», in spagnolo «Ganada» e «Perdida»). Dell'esito il backoffice dà il codice
   (`aperta`, `vinta` o `persa`) e il registro ha i soli `vinta` e `persa`: un'opportunità aperta resta con pipeline e fase,
   senza un terzo testo. Dalla `v1.14.0` non si mostra nemmeno un risultato il cui id

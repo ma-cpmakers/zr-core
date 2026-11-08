@@ -4473,7 +4473,7 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il ruolo, nella lingua' => ['ricerca', 'Sotto il nome di un membro sta il suo ruolo, nella lingua della persona'],
     'mai il codice' => ['ricerca', 'e la cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha solo il nome'],
     // Sprint 119 · T2.1 (voce #2916): dalla `v4.27.0` l'email del membro sta dopo il ruolo; fino alla `v4.26.1` non usciva.
-    'l\'email, dalla v4.27.0' => ['ricerca', 'Dalla `v4.27.0` dopo il ruolo sta l\'email del membro, com\'è arrivata: «Amministratore · marta@example.com»'],
+    'l\'email, dalla v4.27.0' => ['ricerca', 'Dalla `v4.27.0` dopo il ruolo sta l\'email del membro, pulita come un nome: «Amministratore · marta@example.com»'],
     'l\'email: la chiocciola' => ['ricerca', 'e trova un membro anche da un pezzo della sua email («marta@exa»), che la cornice manda com\'è scritto'],
     'l\'email: il solo membro, e prima' => ['ricerca', 'Di `contesto` la parte server lascia passare il `ruolo` e l\'`email` del solo membro; fino alla `v4.26.1` passava il solo `ruolo`, e l\'email di un membro non usciva'],
     'dove si apre' => ['ricerca', 'Dalla `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri'],

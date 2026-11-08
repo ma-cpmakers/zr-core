@@ -149,6 +149,8 @@ it('il termine va al backoffice solo nel corpo, com\'è: qualunque cosa contenga
     'come una query intera' => ['?q=uat&limite=100'],
     'con le barre e i punti di un percorso' => ['../v1/io'],
     'con un percento' => ['100% uat'],
+    // Sprint 119 · T1.3 (voce #2916): un pezzo dell'email di un collega, com'è scritto.
+    'con la chiocciola' => ['marta@exa'],
 ]);
 
 it('ciò che la risposta del backoffice ha in più non arriva al browser: l\'`indirizzo` di un risultato, un `app`, altri campi, il cursore della pagina dopo; un tipo che zr-core non conosce passa, e lo scarta la cornice; un risultato senza `contesto` lo ha null (sprint 5 · T4.1; sprint 25 · T3.2)', function () {
