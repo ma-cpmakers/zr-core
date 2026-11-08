@@ -68,7 +68,9 @@ describe('la cornice dello staff', () => {
     it('T1.1 nome ed email dello staff nell\'avatar e in cima al menu del profilo; nella barra solo le voci del modulo, in cima il testo dell\'area', async () => {
         await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} onLogout={esci}><p>La pagina</p></CorniceDelloStaff>);
 
-        expect(uno('.zr-avatar-btn')?.getAttribute('aria-label')).toBe(`${testi('it').account}: ${staff.nome}`);
+        // L'`aria-label` dell'`AppShell`, o, quando il rimedio della riga 241 è arrivato, la descrizione e il nome dell'immagine.
+        const profilo = uno('.zr-avatar-btn');
+        expect(profilo?.getAttribute('aria-label') ?? `${profilo?.getAttribute('aria-description')}: ${profilo?.querySelector('.zr-avatar')?.getAttribute('aria-label')}`).toBe(`${testi('it').account}: ${staff.nome}`);
         expect(tutti('.zr-nav .zr-nav-title').map((titolo) => titolo.textContent)).toEqual(['Backoffice']);
         expect(tutti('.zr-nav a.zr-nav-item').map((voce) => voce.textContent)).toEqual(['Panoramica', 'Utenti']);
         // Nessuna voce del registro: niente Dashboard, niente moduli, in nessuna lingua.

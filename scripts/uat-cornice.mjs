@@ -496,9 +496,13 @@ async function attendiDaUnDialogo(page) {
 async function nomiDaiTesti(page) {
     const visti = await page.evaluate(() => ['.zr-ws-switch', '.zr-avatar-btn'].flatMap((qui) => {
         const pulsante = document.querySelector(`.zr-shell ${qui}`);
-        return pulsante ? [[qui, pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description')]] : [];
+        // Il nome dal contenuto: i testi che non sono nascosti (nel selettore l'azienda col nome del workspace lo è), o l'immagine delle iniziali.
+        const testi = [...pulsante?.querySelectorAll('.zr-ws-text > span:not([aria-hidden="true"]), .zr-avatar[aria-label]') ?? []].map((pezzo) => pezzo.getAttribute('aria-label') ?? pezzo.textContent?.trim()).filter(Boolean);
+        const righe = [...pulsante?.querySelectorAll('.zr-ws-text > span') ?? []];
+        const doppio = righe.length === 2 && righe[0].textContent === righe[1].textContent;
+        return pulsante ? [[qui, pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description'), testi.join(' '), righe.length === 0 || righe[0].getAttribute('aria-hidden') === String(doppio)]] : [];
     }));
-    scrivi(visti.length > 0 && visti.every(([, nome, descrizione]) => nome === null && !!descrizione) ? '✅' : '❌', 'NM.1', 'il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede, con l\'azione nella descrizione (righe 240 e 241)', visti.map(([qui, nome, descrizione]) => `${qui}: aria-label «${nome}», descrizione «${descrizione}»`).join('; '));
+    scrivi(visti.length > 0 && visti.every(([, nome, descrizione, contenuto, nascosta]) => nome === null && !!descrizione && !!contenuto && nascosta) ? '✅' : '❌', 'NM.1', 'il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede, con l\'azione nella descrizione (righe 240 e 241)', visti.map(([qui, nome, descrizione, contenuto, nascosta]) => `${qui}: aria-label «${nome}», descrizione «${descrizione}», nome dal contenuto «${contenuto}», azienda doppia nascosta: ${nascosta}`).join('; '));
 }
 
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
@@ -1568,7 +1572,7 @@ async function ilCliente(page, larghezza) {
             moduli: document.querySelector('.zr-shell .zr-product-switch') !== null,
         };
     });
-    scrivi(barra.selettore?.includes(' › ') && !barra.piano && !barra.moduli ? '✅' : '❌', 'CL.2', 'il selettore dice lo spazio del cliente; niente riquadro del piano, niente menu Moduli', `selettore: «${barra.selettore}», piano: ${barra.piano}, menu Moduli: ${barra.moduli}`);
+    scrivi(/^[^:]+: \S.* › \S/.test(barra.selettore ?? '') && !barra.selettore.includes('null') && !barra.piano && !barra.moduli ? '✅' : '❌', 'CL.2', 'il selettore dice lo spazio del cliente; niente riquadro del piano, niente menu Moduli', `selettore: «${barra.selettore}», piano: ${barra.piano}, menu Moduli: ${barra.moduli}`);
     await page.click('.zr-shell .zr-avatar-btn');
     await pausa(300);
     const voci = await page.evaluate(() => [...document.querySelectorAll('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep')].map((voce) => (voce.matches('.zr-menu-sep') ? '—' : voce.textContent?.trim())));

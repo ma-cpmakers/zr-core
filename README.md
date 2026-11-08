@@ -261,7 +261,7 @@ spazio» nel selettore dei workspace; i due testi nelle tre lingue e il clic sta
 Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog` che prende il fuoco e
 trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Label` nelle tre lingue, il «+» che si chiude senza
 voci e l'Esc che non chiude anche il cassetto, e il lotto 0523 il nome «Moduli e pagine» del `nav` della barra; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
-scende a 1.362 byte. Dalla `v4.26.1` risale a 1.472 (1.454 misurati), per eccezione senza contropartita (sì di zr-pm-07 dell'08/11): il
+scende a 1.362 byte. Dalla `v4.26.1` risale a 1.472 (1.462 misurati), per eccezione senza contropartita (sì di zr-pm-07 dell'08/11): il
 nome del selettore dei workspace e del pulsante del profilo dal loro testo, finché l'`AppShell` non lo fa da sé (righe 240 e 241).
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.472 i rimedi, 1.797 la

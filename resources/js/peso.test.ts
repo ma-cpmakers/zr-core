@@ -845,7 +845,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // sì di zr-pm-07 del 06/11). v4.18.0 (Decisione 22074): le righe 87, 109, 110, 122, 124, 129 e 130 le fa l'`AppShell`, e i loro
         // rimedi sono tolti: 1.487 misurati, più 20. v4.26.0: il fuoco del `Dialog` (riga 4) e l'Esc del cassetto (riga 136) li fa
         // il design system dal lotto 0522, e i loro rimedi sono tolti: 1.342 misurati, più 20. v4.26.1: il nome del selettore dei
-        // workspace e del pulsante del profilo dal loro testo (axe `label-content-name-mismatch`, righe 240 e 241): 1.454 misurati;
+        // workspace e del pulsante del profilo dal loro testo (axe `label-content-name-mismatch`, righe 240 e 241): 1.462 misurati;
         // tetto 1.472, per eccezione senza contropartita (sì di zr-pm-07 dell'08/11: accessibilità del selettore, si toglie con la 240).
         expect(gzip(rimedi)).toBeLessThanOrEqual(1_472);
     });
