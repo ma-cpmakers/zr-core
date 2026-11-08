@@ -816,7 +816,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_729);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.362 byte, la misura della v4.26.0 più 20 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.472 byte, il tetto della v4.26.1 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -844,8 +844,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // primo tasto Invio arrivava dopo il clic (misura del 06/11: 2.006 prima, 2.077 dopo, +71; la tastiera scende di 31; tetto 2.097, la misura più 20,
         // sì di zr-pm-07 del 06/11). v4.18.0 (Decisione 22074): le righe 87, 109, 110, 122, 124, 129 e 130 le fa l'`AppShell`, e i loro
         // rimedi sono tolti: 1.487 misurati, più 20. v4.26.0: il fuoco del `Dialog` (riga 4) e l'Esc del cassetto (riga 136) li fa
-        // il design system dal lotto 0522, e i loro rimedi sono tolti: 1.342 misurati, più 20.
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_362);
+        // il design system dal lotto 0522, e i loro rimedi sono tolti: 1.342 misurati, più 20. v4.26.1: il nome del selettore dei
+        // workspace e del pulsante del profilo dal loro testo (axe `label-content-name-mismatch`, righe 240 e 241): 1.454 misurati;
+        // tetto 1.472, per eccezione senza contropartita (sì di zr-pm-07 dell'08/11: accessibilità del selettore, si toglie con la 240).
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_472);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {

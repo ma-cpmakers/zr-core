@@ -192,20 +192,22 @@ function cassetto(): void {
 }
 
 /**
- * Il selettore «Azienda › workspace» ha un `aria-label` che non comincia col testo che si vede («Cambia workspace: Studio Anna ›
- * Studio Anna» per «Studio Anna Studio Anna», axe `label-content-name-mismatch`), e chi lo comanda con la voce dice ciò che
- * legge. Allora il nome lo dà il testo del pulsante, e «Cambia workspace», la parte dell'`aria-label` prima dei due punti, va
- * nella descrizione; quando l'azienda e il workspace hanno lo stesso nome l'azienda esce dal nome, che non lo dice due volte. Si
- * rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra lingua), che cambia con i due nomi (riga 240).
+ * Il selettore «Azienda › workspace» e il pulsante del profilo hanno un `aria-label` che non comincia col testo che si vede
+ * («Cambia workspace: Studio Anna › Studio Anna» per «Studio Anna Studio Anna», «Account: Ada Lovelace» per le iniziali «AL»;
+ * axe `label-content-name-mismatch`), e chi li comanda con la voce dice ciò che legge. Allora il nome lo dà il contenuto: nel
+ * selettore i due testi, e l'azienda col nome del workspace fuori dal nome, che non lo dice due volte; nel profilo l'immagine
+ * delle iniziali, col nome della persona. «Cambia workspace» e «Account», la parte dell'`aria-label` prima dei due punti, vanno
+ * nella descrizione. Si rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra persona, un'altra lingua),
+ * che cambia coi nomi (righe 240 e 241). Accessibilità dei due pulsanti: si toglie quando l'`AppShell` lo fa da sé.
  */
-function nomeDelSelettore(): void {
-    document.querySelectorAll('.zr-shell .zr-ws-switch').forEach((selettore) => {
-        const nome = selettore.getAttribute('aria-label');
+function nomiDaiTesti(): void {
+    document.querySelectorAll('.zr-ws-switch,.zr-avatar-btn').forEach((pulsante) => {
+        const nome = pulsante.getAttribute('aria-label');
         if (nome) {
-            selettore.removeAttribute('aria-label');
-            selettore.setAttribute('aria-description', nome.split(': ')[0]);
+            pulsante.removeAttribute('aria-label');
+            pulsante.setAttribute('aria-description', nome.split(': ')[0] ?? '');
         }
-        const [azienda, workspace] = selettore.querySelectorAll('.zr-ws-text > span');
+        const [azienda, workspace] = pulsante.querySelectorAll('.zr-ws-text>span');
         azienda?.setAttribute('aria-hidden', `${azienda.textContent === workspace?.textContent}`);
     });
 }
@@ -227,14 +229,14 @@ new MutationObserver((cambi) => {
     }
     azioniSottoLaRicerca();
     cassetto();
-    nomeDelSelettore();
+    nomiDaiTesti();
     tastiera?.aOgniCambio();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
-    nomeDelSelettore();
+    nomiDaiTesti();
 }
 
 // Un modulo, anche senza niente da dare: la cornice lo chiede con `import()`.
