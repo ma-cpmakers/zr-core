@@ -341,12 +341,13 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Sprint 27 · T1.1 (voce #1787): il membro del workspace, col tipo del contratto (ricerca.crea). Non è di un modulo: la
         // pagina che si apre è Impostazioni › Membri di app, e la risorsa sta nella voce della Dashboard, che ha quell'indirizzo.
         // Il percorso è quello di zr-home, non quello del backoffice (`/v1/workspace/membri/{id}`). La seconda riga è il ruolo,
-        // che il backoffice dà come codice: i tre codici stanno in `codici`, e il testo di ognuno nelle lingue. Mai l'email: ciò
-        // che sta in `contesto` è anche ciò che la parte server lascia uscire verso il browser.
+        // che il backoffice dà come codice: i tre codici stanno in `codici`, e il testo di ognuno nelle lingue. Dallo sprint 119
+        // (voce #2916) anche l'email, dopo il ruolo: ciò che sta in `contesto` è anche ciò che la parte server lascia uscire verso
+        // il browser, e l'email esce per il solo collega.
         ->and($voci[0]['risorse'] ?? null)->toBe([
             [
                 'tipo' => 'workspace.membro', 'icona' => 'user', 'percorso' => '/impostazioni/membri/{id}', 'contenitore' => false,
-                'contesto' => ['ruolo'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
+                'contesto' => ['ruolo', 'email'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
             ],
         ])
         // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno. Dallo sprint 74 (T2)

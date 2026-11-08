@@ -223,27 +223,42 @@ it('di `contesto` passano solo le chiavi che il registro dà al tipo del risulta
     'una lista di testi' => [['UAT Impianti', 'Direttore'], null],
 ]);
 
-// Sprint 27 · T1.5 (voce #1787): ricerca.crea trova anche i colleghi del workspace, per nome. Il backoffice non mette mai l'email
-// nella voce, e il registro dà al tipo la sola chiave `ruolo`: se un giorno l'email, o un'altra chiave, arrivasse nel contesto,
-// si fermerebbe qui e non arriverebbe al browser.
-it('un membro del workspace esce con tipo, id, titolo e il solo `ruolo` del contesto, il codice com\'è: un\'email, o un\'altra chiave che il backoffice mettesse nel contesto, non arriva al browser (sprint 27 · T1.5)', function (array $delBackoffice) {
+// Sprint 27 · T1.5 (voce #1787): ricerca.crea trova anche i colleghi del workspace. Dallo sprint 119 (voce #2916, T1.2) il
+// registro dà al tipo le chiavi `ruolo` ed `email`: l'email del collega arriva al browser (q8 di Luciano), un'altra chiave che il
+// backoffice mettesse nel contesto (`mansione`) si ferma qui. L'ordine è quello del backoffice: la seconda riga la ordina la cornice.
+it('un membro del workspace esce con tipo, id, titolo e del contesto il `ruolo`, il codice com\'è, e l\'`email`: un\'altra chiave che il backoffice mettesse nel contesto non arriva al browser (sprint 27 · T1.5, sprint 119 · T1.2)', function (array $delBackoffice, array $resta) {
     sessioneAMano(WORKSPACE_DELLA_RICERCA);
-    // La voce dell'esempio del contratto del 12/10/2026, e ciò che il caso le aggiunge nel contesto.
+    // La voce dell'esempio del contratto, e ciò che il caso le aggiunge nel contesto.
     Http::fake(['*' => Http::response(['data' => [
         ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => $delBackoffice, 'indirizzo' => '/v1/workspace/membri/01k6w1b3d5f7h9k1n3q5s7u9wy'],
     ], 'successivo' => null])]);
 
     $risposta = cerca('Marta')->assertOk()->assertExactJson(['data' => [
-        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => ['ruolo' => 'amministratore']],
+        ['tipo' => 'workspace.membro', 'id' => '01k6w1b3d5f7h9k1n3q5s7u9wy', 'titolo' => 'Marta Bianchi', 'contesto' => $resta],
     ], 'workspace' => 'uat-marketing', 'persona' => 'uat-ada@example.com']);
 
-    // L'email della persona della sessione c'è, in `persona` (sprint 37 · T4.3): quella del collega trovato no.
-    expect($risposta->getContent())->not->toContain('uat-marta')->not->toContain('email')->not->toContain('/v1/')
-        ->and(json_encode($risposta->json('data')))->not->toContain('example.com');
+    expect($risposta->getContent())->not->toContain('mansione')->not->toContain('UAT Direttrice')->not->toContain('/v1/');
 })->with([
-    'il contesto del contratto: il solo ruolo' => [['ruolo' => 'amministratore']],
-    'con l\'email dopo il ruolo' => [['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com']],
-    'con l\'email prima del ruolo, e una mansione' => [['email' => 'uat-marta@example.com', 'ruolo' => 'amministratore', 'mansione' => 'UAT Direttrice']],
+    'il solo ruolo' => [['ruolo' => 'amministratore'], ['ruolo' => 'amministratore']],
+    'il contesto del contratto: il ruolo e l\'email' => [['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com'], ['ruolo' => 'amministratore', 'email' => 'uat-marta@example.com']],
+    'l\'email prima del ruolo, e una mansione' => [['email' => 'uat-marta@example.com', 'ruolo' => 'amministratore', 'mansione' => 'UAT Direttrice'], ['email' => 'uat-marta@example.com', 'ruolo' => 'amministratore']],
+]);
+
+// Sprint 119 · T1.2 (voce #2916): l'email esce per il solo collega. Un contatto del CRM, una scheda, un'opportunità o un tipo che
+// il registro non ha, con un'email nel contesto, non la portano al browser: le chiavi sono del tipo, non del contesto.
+it('un\'email nel contesto di un tipo che non è il collega non arriva al browser: le chiavi sono quelle che il registro dà al tipo (sprint 119 · T1.2)', function (string $tipo, string $resta) {
+    sessioneAMano(WORKSPACE_DELLA_RICERCA);
+    Http::fake(['*' => Http::response(['data' => [risultatoDelBackoffice($tipo, 'uat-x1', 'UAT Risultato', ['email' => 'uat-paolo@example.com', 'ruolo' => 'Direttore', 'lista' => 'Da fare', 'fase' => 'Proposta'])], 'successivo' => null])]);
+
+    $risposta = cerca('uat-paolo@')->assertOk();
+    expect($risposta->getContent())->toBe('{"data":[{"tipo":"'.$tipo.'","id":"uat-x1","titolo":"UAT Risultato","contesto":'.$resta.'}],"workspace":"uat-marketing","persona":"uat-ada@example.com"}')
+        ->not->toContain('uat-paolo');
+})->with([
+    'un contatto del CRM' => ['crm.persona', '{"ruolo":"Direttore"}'],
+    'una scheda' => ['board.scheda', '{"lista":"Da fare"}'],
+    'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta"}'],
+    'una prenotazione' => ['bookings.prenotazione', 'null'],
+    'un tipo che il registro non ha' => ['uat-ignoto', 'null'],
 ]);
 
 /** Un contesto con le chiavi di ogni tipo del registro, e una che il registro non ha: ciò che ne resta dice di chi sono le chiavi. */
@@ -259,8 +274,8 @@ it('ogni tipo ha le sue chiavi di `contesto`, quelle che il registro gli dà: di
     'un contatto' => ['crm.persona', '{"ruolo":"Direttore","organizzazione":"UAT Impianti"}'],
     // Sprint 28 · T1.3: `esito` esce per la sola opportunità; una scheda o un contatto che lo portassero non lo fanno uscire.
     'un\'opportunità' => ['crm.trattativa', '{"fase":"Proposta","pipeline":"UAT Vendite","esito":"vinta"}'],
-    // Sprint 27 · T1.5: a un membro del workspace il registro dà il solo `ruolo`. Il valore passa com'è: quali codici hanno un
-    // testo lo sa la cornice, nel browser.
+    // Sprint 27 · T1.5: a un membro del workspace il registro dà il `ruolo` (e dallo sprint 119 l'`email`, che questo contesto
+    // non ha). Il valore passa com'è: quali codici hanno un testo lo sa la cornice, nel browser.
     'un membro del workspace' => ['workspace.membro', '{"ruolo":"Direttore"}'],
     // Il registro non dà chiavi a un'azienda, a una board, a una cartella: qualunque cosa il backoffice dia, null.
     'un\'azienda' => ['crm.organizzazione', 'null'],

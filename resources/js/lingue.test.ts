@@ -679,10 +679,10 @@ describe('le lingue della cornice', () => {
     // Sprint 27 · T1 (voce #1787): la ricerca trova i membri del workspace. Il membro non è di un modulo: la sua pagina è
     // Impostazioni › Membri di app, e nel registro sta nella voce della Dashboard. Il ruolo arriva dal backoffice come codice, mai
     // come testo da mostrare: quali codici, lo dice il registro (`codici`), e il testo di ognuno è delle lingue.
-    it('nel registro il membro del workspace è la sola risorsa della voce della Dashboard: icona `user`, la pagina dei membri di app, e per seconda riga il solo ruolo, coi suoi tre codici; mai l\'email (sprint 27 · T1.1)', () => {
+    it('nel registro il membro del workspace è la sola risorsa della voce della Dashboard: icona `user`, la pagina dei membri di app, e per seconda riga il ruolo, coi suoi tre codici, e dallo sprint 119 l\'email, senza codici (sprint 27 · T1.1, sprint 119 · T1.1)', () => {
         expect(registro.filter((voce) => voce.risorse !== undefined).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm']);
         expect(registro.find((voce) => voce.id === 'home')?.risorse).toStrictEqual([
-            { tipo: 'workspace.membro', icona: 'user', percorso: '/impostazioni/membri/{id}', contenitore: false, contesto: ['ruolo'], codici: { ruolo: ['proprietario', 'amministratore', 'membro'] } },
+            { tipo: 'workspace.membro', icona: 'user', percorso: '/impostazioni/membri/{id}', contenitore: false, contesto: ['ruolo', 'email'], codici: { ruolo: ['proprietario', 'amministratore', 'membro'] } },
         ]);
         // Il ruolo di un membro è un codice: quello di un contatto del CRM è un testo libero, e resta senza codici. Dallo sprint 28
         // ha dei codici anche l'opportunità, per l'esito (T1.4).

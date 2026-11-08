@@ -5265,8 +5265,9 @@ describe('la ricerca', () => {
 
     // Sprint 27 · T2 (voce #1787): la ricerca trova i membri del workspace (`workspace.membro`, da ricerca.crea). Un membro non è
     // di un modulo: la sua pagina è fra i membri di app, e nel registro sta nella voce della Dashboard, che non è un prodotto —
-    // a destra non c'è un nome, come nelle notifiche. Di `contesto` il registro prende il solo `ruolo`, e dice che è un codice
-    // (`codici`): il testo di ogni codice è delle lingue, e un codice non si legge mai così com'è arrivato.
+    // a destra non c'è un nome, come nelle notifiche. Di `contesto` il registro prende il `ruolo`, e dice che è un codice
+    // (`codici`): il testo di ogni codice è delle lingue, e un codice non si legge mai così com'è arrivato. Dallo sprint 119
+    // (voce #2916, v4.27.0) prende anche l'`email`, dopo il ruolo: un collega si riconosce dalla sua email (q8 di Luciano).
     const membri = [
         { tipo: 'workspace.membro', id: '01k7c1m1', titolo: 'Ada Lovelace', contesto: { ruolo: 'proprietario' } },
         { tipo: 'workspace.membro', id: '01k7c1m2', titolo: 'Grace Hopper', contesto: { ruolo: 'amministratore', email: 'grace@example.com' } },
@@ -5281,7 +5282,7 @@ describe('la ricerca', () => {
         ['en', 'Members', ['Owner', 'Admin', 'Member']],
         // Una lingua che zr-core non ha: in inglese.
         ['zz', 'Members', ['Owner', 'Admin', 'Member']],
-    ])('con la lingua "%s", un membro del workspace sta nel gruppo dei membri col nome e, sotto, il ruolo nella lingua: mai il codice del backoffice, mai un\'email; icona `user`, tono neutro e nessun nome di prodotto a destra (sprint 27 · T2.1)', async (lingua, gruppo, ruoli) => {
+    ])('con la lingua "%s", un membro del workspace sta nel gruppo dei membri col nome e, sotto, il ruolo nella lingua, mai il codice del backoffice, e l\'email dove c\'è (sprint 119 · T1.1); icona `user`, tono neutro e nessun nome di prodotto a destra (sprint 27 · T2.1)', async (lingua, gruppo, ruoli) => {
         vi.stubGlobal('fetch', vi.fn(async () => trovati(membri)));
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
 
@@ -5289,15 +5290,15 @@ describe('la ricerca', () => {
         expect(tutti('.zr-search-panel .zr-search-group').map((nome) => nome.textContent)).toStrictEqual([gruppo]);
         expect(nelleRighe()).toStrictEqual([
             ['Ada Lovelace', ruoli[0], null],
-            ['Grace Hopper', ruoli[1], null],
+            ['Grace Hopper', `${ruoli[1]} · grace@example.com`, null],
             ['Alan Turing', ruoli[2], null],
         ]);
         expect(righe().map((riga) => [...(riga.querySelector('.zr-iconbox')?.classList ?? [])].find((classe) => classe.startsWith('zr-label-'))))
             .toStrictEqual(['zr-label-neutral', 'zr-label-neutral', 'zr-label-neutral']);
         expect(righe().map((riga) => riga.querySelector('.zr-iconbox path')?.getAttribute('d'))).toStrictEqual([tracciatoDi('user'), tracciatoDi('user'), tracciatoDi('user')]);
-        // Nel pannello non si legge nessun codice, né l'email, né il nome della Dashboard.
+        // Nel pannello non si legge nessun codice né il nome della Dashboard.
         const pannello = uno('.zr-search-panel')?.textContent ?? '';
-        expect(['proprietario', 'amministratore', 'membro', 'grace@example.com', testi(lingua).dashboard].filter((parola) => pannello.includes(parola))).toStrictEqual([]);
+        expect(['proprietario', 'amministratore', 'membro', testi(lingua).dashboard].filter((parola) => pannello.includes(parola))).toStrictEqual([]);
     });
 
     it.each<[caso: string, ruolo: unknown]>([
@@ -5326,6 +5327,42 @@ describe('la ricerca', () => {
         expect((appShell.mock.lastCall?.[0].searchResults ?? []).map((risultato) => ('subtitle' in risultato ? risultato.subtitle : null))).toStrictEqual([null, 'Membro']);
     });
 
+    // Sprint 119 · T1.1 (voce #2916): l'email di un collega viene dopo il ruolo, nell'ordine del registro e non in quello del
+    // backoffice, pulita come un nome; dove non c'è, o non è un testo, resta il solo ruolo, senza « · » appeso.
+    it('un collega mostra sotto il nome il ruolo e poi la sua email, in quest\'ordine anche quando il backoffice la manda prima; senza email, o con un\'email che non è un testo, resta il solo ruolo, senza « · » appeso (sprint 119 · T1.1)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => trovati([
+            { tipo: 'workspace.membro', id: '01k7c1m1', titolo: 'Marta Bianchi', contesto: { email: ' uat-marta@example.com\n', ruolo: 'amministratore' } },
+            { tipo: 'workspace.membro', id: '01k7c1m2', titolo: 'Ada Lovelace', contesto: { ruolo: 'proprietario' } },
+            { tipo: 'workspace.membro', id: '01k7c1m3', titolo: 'Alan Turing', contesto: { ruolo: 'membro', email: null } },
+            { tipo: 'workspace.membro', id: '01k7c1m4', titolo: 'Grace Hopper', contesto: { ruolo: 'membro', email: '' } },
+            { tipo: 'workspace.membro', id: '01k7c1m5', titolo: 'Ada Byron', contesto: { email: 'uat-ada@example.com' } },
+        ])));
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi('uat');
+        expect(nelleRighe()).toStrictEqual([
+            ['Marta Bianchi', 'Amministratore · uat-marta@example.com', null],
+            ['Ada Lovelace', 'Proprietario', null],
+            ['Alan Turing', 'Membro', null],
+            ['Grace Hopper', 'Membro', null],
+            ['Ada Byron', 'uat-ada@example.com', null],
+        ]);
+    });
+
+    // Sprint 119 · T1.3 (voce #2916): il backoffice trova un collega anche da un pezzo della sua email. La cornice manda il
+    // termine com'è scritto, chiocciola compresa, nel corpo della POST.
+    it.each(['marta@exa', 'uat-marta@example.com', '@example'])('un termine con la chiocciola («%s») va al backoffice com\'è scritto, nel corpo della POST (sprint 119 · T1.3)', async (parola) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => trovati([
+            { tipo: 'workspace.membro', id: '01k7c1m1', titolo: 'Marta Bianchi', contesto: { ruolo: 'membro', email: 'uat-marta@example.com' } },
+        ]));
+        vi.stubGlobal('fetch', fetchFinto);
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
+
+        await scrivi(parola);
+        expect(partite(fetchFinto).filter(([, indirizzo]) => indirizzo === '/cornice/ricerca')).toStrictEqual([ricercaDi(parola)]);
+        expect(nelleRighe()).toStrictEqual([['Marta Bianchi', 'Membro · uat-marta@example.com', null]]);
+    });
+
     // Lettura della PR #60, R9. Le chiavi di `contesto` e i loro codici sono del registro, mai della risposta. Una chiave del
     // registro può chiamarsi come una proprietà che ogni oggetto eredita (`constructor`: il controllo del registro la ammette): in
     // una risorsa che dà dei codici a un'altra chiave lei non ne ha, porta un testo come ogni chiave senza codici, e la cornice
@@ -5333,7 +5370,7 @@ describe('la ricerca', () => {
     it('una chiave di `contesto` che si chiama come una proprietà ereditata da ogni oggetto, in una risorsa che dà dei codici a un\'altra chiave, porta il suo testo com\'è arrivato: non si cercano codici dove il registro non ne dà, e la cornice non cade (sprint 27 · lettura della PR #60, R9)', async () => {
         const delMembro = registro.find((voce) => voce.id === 'home')?.risorse?.find((risorsa) => risorsa.tipo === 'workspace.membro');
         const chiavi = delMembro?.contesto as string[] | undefined;
-        expect(chiavi).toStrictEqual(['ruolo']);
+        expect(chiavi).toStrictEqual(['ruolo', 'email']);
         chiavi?.push('constructor');
         try {
             vi.stubGlobal('fetch', vi.fn(async () => trovati([
@@ -5350,7 +5387,7 @@ describe('la ricerca', () => {
         } finally {
             chiavi?.pop();
         }
-        expect(delMembro?.contesto).toStrictEqual(['ruolo']);
+        expect(delMembro?.contesto).toStrictEqual(['ruolo', 'email']);
     });
 
     it('il `ruolo` di un contatto del CRM resta il testo che arriva, anche quando è scritto come il codice del ruolo di un membro: si traduce solo la chiave a cui il registro dà dei codici, tipo per tipo (sprint 27 · T2.2)', async () => {
