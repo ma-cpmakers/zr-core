@@ -1,8 +1,10 @@
-/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css). A un riallineamento si rigenera con `npm run componenti`. */
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css), la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css), con le regole del design system e i rimedi in `@layer zeiras`. A un riallineamento si rigenera con `npm run componenti`. */
 @import './font.css';
 @import './movimento.css';
 @import './avanzamento.css';
-@import './rimedi.css';
+@import './rimedi.css' layer(zeiras);
+@layer zeiras {
 
 body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 22px; background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; }
 .zr-icon { display: block; flex: none; }
@@ -1216,4 +1218,5 @@ a.zr-appt-title:focus-visible, button.zr-appt-title:focus-visible { outline: 2px
   .zr-appt { padding: var(--space-3); gap: var(--space-3); }
   .zr-appt-date { width: 48px; }
   .zr-appt-day { font-size: 20px; line-height: 24px; }
+}
 }

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { bundleIntero, coiCssDelPacchetto, coiFontDelPacchetto, dividiIlCss, leggi, moduli, STILI_A_PARTE } from '../../../scripts/componenti-genera.mjs';
+import { bundleIntero, coiCssDelPacchetto, coiFontDelPacchetto, dividiIlCss, leggi, moduli, ORDINE_DEGLI_STRATI, STILI_A_PARTE } from '../../../scripts/componenti-genera.mjs';
 
 // Sprint 75 · T1 (voce 2570). Dalla `v3.3.0` `npm run componenti` divide anche resources/zeiras/bundle.css (copia derivata del
 // design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `STILI_A_PARTE`, e
@@ -14,8 +14,15 @@ const bundleCss = readFileSync(delRepo('resources/zeiras/bundle.css'), 'utf8');
 const bundleJs = readFileSync(delRepo('resources/zeiras/bundle.js'), 'utf8');
 // Dalla `v4.8.1` (#3055) l'Alert ha un modulo suo ma non un CSS suo: i suoi stili restano in zeiras.css, dove servono anche al Toast.
 const NOMI = STILI_A_PARTE;
-/** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
-const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
+/**
+ * Un CSS generato senza ciò che il generatore aggiunge intorno alle righe del bundle: la riga dell'ordine degli strati, il commento
+ * che lo dice generato e, dalla `v5.0.0` (voce #3538), l'apertura e la chiusura di `@layer zeiras`.
+ */
+const corpo = (css: string) => css
+    .replace(`${ORDINE_DEGLI_STRATI}\n`, '')
+    .replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '')
+    .replace(/^@layer zeiras \{\n/m, '')
+    .replace(/\}\n$/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
 /** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3887). */
 const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"] as const;
@@ -48,10 +55,10 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         expect(divisi.proprie.MentionField).not.toContain('zr-avatar');
     });
 
-    it('in zeiras.css la prima regola è l\'`@import` dei font del pacchetto, dove il bundle ha quello di Google (sprint 92 · T2.1)', () => {
+    it('in zeiras.css la prima regola è l\'`@import` dei font del pacchetto, dove il bundle ha quello di Google, sotto la riga dell\'ordine degli strati (sprint 92 · T2.1; voce 3538)', () => {
         const regole = dividiIlCss(bundleCss).zeiras.replace(/\/\*[\s\S]*?\*\//g, '').trimStart();
 
-        expect(regole.startsWith("@import './font.css';\n")).toBe(true);
+        expect(regole.startsWith(`${ORDINE_DEGLI_STRATI}\n\n@import './font.css';\n`)).toBe(true);
         expect(bundleCss.trimStart().startsWith("@import url('https://fonts.googleapis.com/")).toBe(true);
     });
 

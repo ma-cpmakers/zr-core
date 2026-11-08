@@ -183,7 +183,7 @@ export function coiFontDelPacchetto(css) {
 // movimento.css, la regola che spegne le transizioni per chi chiede meno movimento, e dalla voce #3535 avanzamento.css, la barra
 // d'avanzamento di Inertia coi token, e dalla voce #3887 rimedi.css, i rimedi provvisori al CSS del design system. Nei CSS generati c'è solo la riga che importa ognuno. La fascia di assistenza
 // (resources/css/assistenza.css, voce #3723) non sta qui: la importa il pezzo degli avvisi, e arriva solo in assistenza (zr-pm-74, 14/11).
-const CSS_DEL_PACCHETTO = ["@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"];
+const CSS_DEL_PACCHETTO = ["@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css' layer(zeiras);"];
 
 /** Il CSS del bundle coi file del pacchetto: i font al posto di Google e, nelle righe sotto, movimento.css, avanzamento.css e rimedi.css. */
 export function coiCssDelPacchetto(css) {
@@ -193,9 +193,30 @@ export function coiCssDelPacchetto(css) {
     return righe.join('\n');
 }
 
+// Dalla `v5.0.0` (voce #3538, Decisione 23101 di zr-pm-07): le regole del design system stanno in `@layer zeiras`, fra il preflight
+// di Tailwind 4 (`base`) e le sue classi di utilità (`utilities`), così una classe messa su un componente vale senza `!`. Ogni CSS
+// generato comincia con la riga che dichiara l'ordine degli strati: l'ordine lo fissa la prima volta che la pagina nomina uno strato,
+// e senza la riga `zeiras`, importato prima di `tailwindcss`, starebbe sotto `base`, e il preflight cancellerebbe i componenti
+// (pulsanti senza sfondo, bordo né padding). Gli `@import` del pacchetto restano fuori dallo strato, com'erano, tranne quello dei
+// rimedi provvisori (voce #3887), che entra in `zeiras` con `layer(zeiras)`: un rimedio vale come la regola del design system che
+// corregge, e una classe di utilità del modulo lo supera allo stesso modo.
+export const ORDINE_DEGLI_STRATI = '@layer theme, base, zeiras, components, utilities;';
+const STRATO = '@layer zeiras {';
+
+/** Un CSS generato: la riga dell'ordine degli strati, il commento, gli `@import` in testa alle righe, e il resto in `@layer zeiras`. */
+function nelloStrato(commento, righe) {
+    const primaRegola = righe.findIndex((riga) => !riga.startsWith('@import '));
+    const importati = primaRegola === -1 ? righe.length : primaRegola;
+    const dentro = righe.slice(importati);
+    // L'a capo in fondo al file resta in fondo, dopo la graffa che chiude lo strato.
+    const alCapo = dentro.at(-1) === '' ? [''] : [];
+
+    return [ORDINE_DEGLI_STRATI, commento, ...righe.slice(0, importati), STRATO, ...dentro.slice(0, dentro.length - alCapo.length), '}', ...alCapo].join('\n');
+}
+
 /** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, i font del pacchetto, movimento.css, avanzamento.css e rimedi.css. */
 export function bundleIntero(css) {
-    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) la barra d\'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css).'), coiCssDelPacchetto(css)].join('\n');
+    return nelloStrato(GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css), la barra d\'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css), con le regole del design system e i rimedi in `@layer zeiras`.'), coiCssDelPacchetto(css).split('\n'));
 }
 
 /**
@@ -242,8 +263,8 @@ export function dividiIlCss(css) {
     const nomi = STILI_A_PARTE;
 
     return {
-        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css).`), ...resto].join('\n'),
-        stili: Object.fromEntries(nomi.map((nome) => [nome, [GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/${nome}.js.`), ...blocchi[nome], ''].join('\n')])),
+        zeiras: nelloStrato(GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css), la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css), con le regole del design system e i rimedi in \`@layer zeiras\`.`), resto),
+        stili: Object.fromEntries(nomi.map((nome) => [nome, nelloStrato(GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in \`@layer zeiras\`: li importa il modulo resources/js/zeiras/${nome}.js.`), [...blocchi[nome], ''])])),
         proprie,
     };
 }

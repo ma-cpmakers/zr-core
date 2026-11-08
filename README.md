@@ -25,11 +25,12 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 
 ```json
 "repositories": [{ "type": "vcs", "url": "<l'indirizzo GitHub di questo repo>" }],
-"require": { "zeiras/zr-core": "^4.0" }
+"require": { "zeiras/zr-core": "^5.0" }
 ```
 
-**Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
-dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro e, dalla `v4.36.0`, nel tema scuro.
+**Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché le sue prime righe — dalla
+`v5.0.0` quella dell'ordine degli strati («Gli strati», sotto), poi l'`@import` dei font — devono essere le prime del CSS
+della pagina; poi le variabili dei token, nel tema chiaro e, dalla `v4.36.0`, nel tema scuro.
 
 ```css
 @import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
@@ -114,12 +115,29 @@ pezzo lì non scorre, o i due scorrimenti si sommerebbero. Un dito che scorre su
 la scheda (`onOpenCard`). Sulle schede trascinabili `touch-action: manipulation`, in `rimedi.css`. Le righe TK di `uat-cornice`
 (`--tocco`, su `layout.html?lavagna=board`) lo provano in un telefono emulato. Un modulo non ha niente da fare: aggiorna.
 
-Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
-vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
-pulsante, il bordo di un campo), perché la classe non avrebbe effetto. Vale per le proprietà che il componente dichiara e per
-una classe senza il modificatore che forza (`!`); con Tailwind 3, che non usa i layer della cascata, decidono specificità e
-ordine. In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all'agente di
-zr-core. La cascata resta com'è, e i due `@import` restano in quest'ordine.
+**Gli strati** (dalla `v5.0.0`, #3538): le regole del design system stanno nello strato `zeiras` della cascata, e
+`bundle.css` e `zeiras.css` cominciano con la riga che dichiara l'ordine degli strati, prima anche dei font:
+
+```css
+@layer theme, base, zeiras, components, utilities;
+```
+
+Con Tailwind 4 il design system sta così sopra il preflight (`base`), che non gli toglie sfondo, bordo e padding, e sotto le
+classi di utilità (`utilities`): una classe messa su un componente vale, senza `!` — `p-0` su un `Button` gli toglie il
+padding, `h-8` sul campo di un `Input` lo porta a 32 px. Per questo il CSS del pacchetto si importa prima di `tailwindcss`:
+l'ordine lo fissa la prima riga della pagina che nomina uno strato, e quella di Tailwind (`theme, base, components,
+utilities`), che arriva dopo, non lo cambia; importato dopo, `zeiras` starebbe sotto `base` e il preflight cancellerebbe i
+componenti. Le regole del modulo fuori dagli strati vincono sul design system come su ogni strato. Gli `@import` dei font, di
+`movimento.css` e di `avanzamento.css` restano fuori dallo strato, com'erano; `rimedi.css` entra in `zeiras`
+(`@import './rimedi.css' layer(zeiras);`), prima delle regole del design system: un rimedio vale come la regola che corregge, e
+una classe di utilità lo supera allo stesso modo. Anche gli stili di MentionField e AddressField
+(`resources/css/zeiras/`) stanno in `zeiras`, con la stessa riga in testa. Una classe col modificatore che forza non vince
+sulle tre dichiarazioni forzate del design system (lo spazio a destra della colonna di spunta di `DataTable` e due righe di
+`SiteFooter`): fra due dichiarazioni forzate vince lo strato che viene prima. Con Tailwind 3, che non mette preflight e
+classi negli strati, vincerebbero tutti e due sul design system: il CSS del pacchetto chiede Tailwind 4.
+
+Una classe su un componente cambia solo quella pagina: un aspetto che il componente non ha e che serve anche altrove si chiede
+all'agente di zr-core. I due `@import` restano in quest'ordine, prima di `tailwindcss`.
 
 **Gli stili di testo** (dalla `v3.13.0`): `zeiras-token.css` porta anche i dodici stili di `tokens.json` — `display-xl`,
 `display`, `heading-1`, `wordmark` (il nome nel logo), `heading-2`, `heading-3`, `body`, `body-sm`, `label` (dalla `v4.2.0`), `caption`,
@@ -619,6 +637,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.36.1` | i rilievi R1-R3 della revisione della `v4.36.0` (sì di zr-pm-74 del 17/11): lo `scroll-padding` della #3888 anche su `.zr-main-body`, il corpo che scorre sotto il percorso (R1; riga RP.1 di `uat-cornice`); col dito la scheda della `KanbanBoard` o la carta della `DealPipeline` che passa altrove manda `dragenter` e `dragleave` come il mouse, e una lista che la rifiutava non resta segnata né dà `onRefuse` quando la scheda è lasciata fuori dalla lavagna (R2; riga TK.7); una lavagna le cui carte diventano trascinabili cambiando solo `draggable` arriva al dito (R3). Pezzo del tocco 1.563 byte con gzip, tetto 1.583 (la misura più 20); JS d'ingresso invariato. Cosa fare: aggiornare, prima del deploy che porta la `v4.36.0` (zr-board e zr-crm). |
 | `v5.0.0` | il tema di Tailwind 4 dal pacchetto (#3536): `resources/css/zeiras-tailwind.css`, generato da `tokens.json` con `npm run token`, dà a Tailwind 4 ogni colore, famiglia, raggio, ombra e stile di testo coi nomi dei token (`bg-surface-raised`, `rounded-md`, `shadow-card`, `text-heading-1`), che rendono `var(--…)`; `@theme inline reference`, non scrive niente nella pagina («Il tema di Tailwind 4») | niente; un modulo con Tailwind 4 che ha il blocco `@theme` scritto a mano lo può togliere e importare il file dopo `tailwindcss`, tenendo i suoi alias | niente | la build del modulo: le classi dei token rendono `var(--…)` come prima |
 | `v5.0.0` | il Toast di turno (#3537): `mostraToast` e `chiudiToast`, con la durata del design system (5 secondi, 10 con un'azione), la pausa finché il puntatore è sopra o il fuoco è dentro, «Annulla» nella lingua di `<html lang>` (`resources/lingue/toast/`), il fuoco che torna a chi preme da tastiera e un Toast alla volta; `ToastDellaCornice` resta com'è, e due insieme non si rincorrono più in coda al `body`; l'ingresso dell'app con la sola cornice non cambia | niente; un modulo che tiene lo stato del Toast da sé (un involucro col suo `setTimeout`, uno stato per pagina) può passare a `mostraToast` e togliere l'involucro, una pagina alla volta | un caso che conta il tempo del Toast del modulo coi timer finti, se passa a `mostraToast`, lo conta sulla cornice (5 o 10 secondi) | un Toast con «Annulla» resta 10 secondi, e oltre col Tab sull'azione; due di fila: a schermo uno solo |
+| `v5.0.0` | il CSS del design system in `@layer zeiras`, fra il preflight di Tailwind 4 e le classi di utilità (#3538): `bundle.css`, `zeiras.css` e gli stili di MentionField e AddressField cominciano con `@layer theme, base, zeiras, components, utilities;`, e una classe su un componente vale; cambia la cascata, quindi maggiore («Passare alla v5») | `^5` nel `composer.json`, nella prossima PR; le classi di utilità su un componente o sui suoi elementi, che adesso valgono, si tengono o si tolgono, e un `!` messo contro il design system si può togliere | un caso che vuole come prima riga del CSS l'`@import` dei font ha davanti quella degli strati | nella build gli strati in quest'ordine, e in una pagina un `Button` col suo sfondo e il suo bordo |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -672,6 +691,29 @@ Che cosa cambia nei test del modulo: un caso che confronta la CSP intera la risc
 adesso sta in «Le intestazioni di sicurezza»); niente altro. Che cosa si controlla: nel browser, su una pagina del modulo
 con la cornice, `scripts/uat-cornice.mjs` dà ✅ alle righe R.F (i font dal pacchetto) e R.C (la CSP della pagina non ferma
 niente); in console nessun «violates the following Content Security Policy directive».
+
+### Passare alla v5
+
+La `v5.0.0` cambia una cosa sola: il CSS del design system sta nello strato `zeiras` della cascata, fra il preflight di
+Tailwind 4 e le sue classi di utilità («Gli strati», sopra; #3538). Cambia la cascata per chi installa, e per questo è una
+versione maggiore. Nessuna prop, nessun ingresso, nessun file cambia, e il JS pesa come prima. Il modulo passa a `^5` nella
+sua prossima PR:
+
+```diff
+-"zeiras/zr-core": "^4.0",
++"zeiras/zr-core": "^5.0",
+```
+
+Prima di passare il modulo importa il CSS del pacchetto (`bundle.css` o `zeiras.css`) come prima riga del suo CSS, prima di
+`tailwindcss` («Il CSS»), e non dentro un suo strato. Che cosa cambia nelle pagine: una classe di utilità su un componente del
+design system, o sui suoi elementi (`[&_input]:h-8`), che fino alla v4 non aveva effetto, adesso vale; il modulo le cerca nel
+suo codice e per ognuna decide se tenerla — è l'aspetto che il codice chiedeva — o toglierla. Un `!` messo per battere il
+design system si può togliere. Una regola del CSS del modulo fuori dagli strati vince sul design system come prima.
+
+Che cosa cambia nei test del modulo: un caso che vuole come prima riga del CSS l'`@import` dei font ha davanti quella degli
+strati. Che cosa si controlla: nella build `grep -o '@layer [a-z, ]*' public/build/assets/*.css | head -5` dà gli strati
+nell'ordine theme, base, zeiras, components, utilities; nel browser un `Button` ha il suo sfondo e il suo bordo, e
+`scripts/uat-cornice.mjs` dà le righe di sempre.
 
 ## La parte server
 

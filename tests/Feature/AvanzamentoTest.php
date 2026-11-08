@@ -17,7 +17,9 @@ it('lo zip del pacchetto porta avanzamento.css, e bundle.css e zeiras.css lo imp
     foreach (['bundle.css', 'zeiras.css'] as $css) {
         $righe = explode("\n", File::get("$radice/resources/css/$css"));
 
-        expect(array_slice($righe, 1, 3))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"]);
+        // Dalla `v5.0.0` (voce #3538) la prima riga è quella dell'ordine degli strati, la seconda il commento che dice il file generato.
+        expect($righe[0])->toBe('@layer theme, base, zeiras, components, utilities;')
+            ->and(array_slice($righe, 2, 3))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"]);
     }
 });
 

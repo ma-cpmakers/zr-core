@@ -34,7 +34,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   design system non porta la richiesta che li toglie (il primo: il titolo della SectionCard che va a capo, richiesta 290; il secondo, #3888: lo `scroll-padding` dei contenitori che scorrono, richiesta 278; #3889: i contorni coi colori forzati e il campo Cerca, richieste 288 e 279; #3890: le azioni della barra sotto la ricerca aperta, richiesta 283). Dalla `v4.34.0` (#3723) c'è anche
   `resources/css/assistenza.css`, la fascia di assistenza come nel design di admin: una barra citrus sopra l'`AppShell`, fuori dal
   contenuto (la cornice mette l'`AppShell` in un contenitore solo in assistenza; il pulsante «Termina e torna al backoffice»). Non
-  lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11).
+  lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11). Dalla `v5.0.0` (#3538) le regole del design system in quei CSS stanno in `@layer zeiras`, sotto la riga
+  dell'ordine degli strati in testa (`ORDINE_DEGLI_STRATI` di `scripts/componenti-genera.mjs`, provata in vitest con una build vera di Tailwind 4).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.
