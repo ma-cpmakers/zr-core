@@ -498,7 +498,7 @@ async function nomiDaiTesti(page) {
         const pulsante = document.querySelector(`.zr-shell ${qui}`);
         return pulsante ? [[qui, pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description')]] : [];
     }));
-    scrivi(visti.length > 0 && visti.every(([, nome, descrizione]) => nome === null && !!descrizione) ? '✅' : '❌', 'N.1', 'il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede, con l\'azione nella descrizione (righe 240 e 241)', visti.map(([qui, nome, descrizione]) => `${qui}: aria-label «${nome}», descrizione «${descrizione}»`).join('; '));
+    scrivi(visti.length > 0 && visti.every(([, nome, descrizione]) => nome === null && !!descrizione) ? '✅' : '❌', 'NM.1', 'il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede, con l\'azione nella descrizione (righe 240 e 241)', visti.map(([qui, nome, descrizione]) => `${qui}: aria-label «${nome}», descrizione «${descrizione}»`).join('; '));
 }
 
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
