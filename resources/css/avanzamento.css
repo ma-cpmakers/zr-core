@@ -4,7 +4,7 @@
  * un modulo le chiede `progress: { includeCSS: false }` in `createInertiaApp`, senza `color`, e gli stili arrivano da qui.
  * Sono quelli di Inertia (nprogress) coi token: la punta luminosa e la rotella non ci sono, la barra basta. Lo spessore della
  * barra è l'unico numero scritto: il design system non ha un token per lui.
- * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, subito dopo i font.
+ * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, sotto i font e movimento.css.
  */
 #nprogress {
   pointer-events: none;

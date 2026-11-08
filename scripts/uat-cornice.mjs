@@ -1555,7 +1555,10 @@ async function barraDiInertia(page, csp) {
         document.addEventListener('securitypolicyviolation', (evento) => window.__uatViolazioni.push(`${evento.violatedDirective} ${evento.blockedURI}`));
     });
     const lenta = page.locator('[data-uat="vai-corta-lenta"]').first();
-    if (await lenta.count()) {
+    // Sulla pagina di prova la visita lenta tiene la barra sei secondi; su una pagina del modulo la barra si vede solo se la
+    // risposta tarda più del ritardo di Inertia (250 ms): lì una barra che non compare è ➖, non ❌.
+    const diProva = (await lenta.count()) > 0;
+    if (diProva) {
         await lenta.click();
     } else {
         const interno = page.locator(`main a[href^="/"], main a[href^="${new URL(page.url()).origin}"]`).first();
@@ -1587,10 +1590,11 @@ async function barraDiInertia(page, csp) {
             clic: getComputedStyle(contenitore).pointerEvents,
             sopra: contenitore.matches(':popover-open'),
         };
-    });
+    }).catch(() => null);
     await page.screenshot({ path: join(cartella, 'barra-di-inertia.png'), clip: { x: 0, y: 0, width: page.viewportSize().width, height: 120 } });
-    const ok = barra && barra.alto === 0 && barra.spessore === 2 && barra.largo && barra.colore === barra.pine && barra.livello === barra.toast && barra.clic === 'none';
-    scrivi(ok ? '✅' : '❌', 'AV.1', 'durante una visita la barra d\'avanzamento è in alto, alta 2 px, nel colore --pine, a --z-toast, e non prende i clic', barra ? `in alto a ${barra.alto} px, alta ${barra.spessore} px, a tutta larghezza: ${barra.largo}; colore ${barra.colore} (--pine ${barra.pine}); z-index ${barra.livello} (--z-toast ${barra.toast}); pointer-events ${barra.clic}; nello strato in cima: ${barra.sopra}` : 'la barra non c\'è');
+    // In Chromium Inertia mette la barra in un popover, nello strato in cima: è quello che la tiene sopra la barra in alto e i dialoghi.
+    const ok = barra && barra.alto === 0 && barra.spessore === 2 && barra.largo && barra.colore === barra.pine && barra.livello === barra.toast && barra.clic === 'none' && barra.sopra;
+    scrivi(ok ? '✅' : !barra && !diProva ? '➖' : '❌', 'AV.1', 'durante una visita la barra d\'avanzamento è in alto, alta 2 px, nel colore --pine, a --z-toast, e non prende i clic', barra ? `in alto a ${barra.alto} px, alta ${barra.spessore} px, a tutta larghezza: ${barra.largo}; colore ${barra.colore} (--pine ${barra.pine}); z-index ${barra.livello} (--z-toast ${barra.toast}); pointer-events ${barra.clic}; nello strato in cima: ${barra.sopra}` : diProva ? 'la barra non c\'è' : 'la barra non è comparsa: la risposta è arrivata prima del ritardo di Inertia, o il collegamento ha ricaricato la pagina');
     await page.waitForFunction(() => !document.querySelector('#nprogress .bar'), null, { timeout: 15000 }).catch(() => undefined);
     // Lo `<style>` di Inertia lo aggiunge `createInertiaApp`, al caricamento: si cerca nella pagina, e le violazioni di `style-src` si
     // leggono anche in console, da quando la pagina si è aperta.
