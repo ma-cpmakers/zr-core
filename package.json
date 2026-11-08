@@ -1,6 +1,12 @@
 {
     "private": true,
     "type": "module",
+    "sideEffects": [
+        "*.css",
+        "*.ts",
+        "*.tsx",
+        "./resources/zeiras/bundle.js"
+    ],
     "scripts": {
         "build": "vite build",
         "demo": "vite build --config vite.demo.config.ts",

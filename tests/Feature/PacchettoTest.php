@@ -3801,9 +3801,9 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
     $conIlNomeDiPrima = array_values(array_filter(
         fileDelloZipDiHead(),
         fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
-            && $file !== 'resources/js/zeiras/componenti.js'
-            // Sprint 71: anche il modulo di MentionField, righe del bundle uguali.
-            && $file !== 'resources/js/zeiras/MentionField.js'
+            // Sprint 71: anche il modulo di MentionField, righe del bundle uguali; dalla `v4.28.0` (voce #3511) i moduli di ogni
+            // componente, in resources/js/zeiras e in interni/: tutti quelli che `npm run componenti` genera.
+            && preg_match('#^resources/js/zeiras/(interni/)?[^/]+\.js$#', $file) !== 1
             // Sprint 75: e i CSS che `npm run componenti` divide da bundle.css, righe del bundle uguali.
             && $file !== 'resources/css/zeiras.css'
             && ! str_starts_with($file, 'resources/css/zeiras/')

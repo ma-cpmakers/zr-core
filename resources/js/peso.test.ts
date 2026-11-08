@@ -13,7 +13,6 @@ import clienteItaliano from '../lingue/cliente/it.json';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
-import generato from './zeiras/componenti.js?raw';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
 // del design system che l'app non usa. Qui si costruiscono le tre app di prova di resources/demo/peso come le costruisce un
@@ -239,19 +238,32 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const testoDi = (uscita: (typeof json)[number]) => (uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : uscita.type === 'asset' ? Buffer.from(uscita.source).toString() : '');
     const fogli = new Map(uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.css')).map((uscita) => [uscita.fileName, uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : '']));
     const nomiDelCss = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])];
-    const cssDi = (pezzo: (typeof pezzi)[number]) => nomiDelCss(pezzo).map((nome) => fogli.get(nome) ?? '').join('\n');
-    const dIngresso = new Set(pezzi.filter((pezzo) => !pezzo.isDynamicEntry).flatMap(nomiDelCss));
+    // Dalla `v4.28.0` (voce #3511) un modulo per componente: ciò che due pezzi a richiesta hanno in comune la build lo mette in un
+    // pezzo terzo, che non è un `import()` e che l'ingresso non scarica. D'ingresso sono i pezzi che la pagina importa da sé e quelli
+    // che importano loro; un pezzo a richiesta porta con sé quelli che importa e che l'ingresso non ha.
+    const perNome = new Map(pezzi.map((pezzo) => [pezzo.fileName, pezzo]));
+    const conCiòCheImporta = (pezzo: (typeof pezzi)[number], visti = new Set<string>()): (typeof pezzi)[number][] => {
+        if (visti.has(pezzo.fileName)) return [];
+        visti.add(pezzo.fileName);
+
+        return [pezzo, ...pezzo.imports.flatMap((nome) => (perNome.has(nome) ? conCiòCheImporta(perNome.get(nome)!, visti) : []))];
+    };
+    const dIngressoI = new Set(pezzi.filter((pezzo) => pezzo.isEntry).flatMap((pezzo) => conCiòCheImporta(pezzo)).map((pezzo) => pezzo.fileName));
+    const diIngresso = pezzi.filter((pezzo) => dIngressoI.has(pezzo.fileName));
+    const dIngresso = new Set(diIngresso.flatMap(nomiDelCss));
+    const cssDi = (pezzo: (typeof pezzi)[number]) => [...new Set(conCiòCheImporta(pezzo).flatMap(nomiDelCss))].filter((nome) => !dIngresso.has(nome)).map((nome) => fogli.get(nome) ?? '').join('\n');
+    const aRichiesta = pezzi.filter((pezzo) => !dIngressoI.has(pezzo.fileName));
 
     return {
-        js: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map((pezzo) => pezzo.code).join('\n'),
-        aRichiesta: [...pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code), ...frasi.map(testoDi)],
+        js: diIngresso.map((pezzo) => pezzo.code).join('\n'),
+        aRichiesta: [...aRichiesta.map((pezzo) => pezzo.code), ...frasi.map(testoDi)],
         pezzi: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map((pezzo) => pezzo.code),
         fileDelleFrasi: frasi.map((uscita) => uscita.fileName).sort(),
         lingue: Object.fromEntries(json.filter(diLingue).map((uscita) => [uscita.fileName, testoDi(uscita)])),
         esporta: pezzi.flatMap((pezzo) => (pezzo.isEntry ? pezzo.exports : [])).sort(),
-        css: pezzi.filter((pezzo) => !pezzo.isDynamicEntry).map(cssDi).join('\n'),
+        css: [...dIngresso].map((nome) => fogli.get(nome) ?? '').join('\n'),
         cssARichiesta: pezzi.filter((pezzo) => pezzo.isDynamicEntry).map(cssDi).filter((css) => css !== ''),
-        fogliARichiesta: [...new Set(pezzi.filter((pezzo) => pezzo.isDynamicEntry).flatMap(nomiDelCss))].filter((nome) => !dIngresso.has(nome)).map((nome) => fogli.get(nome) ?? ''),
+        fogliARichiesta: [...new Set(aRichiesta.flatMap(nomiDelCss))].filter((nome) => !dIngresso.has(nome)).map((nome) => fogli.get(nome) ?? ''),
         font: uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.woff2')).map((uscita) => uscita.fileName).sort(),
     };
 }
@@ -315,6 +327,7 @@ let ingressoDelleFrasi: Costruito;
 let dalBundle: Costruito;
 let dalModulo: Costruito;
 let conIDatiDiEsempio: Costruito;
+let conLaTabellaARichiesta: Costruito;
 let conMentionAParte: Costruito;
 let conMentionDaComponenti: Costruito;
 let conAddressAParte: Costruito;
@@ -329,6 +342,8 @@ let iDueConZeirasCss: Costruito;
 // nuovo, non segnato, fa rosso qui invece di riprendersi i byte in silenzio. Di ognuno si guardano i testi fra apici di almeno otto
 // caratteri che nel modulo stanno solo lì (i nomi, le email dei contatti finti): un testo più corto, o che il modulo usa anche
 // altrove, potrebbe stare nell'ingresso per un'altra ragione.
+// Dalla `v4.28.0` (voce #3511) un modulo per componente: il testo di tutti i moduli che scripts/componenti.mjs genera.
+const generato = Object.values(import.meta.glob<string>(['./zeiras/*.js', './zeiras/interni/*.js'], { query: '?raw', import: 'default', eager: true })).join('\n');
 const DATI_DI_ESEMPIO = [...generato.matchAll(/^ {2}var (SAMPLE_\w+) = (?:\/\* @__PURE__ \*\/ )?\[\n([\s\S]*?)\n {2}\]/gm)].map((trovato) => {
     const testi = [...(trovato[2] ?? '').matchAll(/'([^'\n]*)'/g)].map((testo) => testo[1] ?? '');
 
@@ -346,7 +361,7 @@ beforeAll(async () => {
     coiDatiDentro = await app('resources/demo/peso/cornice.ts', {}, [{
         name: 'zr-core:componenti-senza-segni',
         enforce: 'pre',
-        load: (id) => (id.endsWith('/resources/js/zeiras/componenti.js') ? generato.replaceAll('/* @__PURE__ */ ', '') : null),
+        load: (id) => (/\/resources\/js\/zeiras\/(?:interni\/)?[^/]+\.js$/.test(id) ? readFileSync(id, 'utf8').replaceAll('/* @__PURE__ */ ', '') : null),
     }]);
     conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
@@ -381,6 +396,12 @@ beforeAll(async () => {
     ].join('\n'));
     iDueConIlBundle = await iDueCon('resources/demo/peso/con-bundle.css');
     iDueConZeirasCss = await iDueCon('resources/demo/peso/con-zeiras.css');
+    // Voce #3511 · AC 1: la cornice nell'ingresso e una pagina a richiesta con la DataTable, tutte e due da componenti.js.
+    conLaTabellaARichiesta = await appColTesto([
+        `import { Cornice } from ${JSON.stringify(delRepo('resources/js/app.ts'))};`,
+        'console.log(Cornice);',
+        `globalThis.apri = () => import(${JSON.stringify(delRepo('resources/demo/peso/pagina-con-la-tabella.ts'))}).then((pagina) => console.log(pagina.DataTable));`,
+    ].join('\n'));
     conIDatiDiEsempio = await appColTesto(`import { CrmContacts, DealCard } from ${JSON.stringify(delRepo('resources/js/zeiras/componenti.js'))};\nconsole.log(CrmContacts, DealCard);`);
     vi.unstubAllEnvs();
 }, 120_000);
@@ -527,6 +548,17 @@ describe('con zeiras.css gli stili di MentionField e AddressField arrivano col l
     });
 });
 
+// Voce #3511 · AC 1. Fino alla `v4.27.0` componenti.js era un modulo solo: una pagina a richiesta che ne prendeva un componente lo
+// lasciava nel JS d'ingresso, dove la cornice importa lo stesso modulo. Dalla `v4.28.0` ogni componente ha un modulo suo, e la
+// build lo mette nel pezzo che lo usa. `zr-table` è la classe della DataTable, che la cornice non usa.
+describe('un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche preso da componenti.js (voce 3511 · AC 1)', () => {
+    it('la DataTable non sta nel JS d\'ingresso, e sta nel pezzo a richiesta; l\'AppShell resta nell\'ingresso', () => {
+        expect(conLaTabellaARichiesta.js).not.toContain('zr-table');
+        expect(conLaTabellaARichiesta.js).toContain(DELLA_CORNICE);
+        expect(conLaTabellaARichiesta.aRichiesta.filter((pezzo) => pezzo.includes('zr-table'))).toHaveLength(1);
+    });
+});
+
 describe('i dati di esempio del design system e i formattatori dei numeri non stanno nell\'ingresso dell\'app che prende solo la cornice (sprint 50 · T1.1, T1.2)', () => {
     it('il modulo dei componenti ha dei dati di esempio, e ognuno ha dei testi suoi', () => {
         expect(DATI_DI_ESEMPIO.map(([nome]) => nome)).toContain('SAMPLE_CONTACTS');
@@ -619,7 +651,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // nell'ingresso di sempre, che porta tutti i componenti, ci sono le sue volte e nessuna in più.
     it.each(app)('«%s»: la data delle notifiche non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 74 · T1.6)', (_nome, costruita) => {
         const tutti = costruita === app[2][1];
-        const delCalendar = tutti ? volte(readFileSync(delRepo('resources/js/zeiras/componenti.js'), 'utf8'), 'weekday') : 0;
+        const delCalendar = tutti ? volte(generato, 'weekday') : 0;
 
         expect(delCalendar > 0).toBe(tutti);
         expect(volte(costruita().js, 'weekday')).toBe(delCalendar);
@@ -674,12 +706,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
-    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). E i segni «puri» del generatore tolgono dall'ingresso almeno 500 byte
-    // (T1.4: 515 alla misura di T1): qui la stessa app, costruita col modulo dei componenti senza i segni.
-    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» del modulo dei componenti l\'ingresso pesa almeno 500 byte di più (sprint 50 · T1.4, T5.4)', () => {
+    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). Fino alla `v4.27.0` i segni «puri» del generatore toglievano
+    // dall'ingresso almeno 500 byte (T1.4: 515 alla misura di T1): il modulo dei componenti era uno solo. Dalla `v4.28.0` (voce #3511)
+    // ogni componente ha un modulo suo, e la build non prende quello di CrmContacts dove nessuno lo usa: qui la stessa app, costruita
+    // coi moduli senza i segni, è uguale. I segni restano per chi costruisce senza leggere `sideEffects` del pacchetto.
+    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» dei moduli dei componenti l\'ingresso non ha i contatti finti e pesa lo stesso (sprint 50 · T1.4, T5.4; voce 3511)', () => {
         expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);
-        expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(1);
-        expect(gzip(coiDatiDentro.js) - gzip(soloCornice.js)).toBeGreaterThanOrEqual(500);
+        expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(0);
+        expect(gzip(coiDatiDentro.js)).toBe(gzip(soloCornice.js));
     });
 
     it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 19.672 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 19.434 byte, di 19.394 byte, di 19.282 byte, di 19.136 byte, di 18.589 byte, di 18.169 byte, di 17.922 byte, di 17.511 byte, di 17.456 byte, di 17.566 byte, di 17.188 byte, di 16.880 byte, di 17.573 byte, di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730; sprint 106 · T4.1; voce 3055)', (file) => {

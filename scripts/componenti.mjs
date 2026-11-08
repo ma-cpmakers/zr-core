@@ -1,17 +1,19 @@
-// Il comando che genera resources/js/zeiras/componenti.js da resources/zeiras/bundle.js (il design system di Zeiras, copia
-// derivata), e accanto il modulo di ogni componente di `A_PARTE` (dalla `v3.1.0`: resources/js/zeiras/MentionField.js); dalla
-// `v3.3.0` divide anche resources/zeiras/bundle.css in resources/css/zeiras.css e negli stili di ogni componente di `A_PARTE`
-// (resources/css/zeiras/<Nome>.css), che il suo modulo importa; dalla `v3.15.0` scrive anche resources/css/bundle.css, il bundle
+// Il comando che genera da resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) i moduli di resources/js/zeiras:
+// dalla `v4.28.0` (voce #3511) uno per ogni nome che il bundle registra, `<Nome>.js`, le righe private comuni a più nomi in
+// `interni/`, e `componenti.js` che li esporta per nome; dalla `v3.3.0` divide anche resources/zeiras/bundle.css in
+// resources/css/zeiras.css e negli stili di ogni componente di `STILI_A_PARTE` (resources/css/zeiras/<Nome>.css), che il modulo
+// che ne usa le classi importa; dalla `v3.15.0` scrive anche resources/css/bundle.css, il bundle
 // intero, e in tutti e due i font sono quelli del pacchetto (resources/css/font.css), non quelli di Google Fonts:
 // `npm run componenti` scrive i file; `npm run componenti -- --controlla` non scrive: rigenera in memoria, confronta coi file ed
-// esce 1 se uno non è uguale. Lo lancia la CI a ogni giro. I file non si ritoccano a mano: si rigenerano quando il bundle
+// esce 1 se uno non è uguale, o se in resources/js/zeiras (o in interni/) c'è un modulo `.js` che il bundle non genera: uno
+// scritto a mano, o rimasto da un bundle di prima (`npm run componenti` lo toglie). Lo lancia la CI a ogni giro. I file non si ritoccano a mano: si rigenerano quando il bundle
 // cambia. Se il bundle non ha la forma che lo script conosce dice che cosa non torna ed esce 1, senza scrivere niente; se manca,
 // non si legge, è vuoto o si ferma a metà lo dice, ed esce 1 allo stesso modo. Come dal bundle si arriva al modulo lo dice
 // scripts/componenti-genera.mjs, che lavora solo su testi. Questo file è solo il comando: fa sempre il suo lavoro, da qualunque
 // cartella lo si lanci, e non c'è niente da importare (chi vuole `genera` lo prende di là).
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { A_PARTE, CON_GLI_STILI_A_PARTE, aParte, bundleIntero, componi, dividiIlCss, leggi, nonIntero } from './componenti-genera.mjs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { STILI_A_PARTE, bundleIntero, dividiIlCss, leggi, moduli, nonIntero } from './componenti-genera.mjs';
 
 const qui = (percorso) => new URL(`../${percorso}`, import.meta.url);
 const fileDelBundle = 'resources/zeiras/bundle.js';
@@ -52,21 +54,33 @@ try {
     console.error(`${fileDelCss}: ${errore.message}\nNessun file è stato scritto: lo script va riallineato alla forma nuova del bundle.`);
     process.exit(1);
 }
-// Il modulo dei componenti per primo, poi quelli di `A_PARTE`, poi i CSS: ognuno col suo testo, con ciò che si dice quando è a
-// posto e col file del bundle da cui viene.
+// I moduli dei componenti per primi, poi i CSS: ognuno col suo testo, con ciò che si dice quando è a posto e col file del bundle
+// da cui viene.
 let file;
 try {
+    const deiModuli = moduli(letto, divisi);
     file = [
-        [fileDelModulo, componi(letto), `${letto.nomi.length} nomi esportati`, fileDelBundle],
-        ...Object.keys(A_PARTE).map((nome) => [`resources/js/zeiras/${nome}.js`, aParte(letto, nome, divisi), nome, fileDelBundle]),
-        ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${CON_GLI_STILI_A_PARTE.join(' e di ')}`, fileDelCss],
+        ...Object.entries(deiModuli).map(([nome, modulo]) => [`resources/js/zeiras/${nome}`, modulo, nome === 'componenti.js' ? `${letto.nomi.length} nomi esportati` : 'un modulo', fileDelBundle]),
+        ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${STILI_A_PARTE.join(' e di ')}`, fileDelCss],
         ['resources/css/bundle.css', bundleIntero(css), 'il bundle intero coi font del pacchetto', fileDelCss],
-        ...CON_GLI_STILI_A_PARTE.map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
+        ...STILI_A_PARTE.map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
     ];
 } catch (errore) {
-    console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto: né ${[fileDelModulo, ...Object.keys(A_PARTE).map((nome) => `resources/js/zeiras/${nome}.js`)].join(' né ')}: lo script va riallineato alla forma nuova del bundle.`);
+    console.error(`${fileDelBundle}: ${errore.message}\nNessun file è stato scritto: né ${fileDelModulo} né gli altri moduli di resources/js/zeiras: lo script va riallineato alla forma nuova del bundle.`);
     process.exit(1);
 }
+// I moduli `.js` che stanno in resources/js/zeiras e in interni/ e che il bundle non genera.
+const generati = new Set(file.map(([percorso]) => percorso));
+const inPiu = ['resources/js/zeiras', 'resources/js/zeiras/interni'].flatMap((cartella) => {
+    let nomi = [];
+    try {
+        nomi = readdirSync(qui(cartella));
+    } catch {
+        // Una cartella che non c'è non ha moduli in più.
+    }
+
+    return nomi.filter((nome) => nome.endsWith('.js')).map((nome) => `${cartella}/${nome}`).filter((percorso) => !generati.has(percorso));
+});
 
 if (process.argv.includes('--controlla')) {
     const diversi = file.filter(([percorso, modulo, , origine]) => {
@@ -81,12 +95,20 @@ if (process.argv.includes('--controlla')) {
 
         return true;
     });
-    if (diversi.length > 0) process.exit(1);
-    file.forEach(([percorso, , quanti, origine]) => console.log(`${percorso}: è quello che ${origine} genera (${quanti})`));
+    inPiu.forEach((percorso) => console.error(`${percorso} non è un modulo che ${fileDelBundle} genera: scritto a mano, o rimasto da un bundle di prima.\n\`npm run componenti\` lo toglie.`));
+    if (diversi.length > 0 || inPiu.length > 0) process.exit(1);
+    const deiModuli = file.filter(([percorso]) => percorso.startsWith('resources/js/zeiras/')).length;
+    file.filter(([percorso]) => !percorso.startsWith('resources/js/zeiras/') || percorso === fileDelModulo).forEach(([percorso, , quanti, origine]) => console.log(`${percorso}: è quello che ${origine} genera (${quanti})`));
+    console.log(`resources/js/zeiras: ${deiModuli} moduli, tutti quelli che ${fileDelBundle} genera e nessun altro`);
 } else {
-    file.forEach(([percorso, modulo, quanti]) => {
+    inPiu.forEach((percorso) => {
+        rmSync(qui(percorso));
+        console.log(`tolto ${percorso} (il bundle non lo genera più)`);
+    });
+    file.forEach(([percorso, modulo]) => {
         mkdirSync(new URL('.', qui(percorso)), { recursive: true });
         writeFileSync(qui(percorso), modulo);
-        console.log(`scritto ${percorso} (${quanti})`);
     });
+    const deiModuli = file.filter(([percorso]) => percorso.startsWith('resources/js/zeiras/')).length;
+    console.log(`scritti ${deiModuli} moduli in resources/js/zeiras (${letto.nomi.length} nomi esportati da componenti.js) e ${file.length - deiModuli} CSS`);
 }

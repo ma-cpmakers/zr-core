@@ -2,19 +2,18 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { A_PARTE, aParte, bundleIntero, CON_GLI_STILI_A_PARTE, coiFontDelPacchetto, dividiIlCss, leggi, NEL_GRUPPO } from '../../../scripts/componenti-genera.mjs';
+import { bundleIntero, coiFontDelPacchetto, dividiIlCss, leggi, moduli, STILI_A_PARTE } from '../../../scripts/componenti-genera.mjs';
 
 // Sprint 75 · T1 (voce 2570). Dalla `v3.3.0` `npm run componenti` divide anche resources/zeiras/bundle.css (copia derivata del
-// design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `A_PARTE`, e ognuno
-// di loro ha i suoi in resources/css/zeiras/<Nome>.css, che il suo modulo importa. Così un'app che li prende dai loro moduli a
+// design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `STILI_A_PARTE`, e
+// ognuno di loro ha i suoi in resources/css/zeiras/<Nome>.css, che il modulo che ne usa le classi importa. Così un'app che li prende dai loro moduli a
 // richiesta non porta quegli stili nel CSS del primo carico. Il caso gira in node: legge i file del repo.
 
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso}`, import.meta.url));
 const bundleCss = readFileSync(delRepo('resources/zeiras/bundle.css'), 'utf8');
 const bundleJs = readFileSync(delRepo('resources/zeiras/bundle.js'), 'utf8');
-// Dalla `v4.8.1` (#3055) l'Alert ha un modulo suo ma non un CSS suo: nel bundle sta nel gruppo «Feedback», col Toast
-// (`NEL_GRUPPO`), e i suoi stili restano in zeiras.css.
-const NOMI = CON_GLI_STILI_A_PARTE;
+// Dalla `v4.8.1` (#3055) l'Alert ha un modulo suo ma non un CSS suo: i suoi stili restano in zeiras.css, dove servono anche al Toast.
+const NOMI = STILI_A_PARTE;
 /** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
@@ -23,7 +22,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
         const divisi = dividiIlCss(bundleCss);
 
-        expect([NOMI, Object.keys(A_PARTE), NEL_GRUPPO]).toStrictEqual([['MentionField', 'AddressField'], ['MentionField', 'AddressField', 'Alert'], ['Alert']]);
+        expect(NOMI).toStrictEqual(['MentionField', 'AddressField']);
         expect(divisi.zeiras).toContain('.zr-alert {');
         expect(readFileSync(delRepo('resources/css/zeiras.css'), 'utf8')).toBe(divisi.zeiras);
         for (const nome of NOMI) {
@@ -66,16 +65,16 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
     it('un modulo importa il CSS di ogni componente di cui usa le classi: AddressField anche quello di MentionField', () => {
         const letto = leggi(bundleJs);
         const divisi = dividiIlCss(bundleCss);
-        const importati = (nome: string) => aParte(letto, nome, divisi).split('\n').filter((riga) => riga.endsWith(".css';"));
+        const importati = (nome: string) => (moduli(letto, divisi)[`${nome}.js`] ?? '').split('\n').filter((riga) => riga.endsWith(".css';"));
 
         expect(importati('MentionField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';"]);
         expect(importati('AddressField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';", "import '../../css/zeiras/AddressField.css';"]);
         expect(importati('Alert')).toStrictEqual([]);
-        for (const nome of Object.keys(A_PARTE)) {
-            expect(readFileSync(delRepo(`resources/js/zeiras/${nome}.js`), 'utf8')).toBe(aParte(letto, nome, divisi));
-        }
+        // Dalla `v4.28.0` (voce #3511) ogni modulo: solo quei due importano un CSS.
+        const conIlCss = Object.entries(moduli(letto, divisi)).filter(([, testo]) => /^import '.*\.css';$/m.test(testo)).map(([nome]) => nome);
+        expect(conIlCss.sort()).toStrictEqual(['AddressField.js', 'MentionField.js']);
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.
-        const senzaMention = aParte(leggi(bundleJs.replaceAll('zr-mention-', 'zr-nessuno-')), 'AddressField', divisi);
+        const senzaMention = moduli(leggi(bundleJs.replaceAll('zr-mention-', 'zr-nessuno-')), divisi)['AddressField.js'];
         expect(senzaMention).not.toContain('MentionField.css');
         // Il bundle si legge due volte: col lotto 0526 (bundle.js da 301 KB) sulla CI ci vogliono più dei 5 secondi di partenza.
     }, 30_000);
