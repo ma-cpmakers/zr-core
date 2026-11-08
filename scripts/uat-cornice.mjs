@@ -1017,9 +1017,9 @@ async function fontDelPacchetto(page, diGoogle) {
 // prima riga del documento si tiene ogni testo che la cornice mette a schermo, e le richieste dei file delle lingue
 // (`assets/<codice>-<impronta>.json`). R.L.1 la cornice è nella lingua della pagina in ogni testo dall'apertura (in italiano già
 // al primo disegno, senza richieste di lingue), e dice quanto ha atteso; R.L.2 i precarichi della riga del Blade: quello della
-// lingua della pagina, o dell'inglese per una lingua che zr-core non ha (fino alla `v4.29.0` anche l'inglese accanto all'altra
+// lingua della pagina, o dell'inglese per una lingua che zr-core non ha (fino alla `v4.30.0` anche l'inglese accanto all'altra
 // lingua), nessuno in italiano, e ognuno preso dalla richiesta della cornice (senza il «preloaded but not used» di Chromium);
-// R.L.3 con le lingue che non arrivano la cornice si disegna in italiano; R.L.4 (dalla `v4.30.0`, #3530) i file delle lingue
+// R.L.3 con le lingue che non arrivano la cornice si disegna in italiano; R.L.4 (dalla `v4.31.0`, #3530) i file delle lingue
 // chiesti dall'apertura sono della sola lingua della pagina: in spagnolo mai l'inglese. I testi «di una lingua sola»
 // sono quelli lunghi, con uno spazio, che le altre due lingue non hanno: dai file del repo accanto allo script (con `--staff`
 // anche quelli dello staff, che la sua cornice ha nel JS d'ingresso in tutte e tre le lingue, e con `--cliente` quelli del cliente).
@@ -1083,7 +1083,7 @@ async function laLingua(page, registrata) {
         scrivi(bene ? '✅' : '❌', 'R.L.2', `i precarichi della lingua nella testa della pagina: ${attesi} in ${lingua || 'italiano'}, ognuno preso dalla cornice (#3015)`, `${precarichi.map((uno) => uno.split('/').pop()).join(' ') || 'nessuno'}${registrata.avvisi.length ? ` · non usati: ${registrata.avvisi.join(' | ')}` : ''}`);
     }
     const altre = registrata.richieste.filter((richiesta) => !new URL(richiesta.url).pathname.split('/').pop().startsWith(`${sua}-`));
-    scrivi(altre.length === 0 ? '✅' : '❌', 'R.L.4', `i file delle lingue chiesti dall'apertura sono della sola lingua della pagina: ${sua === 'it' ? 'nessuno' : `${sua}, mai ${sua === 'en' ? 'lo spagnolo' : 'l\'inglese'}`} (#3530)`, nomi(registrata.richieste) || 'nessuno');
+    scrivi(altre.length === 0 ? '✅' : '❌', 'R.L.4', `i file delle lingue (testi e frasi) chiesti dall'apertura della pagina sono della sola lingua della pagina: ${sua === 'it' ? 'nessuno' : `${sua}, mai ${sua === 'en' ? 'lo spagnolo' : 'l\'inglese'}`} (#3530)`, nomi(registrata.richieste) || 'nessuno');
 }
 
 /** Mentre R.L.3 ferma i file delle lingue: i loro «Failed to load resource» in console sono della prova, non errori (E.1). */

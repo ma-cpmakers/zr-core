@@ -5,9 +5,9 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
 // più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Ogni file ha ogni testo
-// dell'italiano, e lo controlla la CI (`LingueTest.php`); dove una lingua non ha un testo si mostra l'inglese di zr-core, se è
-// arrivato: per questo i testi si danno all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui col suo default
-// italiano.
+// dell'italiano, e lo controlla la CI (`LingueTest.php`); dove una lingua non ha un testo si mostra l'inglese di zr-core se è
+// arrivato, se no l'italiano: per questo i testi si danno all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui
+// col suo default italiano.
 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
@@ -200,8 +200,9 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, a
         /** I codici delle lingue, uno per file. */
         lingue: [...perCodice.keys()] as readonly string[],
         /**
-         * I testi in una lingua, sempre tutti: quelli di una lingua che non c'è sono in inglese, e quelli che una lingua non ha, o ha
-         * vuoti, in inglese se è arrivato, se no in italiano (la CI non lascia uscire una lingua con un testo in meno). Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Finché la lingua non è pronta
+         * I testi in una lingua, sempre tutti: quelli di una lingua che non c'è sono in inglese, e quelli che una lingua non
+         * ha, o ha vuoti, in inglese se è arrivato, se no in italiano (la CI non lascia uscire una lingua con un testo in meno).
+         * Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Finché la lingua non è pronta
          * (`pronta`) sono quelli dell'italiano, la lingua dell'ingresso: la cornice non li mostra, e li mostra solo se la lingua
          * non arriva. Si compongono una volta per file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo
          * chiedono, e non si cambia. Lo dice anche il tipo: una scrittura non passa `tsc`.
@@ -233,7 +234,10 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, a
         linguaDeiTesti(lingua: string): string | undefined {
             return fileDi(lingua) ?? DEL_RIPIEGO;
         },
-        /** Se i testi di una lingua sono pronti: l'italiano sempre; un'altra lingua quando è arrivato il suo file, o l'inglese per una che zr-core non ha. */
+        /**
+         * Se i testi di una lingua sono pronti: l'italiano sempre; un'altra lingua quando è arrivato il suo file, o l'inglese
+         * per una che zr-core non ha.
+         */
         pronta,
         /**
          * Chiede il file che serve a una lingua — il suo, o l'inglese per una lingua che zr-core non ha; per l'italiano nessuno,

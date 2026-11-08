@@ -11,8 +11,9 @@
  *
  * Dalla `v4.4.0` una pagina chiesta con `?lingua=<lingua>` arriva come la manda un modulo con la riga
  * `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}` nel Blade: `<html lang>` è quella lingua, e prima del JS d'ingresso ci
- * c'è il precarico del file della sua lingua, o dell'inglese per una lingua che zr-core non ha (fino alla `v4.29.0` anche
- * quello dell'inglese accanto all'altra lingua), preso dal manifest della build con la stessa regola (in italiano nessuno). Con `&precarico=0` la pagina ha la lingua e non i precarichi: è il modulo senza la riga.
+ * c'è il precarico del file della sua lingua, o dell'inglese per una lingua che zr-core non ha (fino alla `v4.30.0`
+ * anche quello dell'inglese accanto all'altra lingua), preso dal manifest della build con la stessa regola (in italiano
+ * nessuno). Con `&precarico=0` la pagina ha la lingua e non i precarichi: è il modulo senza la riga.
  */
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';

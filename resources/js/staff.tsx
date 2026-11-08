@@ -45,7 +45,7 @@ function testiDelloStaff(lingua: string): TestiDelloStaff {
 export interface CorniceDelloStaffProps {
     /**
      * La lingua dello staff (`it`, `es`, `en`…): in una lingua che zr-core non ha, la cornice è in inglese; se il file della lingua
-     * (o l'inglese) non arriva, tutta in italiano (dalla `v4.5.1`, voce #3031).
+     * (o l'inglese, per una lingua che zr-core non ha) non arriva, tutta in italiano (dalla `v4.5.1`, voce #3031).
      */
     lingua: string;
     /** Chi è entrato: nell'avatar e in cima al menu del profilo. */
