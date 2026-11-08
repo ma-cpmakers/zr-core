@@ -1548,6 +1548,7 @@ async function menoMovimento(page) {
         const lato = document.querySelector('.zr-shell .zr-side');
         const aperto = lato?.cloneNode(false);
         aperto?.classList.add('is-open');
+        aperto?.removeAttribute('id');
         if (aperto) lato.parentNode.insertBefore(aperto, lato);
         const delModulo = document.createElement('div');
         delModulo.style.transition = 'opacity 1s';
@@ -1579,8 +1580,10 @@ async function menoMovimento(page) {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     const solito = await misura();
     await page.emulateMedia({ reducedMotion: null });
-    scrivi(meno.massima === 0 && meno.cassetto === 0 && meno.modulo === 0 && (meno.freccia ?? 0) === 0 ? '✅' : '❌', 'MV.1', 'con prefers-reduced-motion: reduce nessuna transizione, anche sul cassetto, sulla freccia del selettore e su un elemento del modulo', `la più lunga ${meno.massima}s; cassetto ${meno.cassetto}s, freccia ${meno.freccia ?? '—'}s, modulo ${meno.modulo}s`);
-    scrivi(solito.cassetto > 0 && solito.modulo === 1 && (solito.freccia === null || solito.freccia > 0) ? '✅' : '❌', 'MV.2', 'senza la preferenza il cassetto, la freccia del selettore e l\'elemento del modulo hanno la loro transizione', `cassetto ${solito.cassetto}s, freccia ${solito.freccia ?? 'non c\'è'}${solito.freccia === null ? '' : 's'}, modulo ${solito.modulo}s`);
+    // La freccia del selettore manca solo nella cornice dello staff, che il selettore non ce l'ha: altrove manca = ❌.
+    const frecciaBuona = (misurata, buona) => (misurata === null ? conLoStaff : buona(misurata));
+    scrivi(meno.massima === 0 && meno.cassetto === 0 && meno.modulo === 0 && frecciaBuona(meno.freccia, (durata) => durata === 0) ? '✅' : '❌', 'MV.1', 'con prefers-reduced-motion: reduce nessuna transizione, anche sul cassetto, sulla freccia del selettore e su un elemento del modulo', `la più lunga ${meno.massima}s; cassetto ${meno.cassetto}s, freccia ${meno.freccia ?? '—'}s, modulo ${meno.modulo}s`);
+    scrivi(solito.cassetto > 0 && solito.modulo === 1 && frecciaBuona(solito.freccia, (durata) => durata > 0) ? '✅' : '❌', 'MV.2', 'senza la preferenza il cassetto, la freccia del selettore e l\'elemento del modulo hanno la loro transizione', `cassetto ${solito.cassetto}s, freccia ${solito.freccia ?? 'non c\'è'}${solito.freccia === null ? '' : 's'}, modulo ${solito.modulo}s`);
     scrivi(meno.spinner === 'zr-spin 2.4s' ? '✅' : '❌', 'MV.3', 'con la preferenza lo spinner del Button gira ancora, a 2,4 s per giro', meno.spinner);
 }
 

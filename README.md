@@ -48,7 +48,8 @@ pagina usa. La CSP di tutti li ammette (`font-src 'self'`), e dalla `v4.0.0` non
 **Meno movimento** (dalla `v4.32.0`, #3534): chi chiede al sistema meno movimento (`prefers-reduced-motion: reduce`) non ha
 transizioni in nessuna pagina che carica il CSS del pacchetto. La regola sta in `resources/css/movimento.css`, che `bundle.css`
 e `zeiras.css` importano subito dopo i font: nessuna transizione su ogni elemento e sui suoi `::before` e `::after`, anche
-quelli delle pagine del modulo, e anche dove un componente o il modulo ne dichiarano una. Il design system ne spegneva alcune,
+quelli delle pagine del modulo, e anche dove un componente o il modulo ne dichiarano una (non una classe di Tailwind 4 col
+modificatore che forza, `!`, che sta in un layer e vince lo stesso). Il design system ne spegneva alcune,
 componente per componente; le animazioni restano sue, che le rallenta invece di fermarle (lo spinner del `Button` gira a 2,4 s
 per giro). Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto, senza un import in più.
 
