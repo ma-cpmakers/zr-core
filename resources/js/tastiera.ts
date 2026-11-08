@@ -1,5 +1,5 @@
 /**
- * I rimedi provvisori della cornice che servono solo a chi usa la tastiera: il Tab che resta dentro un dialogo e nel cassetto,
+ * I rimedi provvisori della cornice che servono solo a chi usa la tastiera: il Tab che resta dentro un pannello a tutta pagina e nel cassetto,
  * Esc che chiude il cassetto. Stanno in un pezzo loro, fuori dal JS d'ingresso e fuori da quello dei rimedi: lo chiede il pezzo
  * dei rimedi al primo tasto premuto, e chi usa solo il mouse non lo scarica (zr-pm, 26/10/2026). I tasti premuti prima che
  * arrivi non si perdono: il pezzo dei rimedi li tiene, e li passa a `ripeti` quando arriva. Ogni rimedio si toglie quando il
@@ -86,17 +86,18 @@ function chiTrattieneIlFuoco(): HTMLElement | null {
 }
 
 /**
- * Con un `Dialog` aperto, o un `DetailPanel` a tutta pagina, Tab resta dentro: dall'ultima fermata torna alla prima, dalla
- * prima all'ultima con Maiusc, e da fuori entra. Nel mezzo il Tab resta del browser, e degli altri tasti non si tocca niente.
- * Con un `Menu` aperto dentro il dialogo, che ha le sue frecce e il suo Esc, il gestore non interviene; lo stesso col fuoco in
- * un menu che sta accanto al dialogo e non dentro. Un menu che sta altrove nella pagina, senza il fuoco, non spegne niente.
+ * Con un `DetailPanel` a tutta pagina, Tab resta dentro: dall'ultima fermata torna alla prima, dalla prima all'ultima con
+ * Maiusc, e da fuori entra. Nel mezzo il Tab resta del browser, e degli altri tasti non si tocca niente. Il `Dialog` lo fa da sé
+ * dal lotto 0522 (richiesta 4): con un dialogo aperto il gestore non interviene. Con un `Menu` aperto dentro il pannello, che
+ * ha le sue frecce e il suo Esc, nemmeno; lo stesso col fuoco in un menu che sta accanto al pannello e non dentro. Un menu che
+ * sta altrove nella pagina, senza il fuoco, non spegne niente.
  * Se qualcuno ha già tenuto il Tab per sé — un campo che ci accetta un suggerimento — il fuoco non si sposta, e Tab con Ctrl,
  * Alt o Meta non è il giro del fuoco: resta del browser.
  */
 function tabRestaDentro(tasto: KeyboardEvent): void {
     const dentro = tasto.key === 'Tab' && !tasto.defaultPrevented && !tasto.ctrlKey && !tasto.altKey && !tasto.metaKey ? chiTrattieneIlFuoco() : null;
 
-    if (!dentro || dentro.querySelector('.zr-menu') || document.activeElement?.closest('.zr-menu')) {
+    if (!dentro || dentro.matches('.zr-dialog') || dentro.querySelector('.zr-menu') || document.activeElement?.closest('.zr-menu')) {
         return;
     }
     const fermate = [...dentro.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].filter(eUnaFermata);
@@ -105,8 +106,7 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
     const attivo = document.activeElement;
 
     if (!prima || !ultima) {
-        // Niente su cui fermarsi: il fuoco non esce lo stesso, e va a chi trattiene. Il `Dialog` non ha un `tabindex`, e senza
-        // non lo può prendere: resterebbe sul pulsante dietro il velo, che Invio premerebbe.
+        // Niente su cui fermarsi: il fuoco non esce lo stesso, e va a chi trattiene, che senza un `tabindex` non lo può prendere.
         tasto.preventDefault();
         if (attivo !== dentro) {
             preso = [dentro, attivo];
@@ -125,7 +125,7 @@ function tabRestaDentro(tasto: KeyboardEvent): void {
  * aperto, né coi menu della barra (profilo, campanella, «+», Moduli) o col selettore aperti, che si chiudono loro —, e il fuoco che non è nella barra in alto torna
  * ad «Apri il menu» (#2807): dalle voci del cassetto chiuso restava su una voce nascosta. Solo l'Esc di chi ha il fuoco: quello
  * che i rimedi mandano al campo quando il fuoco esce dalla ricerca, o dopo la scelta di un risultato, non chiude il cassetto; e
- * nemmeno, fuori dalla ricerca, un Esc dato in un `<dialog>` o già gestito, che i rimedi fermano prima dell'`AppShell` (riga 136). In ascolto in cattura, perché
+ * nemmeno, fuori dalla ricerca, un Esc dato in un `<dialog>` o già gestito, che l'`AppShell` lascia passare (riga 136). In ascolto in cattura, perché
  * l'`AppShell` ferma Esc. Provvisorio, finché l'`AppShell` non lo fa da sé.
  */
 function escNellaBarra(tasto: KeyboardEvent): void {

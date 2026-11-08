@@ -446,71 +446,49 @@ async function dialogoDalPiu(page) {
 }
 
 // Un `Dialog` aperto col mouse prende il fuoco sul suo primo elemento, e chiuso col mouse dalla sua «×» lo rende al pulsante che
-// lo ha aperto (#2871, rimedio della v3.14.2 nel pezzo dei rimedi). Il pulsante e il dialogo sono finti, con le classi del
-// `Dialog` del design system: le pagine di prova e i moduli non hanno sempre un `Dialog` che si apre con un clic. Prima della «×»
-// un campo nascosto e un pulsante spento, che il fuoco non prende: il rimedio li salta.
+// lo ha aperto (#2871; dal lotto 0522, richiesta 4, lo fa il `Dialog` del design system, e il rimedio della v3.14.2 è tolto). Il
+// `Dialog` è quello vero della pagina di prova del layout con `?dialogo=1` (`DialogoDelDesignSystem`): un dialogo finto, senza
+// React, il fuoco non lo prende più da nessuno. Nel corpo un campo nascosto e un pulsante spento, che il fuoco non prende.
+// Una pagina senza quel pulsante dà ➖.
 async function dialogoColMouse(page) {
+    const nome = 'un `Dialog` aperto col mouse prende il fuoco sul primo elemento che lo prende; chiuso con la «×», il fuoco torna al pulsante che lo ha aperto (#2871)';
     const dialogo = '.zr-scrim:not(.is-inline) > .zr-dialog';
-    await page.evaluate(() => {
-        const apre = document.createElement('button');
-        apre.type = 'button';
-        apre.textContent = 'UAT apre il dialogo';
-        apre.dataset.uat = 'apre';
-        apre.addEventListener('click', () => {
-            const velo = document.createElement('div');
-            velo.className = 'zr-scrim';
-            velo.dataset.uat = 'velo';
-            velo.innerHTML = '<div class="zr-dialog" role="dialog" aria-label="UAT"><header class="zr-dialog-head"><h2>UAT</h2><input type="hidden" name="uat"><button type="button" disabled>Spento</button><button type="button" aria-label="Chiudi">×</button></header><div class="zr-dialog-body"><input aria-label="Nome"></div></div>';
-            velo.querySelector('[aria-label="Chiudi"]').addEventListener('click', () => velo.remove());
-            document.body.append(velo);
-        });
-        document.querySelector('.zr-shell > main')?.prepend(apre);
-    });
-    await page.click('[data-uat="apre"]');
+    if (!(await page.$('[data-uat="apre-ds"]'))) {
+        scrivi('➖', 'G.1', nome, 'la pagina non ha un `Dialog` del design system da aprire (la pagina di prova del layout con `?dialogo=1`)');
+        return;
+    }
+    await page.click('[data-uat="apre-ds"]');
     await pausa(400);
     const dentro = await page.evaluate((sel) => [!!document.activeElement?.closest(sel), document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName], dialogo);
     await page.screenshot({ path: join(cartella, 'dialogo-col-mouse-1280.png') });
-    await page.click(`${dialogo} .zr-dialog-head [aria-label="Chiudi"]`);
+    await page.click(`${dialogo} .zr-dialog-head button`);
     await pausa(400);
-    const dopo = await page.evaluate((sel) => [!document.querySelector(sel), document.activeElement?.matches('[data-uat="apre"]') ?? false, document.activeElement?.tagName], dialogo);
-    await page.evaluate(() => document.querySelectorAll('[data-uat="apre"], [data-uat="velo"]').forEach((finto) => finto.remove()));
-    scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', 'un `Dialog` aperto col mouse prende il fuoco sul primo elemento che lo prende; chiuso con la «×», il fuoco torna al pulsante che lo ha aperto (#2871)', `dialogo finto; fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco ${dopo[1] ? 'sul pulsante' : `su ${dopo[2]}`}`);
+    const dopo = await page.evaluate((sel) => [!document.querySelector(sel), document.activeElement?.matches('[data-uat="apre-ds"]') ?? false, document.activeElement?.tagName], dialogo);
+    scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', nome, `fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco su ${dopo[1] ? 'il pulsante che lo ha aperto' : dopo[2]}`);
 }
 
 // Un «Attendi» — un `Dialog` senza niente che prenda il fuoco — aperto dal «Salva» di un dialogo che subito dopo si chiude: il
 // fuoco va sull'«Attendi», che lo prende su di sé, e non torna al pulsante dietro il velo, dove Invio lo premerebbe (v3.14.3,
-// Decisione 19428). In un browser un `div` senza `tabindex` il fuoco non lo prende: vitest, con happy-dom, questo non lo vede.
+// Decisione 19428; dal lotto 0522 lo fa il `Dialog`). Gli stessi dialoghi veri di G.1; senza, ➖.
 async function attendiDaUnDialogo(page) {
-    await page.evaluate(() => {
-        const velo = (html) => {
-            const finto = document.createElement('div');
-            finto.className = 'zr-scrim';
-            finto.dataset.uat = 'velo';
-            finto.innerHTML = html;
-            document.body.append(finto);
-            return finto;
-        };
-        const apre = document.createElement('button');
-        apre.type = 'button';
-        apre.textContent = 'UAT apre la scheda';
-        apre.dataset.uat = 'apre';
-        apre.addEventListener('click', () => {
-            const scheda = velo('<div class="zr-dialog" role="dialog" aria-label="UAT scheda"><header class="zr-dialog-head"><h2>Scheda</h2><button type="button" aria-label="Chiudi">×</button></header><div class="zr-dialog-body"><button type="button" data-uat="salva">Salva</button></div></div>');
-            scheda.querySelector('[data-uat="salva"]').addEventListener('click', () => {
-                velo('<div class="zr-dialog" role="dialog" aria-label="UAT attendi" data-uat="attendi"><div class="zr-dialog-body"><p>Salvo…</p></div></div>');
-                setTimeout(() => scheda.remove(), 150);
-            });
-        });
-        document.querySelector('.zr-shell > main')?.prepend(apre);
+    const nome = 'un «Attendi» senza elementi aperto da un dialogo che si chiude prende il fuoco su di sé; il fuoco non torna al pulsante dietro il velo (v3.14.3)';
+    if (!(await page.$('[data-uat="apre-ds"]'))) {
+        scrivi('➖', 'G.2', nome, 'la pagina non ha un `Dialog` del design system da aprire (la pagina di prova del layout con `?dialogo=1`)');
+        return;
+    }
+    await page.click('[data-uat="apre-ds"]');
+    await pausa(400);
+    await page.click('[data-uat="salva-ds"]');
+    await pausa(400);
+    const dove = await page.evaluate(() => {
+        const aperti = [...document.querySelectorAll('.zr-scrim:not(.is-inline) > .zr-dialog')];
+        const attivo = document.activeElement;
+
+        return [aperti.length, !!attivo && aperti.includes(attivo) && !attivo.querySelector('button, a[href], input, select, textarea'), attivo?.matches('[data-uat="apre-ds"]') ?? false, attivo?.tagName];
     });
-    await page.click('[data-uat="apre"]');
-    await pausa(300);
-    await page.click('[data-uat="salva"]');
-    await pausa(600);
-    const dove = await page.evaluate(() => [document.querySelectorAll('[data-uat="velo"]').length, document.activeElement?.matches('[data-uat="attendi"]') ?? false, document.activeElement?.matches('[data-uat="apre"]') ?? false, document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName]);
-    await page.screenshot({ path: join(cartella, 'attendi-da-un-dialogo-1280.png') });
-    await page.evaluate(() => document.querySelectorAll('[data-uat="apre"], [data-uat="velo"]').forEach((finto) => finto.remove()));
-    scrivi(dove[0] === 1 && dove[1] && !dove[2] ? '✅' : '❌', 'G.2', 'un «Attendi» senza elementi aperto da un dialogo che si chiude prende il fuoco su di sé; il fuoco non torna al pulsante dietro il velo (v3.14.3)', `dialoghi finti aperti: ${dove[0]}; fuoco ${dove[1] ? 'sull\'«Attendi»' : dove[2] ? 'sul pulsante dietro il velo' : `su «${dove[3]}»`}`);
+    await page.screenshot({ path: join(cartella, 'attendi-1280.png') });
+    await pausa(2200);
+    scrivi(dove[0] === 1 && dove[1] && !dove[2] ? '✅' : '❌', 'G.2', nome, `dialoghi aperti: ${dove[0]}; fuoco ${dove[1] ? 'sull\'«Attendi»' : `su «${dove[3]}»`}`);
 }
 
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio

@@ -135,6 +135,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-crumbs { display: flex; align-items: center; gap: var(--space-1); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .zr-crumbs a { color: var(--ink-muted); text-decoration: none; }
 .zr-crumbs a:hover { color: var(--ink); text-decoration: underline; }
+.zr-crumbs a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 .zr-crumbs [aria-current] { color: var(--ink); font-weight: 500; }
 .zr-board-titlebar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
 .zr-board-title { margin: 0; font-family: var(--font-display); font-size: 26px; line-height: 32px; font-weight: 650; letter-spacing: -.01em; }
@@ -144,6 +145,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-tab { display: inline-flex; align-items: center; gap: var(--space-1-5); height: 40px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink-muted); cursor: pointer; margin-bottom: -1px; }
 .zr-tab:hover { color: var(--ink); }
 .zr-tab.is-active { color: var(--ink); border-bottom-color: var(--pine); font-weight: 600; }
+@media (pointer: coarse) { .zr-tab { min-height: 44px; min-width: 44px; justify-content: center; } } /* al tocco ogni linguetta è alta un dito e larga almeno quanto: le viste della KanbanBoard, la campanella dell'AppShell anche sopra i 1024 px (richiesta 232) */
 .zr-lanes { flex: 1; min-height: 0; display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-5) var(--space-6) var(--space-6); overflow-x: auto; }
 
 .zr-col { flex: none; width: var(--column-width); max-height: 100%; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); background: var(--surface-sunken); border: 1px solid transparent; border-radius: var(--radius-lg); box-sizing: border-box; transition: background-color .15s, border-color .15s; }
@@ -435,6 +437,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-seg.is-underline .zr-seg-item.is-active { background: none; box-shadow: none; border-bottom-color: var(--pine); }
 /* sotto i 720 px le linguette sottolineate stanno in una riga che scorre di lato nel suo riquadro, e la scelta resta in vista (richiesta 204); il segno del fuoco sta dentro la linguetta, che il riquadro non lo tagli */
 @media (max-width: 720px) { .zr-seg.is-underline { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; } .zr-seg.is-underline .zr-seg-item { flex: none; outline-offset: -2px; } }
+@media (pointer: coarse) { .zr-seg-item { min-height: 44px; min-width: 44px; justify-content: center; } } /* al tocco ogni voce di Tabs è alta un dito e larga almeno quanto, anche con size="sm" e sottolineata: il segmentato cresce a 52 px, 44 più il margine interno (richiesta 232) */
 /* Checkbox con aiuto ed errore (144) */
 .zr-check-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .zr-check-field .zr-check { align-items: flex-start; line-height: 20px; }
@@ -537,7 +540,8 @@ select.zr-inline-edit-field { appearance: none; padding-right: calc(var(--space-
 .zr-cal.is-picker { width: max-content; max-width: 100%; }
 .zr-cal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .zr-cal-title { font-size: 15px; line-height: 22px; font-weight: 600; }
-.zr-cal-nav { display: flex; gap: var(--space-2); } /* le aree di tocco dei due pulsanti non si coprono (150) */
+.zr-cal-nav { display: flex; gap: var(--space-2); }
+@media (pointer: coarse) { .zr-cal-nav { gap: var(--space-3); } } /* al tocco 12 px fra «Mese precedente» e «Mese successivo», sm a sola icona: le aree da 44 si toccano senza coprirsi (richiesta 233) */
 .zr-cal-grid { border-collapse: collapse; table-layout: fixed; }
 .zr-cal-grid th { padding: 0 0 var(--space-1-5); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); text-align: center; text-transform: capitalize; }
 .zr-cal-cell { padding: 1px; vertical-align: top; text-align: center; }
@@ -639,6 +643,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-scrim.is-inline { position: absolute; }
 .zr-dialog { width: min(var(--dialog-width), 100%); max-height: calc(100% - 32px); display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); overflow: hidden; }
 .zr-dialog.is-lg { width: min(760px, 100%); }
+.zr-dialog:focus { outline: none; } /* il dialogo prende il fuoco su di sé solo quando non ha niente da premere (richiesta 4) */
 .zr-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-5) var(--space-5) 0; }
 .zr-dialog-head h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
 .zr-dialog-desc { margin: var(--space-1) var(--space-5) 0; color: var(--ink-muted); font-size: 14px; }
@@ -646,7 +651,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-dialog-foot { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--line); background: var(--surface); }
 .zr-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-7) var(--space-5); }
 .zr-empty.is-compact { padding: var(--space-5); }
-.zr-empty h3 { margin: var(--space-2) 0 0; font-size: 15px; line-height: 22px; font-weight: 600; } /* heading-3 (richiesta 147) */
+.zr-empty h3, .zr-empty-title { margin: var(--space-2) 0 0; font-size: 15px; line-height: 22px; font-weight: 600; } /* heading-3 (richiesta 147) */
 .zr-empty p { margin: 0 0 var(--space-2); max-width: 360px; color: var(--ink-muted); font-size: 14px; line-height: 20px; }
 .zr-progress { display: flex; flex-direction: column; gap: var(--space-1-5); }
 .zr-progress-top { display: flex; justify-content: space-between; font-size: 12px; line-height: 16px; color: var(--ink-muted); font-weight: 500; }
@@ -707,6 +712,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-bulk strong { margin-right: var(--space-2); }
 .zr-pager { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-muted); }
 .zr-pager > div { display: flex; gap: var(--space-1); }
+@media (pointer: coarse) { .zr-pager > div { gap: var(--space-3); } } /* al tocco 12 px fra i pulsanti sm della paginazione: le aree da 44 (6 px per lato) si toccano senza coprirsi (richiesta 233) */
 /* ReorderList: un elenco che si riordina trascinando la maniglia, o con «Sposta su» e «Sposta giù» (richiesta 25) */
 .zr-reorder { list-style: none; margin: 0; padding: 0; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .zr-reorder-item { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-bottom: 1px solid var(--line); box-sizing: border-box; }
@@ -1071,6 +1077,7 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-crumbbar { flex: none; padding: var(--space-3) var(--space-6) 0; }
 .zr-shell-crumbs { flex-wrap: wrap; row-gap: 2px; }
 .zr-shell-crumbs a, .zr-shell-crumbs [aria-current] { overflow-wrap: anywhere; }
+@media (pointer: coarse) { .zr-breadcrumb ol, .zr-shell-crumbs { row-gap: 26px; } .zr-breadcrumb a, .zr-crumbs a { position: relative; } .zr-breadcrumb a::after, .zr-crumbs a::after { content: ''; position: absolute; left: 50%; top: -12px; bottom: -14px; width: max(100%, 44px); transform: translateX(-50%); } .zr-board-head .zr-crumbs a::after { top: -14px; bottom: -12px; } } /* al tocco le voci del percorso si prendono su 44 px senza cambiare aspetto: 12 px sopra, nel margine del percorso dentro la cornice, e 14 sotto (nella board 14 sopra e 12 sotto, fra percorso e titolo); su due righe le righe si distanziano perché le aree non si coprano (richiesta 221) */
 .zr-main-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-4) var(--space-6) var(--space-6); }
 .zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible, .zr-search-panel[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* «Salta al contenuto»: nascosto finché non ha il fuoco, poi in alto a sinistra sopra la cornice (richiesta 5) */
@@ -1095,6 +1102,8 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
   .zr-crumbbar { padding: var(--space-3) var(--space-4) 0; }
   .zr-main-body { padding: var(--space-3) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
 }
+@media (pointer: coarse) { .zr-crumbbar, .zr-main.is-flush .zr-crumbbar { padding-bottom: 14px; } .zr-main-body { padding-top: 2px; } } /* al tocco i 14 px sotto il percorso sono della barra del percorso, non del corpo che scorre: il contenuto scorso non finisce sotto l'area delle voci; la distanza dal contenuto resta 16 px (con flush 14, prima 8: richiesta 221) */
+@media (pointer: coarse) and (max-width: 720px) { .zr-main-body { padding-top: 0; } } /* sotto 720 px: 14 al posto di 12 */
 @media (prefers-reduced-motion: reduce) { .zr-ws-chev { transition: none; } }
 .zr-notif-item .zr-avatar { width: 32px; height: 32px; flex: none; font-size: 12px; }
 

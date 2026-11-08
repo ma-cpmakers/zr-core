@@ -50,31 +50,15 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
  * livello, e il dialogo sta sopra perché viene dopo nel documento. È provvisorio come il resto, e sta qui, in uno stile
  * scritto sull'elemento, perché il pacchetto non porta un CSS suo e la cascata del design system non si tocca: se questo
  * modulo non arriva, sotto 720 px il dialogo resta sotto il pannello. Chi la chiama ha già visto che in pagina c'è una cornice.
+ * Il fuoco che entra nel dialogo e torna a chi lo aveva lo fa il `Dialog` da sé, dal lotto 0522 (richiesta 4).
  */
 function dialogoSopraIlPannello(aggiunto: Node): void {
     if (aggiunto instanceof HTMLElement) {
         (aggiunto.matches(DIALOGO_APERTO) ? [aggiunto] : aggiunto.querySelectorAll<HTMLElement>(DIALOGO_APERTO)).forEach((dialogo) => {
             dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)');
-            if (!dialogo.contains(document.activeElement)) {
-                aperti.push([dialogo, document.activeElement]);
-                [...dialogo.querySelectorAll<HTMLElement>(PRENDONO_IL_FUOCO)].some((fermata) => (fermata.focus(), document.activeElement === fermata)) || (dialogo.tabIndex = -1, dialogo.focus());
-            }
         });
     }
 }
-
-/**
- * Il `Dialog` del design system non sposta il fuoco (voce 2871; zr-pm, 01/11/2026, Decisione 19411): quando un dialogo entra
- * nel documento col fuoco fuori, `dialogoSopraIlPannello` si ricorda chi lo aveva e lo dà al primo elemento del dialogo che lo
- * prende (senza indicazione, la «×» Chiudi dell'intestazione; un campo nascosto o un pulsante spento si saltano); un dialogo
- * senza niente che lo prenda — un «Attendi» — lo prende su di sé, col `tabindex` a -1 (`v3.14.3`, Decisione 19428), così il
- * fuoco non resta in un dialogo che si chiude mentre lui resta aperto, e non torna al pulsante dietro il velo. Un ricordo per
- * dialogo: una conferma aperta da dentro un dialogo rende il fuoco al dialogo, e lui al pulsante che l'aveva aperto. Il fuoco già dentro — portato dal modulo, o da `autoFocus` di
- * React su «Annulla» — resta dov'è, e allora il ritorno è del modulo. Quando quel dialogo esce dal documento e il fuoco è
- * rimasto sul `body`, l'osservatore lo riporta a chi lo aveva (se non era il `body` stesso); a un elemento che lo ha preso nel
- * frattempo non si toglie.
- */
-let aperti: [dialogo: HTMLElement, loAveva: Element | null][] = [];
 
 /**
  * Ciò che entra fra le azioni della barra in alto: i due menu che la barra apre, il profilo e le notifiche, quelli che
@@ -142,19 +126,6 @@ function sceltoUnRisultato(evento: Event): void {
     }
 }
 
-/**
- * Col menu a cassetto aperto, un Esc dato con un `<dialog>` aperto, o che un altro ha già gestito (`preventDefault`), chiudeva il
- * suo e anche il cassetto (riga 136 delle richieste al design system): l'`AppShell` ascolta Esc sul documento. Quel tasto si
- * ferma sul `body`, dopo la pagina e prima del documento; il dialogo del browser si chiude lo stesso, che è il browser a
- * chiuderlo, e il pezzo di tastiera non sposta il fuoco. A cassetto chiuso Esc arriva a tutti come prima. Provvisorio,
- * finché l'`AppShell` non lo fa da sé.
- */
-function escGiaDiUnAltro(tasto: KeyboardEvent): void {
-    if (tasto.key === 'Escape' && (tasto.defaultPrevented || (tasto.target as Element).closest('dialog')) && document.querySelector('.zr-shell.is-drawer')) {
-        tasto.stopPropagation();
-    }
-}
-
 /** Il pezzo di tastiera, quando è arrivato. */
 let tastiera: typeof import('./tastiera') | undefined;
 /** I tasti premuti prima che arrivi, ognuno con «qualcun altro lo aveva già fermato» e «è il Tab che si è fermato qui». */
@@ -165,8 +136,9 @@ let tenuto = false;
 /**
  * Il primo tasto premuto chiede il pezzo di tastiera (`tastiera.ts`), e i tasti che arrivano prima di lui si tengono: quando
  * arriva li ripete (zr-pm, 26/10/2026: il primo tasto non si perde). Un Tab senza Ctrl, Alt né Meta che nessuno ha fermato si
- * ferma solo quando qualcuno trattiene il fuoco — un `Dialog` aperto, o un `DetailPanel` a tutta pagina sotto 720 px —, perché
- * il fuoco non ne esca prima del rimedio: è il pezzo a spostarlo, quando arriva, uno per ogni Tab. Altrove il Tab resta del
+ * ferma solo quando qualcuno trattiene il fuoco — un `DetailPanel` a tutta pagina sotto 720 px; il `Dialog` lo trattiene da sé
+ * dal lotto 0522 (richiesta 4) —, perché il fuoco non ne esca prima del rimedio: è il pezzo a spostarlo, quando arriva, uno
+ * per ogni Tab. Altrove il Tab resta del
  * browser, che sa da dove partire anche dopo un clic a metà pagina (R1 della revisione 381). I tasti premuti dopo un Tab
  * fermato, finché il pezzo non arriva e finché qualcuno trattiene il fuoco, si fermano e si perdono: arriverebbero all'elemento
  * da cui il Tab voleva uscire (R2; N1 e N2 della seconda lettura). In ascolto sulla finestra, cioè dopo il
@@ -174,7 +146,7 @@ let tenuto = false;
  */
 function primoTasto(tasto: KeyboardEvent): void {
     const fermato = tasto.defaultPrevented;
-    const trattiene = conLaCornice() && !!(document.querySelector(DIALOGO_APERTO) || (self.matchMedia?.('(max-width: 720px)').matches && document.querySelector('.zr-detail:not(.is-inline)')));
+    const trattiene = conLaCornice() && !document.querySelector(DIALOGO_APERTO) && !!(self.matchMedia?.('(max-width: 720px)').matches && document.querySelector('.zr-detail:not(.is-inline)'));
     const tab = trattiene && !fermato && tasto.key === 'Tab' && !(tasto.ctrlKey || tasto.altKey || tasto.metaKey);
 
     if (tasti.push([tasto, fermato, tab]) < 2) {
@@ -197,7 +169,6 @@ document.addEventListener('keydown', sceltoUnRisultato, true);
 // All'uscita il fuoco non è ancora arrivato dove va: si guarda al giro dopo.
 document.addEventListener('focusout', () => setTimeout(azioniSottoLaRicerca));
 document.addEventListener('keydown', azioniSottoLaRicerca, true);
-document.body.addEventListener('keydown', escGiaDiUnAltro);
 self.matchMedia?.('(max-width: 1023px)').addEventListener('change', cassetto);
 
 /**
@@ -235,13 +206,6 @@ new MutationObserver((cambi) => {
             avatarFuoriDalMenu(aggiunto);
         });
     }
-    // I dialoghi a cui `dialogoSopraIlPannello` ha dato il fuoco e che sono usciti: il fuoco rimasto sul `body` torna a chi lo aveva.
-    aperti = aperti.filter(([dialogo, loAveva]) => {
-        if (!dialogo.isConnected && document.activeElement === document.body && loAveva !== document.body) {
-            (loAveva as HTMLElement | null)?.focus();
-        }
-        return dialogo.isConnected;
-    });
     azioniSottoLaRicerca();
     cassetto();
     tastiera?.aOgniCambio();
