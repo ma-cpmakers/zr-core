@@ -6,7 +6,7 @@ import * as componenti from './componenti';
 
 // voce 3055 (Decisione 21220). L'Alert ha un modulo suo, resources/js/zeiras/Alert.js, come MentionField e AddressField: la cornice
 // lo prende da lì nel pezzo degli avvisi, e il JS d'ingresso non lo porta (lo prova peso.test.ts). I suoi stili restano in
-// zeiras.css, dove servono anche al Toast della cornice. Dalla `v4.28.0` (voce #3511) è lo stesso oggetto di componenti.js, e che il
+// zeiras.css, dove servono anche al Toast della cornice. Dalla `v4.29.0` (voce #3511) è lo stesso oggetto di componenti.js, e che il
 // file sia quello che il bundle genera lo prova componenti.test.ts. Qui: che il componente del modulo fa ciò che fa quello di
 // componenti, e che il modulo non importa stili.
 

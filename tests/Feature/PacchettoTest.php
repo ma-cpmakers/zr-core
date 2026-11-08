@@ -3801,7 +3801,7 @@ it('nessun file che lo zip porta chiama ancora il menu «menu Prodotti»: né i 
     $conIlNomeDiPrima = array_values(array_filter(
         fileDelloZipDiHead(),
         fn (string $file): bool => ! str_starts_with($file, 'resources/zeiras/')
-            // Sprint 71: anche il modulo di MentionField, righe del bundle uguali; dalla `v4.28.0` (voce #3511) i moduli di ogni
+            // Sprint 71: anche il modulo di MentionField, righe del bundle uguali; dalla `v4.29.0` (voce #3511) i moduli di ogni
             // componente, in resources/js/zeiras e in interni/: tutti quelli che `npm run componenti` genera.
             && preg_match('#^resources/js/zeiras/(interni/)?[^/]+\.js$#', $file) !== 1
             // Sprint 75: e i CSS che `npm run componenti` divide da bundle.css, righe del bundle uguali.
@@ -4380,11 +4380,11 @@ it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo di
 })->with([
     'le due strade' => ['Il CSS', '@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
     'per chi è zeiras.css' => ['Il CSS', 'È per chi prende quei due campi **solo** dai loro moduli'],
-    // Voce #3511: dalla v4.28.0 `componenti` prende i due campi dai loro moduli, coi loro stili.
-    'chi resta su bundle.css' => ['Il CSS', 'Fino alla `v4.27.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su `bundle.css`'],
+    // Voce #3511: dalla v4.29.0 `componenti` prende i due campi dai loro moduli, coi loro stili.
+    'chi resta su bundle.css' => ['Il CSS', 'Fino alla `v4.28.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su `bundle.css`'],
     'perché' => ['Il CSS', 'quel campo restava senza stili'],
     'dallo stesso posto' => ['Il CSS', 'E con `bundle.css` i due campi si prendevano dallo stesso posto'],
-    'dalla v4.28.0' => ['Il CSS', 'Dalla `v4.28.0` `componenti`, e con lui `window.Zeiras`, prende i due campi dai loro moduli, coi loro stili'],
+    'dalla v4.29.0' => ['Il CSS', 'Dalla `v4.29.0` `componenti`, e con lui `window.Zeiras`, prende i due campi dai loro moduli, coi loro stili'],
     'nessuno deve cambiare' => ['Passare alla v3.3', 'Nessun frontend deve cambiare niente: `bundle.css` resta com\'era.'],
     'la riga che cambia' => ['Passare alla v3.3', '+@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\';'],
     'chi non lo fa' => ['Passare alla v3.3', 'Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa'],
@@ -5194,8 +5194,8 @@ it('il README dice, in «Come si installa in un frontend», i due ingressi, il p
     'i componenti per nome' => ['I componenti del design system si prendono per nome dal loro modulo, `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l\'app usa'],
     'MentionField a parte (sprint 71 · T1.5)' => ['**MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una pagina o in un dialogo che si carica a richiesta (`import()`)'],
     'MentionField, l\'import' => ['import { MentionField, type MentionOption } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField\';'],
-    // v4.28.0 (voce #3511): `componenti` ri-esporta il modulo di MentionField, e le due copie non ci sono più.
-    'MentionField, da un posto solo' => ['Fino alla `v4.27.0` nella stessa app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi'],
+    // v4.29.0 (voce #3511): `componenti` ri-esporta il modulo di MentionField, e le due copie non ci sono più.
+    'MentionField, da un posto solo' => ['Fino alla `v4.28.0` nella stessa app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi'],
     'AddressField a parte (sprint 72 · T1.5)' => ['**AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta), `resources/js/zeiras/AddressField`, con le stesse regole'],
     'AddressField, l\'import' => ['import { AddressField, type AddressPlace, type AddressSuggestion } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField\';'],
     'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dalla sua parte server, a ogni `onQuery`, e li passa al campo in `suggestions`. Per un modulo di Zeiras a parlare con Google è un metodo di zr-backoffice, non il server del modulo. Il browser non parla con Google, e la CSP della cornice non cambia.'],
@@ -5606,7 +5606,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
 })->with([
     'due file per lingua' => ['lingua', 'Dalla `v1.20.0` ogni lingua ha due file con lo stesso nome: i testi della cornice (`resources/lingue/<codice>.json`) e le frasi delle notifiche (`resources/lingue/notifiche/<codice>.json`)'],
     'dove stanno' => ['notifiche', 'non stanno più nel JS d\'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua'],
-    'quando si chiedono' => ['notifiche', 'la cornice le chiede con `fetch` quando si apre la campanella, insieme all\'elenco: il file della lingua della persona e quello dell\'inglese, una volta sola'],
+    // Voce #3511 · AC 7 e 8: dalla `v4.29.0` il solo file della lingua.
+    'quando si chiedono' => ['notifiche', 'la cornice le chiede con `fetch` quando si apre la campanella, insieme all\'elenco: il solo file della lingua della persona, una volta sola'],
+    'senza l\'inglese' => ['notifiche', 'chi usa l\'inglese, o una lingua che zr-core non ha, chiede quello dell\'inglese. Fino alla `v4.28.0` partiva sempre anche il file dell\'inglese'],
     'da dove, e la CSP' => ['notifiche', 'la cornice li chiede da dove la pagina prende il JS: la CSP di tutti lo lascia fare (`connect-src \'self\'`)'],
     'da un\'altra origine' => ['notifiche', 'un frontend che serve la build da un\'altra origine (`ASSET_URL`) scrive quell\'origine anche in `connect-src`, e da lì i file devono arrivare con CORS'],
     'finché non arrivano' => ['notifiche', 'Finché non arrivano il pannello aspetta'],
@@ -5670,9 +5672,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     'i pesi: di che cosa è fatto il tetto' => ['pesi', 'i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS d\'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre'],
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
     // v4.16.0 (voce #3302): la campanella a 2.330, la misura più 20 (sì di zr-pm-07, 06/11). v4.18.0 (lettura della PR #187, R2):
-    // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074); v4.26.0: i rimedi a 1.362; v4.26.1: a 1.472. v4.23.0 (sprint 116 · T2 e T3): la campanella a 2.729.
-    // v4.25.0 (voce #3417): gli avvisi a 1.776, con «Il mio spazio», la misura più 20 (Decisione 22468). v4.28.0 (voce #3511): a 1.730.
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.472 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.28.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera'],
+    // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074); v4.26.0: i rimedi a 1.362; v4.26.1: a 1.472. v4.23.0 (sprint 116 · T2 e T3): la campanella a 2.729; v4.29.0 (voce #3511): a 2.685.
+    // v4.25.0 (voce #3417): gli avvisi a 1.776, con «Il mio spazio», la misura più 20 (Decisione 22468). v4.29.0 (voce #3511): a 1.730.
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.29.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

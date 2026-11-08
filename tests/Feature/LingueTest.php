@@ -1452,6 +1452,59 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
 });
 
 /**
+ * Voce #3511 · AC 10 (Decisione 23057). Dalla `v4.29.0` la cornice chiede il solo file delle frasi della lingua della pagina, e
+ * l'inglese non arriva più a coprire una frase che manca: per questo ogni file delle frasi, anche di una lingua aggiunta dopo
+ * italiano, spagnolo e inglese, ha ogni chiave di `en.json`, con un testo non vuoto, e nessuna in più.
+ *
+ * @param  array<string, array<string, mixed>>  $frasi  i file delle frasi, per codice
+ * @return list<string>
+ */
+function problemiDelleFrasiDiOgniLingua(array $frasi): array
+{
+    $inglesi = array_keys($frasi['en'] ?? []);
+    $problemi = $inglesi === [] ? ['en: non ha il file delle frasi'] : [];
+    foreach ($frasi as $codice => $delCodice) {
+        foreach (array_diff($inglesi, array_keys($delCodice)) as $chiave) {
+            $problemi[] = "$codice: manca «{$chiave}»";
+        }
+        foreach (array_diff(array_keys($delCodice), $inglesi) as $chiave) {
+            $problemi[] = "$codice: «{$chiave}» non è una frase dell'inglese";
+        }
+        foreach ($delCodice as $chiave => $frase) {
+            if (! is_string($frase) || trim($frase) === '') {
+                $problemi[] = "$codice: «{$chiave}» è vuota";
+            }
+        }
+    }
+
+    return $problemi;
+}
+
+it('ogni file delle frasi ha ogni frase dell\'inglese, non vuota, e nessuna in più: la cornice chiede solo il file della lingua (voce #3511 · 10)', function () {
+    $frasi = fileDelleLingue('notifiche/');
+
+    expect(array_keys($frasi))->toContain('it', 'es', 'en')
+        ->and(count($frasi['en']))->toBeGreaterThan(100)
+        ->and(problemiDelleFrasiDiOgniLingua($frasi))->toBe([]);
+});
+
+it('il controllo delle frasi di ogni lingua trova una frase che manca, una vuota, una in più e un inglese che non c\'è, anche in una lingua aggiunta (voce #3511 · 10)', function () {
+    $inglesi = ['notificationTitle.com.zeiras.board.scheda.creata' => 'New card', 'notificationUnder.count' => '{n} times'];
+
+    expect(problemiDelleFrasiDiOgniLingua([
+        'en' => $inglesi,
+        'it' => ['notificationTitle.com.zeiras.board.scheda.creata' => 'Nuova scheda', 'notificationUnder.count' => '{n} volte'],
+        'fr' => ['notificationTitle.com.zeiras.board.scheda.creata' => 'Nouvelle carte'],
+        'es' => ['notificationTitle.com.zeiras.board.scheda.creata' => 'Nueva tarjeta', 'notificationUnder.count' => '  ', 'notificationTitle.uat' => 'UAT'],
+    ]))->toEqualCanonicalizing([
+        'fr: manca «notificationUnder.count»',
+        'es: «notificationUnder.count» è vuota',
+        'es: «notificationTitle.uat» non è una frase dell\'inglese',
+    ])
+        ->and(problemiDelleFrasiDiOgniLingua(['it' => ['notificationTitle.uat' => 'UAT']]))->toBe(['en: non ha il file delle frasi', 'it: «notificationTitle.uat» non è una frase dell\'inglese']);
+});
+
+/**
  * I sette testi dei due avvisi della cornice ridotta — chi non ha accettato i documenti legali e Zeiras che non risponde —:
  * dalla `v3.7.0` stanno in resources/lingue/avvisi, un file per lingua col nome del file dei testi, e la cornice li chiede in un
  * pezzo a richiesta (`resources/js/avvisi.ts`) solo in quei due stati, fuori dal JS d'ingresso (zr-pm, 26/10/2026). Dalla `v4.22.0`

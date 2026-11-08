@@ -70,7 +70,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         expect(importati('MentionField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';"]);
         expect(importati('AddressField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';", "import '../../css/zeiras/AddressField.css';"]);
         expect(importati('Alert')).toStrictEqual([]);
-        // Dalla `v4.28.0` (voce #3511) ogni modulo: solo quei due importano un CSS.
+        // Dalla `v4.29.0` (voce #3511) ogni modulo: solo quei due importano un CSS.
         const conIlCss = Object.entries(moduli(letto, divisi)).filter(([, testo]) => /^import '.*\.css';$/m.test(testo)).map(([nome]) => nome);
         expect(conIlCss.sort()).toStrictEqual(['AddressField.js', 'MentionField.js']);
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.

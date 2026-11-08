@@ -7827,7 +7827,8 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         return fetchFinto;
     };
 
-    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura partono quello della lingua dei dati e quello dell\'inglese, non lo spagnolo, e il titolo è la frase di sempre (T1.3)', async () => {
+    // Voce #3511 · AC 7 e 9: fino alla `v4.28.0` all'apertura partiva anche l'inglese; dalla `v4.29.0` solo la lingua dei dati.
+    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura parte solo quello della lingua dei dati, una volta, non l\'inglese né lo spagnolo, e il titolo è la frase di sempre (T1.3; voce #3511 · 7, 9)', async () => {
         const frasi = caricatore();
         conLElenco();
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
@@ -7835,7 +7836,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
 
         await clic(uno('.zr-bell'));
 
-        expect([...new Set(frasi.chiesti)].sort()).toStrictEqual(['en', 'it']);
+        expect(frasi.chiesti).toStrictEqual(['it']);
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
@@ -7855,7 +7856,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
-    it.each(['it', 'en'])('se il file «%s» non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5)', async (rotto) => {
+    it.each(['it'])('se il file «%s» non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5)', async (rotto) => {
         const frasi = caricatore();
         frasi.rotti.add(rotto);
         const fetchFinto = conLElenco();

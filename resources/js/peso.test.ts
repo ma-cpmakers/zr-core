@@ -177,7 +177,7 @@ const FRASI = { it: 'ha creato l\'area', en: 'created the area', es: 'ha creado 
  * della barra, richiesta 223) a 19.652; la contropartita sono i rimedi delle righe 4 e 136, tolti dal pezzo dei rimedi (−145 sul
  * suo tetto).
  *
- * v4.28.0: 19.599, 73 in meno (la misura + 20): un modulo per componente (voce #3511). La build prende di ogni componente solo il
+ * v4.29.0: 19.599, 73 in meno (la misura + 20): un modulo per componente (voce #3511). La build prende di ogni componente solo il
  * modulo che la cornice usa, e le righe comuni a più componenti una volta sola. 19.579 misurati, coi lotti 0525 e 0526 dentro.
  */
 const TETTO_DELL_INGRESSO = 19_599;
@@ -241,7 +241,7 @@ function costruito(esito: Awaited<ReturnType<typeof build>>): Costruito {
     const testoDi = (uscita: (typeof json)[number]) => (uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : uscita.type === 'asset' ? Buffer.from(uscita.source).toString() : '');
     const fogli = new Map(uscite.filter((uscita) => uscita.type === 'asset' && uscita.fileName.endsWith('.css')).map((uscita) => [uscita.fileName, uscita.type === 'asset' && typeof uscita.source === 'string' ? uscita.source : '']));
     const nomiDelCss = (pezzo: (typeof pezzi)[number]) => [...(pezzo.viteMetadata?.importedCss ?? [])];
-    // Dalla `v4.28.0` (voce #3511) un modulo per componente: ciò che due pezzi a richiesta hanno in comune la build lo mette in un
+    // Dalla `v4.29.0` (voce #3511) un modulo per componente: ciò che due pezzi a richiesta hanno in comune la build lo mette in un
     // pezzo terzo, che non è un `import()` e che l'ingresso non scarica. D'ingresso sono i pezzi che la pagina importa da sé e quelli
     // che importano loro; un pezzo a richiesta porta con sé quelli che importa e che l'ingresso non ha.
     const perNome = new Map(pezzi.map((pezzo) => [pezzo.fileName, pezzo]));
@@ -347,7 +347,7 @@ let iDueConZeirasCss: Costruito;
 // nuovo, non segnato, fa rosso qui invece di riprendersi i byte in silenzio. Di ognuno si guardano i testi fra apici di almeno otto
 // caratteri che nel modulo stanno solo lì (i nomi, le email dei contatti finti): un testo più corto, o che il modulo usa anche
 // altrove, potrebbe stare nell'ingresso per un'altra ragione.
-// Dalla `v4.28.0` (voce #3511) un modulo per componente: il testo di tutti i moduli che scripts/componenti.mjs genera.
+// Dalla `v4.29.0` (voce #3511) un modulo per componente: il testo di tutti i moduli che scripts/componenti.mjs genera.
 const generato = Object.values(import.meta.glob<string>(['./zeiras/*.js', './zeiras/interni/*.js'], { query: '?raw', import: 'default', eager: true })).join('\n');
 const DATI_DI_ESEMPIO = [...generato.matchAll(/^ {2}var (SAMPLE_\w+) = (?:\/\* @__PURE__ \*\/ )?\[\n([\s\S]*?)\n {2}\]/gm)].map((trovato) => {
     const testi = [...(trovato[2] ?? '').matchAll(/'([^'\n]*)'/g)].map((testo) => testo[1] ?? '');
@@ -469,9 +469,9 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     });
 });
 
-// Sprint 71 · T1.1, T1.2 (voce #2433, Decisione 16375). Fino alla `v4.27.0` `componenti.js` era un modulo solo: se l'ingresso lo
+// Sprint 71 · T1.1, T1.2 (voce #2433, Decisione 16375). Fino alla `v4.28.0` `componenti.js` era un modulo solo: se l'ingresso lo
 // importa (la cornice lo fa), stava nell'ingresso con tutto ciò che una qualunque pagina ne usava, anche una pagina a richiesta.
-// MentionField ha per questo un modulo suo: preso da lì, sta nel pezzo della pagina. Dalla `v4.28.0` (voce 3511) lo stesso vale
+// MentionField ha per questo un modulo suo: preso da lì, sta nel pezzo della pagina. Dalla `v4.29.0` (voce 3511) lo stesso vale
 // per una pagina che importa MentionField da `componenti.js` (il caso della DataTable, AC 1); qui la pagina a richiesta è
 // `componenti.js` stesso, con `import()`: è un modulo dell'ingresso, e il componente che la pagina ne usa sta nell'ingresso.
 // La classe del suo campo, `zr-mention`, è il segno del suo codice.
@@ -569,8 +569,8 @@ describe('con zeiras.css gli stili di MentionField e AddressField arrivano col l
     });
 });
 
-// Voce #3511 · AC 1. Fino alla `v4.27.0` componenti.js era un modulo solo: una pagina a richiesta che ne prendeva un componente lo
-// lasciava nel JS d'ingresso, dove la cornice importa lo stesso modulo. Dalla `v4.28.0` ogni componente ha un modulo suo, e la
+// Voce #3511 · AC 1. Fino alla `v4.28.0` componenti.js era un modulo solo: una pagina a richiesta che ne prendeva un componente lo
+// lasciava nel JS d'ingresso, dove la cornice importa lo stesso modulo. Dalla `v4.29.0` ogni componente ha un modulo suo, e la
 // build lo mette nel pezzo che lo usa. `zr-table` è la classe della DataTable, che la cornice non usa.
 describe('un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche preso da componenti.js (voce 3511 · AC 1)', () => {
     it('la DataTable non sta nel JS d\'ingresso, e sta nel pezzo a richiesta; l\'AppShell resta nell\'ingresso', () => {
@@ -701,7 +701,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // T5.4 (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso è ciò che l'ingresso pesa a fine sprint.
     // Sprint 74 · T2.7 (voce 2549): +80 per le fonti di Bookings nell'invito (i due nomi da elenco nelle tre lingue e `fonti`
     // della voce), con le loro risorse e i loro testi nel pezzo della ricerca: l'eccezione di zr-pm, la misura vera.
-    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 19.599 byte: il tetto della v4.28.0 (−73, la misura più 20, un modulo per componente della voce 3511), e prima quello della v4.26.0 (+238, la misura più 20, i lotti 0522 e 0523 del design system coi rimedi delle righe 4 e 136 tolti dal pezzo dei rimedi: sì di zr-pm-07 del 07/11), e prima quello della v4.25.0 (+40, la misura più 20, «Il mio spazio» della voce 3417: Decisione 22468), e prima quello della v4.22.0 (+112, la misura più 20, l\'assistenza della voce 2909: Decisione 22312), e prima quello della v4.20.0 (+146, i lotti 0520 e 0521 del design system con le due chiamate che segnano lette nel pezzo della campanella: Decisione 22247), e prima quello della v4.18.0 (+547, la misura più 20, il lotto 0518 del design system coi rimedi delle righe 5, 46 e 56 tolti: Decisione 22074), e prima quello della v4.17.0 (+420, la misura più 20, il lotto 0517 del design system coi rimedi delle righe 6, 13, 14, 27, 29, 30 e 98 tolti: sì di zr-pm del 06/11, Decisione 22019), e prima quello della v4.11.0 (+247, la misura più 20, il design system 1793914149-8632 con «Il mio spazio» nell\'AppShell: sì di zr-pm del 05/11), e prima quello della v4.10.0 (+411, la misura più 20, i lotti 0515 e 0516 del design system: sì di zr-pm del 05/11), e prima quello della v4.9.0 (+55, la misura più 20, il lotto 0514 del design system: sì di zr-pm del 05/11), e prima quello della v4.8.1 (−110, la misura più 20, l\'Alert nel pezzo degli avvisi: voce 3055, Decisione 21220), e prima quello della v4.8.0 (+378, la misura più 20, il lotto 0513 del design system: sì di zr-pm del 05/11), e prima quello della v4.7.0 (+308, la misura più 20, il lotto 0512 del design system: Decisione 21046), e prima quello della v4.4.0 (−693, la misura più 20, inglese e spagnolo fuori dall\'ingresso: Decisione 20618), e prima quello della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
+    it('l\'app che prende solo la cornice pesa all\'ingresso, con gzip, al più 19.599 byte: il tetto della v4.29.0 (−73, la misura più 20, un modulo per componente della voce 3511), e prima quello della v4.26.0 (+238, la misura più 20, i lotti 0522 e 0523 del design system coi rimedi delle righe 4 e 136 tolti dal pezzo dei rimedi: sì di zr-pm-07 del 07/11), e prima quello della v4.25.0 (+40, la misura più 20, «Il mio spazio» della voce 3417: Decisione 22468), e prima quello della v4.22.0 (+112, la misura più 20, l\'assistenza della voce 2909: Decisione 22312), e prima quello della v4.20.0 (+146, i lotti 0520 e 0521 del design system con le due chiamate che segnano lette nel pezzo della campanella: Decisione 22247), e prima quello della v4.18.0 (+547, la misura più 20, il lotto 0518 del design system coi rimedi delle righe 5, 46 e 56 tolti: Decisione 22074), e prima quello della v4.17.0 (+420, la misura più 20, il lotto 0517 del design system coi rimedi delle righe 6, 13, 14, 27, 29, 30 e 98 tolti: sì di zr-pm del 06/11, Decisione 22019), e prima quello della v4.11.0 (+247, la misura più 20, il design system 1793914149-8632 con «Il mio spazio» nell\'AppShell: sì di zr-pm del 05/11), e prima quello della v4.10.0 (+411, la misura più 20, i lotti 0515 e 0516 del design system: sì di zr-pm del 05/11), e prima quello della v4.9.0 (+55, la misura più 20, il lotto 0514 del design system: sì di zr-pm del 05/11), e prima quello della v4.8.1 (−110, la misura più 20, l\'Alert nel pezzo degli avvisi: voce 3055, Decisione 21220), e prima quello della v4.8.0 (+378, la misura più 20, il lotto 0513 del design system: sì di zr-pm del 05/11), e prima quello della v4.7.0 (+308, la misura più 20, il lotto 0512 del design system: Decisione 21046), e prima quello della v4.4.0 (−693, la misura più 20, inglese e spagnolo fuori dall\'ingresso: Decisione 20618), e prima quello della v4.2.0 (+360, la misura più 20, il design system nuovo e la foto nella cornice: Decisione 20570), e prima quello della v3.9.0 (−123, la misura più 20, i testi dei codici della ricerca nel pezzo della ricerca: Decisione 18762), e prima quello della v3.8.1 (+40, la misura più 20, il pezzo degli avvisi che si richiede: R5 della revisione 381), e prima quello della v3.7.0 (−404, la misura più 20, coi testi dei due avvisi della cornice ridotta in un pezzo a richiesta: zr-pm, 26/10), e prima quello della v3.6.0 (+80, le fonti di Bookings nell\'invito della ricerca: voce 2549 T2.7; +75, il caricamento della ricerca dal tasto, l\'ora corta e il nome del «+»: voci 2062, 2718 e 2719, Decisione 18231; +25, il colore scelto del workspace: voce 2730; +25, la parola incollata uguale: voce 2062, N1, l\'ultimo rialzo senza contropartita), e prima quella della v3.2.3 (+17 sul tetto della v3.0.0, il modulo spento che non si mostra a chi non può attivarlo: Decisioni 16812 e 16828), e prima quella della v3.0.0, con le righe delle destinazioni delle notifiche nel pezzo della campanella (Decisione 16181), dopo la misura a fine sprint 50 più le eccezioni di zr-pm del 21/10 (+49), del 22/10 (+25), del 23/10 (+18, il nome del contenuto e il suo cambio di lingua: voce 2394) e del 24/10 (+16, la destinazione del credito sotto zero: Decisione 16110), con i dati di esempio e i formattatori dei numeri fuori dall\'ingresso e le correzioni dello sprint dentro, più l\'impronta di zr-auth, quella della cornice che chiede (sprint 42 · T2.5; sprint 50 · T5.4; sprint 60 · T1.3; sprint 61 · T1; sprint 70 · T1.1; voce 2544 T1.4)', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(TETTO_DELL_INGRESSO);
         expect(TETTO_DELL_INGRESSO).toBe(19_599);
     });
@@ -727,8 +727,8 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     });
 
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
-    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). Fino alla `v4.27.0` i segni «puri» del generatore toglievano
-    // dall'ingresso almeno 500 byte (T1.4: 515 alla misura di T1): il modulo dei componenti era uno solo. Dalla `v4.28.0` (voce #3511)
+    // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). Fino alla `v4.28.0` i segni «puri» del generatore toglievano
+    // dall'ingresso almeno 500 byte (T1.4: 515 alla misura di T1): il modulo dei componenti era uno solo. Dalla `v4.29.0` (voce #3511)
     // ogni componente ha un modulo suo, e una build che legge `sideEffects` del pacchetto non prende quello di CrmContacts dove
     // nessuno lo usa: la stessa app, costruita coi moduli senza i segni, è uguale. Per una build che `sideEffects` non lo legge
     // (qui un plugin che dà effetti a ogni modulo dei componenti) i segni tolgono ancora almeno 500 byte (532 misurati).
@@ -776,9 +776,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // v3.7.0 (zr-pm, 26/10/2026): i testi dei due avvisi della cornice ridotta stanno in un pezzo a richiesta, con le tre lingue,
     // e non nel JS d'ingresso. Il pezzo ha un tetto suo: la misura più 20. Dalla v4.8.1 (voce 3055 · T1.2) porta anche l'Alert: 1.088 misurati. Dalla v4.22.0
     // (#2909, Decisione 22312) anche la fascia di assistenza coi suoi testi in tre lingue: 1.534 misurati. Dalla v4.25.0 (#3417,
-    // Decisione 22468) anche «Il mio spazio», coi suoi testi in tre lingue e il clic: 1.756 misurati. Dalla v4.28.0 (#3511), coi
+    // Decisione 22468) anche «Il mio spazio», coi suoi testi in tre lingue e il clic: 1.756 misurati. Dalla v4.29.0 (#3511), coi
     // moduli per componente, l'Alert non porta più le righe del bundle che non usa: 1.710 misurati.
-    it('i testi dei due avvisi della cornice ridotta non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo degli avvisi, che non è un altro pezzo, e pesa con gzip al più 1.730 byte, con l\'Alert, la fascia di assistenza e «Il mio spazio» (v3.7.0: 778; v4.8.1: 1.108; v4.22.0: 1.554; v4.25.0: 1.776; v4.28.0)', () => {
+    it('i testi dei due avvisi della cornice ridotta non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo degli avvisi, che non è un altro pezzo, e pesa con gzip al più 1.730 byte, con l\'Alert, la fascia di assistenza e «Il mio spazio» (v3.7.0: 778; v4.8.1: 1.108; v4.22.0: 1.554; v4.25.0: 1.776; v4.29.0)', () => {
         const titoli = [avvisiItaliani.downTitle, avvisiSpagnoli.downTitle, avvisiInglesi.downTitle, avvisiItaliani.acceptanceText];
         const [avvisi = '', ...altri] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEGLI_AVVISI));
 
@@ -850,7 +850,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         ]).toStrictEqual([1, 1, 1, 0, 0]);
     });
 
-    it('il pezzo della campanella pesa, con gzip, al più 2.729 byte (v4.23.0: le quattro righe delle notifiche da cliente, la misura 2.625 + 20, sì di zr-pm-07; e la campanella della cornice del cliente, che dal pezzo prende la destinazione in «Il mio spazio» e le due chiamate con le rotte del cliente, la misura 2.709 + 20, sì di zr-pm-07; v4.20.0: le due chiamate che segnano lette le notifiche, uscite dal JS d\'ingresso, la misura 2.572 + 20, Decisione 22247; v4.16.0: il titolo del Gate per esito, la misura 2.310 + 20, zr-pm-07 06/11; v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
+    it('il pezzo della campanella pesa, con gzip, al più 2.685 byte (v4.29.0: le frasi della sola lingua della pagina, senza l\'inglese, voce #3511, la misura 2.665 + 20, 64 in meno; v4.23.0: le quattro righe delle notifiche da cliente, la misura 2.625 + 20, sì di zr-pm-07; e la campanella della cornice del cliente, che dal pezzo prende la destinazione in «Il mio spazio» e le due chiamate con le rotte del cliente, la misura 2.709 + 20, sì di zr-pm-07; v4.20.0: le due chiamate che segnano lette le notifiche, uscite dal JS d\'ingresso, la misura 2.572 + 20, Decisione 22247; v4.16.0: il titolo del Gate per esito, la misura 2.310 + 20, zr-pm-07 06/11; v3.6.1: le destinazioni delle scadenze di una scheda, del promemoria di una To-do e dell\'invito accettato, la misura 2.270 + 20, zr-pm 26/10): la misura della v3.0.0, con le righe delle destinazioni delle notifiche e le due delle Scadenze (sprint 70 · T1.5, T2.1), più la riga della richiesta sul preventivo (v3.2.2), col taglio del nome di chi ha fatto, con le frasi guardate all\'arrivo e con la riga del conto e della board (sprint 33 · T1.7, T2.4, T3.6; sprint 34 · T2.7; sprint 36 · T5.4)', () => {
         const [campanella = ''] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DELLA_CAMPANELLA));
 
         expect(campanella).not.toBe('');
@@ -872,7 +872,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // id in una funzione che usa anche la cornice del cliente (+16): 2.625, la misura + 20, sì di zr-pm-07. Sprint 116 · T3:
         // la cornice del cliente prende dal pezzo la destinazione in «Il mio spazio» (+73) e le due chiamate con le rotte del
         // cliente (+11): 2.709, la misura + 20, sì di zr-pm-07 06/11 (meglio nel pezzo che nell'ingresso di zr-home).
-        expect(gzip(campanella)).toBeLessThanOrEqual(2_729);
+        expect(gzip(campanella)).toBeLessThanOrEqual(2_685);
     });
 
     it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.472 byte, il tetto della v4.26.1 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {

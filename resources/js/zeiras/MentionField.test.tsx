@@ -6,7 +6,7 @@ import * as componenti from './componenti';
 import { MentionField, type MentionLabels, type MentionOption } from './MentionField';
 import { Zeiras } from './index';
 // Sprint 71 · T1 (voce #2433, Decisione 16375). MentionField ha un modulo suo, resources/js/zeiras/MentionField.js: chi lo usa
-// solo in una pagina a richiesta lo prende da lì, e il JS d'ingresso non lo porta (lo prova peso.test.ts). Dalla `v4.28.0` (voce
+// solo in una pagina a richiesta lo prende da lì, e il JS d'ingresso non lo porta (lo prova peso.test.ts). Dalla `v4.29.0` (voce
 // #3511) ogni componente ha un modulo suo, e quello di componenti.js è lo stesso oggetto: che i file siano quelli che il bundle
 // genera lo prova componenti.test.ts per tutti. Qui: che il componente del modulo fa ciò che fa quello di componenti.
 
