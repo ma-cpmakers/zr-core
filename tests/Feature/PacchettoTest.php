@@ -5772,7 +5772,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Voce #3535: dalla `v4.33.0` gli stili della barra d'avanzamento di Inertia, che bundle.css e zeiras.css importano.
     // Voce #3723: dalla `v4.34.0` gli stili della fascia di assistenza, che bundle.css e zeiras.css importano.
     // Voce #3887: dalla `v4.35.0` i rimedi provvisori al CSS del design system, che bundle.css e zeiras.css importano.
-    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #3536: dalla `v5.0.0` il tema di Tailwind 4 coi nomi dei token, che `npm run token` genera.
+    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)

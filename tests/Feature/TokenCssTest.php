@@ -284,7 +284,8 @@ it('il README dice gli stili di testo coi nomi che zeiras-token.css porta: ogni 
 it('ogni gruppo di tokens.json con un elenco di token è letto da scripts/token-css.mjs, e ogni suo token è una variabile di zeiras-token.css (sprint 104)', function () {
     $token = json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR);
     $gruppi = array_keys(array_filter($token, fn (mixed $gruppo) => is_array($gruppo) && isset($gruppo['tokens'])));
-    preg_match_all('/\btoken\.([a-zA-Z]+)\b/', File::get(__DIR__.'/../../scripts/token-css.mjs'), $letti);
+    // Dalla voce #3536 i gruppi li legge scripts/token-genera.mjs, che token-css.mjs usa.
+    preg_match_all('/\btoken\.([a-zA-Z]+)\b/', File::get(__DIR__.'/../../scripts/token-css.mjs').File::get(__DIR__.'/../../scripts/token-genera.mjs'), $letti);
     $css = variabiliDiRoot(File::get(__DIR__.'/../../resources/css/zeiras-token.css'));
     $nomi = array_merge(...array_map(fn (string $gruppo) => array_map(fn (array $voce) => "--{$voce['name']}", $token[$gruppo]['tokens']), $gruppi));
 
