@@ -5192,7 +5192,8 @@ it('il README dice, in «Come si installa in un frontend», i due ingressi, il p
     'i componenti per nome' => ['I componenti del design system si prendono per nome dal loro modulo, `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l\'app usa'],
     'MentionField a parte (sprint 71 · T1.5)' => ['**MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una pagina o in un dialogo che si carica a richiesta (`import()`)'],
     'MentionField, l\'import' => ['import { MentionField, type MentionOption } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField\';'],
-    'MentionField, da un posto solo' => ['Nella stessa app si prende da un posto solo: le due copie hanno ognuna il suo contatore degli id dei campi'],
+    // v4.28.0 (voce #3511): `componenti` ri-esporta il modulo di MentionField, e le due copie non ci sono più.
+    'MentionField, da un posto solo' => ['Fino alla `v4.27.0` nella stessa app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi'],
     'AddressField a parte (sprint 72 · T1.5)' => ['**AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta), `resources/js/zeiras/AddressField`, con le stesse regole'],
     'AddressField, l\'import' => ['import { AddressField, type AddressPlace, type AddressSuggestion } from \'../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField\';'],
     'AddressField, chi chiama Google' => ['AddressField non chiama Google: i suggerimenti di Google Places li chiede il frontend dalla sua parte server, a ogni `onQuery`, e li passa al campo in `suggestions`. Per un modulo di Zeiras a parlare con Google è un metodo di zr-backoffice, non il server del modulo. Il browser non parla con Google, e la CSP della cornice non cambia.'],
@@ -5642,7 +5643,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.672 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.599 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.26.0 (sì di zr-pm-07 del 07/11): +238 byte, i lotti 0522 e 0523 del design system, coi rimedi delle righe 4 e 136 tolti.
     'i pesi: i 238 byte della v4.26.0' => ['pesi', 'Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog`'],
     // v4.25.0 (Decisione 22468 di zr-pm): +40 byte, «Il mio spazio» nella cornice dei membri, coi testi nel pezzo degli avvisi.
@@ -5668,8 +5669,8 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // v3.8.0 (zr-pm, 26/10/2026): il quinto pezzo, quello della tastiera, alla misura più 20. v3.10.0: la ricerca a 1.867 (voce 2801).
     // v4.16.0 (voce #3302): la campanella a 2.330, la misura più 20 (sì di zr-pm-07, 06/11). v4.18.0 (lettura della PR #187, R2):
     // i rimedi a 1.507 e la ricerca a 1.797, la misura più 20 (Decisione 22074); v4.26.0: i rimedi a 1.362; v4.26.1: a 1.472. v4.23.0 (sprint 116 · T2 e T3): la campanella a 2.729.
-    // v4.25.0 (voce #3417): gli avvisi a 1.776, con «Il mio spazio», la misura più 20 (Decisione 22468).
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.472 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v3.8.0` 1.201 la tastiera'],
+    // v4.25.0 (voce #3417): gli avvisi a 1.776, con «Il mio spazio», la misura più 20 (Decisione 22468). v4.28.0 (voce #3511): a 1.730.
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.472 i rimedi, 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.28.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

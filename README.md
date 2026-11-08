@@ -109,7 +109,11 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
 - **L'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi
   dell'ingresso di sempre tranne `Zeiras`. I componenti del design system si prendono per nome dal loro modulo,
   `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l'app usa: i componenti della cornice, più
-  quelli delle sue pagine.
+  quelli delle sue pagine. Dalla `v4.28.0` ogni componente ha un modulo suo, `resources/js/zeiras/<Nome>`, che `componenti`
+  ri-esporta soltanto (#3511): un componente che usa solo una pagina a richiesta (`import()`) sta nel pezzo di quella pagina, e
+  non nel JS d'ingresso, anche preso da `componenti`. Lo stesso nome dai due posti è lo stesso componente. Il `package.json` del
+  pacchetto dice quali file hanno effetti quando si importano (`sideEffects`: i CSS, il TypeScript, il bundle UMD): una build
+  che lo legge, come Vite, lascia fuori i moduli che nessuno usa.
 
   ```ts
   import { Cornice, type DatiDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app';
@@ -119,23 +123,25 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.
 
   **MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una
-  pagina o in un dialogo che si carica a richiesta (`import()`). Il modulo dei componenti è uno solo: la cornice lo importa,
-  quindi sta nel JS d'ingresso, e con lui ogni componente che una qualunque pagina ne prende, anche a richiesta. Preso dal suo
-  modulo, MentionField sta nel pezzo della pagina che lo usa e il JS del primo carico non lo porta.
+  pagina o in un dialogo che si carica a richiesta (`import()`). Fino alla `v4.27.0` il modulo dei componenti era uno solo: la
+  cornice lo importa, quindi stava nel JS d'ingresso, e con lui ogni componente che una qualunque pagina ne prendeva, anche a
+  richiesta. Preso dal suo modulo, MentionField sta nel pezzo della pagina che lo usa e il JS del primo carico non lo porta;
+  dalla `v4.28.0` è così anche preso da `…/zeiras/componenti`.
 
   ```ts
   import { MentionField, type MentionOption } from '../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField';
   ```
 
-  Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Nella stessa app si prende da un
-  posto solo: le due copie hanno ognuna il suo contatore degli id dei campi, e due campi presi da posti diversi nella stessa
-  pagina possono avere lo stesso id. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
+  Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Fino alla `v4.27.0` nella stessa
+  app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi; dalla
+  `v4.28.0` `componenti`, e con lui `window.Zeiras`, lo ri-esporta dal suo modulo: è lo stesso componente, col contatore
+  uno. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
   componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) il modulo le ha
   sue, e si cambiano con la prop `labels`.
 
   **AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta),
-  `resources/js/zeiras/AddressField`, con le stesse regole: da `…/zeiras/componenti` e da `window.Zeiras` c'è anche lui, nella
-  stessa app si prende da un posto solo, e le etichette di partenza (`ADDRESS_LABELS`) il modulo le ha sue.
+  `resources/js/zeiras/AddressField`, con le stesse regole: da `…/zeiras/componenti` e da `window.Zeiras` c'è anche lui, fino
+  alla `v4.27.0` nella stessa app si prendeva da un posto solo (dalla `v4.28.0` i tre posti danno lo stesso componente), e le etichette di partenza (`ADDRESS_LABELS`) il modulo le ha sue.
 
   ```ts
   import { AddressField, type AddressPlace, type AddressSuggestion } from '../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField';
@@ -148,8 +154,8 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   sono approvate.
 
   Dalla `v4.8.1` ha un modulo suo anche l'Alert, `resources/js/zeiras/Alert`, ma è della cornice: lo prende il pezzo degli
-  avvisi della cornice ridotta (#3055). Un frontend prende l'Alert da `…/zeiras/componenti`, come prima: dai due posti nella
-  stessa app avrebbe due copie del componente.
+  avvisi della cornice ridotta (#3055). Un frontend prende l'Alert da `…/zeiras/componenti`, come prima: dalla `v4.28.0` è lo
+  stesso componente del modulo suo.
 
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
   `window.Zeiras`, con `window.React`. Resta com'è, coi nomi di prima: chi non cambia niente resta sulla `^1` senza toccare
@@ -175,9 +181,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,0 KB | 19,2 KB | 67,5 KB | 14,4 KB |
-| la cornice e due componenti per nome | 64,0 KB | 22,0 KB | 67,5 KB | 14,4 KB |
-| la stessa cornice, dall'ingresso di sempre | 210,6 KB | 68,2 KB | 67,4 KB | 14,4 KB |
+| solo la cornice, dall'ingresso per le app | 54,9 KB | 19,1 KB | 67,7 KB | 14,5 KB |
+| la cornice e due componenti per nome | 63,9 KB | 21,9 KB | 67,7 KB | 14,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 211,0 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
@@ -204,7 +210,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.672 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.599 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -263,9 +269,11 @@ trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Lab
 voci e l'Esc che non chiude anche il cassetto, e il lotto 0523 il nome «Moduli e pagine» del `nav` della barra; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
 scende a 1.362 byte. Dalla `v4.26.1` risale a 1.472 (1.462 misurati), per eccezione senza contropartita (sì di zr-pm-07 dell'08/11): il
 nome del selettore dei workspace e del pulsante del profilo dal loro testo, finché l'`AppShell` non lo fa da sé (righe 240 e 241).
+Dalla `v4.28.0` il JS d'ingresso scende di 73 byte, alla misura più 20: ogni componente del design system ha un modulo suo (#3511),
+e la build prende di ognuno solo ciò che la cornice usa.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.729 byte la campanella, 1.472 i rimedi, 1.797 la
-ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.28.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
