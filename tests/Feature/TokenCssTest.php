@@ -233,7 +233,12 @@ it('nessun valore dei token è scritto a mano nel codice di zr-core: niente esad
         // (la CI li confronta con ciò che il bundle genera: una riga scritta a mano lì dentro la ferma).
         // Sprint 92 · T2: anche il bundle intero coi font del pacchetto (resources/css/bundle.css), che la CI confronta allo stesso modo.
         ->reject(fn (SplFileInfo $sorgente) => in_array($sorgente->getRealPath(), [realpath(__DIR__.'/../../resources/css/zeiras.css'), realpath(__DIR__.'/../../resources/css/bundle.css')], true)
-            || dirname((string) $sorgente->getRealPath()) === realpath(__DIR__.'/../../resources/css/zeiras'));
+            || dirname((string) $sorgente->getRealPath()) === realpath(__DIR__.'/../../resources/css/zeiras'))
+        // Voce #3511: anche i moduli JS che `npm run componenti` genera dal bundle, uno per componente, sono righe del design system
+        // (la CI li rigenera e li confronta, e un file scritto a mano la ferma). Il modulo unico di prima (299 KB) non lo leggeva
+        // nessuno: in `senzaCommenti()` l'espressione esauriva lo stack del JIT, e il file diventava vuoto (i `3px` e `6px` di AgendaGrid).
+        ->reject(fn (SplFileInfo $sorgente) => str_ends_with($sorgente->getFilename(), '.js')
+            && str_starts_with($sorgente->getContents(), '// Generato da scripts/componenti.mjs: non si ritocca a mano.'));
 
     expect($file->map->getRelativePathname()->all())->toContain('index.ts', 'zeiras/react-globale.ts', 'favicon.blade.php', 'ZrCoreServiceProvider.php', 'Favicon.php')
         ->and(valoriAMano($file))->toBe([]);
