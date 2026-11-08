@@ -749,6 +749,14 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ], workspace: 'uat-marketing' } });
     });
 
+    // Sprint 119 (voce #2916): come ricerca.crea dalla #2917 di zr-backoffice, un collega si trova anche da un pezzo della sua
+    // email; l'email di un altro tipo non conta (le schede d'esempio non ne hanno, il caso guarda che nessun altro risultato esca).
+    it('POST /cornice/ricerca trova il collega anche da un pezzo della sua email, chiocciola compresa (sprint 119)', async () => {
+        const katherine = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } };
+        expect(await rispostaDi('/cornice/ricerca', cerca('katherine@exa'), '?schede=1&crm_attivo=1&prenotazioni=1')).toStrictEqual({ stato: 200, corpo: { data: [katherine], workspace: 'uat-marketing' } });
+        expect(await rispostaDi('/cornice/ricerca', cerca('@example.com'))).toStrictEqual({ stato: 200, corpo: { data: [katherine], workspace: 'uat-marketing' } });
+    });
+
     // Sprint 25 · T4 (voce #1639): i risultati d'esempio sono quelli di ricerca.crea. Per prime le fonti nuove — schede,
     // contatti, aziende, opportunità —, poi board e cartelle in ordine di titolo; ogni risultato porta `contesto`, i testi per
     // riconoscerlo o `null`, e un contatto può non avere né azienda né ruolo.
@@ -765,10 +773,10 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta', esito: 'aperta' } },
         { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
     ];
-    // Sprint 27 · T2 (voce #1787): un membro del workspace, col solo ruolo e come codice, c'è senza parametri: non dipende da un
+    // Sprint 27 · T2 (voce #1787): un membro del workspace, col ruolo come codice (e dallo sprint 119 l'email), c'è senza parametri: non dipende da un
     // modulo, e il backoffice lo dà in ogni workspace. Viene dopo le altre fonti nuove e prima di board e cartelle, come in
     // ricerca.crea.
-    const membro = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } };
+    const membro = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } };
     /** Ciò che la ricerca di «uat» dava sul tag `v1.14.0`: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha. */
     const diPrima = [
         { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
@@ -814,9 +822,9 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
     // Letture della PR #56, N2. Di `contesto` la rotta vera lascia uscire le sole chiavi che il registro dà al tipo, coi soli
     // testi non vuoti, e `null` quando non ne resta nessuno: mai un `null` fra i valori, mai un oggetto vuoto. La rotta finta
     // non dà altre forme: un contatto senza azienda né ruolo ha `null`.
-    // Sprint 27 · T2 (voce #1787): di un membro la rotta vera lascia uscire il solo `ruolo`, e il backoffice lo dà come codice: la
-    // rotta finta non gli dà altre chiavi (mai l'email), e il suo ruolo è uno dei codici del registro.
-    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null`, e un membro ha il solo ruolo, come codice del registro (sprint 26 · T1.3; sprint 27 · T2.5)', async () => {
+    // Sprint 27 · T2 (voce #1787): di un membro la rotta vera lascia uscire il `ruolo`, che il backoffice dà come codice, e dallo
+    // sprint 119 l'`email`: la rotta finta non gli dà altre chiavi, e il suo ruolo è uno dei codici del registro.
+    it('di `contesto` la ricerca finta dà solo le forme della rotta vera: `null`, o i testi delle chiavi che il registro dà al tipo; un contatto senza azienda né ruolo ha `null`, e un membro ha il ruolo, come codice del registro, e l\'email (sprint 26 · T1.3; sprint 27 · T2.5)', async () => {
         const { registro } = await import('../js/registro');
         const risorsaDi = (tipo: unknown) => registro.flatMap((voce) => voce.risorse ?? []).find((risorsa) => risorsa.tipo === tipo);
         const chiaviDi = (tipo: unknown) => risorsaDi(tipo)?.contesto ?? [];
@@ -839,7 +847,7 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         const fuoriCodice = risultati.filter(({ tipo, contesto }) => Object.entries(risorsaDi(tipo)?.codici ?? {}).some(([chiave, codici]) => !codici.includes(String(contesto?.[chiave]))));
         expect(fuoriCodice.map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta']]);
         expect(risultati.filter(({ tipo }) => tipo === 'crm.trattativa').map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta'], ['uat-t2', 'vinta']]);
-        expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } }]);
+        expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } }]);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([

@@ -4455,7 +4455,7 @@ function capoversoDelleRisorse(string $readme): string
     return suUnaRiga($capoverso[0] ?? '');
 }
 
-it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspace: nel punto «La ricerca» che cosa sono, il gruppo, il ruolo nella lingua e mai l\'email, dove si apre un membro, la fonte nominata per ultima, i testi senza moduli attivi e l\'invito di prima; nella riga della rotta il tipo e il solo ruolo; nel capoverso delle risorse la voce `home`, `codici` e i testi nuovi delle lingue (sprint 27 · T3.1)', function (string $dove, string $frase) {
+it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspace: nel punto «La ricerca» che cosa sono, il gruppo, il ruolo nella lingua e, dalla v4.27.0, l\'email, dove si apre un membro, la fonte nominata per ultima, i testi senza moduli attivi e l\'invito di prima; nella riga della rotta il tipo, il ruolo e l\'email del solo membro; nel capoverso delle risorse la voce `home`, `codici` e i testi nuovi delle lingue (sprint 27 · T3.1)', function (string $dove, string $frase) {
     $readme = (string) file_get_contents(__DIR__.'/../../README.md');
     $testi = [
         'ricerca' => puntoDellaCornice($readme, 'La ricerca'),
@@ -4472,7 +4472,10 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'il gruppo' => ['ricerca', 'Il gruppo dei membri è «Membri» (in inglese «Members», in spagnolo «Miembros»), con l\'icona del tipo; la voce `home` non è un prodotto, e un membro non ha a destra il nome di un prodotto, né un tono'],
     'il ruolo, nella lingua' => ['ricerca', 'Sotto il nome di un membro sta il suo ruolo, nella lingua della persona'],
     'mai il codice' => ['ricerca', 'e la cornice mostra il testo che quel codice ha nella lingua, mai il codice; con un codice che il registro non ha la riga ha solo il nome'],
-    'mai l\'email' => ['ricerca', 'L\'email di un membro non esce mai: il backoffice non la dà, e di `contesto` la parte server lascia passare il solo `ruolo`'],
+    // Sprint 119 · T2.1 (voce #2916): dalla `v4.27.0` l'email del membro sta dopo il ruolo; fino alla `v4.26.1` non usciva.
+    'l\'email, dalla v4.27.0' => ['ricerca', 'Dalla `v4.27.0` dopo il ruolo sta l\'email del membro, pulita come un nome: «Amministratore · marta@example.com»'],
+    'l\'email: la chiocciola' => ['ricerca', 'e trova un membro anche da un pezzo della sua email («marta@exa»), che la cornice manda com\'è scritto'],
+    'l\'email: il solo membro, e prima' => ['ricerca', 'Di `contesto` la parte server lascia passare il `ruolo` e l\'`email` del solo membro; fino alla `v4.26.1` passava il solo `ruolo`, e l\'email di un membro non usciva'],
     'dove si apre' => ['ricerca', 'Dalla `v1.17.0` un membro si apre su `https://app.zeiras.com/w/<slug>/impostazioni/membri/<id>`, in Impostazioni › Membri'],
     'la fonte, per ultima' => ['ricerca', 'Dalla `v1.17.0` dopo di loro vengono i membri del workspace (`searchSource.home.workspace.membro`: «membri»): sono una fonte in ogni workspace, anche senza moduli attivi, e sono nominati per ultimi'],
     'col CRM attivo' => ['ricerca', 'col CRM attivo l\'invito nomina anche contatti, aziende e opportunità, prima dei membri. Un modulo `disponibile` o in arrivo non dà fonti'],
@@ -4485,8 +4488,9 @@ it('il README dice che dalla v1.17.0 la ricerca trova anche i membri del workspa
     'nei test di un frontend: nessun modulo attivo' => ['ricerca', 'senza moduli attivi erano i due testi senza fonti, «Cerca…» e «Scrivi almeno 2 caratteri.»'],
     'a chi resta «Cerca…»' => ['ricerca', 'dalla `v1.17.0` «Cerca…» resta a chi non ha accettato i documenti legali, che non ha fonti'],
     'la riga: il tipo, e in quali workspace' => ['rotta', 'le opportunità `crm.trattativa` e i membri del workspace `workspace.membro`, poi le board `board.board` e le aree `board.cartelle` per titolo; la fonte di un modulo c\'è solo se il suo prodotto è attivo nel workspace, i membri ci sono in ogni workspace, e la cornice li mostra dalla `v1.17.0`'],
-    'la riga: il solo ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il solo `ruolo`, che è un codice'],
-    'la riga: mai l\'email' => ['rotta', 'l\'email di un membro non esce mai'],
+    'la riga: il ruolo' => ['rotta', 'dalla `v1.17.0` di un membro del workspace passa il `ruolo`, che è un codice'],
+    'la riga: l\'email del solo membro' => ['rotta', 'e dalla `v4.27.0` anche l\'`email`, del solo membro: l\'email di un contatto del CRM non esce mai (fino alla `v4.26.1` di un membro passava il solo `ruolo`)'],
+    'il registro: l\'email' => ['registro', 'Dalla `v4.27.0` il membro ha anche la chiave `email`, dopo `ruolo` e senza codici'],
     'il registro: le risorse' => ['registro', 'Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com\'è nel backoffice (`board.scheda`), l\'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno la seconda riga del risultato'],
     'il registro: la voce home' => ['registro', 'Dalla `v1.17.0` ha una risorsa anche la voce `home`, che non è un modulo: il membro del workspace (`workspace.membro`), col percorso `/impostazioni/membri/{id}` e la chiave `ruolo`'],
     'il registro: che cos\'è codici' => ['registro', 'Dalla stessa versione una risorsa può avere `codici`: le chiavi di `contesto` il cui valore è un codice e non un testo, ognuna coi codici che può avere'],

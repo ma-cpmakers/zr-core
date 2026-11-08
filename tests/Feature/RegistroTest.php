@@ -341,12 +341,13 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
         // Sprint 27 · T1.1 (voce #1787): il membro del workspace, col tipo del contratto (ricerca.crea). Non è di un modulo: la
         // pagina che si apre è Impostazioni › Membri di app, e la risorsa sta nella voce della Dashboard, che ha quell'indirizzo.
         // Il percorso è quello di zr-home, non quello del backoffice (`/v1/workspace/membri/{id}`). La seconda riga è il ruolo,
-        // che il backoffice dà come codice: i tre codici stanno in `codici`, e il testo di ognuno nelle lingue. Mai l'email: ciò
-        // che sta in `contesto` è anche ciò che la parte server lascia uscire verso il browser.
+        // che il backoffice dà come codice: i tre codici stanno in `codici`, e il testo di ognuno nelle lingue. Dallo sprint 119
+        // (voce #2916) anche l'email, dopo il ruolo: ciò che sta in `contesto` è anche ciò che la parte server lascia uscire verso
+        // il browser, e l'email esce per il solo collega.
         ->and($voci[0]['risorse'] ?? null)->toBe([
             [
                 'tipo' => 'workspace.membro', 'icona' => 'user', 'percorso' => '/impostazioni/membri/{id}', 'contenitore' => false,
-                'contesto' => ['ruolo'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
+                'contesto' => ['ruolo', 'email'], 'codici' => ['ruolo' => ['proprietario', 'amministratore', 'membro']],
             ],
         ])
         // Nessun altro ha risorse: un tipo in due voci sarebbe un problema (sopra), e qui non ce n'è nessuno. Dallo sprint 74 (T2)
@@ -397,8 +398,9 @@ it('il controllo accetta `codici` solo come un oggetto che a chiavi di «contest
         ->toBe(['workspace.membro', 'board.scheda', 'crm.organizzazione'])
         // Quali codici, il controllo non lo sa: un elenco diverso, fatto bene, passa.
         ->and($delMembro(['ruolo' => ['proprietario', 'ospite']]))->toBe([])
-        // Una chiave che non è in `contesto`: il suo valore non arriverebbe mai al browser.
-        ->and($delMembro(['email' => ['personale']]))->toBe(['home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»'])
+        // Una chiave che non è in `contesto`: il suo valore non arriverebbe mai al browser. Dallo sprint 119 l'`email` lo è
+        // (senza codici: un'email non è un codice), e l'esempio è un'altra chiave.
+        ->and($delMembro(['mansione' => ['direttrice']]))->toBe(['home.workspace.membro: «codici» nomina «mansione», che non è una chiave di «contesto»'])
         ->and($delMembro(['ruolo' => ['membro'], 'Ruolo' => ['membro']]))->toBe(['home.workspace.membro: «codici» nomina «Ruolo», che non è una chiave di «contesto»'])
         // La chiave di un'altra risorsa non vale: una scheda ha `board` e `lista`, un'azienda non ha `contesto`.
         ->and($con(1, 0, ['ruolo' => ['membro']]))->toBe(['pm.board.scheda: «codici» nomina «ruolo», che non è una chiave di «contesto»'])
@@ -409,9 +411,9 @@ it('il controllo accetta `codici` solo come un oggetto che a chiavi di «contest
             ['ruolo' => 'membro'], ['ruolo' => ['primo' => 'membro']], ['ruolo' => null],
         ]))->toBe(array_fill(0, 8, ['home.workspace.membro: i codici di «ruolo» non sono un elenco di codici, minuscoli e diversi']))
         // Tutte e due le cose insieme.
-        ->and($delMembro(['email' => []]))->toBe([
-            'home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»',
-            'home.workspace.membro: i codici di «email» non sono un elenco di codici, minuscoli e diversi',
+        ->and($delMembro(['mansione' => []]))->toBe([
+            'home.workspace.membro: «codici» nomina «mansione», che non è una chiave di «contesto»',
+            'home.workspace.membro: i codici di «mansione» non sono un elenco di codici, minuscoli e diversi',
         ])
         // E ciò che non è un oggetto: vuoto, un elenco, un testo, niente.
         ->and(array_map($delMembro, [[], ['proprietario', 'membro'], 'ruolo', null]))
