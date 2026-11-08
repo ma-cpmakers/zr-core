@@ -134,11 +134,18 @@ function codiciDelContesto(): array
  */
 function senzaCommenti(string $codice): string
 {
-    return (string) preg_replace_callback(
-        '~(?<![:\w])//[^\n]*|/\*.*?\*/|\'(?:[^\'\\\\\n]|\\\\.)*\'|"(?:[^"\\\\\n]|\\\\.)*"|`(?:[^`\\\\]|\\\\.)*`~s',
+    // Voce #3511 (seconda lettura, N2): coi quantificatori possessivi l'espressione non esaurisce lo stack del JIT. Prima, su un
+    // file di qualche centinaio di KB (il bundle, il modulo dei componenti) dava `null`, e ogni guardia leggeva un file vuoto.
+    $senza = preg_replace_callback(
+        '~(?<![:\w])//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+\*/|\'(?:[^\'\\\\\n]++|\\\\.)*+\'|"(?:[^"\\\\\n]++|\\\\.)*+"|`(?:[^`\\\\]++|\\\\.)*+`~s',
         fn (array $parte) => str_starts_with($parte[0], '/') ? '' : $parte[0],
         $codice,
     );
+    if ($senza === null) {
+        throw new RuntimeException('senzaCommenti(): '.preg_last_error_msg());
+    }
+
+    return $senza;
 }
 
 /**

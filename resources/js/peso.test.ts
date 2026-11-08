@@ -473,8 +473,8 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
 // importa (la cornice lo fa), stava nell'ingresso con tutto ciò che una qualunque pagina ne usava, anche una pagina a richiesta.
 // MentionField ha per questo un modulo suo: preso da lì, sta nel pezzo della pagina. Dalla `v4.28.0` (voce 3511) lo stesso vale
 // per una pagina che importa MentionField da `componenti.js` (il caso della DataTable, AC 1); qui la pagina a richiesta è
-// `componenti.js` stesso, con `import()`: è un modulo dell'ingresso, e il suo spazio dei nomi preso intero porta ogni componente
-// nell'ingresso. La classe del suo campo, `zr-mention`, è il segno del suo codice.
+// `componenti.js` stesso, con `import()`: è un modulo dell'ingresso, e il componente che la pagina ne usa sta nell'ingresso.
+// La classe del suo campo, `zr-mention`, è il segno del suo codice.
 const DI_MENTIONFIELD = 'zr-mention';
 
 describe('MentionField preso dal suo modulo in una pagina a richiesta sta nel pezzo della pagina, non nel JS d\'ingresso (sprint 71 · T1.1, T1.2)', () => {
