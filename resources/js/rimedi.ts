@@ -191,6 +191,27 @@ function cassetto(): void {
     });
 }
 
+/**
+ * Il selettore «Azienda › workspace» e il pulsante del profilo hanno un `aria-label` che non comincia col testo che si vede
+ * («Cambia workspace: Studio Anna › Studio Anna» per «Studio Anna Studio Anna», «Account: Ada Lovelace» per le iniziali «AL»;
+ * axe `label-content-name-mismatch`), e chi li comanda con la voce dice ciò che legge. Allora il nome lo dà il contenuto: nel
+ * selettore i due testi, e l'azienda col nome del workspace fuori dal nome, che non lo dice due volte; nel profilo l'immagine
+ * delle iniziali, col nome della persona. «Cambia workspace» e «Account», la parte dell'`aria-label` prima dei due punti, vanno
+ * nella descrizione. Si rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra persona, un'altra lingua),
+ * che cambia coi nomi (righe 240 e 241). Accessibilità dei due pulsanti: si toglie quando l'`AppShell` lo fa da sé.
+ */
+function nomiDaiTesti(): void {
+    document.querySelectorAll('.zr-shell :is(.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
+        const nome = pulsante.getAttribute('aria-label');
+        if (nome) {
+            pulsante.removeAttribute('aria-label');
+            pulsante.setAttribute('aria-description', nome.split(': ')[0] ?? '');
+        }
+        const [azienda, workspace] = pulsante.querySelectorAll('.zr-ws-text>span');
+        azienda?.setAttribute('aria-hidden', `${azienda.textContent === workspace?.textContent}`);
+    });
+}
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
@@ -208,12 +229,14 @@ new MutationObserver((cambi) => {
     }
     azioniSottoLaRicerca();
     cassetto();
+    nomiDaiTesti();
     tastiera?.aOgniCambio();
-}).observe(document, { childList: true, subtree: true });
+}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
+    nomiDaiTesti();
 }
 
 // Un modulo, anche senza niente da dare: la cornice lo chiede con `import()`.

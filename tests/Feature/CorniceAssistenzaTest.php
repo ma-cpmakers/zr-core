@@ -187,18 +187,20 @@ it('una risposta di accessi.corrente.mostra che la cornice non sa leggere, un 5x
 it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra col codice senza state, e i dati portano la persona assistita, non quella dello staff, anche con una sessione della stessa persona già aperta nel browser (sprint 115 · T1.1, T1.3; revisione di sicurezza)', function (bool $giaDentro) {
     config(['zr-auth.cliente' => BackofficeFinto::CLIENTE, 'zr-auth.segreto' => BackofficeFinto::SEGRETO_DEL_CLIENTE]);
     $finto = BackofficeFinto::attiva()->ritorno('pm', 'https://localhost/ingresso/ritorno');
-    $anna = $finto->persona('anna@example.com', 'una password di prova lunga', nome: 'Anna');
+    $anna = $finto->persona('uat+anna@castroandpartners.com', 'una password di prova lunga', nome: 'Anna');
     $studio = $finto->workspace('Studio', $anna);
     $finto->attivaApp($studio, 'pm');
     // Lo staff assiste solo chi è già entrato almeno una volta. Con `$giaDentro` quell'accesso è la sessione del browser: zr-auth
     // ne tiene il gettone accanto a quello dell'assistenza, e accessi.corrente.mostra con quello direbbe «non è un'assistenza».
-    $accesso = Api::senzaGettone()->post('/v1/accessi', ['email' => 'anna@example.com', 'password' => 'una password di prova lunga'])['data'];
+    $accesso = Api::senzaGettone()->post('/v1/accessi', ['email' => 'uat+anna@castroandpartners.com', 'password' => 'una password di prova lunga'])['data'];
     if ($giaDentro) {
         Sessione::apri($accesso);
     }
-    // Lo staff entra solo con un'email dei domini dello staff, che il finto conosce.
+    // Lo staff entra solo con un'email dei domini dello staff, che il finto conosce. Dalla 0.12.144 di zr-auth (#3445) con la
+    // password e il codice entrano solo le persone di prova dello staff (`solo_uat`), che assistono le persone `uat+…`: per
+    // questo Anna ha un'email del perimetro di prova, in tutte e due le patch che la CI prova.
     $sara = $finto->persona('staff-di-prova@castroandpartners.com', 'una password di prova lunga', nome: 'Sara');
-    $staff = $finto->staffDi($sara, 'supporto', true);
+    $staff = $finto->staffDi($sara, 'supporto', true, soloUat: true);
     $sfida = Api::staff()->post('/v1/staff/accessi', ['email' => $staff['email'], 'password' => 'una password di prova lunga'])['data']['sfida']['id'];
     $gettone = Api::staff()->post('/v1/staff/accessi/verifica', ['sfida' => $sfida, 'codice' => BackofficeFinto::CODICE_TOTP_DELLO_STAFF])['data']['gettone'];
     $codice = Api::staff($gettone)->post("/v1/staff/utenti/{$anna['id']}/impersonificazioni", ['app' => 'pm'])['data']['codice'];
@@ -215,7 +217,7 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
     $dati = Cornice::dati();
     Cornice::dati();
 
-    expect($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => $anna['cognome'], 'email' => 'anna@example.com'], 'sola_lettura' => true])
+    expect($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => $anna['cognome'], 'email' => 'uat+anna@castroandpartners.com'], 'sola_lettura' => true])
         ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
 })->with(['senza una sessione di prima' => [false], 'con la sessione della persona già aperta' => [true]]);
 

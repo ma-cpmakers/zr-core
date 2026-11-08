@@ -63,3 +63,42 @@ it('aperto con Invio o con lo spazio — il clic senza `detail` — prima che ar
 
     expect([await premi(0), await premi(0), await premi(1), tastiera.chiesto]).toStrictEqual([['true', 'Dashboard'], ['false', 'Apri il menu'], ['true', 'Apri il menu'], 0]);
 });
+
+it('il selettore «Azienda › workspace» prende il nome dal testo che si vede, con «Cambia workspace» nella descrizione, e l\'azienda col nome del workspace esce dal nome; a ogni `aria-label` riscritto si rifà (axe `label-content-name-mismatch`, riga 240)', async () => {
+    // Come l'`AppShell`: l'`aria-label` è «<workspaceSwitch>: <azienda> › <workspace>», il testo le due righe.
+    const selettore = (azienda: string, workspace: string) => `<button type="button" class="zr-ws-switch" aria-expanded="false" aria-label="Cambia workspace: ${azienda} › ${workspace}"><span class="zr-ws-text"><span class="zr-ws-company">${azienda}</span><span class="zr-ws-name">${workspace}</span></span></button>`;
+    document.body.innerHTML = `<div class="zr-shell"><aside class="zr-side">${selettore('Studio Anna', 'Studio Anna')}</aside></div>`;
+    await import('./rimedi');
+    await cambiato();
+    const pulsante = document.querySelector('.zr-ws-switch')!;
+    const stato = () => [pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description'), pulsante.querySelector('.zr-ws-company')!.getAttribute('aria-hidden')];
+    const stessoNome = stato();
+
+    // Un altro workspace: l'`AppShell` riscrive i due testi e l'`aria-label`.
+    pulsante.querySelector('.zr-ws-company')!.textContent = 'Castro & Partners';
+    pulsante.querySelector('.zr-ws-name')!.textContent = 'Marketing';
+    pulsante.setAttribute('aria-label', 'Cambia workspace: Castro & Partners › Marketing');
+    await cambiato();
+    const altroWorkspace = stato();
+    // Un'altra lingua: cambia solo l'`aria-label`, nessun testo.
+    pulsante.setAttribute('aria-label', 'Switch workspace: Castro & Partners › Marketing');
+    await cambiato();
+
+    expect([stessoNome, altroWorkspace, stato()]).toStrictEqual([[null, 'Cambia workspace', 'true'], [null, 'Cambia workspace', 'false'], [null, 'Switch workspace', 'false']]);
+});
+
+it('il pulsante del profilo prende il nome dall\'immagine delle iniziali, col nome della persona, e «Account» va nella descrizione; a ogni `aria-label` riscritto si rifà (axe `label-content-name-mismatch`, riga 241)', async () => {
+    // Come l'`AppShell`: l'`aria-label` del pulsante è «<account>: <nome>», dentro l'`Avatar` col nome e le iniziali.
+    document.body.innerHTML = '<div class="zr-shell"><header class="zr-top"><button type="button" class="zr-avatar-btn" aria-label="Account: Ada Lovelace" aria-haspopup="menu"><span class="zr-avatar" role="img" aria-label="Ada Lovelace" title="Ada Lovelace">AL</span></button></header></div>';
+    await import('./rimedi');
+    await cambiato();
+    const pulsante = document.querySelector('.zr-avatar-btn')!;
+    const stato = () => [pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description'), pulsante.querySelector('.zr-avatar')!.getAttribute('aria-label')];
+    const prima = stato();
+
+    // Un'altra lingua: l'`AppShell` riscrive solo l'`aria-label` del pulsante.
+    pulsante.setAttribute('aria-label', 'Cuenta: Ada Lovelace');
+    await cambiato();
+
+    expect([prima, stato()]).toStrictEqual([[null, 'Account', 'Ada Lovelace'], [null, 'Cuenta', 'Ada Lovelace']]);
+});

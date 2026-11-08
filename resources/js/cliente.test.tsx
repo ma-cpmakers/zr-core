@@ -77,6 +77,14 @@ const conAziende: DatiDelCliente = {
 };
 const nav = [{ group: 'Il mio spazio', items: [{ id: 'panoramica', label: 'Panoramica', icon: 'home' as const }, { id: 'appuntamenti', label: 'Appuntamenti', icon: 'calendar' as const }] }];
 const esci = () => {};
+// Ciò che un pulsante della barra dice a chi usa un lettore di schermo, nella forma dell'`aria-label` dell'`AppShell`, «<azione>:
+// <nome>»: l'`aria-label`, o, quando il rimedio delle righe 240 e 241 è arrivato, la descrizione e il nome dei suoi testi.
+const dettoDal = (pulsante: string, ...testi: string[]) => {
+    const elemento = uno(pulsante);
+    const nomi = testi.map((testo) => elemento?.querySelector(testo)?.getAttribute('aria-label') ?? elemento?.querySelector(testo)?.textContent);
+
+    return elemento?.getAttribute('aria-label') ?? `${elemento?.getAttribute('aria-description')}: ${nomi.join(' › ')}`;
+};
 
 describe('la cornice del cliente', () => {
     it('T2.1 il selettore dice «Come cliente › Il mio spazio», attivo; niente riquadro del piano; nome ed email nell\'avatar e nel menu del profilo', async () => {
@@ -86,7 +94,7 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-ws-switch .zr-ws-name')?.textContent).toBe(clienteItaliano.personal);
         expect(uno('.zr-plan')).toBeNull();
         expect(uno('main')?.textContent).toBe('La pagina');
-        expect(uno('.zr-avatar-btn')?.getAttribute('aria-label')).toBe(`${testi('it').account}: ${persona.nome}`);
+        expect(dettoDal('.zr-avatar-btn', '.zr-avatar')).toBe(`${testi('it').account}: ${persona.nome}`);
 
         await clic(uno('.zr-ws-switch'));
         const loSpazio = tutti('.zr-ws-menu .zr-ws-item');
@@ -249,7 +257,7 @@ describe('la cornice del cliente', () => {
 
         expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe(delCliente.personalGroup);
         expect(uno('.zr-ws-switch .zr-ws-name')?.textContent).toBe(delCliente.personal);
-        expect(uno('.zr-ws-switch')?.getAttribute('aria-label')).toBe(`${testi(base).workspaceSwitch}: ${delCliente.personalGroup} › ${delCliente.personal}`);
+        expect(dettoDal('.zr-ws-switch', '.zr-ws-company', '.zr-ws-name')).toBe(`${testi(base).workspaceSwitch}: ${delCliente.personalGroup} › ${delCliente.personal}`);
         await clic(uno('.zr-ws-switch'));
         expect(uno('.zr-ws-new')?.textContent).toBe(delCliente.firstWorkspace);
 

@@ -491,6 +491,20 @@ async function attendiDaUnDialogo(page) {
     scrivi(dove[0] === 1 && dove[1] && !dove[2] ? '✅' : '❌', 'G.2', nome, `dialoghi aperti: ${dove[0]}; fuoco ${dove[1] ? 'sull\'«Attendi»' : `su «${dove[3]}»`}`);
 }
 
+// Il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede (axe `label-content-name-mismatch`,
+// righe 240 e 241, rimedio della v4.26.1 nel pezzo dei rimedi): nessun `aria-label`, e l'azione nella descrizione.
+async function nomiDaiTesti(page) {
+    const visti = await page.evaluate(() => ['.zr-ws-switch', '.zr-avatar-btn'].flatMap((qui) => {
+        const pulsante = document.querySelector(`.zr-shell ${qui}`);
+        // Il nome dal contenuto: i testi che non sono nascosti (nel selettore l'azienda col nome del workspace lo è), o l'immagine delle iniziali.
+        const testi = [...pulsante?.querySelectorAll('.zr-ws-text > span:not([aria-hidden="true"]), .zr-avatar[aria-label]') ?? []].map((pezzo) => pezzo.getAttribute('aria-label') ?? pezzo.textContent?.trim()).filter(Boolean);
+        const righe = [...pulsante?.querySelectorAll('.zr-ws-text > span') ?? []];
+        const doppio = righe.length === 2 && righe[0].textContent === righe[1].textContent;
+        return pulsante ? [[qui, pulsante.getAttribute('aria-label'), pulsante.getAttribute('aria-description'), testi.join(' '), righe.length === 0 || righe[0].getAttribute('aria-hidden') === String(doppio)]] : [];
+    }));
+    scrivi(visti.length > 0 && visti.every(([, nome, descrizione, contenuto, nascosta]) => nome === null && !!descrizione && !!contenuto && nascosta) ? '✅' : '❌', 'NM.1', 'il selettore dei workspace e il pulsante del profilo prendono il nome dal testo che si vede, con l\'azione nella descrizione (righe 240 e 241)', visti.map(([qui, nome, descrizione, contenuto, nascosta]) => `${qui}: aria-label «${nome}», descrizione «${descrizione}», nome dal contenuto «${contenuto}», azienda doppia nascosta: ${nascosta}`).join('; '));
+}
+
 // Nel selettore dei workspace aperto Home e Fine vanno alla prima e all'ultima voce, e il Tab che esce lo chiude (riga 48, rimedio
 // della v3.8.1 nel pezzo della tastiera).
 async function selettore(page) {
@@ -1400,6 +1414,7 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await linguetteDelleNotifiche(page);
         await tornaAllaPagina();
+        await nomiDaiTesti(page);
         await selettore(page);
         await tornaAllaPagina();
         await campanella(page, true);
@@ -1447,6 +1462,7 @@ async function uat(page, apri) {
     await tornaAllaPagina();
     await piu(page);
     await tornaAllaPagina();
+    await nomiDaiTesti(page);
     await selettore(page);
     await tornaAllaPagina();
     if (colloSpazio) {
@@ -1489,6 +1505,9 @@ async function ilMioSpazio(page) {
     await page.click('.zr-shell .zr-ws-switch');
     await pausa(300);
     const visto = await page.evaluate(() => {
+        const s = document.querySelector('.zr-shell .zr-ws-switch');
+        // Ciò che il selettore dice, nella forma dell'`aria-label` dell'`AppShell`: dalla v4.26.1 (righe 240 e 241) la descrizione e i due testi.
+        const detto = s && (s.getAttribute('aria-label') ?? `${s.getAttribute('aria-description')}: ${s.querySelector('.zr-ws-company')?.textContent} › ${s.querySelector('.zr-ws-name')?.textContent}`);
         const gruppo = document.querySelector('.zr-shell .zr-ws-menu .zr-ws-group');
         const voce = gruppo?.querySelector('.zr-ws-item');
         return {
@@ -1496,7 +1515,7 @@ async function ilMioSpazio(page) {
             voce: voce?.textContent?.trim() ?? null,
             href: voce?.getAttribute('href') ?? null,
             attiva: !!voce && (voce.matches('.is-active') || voce.hasAttribute('aria-current')),
-            selettore: document.querySelector('.zr-shell .zr-ws-switch')?.getAttribute('aria-label') ?? '',
+            selettore: detto ?? '',
         };
     });
     await page.screenshot({ path: join(cartella, 'selettore-spazio-1280.png') });
@@ -1543,12 +1562,17 @@ async function ilCliente(page, larghezza) {
     if (larghezza <= 720) {
         return;
     }
-    const barra = await page.evaluate(() => ({
-        selettore: document.querySelector('.zr-shell .zr-ws-switch')?.getAttribute('aria-label') ?? null,
-        piano: document.querySelector('.zr-shell .zr-plan') !== null,
-        moduli: document.querySelector('.zr-shell .zr-product-switch') !== null,
-    }));
-    scrivi(barra.selettore?.includes(' › ') && !barra.piano && !barra.moduli ? '✅' : '❌', 'CL.2', 'il selettore dice lo spazio del cliente; niente riquadro del piano, niente menu Moduli', `selettore: «${barra.selettore}», piano: ${barra.piano}, menu Moduli: ${barra.moduli}`);
+    const barra = await page.evaluate(() => {
+        const s = document.querySelector('.zr-shell .zr-ws-switch');
+        // Ciò che il selettore dice, nella forma dell'`aria-label` dell'`AppShell`: dalla v4.26.1 (righe 240 e 241) la descrizione e i due testi.
+        const detto = s && (s.getAttribute('aria-label') ?? `${s.getAttribute('aria-description')}: ${s.querySelector('.zr-ws-company')?.textContent} › ${s.querySelector('.zr-ws-name')?.textContent}`);
+        return {
+            selettore: detto,
+            piano: document.querySelector('.zr-shell .zr-plan') !== null,
+            moduli: document.querySelector('.zr-shell .zr-product-switch') !== null,
+        };
+    });
+    scrivi(/^[^:]+: \S.* › \S/.test(barra.selettore ?? '') && !barra.selettore.includes('null') && !barra.piano && !barra.moduli ? '✅' : '❌', 'CL.2', 'il selettore dice lo spazio del cliente; niente riquadro del piano, niente menu Moduli', `selettore: «${barra.selettore}», piano: ${barra.piano}, menu Moduli: ${barra.moduli}`);
     await page.click('.zr-shell .zr-avatar-btn');
     await pausa(300);
     const voci = await page.evaluate(() => [...document.querySelectorAll('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep')].map((voce) => (voce.matches('.zr-menu-sep') ? '—' : voce.textContent?.trim())));
