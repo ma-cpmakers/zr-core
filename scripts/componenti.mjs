@@ -62,7 +62,7 @@ try {
     file = [
         ...Object.entries(deiModuli).map(([nome, modulo]) => [`resources/js/zeiras/${nome}`, modulo, nome === 'componenti.js' ? `${letto.nomi.length} nomi esportati` : 'un modulo', fileDelBundle]),
         ['resources/css/zeiras.css', divisi.zeiras, `senza gli stili di ${STILI_A_PARTE.join(' e di ')}`, fileDelCss],
-        ['resources/css/bundle.css', bundleIntero(css), 'il bundle intero coi font del pacchetto e movimento.css', fileDelCss],
+        ['resources/css/bundle.css', bundleIntero(css), 'il bundle intero coi font del pacchetto, movimento.css e avanzamento.css', fileDelCss],
         ...STILI_A_PARTE.map((nome) => [`resources/css/zeiras/${nome}.css`, divisi.stili[nome], `gli stili di ${nome}`, fileDelCss]),
     ];
 } catch (errore) {

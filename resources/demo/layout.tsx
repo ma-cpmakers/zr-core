@@ -601,7 +601,10 @@ http.setClient(clientFinto((indirizzo) => {
 const iniziale = paginaDellIndirizzo();
 
 // `page` dà la prima pagina senza leggerla dal DOM. Senza la barra di avanzamento di Inertia: metterebbe un `<style>` nella
-// pagina, che la CSP ferma (un frontend le dà un `nonce`).
+// pagina, che la CSP ferma (un frontend le dà un `nonce`). Dalla `v4.32.0` (voce #3535) con `?barra=1` la barra c'è, come la
+// chiede un modulo: `includeCSS: false` e nessun colore, con gli stili di resources/css/avanzamento.css; subito, senza il ritardo
+// di Inertia, e una visita lenta («UAT alla Corta lenta») la tiene in vista sei secondi.
+const conLaBarra = scelti.get('barra') === '1';
 void createInertiaApp({
     page: {
         component: iniziale,
@@ -614,5 +617,5 @@ void createInertiaApp({
     },
     resolve: (nome) => pagine[nome as Nome],
     layout: () => Layout,
-    progress: false,
+    progress: conLaBarra ? { includeCSS: false, delay: 0 } : false,
 });

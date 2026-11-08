@@ -72,7 +72,7 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect(esito.detto).toBe([
             `resources/js/zeiras/componenti.js: è quello che resources/zeiras/bundle.js genera (${(generato.match(/^export \{/gm) ?? []).length} nomi esportati)`,
             'resources/css/zeiras.css: è quello che resources/zeiras/bundle.css genera (senza gli stili di MentionField e di AddressField)',
-            'resources/css/bundle.css: è quello che resources/zeiras/bundle.css genera (il bundle intero coi font del pacchetto e movimento.css)',
+            'resources/css/bundle.css: è quello che resources/zeiras/bundle.css genera (il bundle intero coi font del pacchetto, movimento.css e avanzamento.css)',
             'resources/css/zeiras/MentionField.css: è quello che resources/zeiras/bundle.css genera (gli stili di MentionField)',
             'resources/css/zeiras/AddressField.css: è quello che resources/zeiras/bundle.css genera (gli stili di AddressField)',
             `resources/js/zeiras: ${MODULI.length} moduli, tutti quelli che resources/zeiras/bundle.js genera e nessun altro`,

@@ -23,7 +23,7 @@ export function dividiIlCss(css: string): { zeiras: string; stili: Record<string
 /** Il CSS del bundle coi font del pacchetto (dalla `v3.15.0`): l'`@import` di Google diventa quello di font.css; se il bundle chiede a Google altri font lancia un errore. */
 export function coiFontDelPacchetto(css: string): string;
 
-/** Il CSS del bundle coi file del pacchetto (dalla `v4.32.0`, #3534): i font come `coiFontDelPacchetto` e, nella riga sotto, l'`@import` di movimento.css. */
+/** Il CSS del bundle coi file del pacchetto (dalla `v4.32.0`, #3534): i font come `coiFontDelPacchetto` e, nelle righe sotto, gli `@import` di movimento.css e (dalla `v4.33.0`, #3535) di avanzamento.css. */
 export function coiCssDelPacchetto(css: string): string;
 
 /** Il testo di resources/css/bundle.css (dalla `v3.15.0`): il bundle intero coi font del pacchetto (e dalla `v4.32.0` movimento.css), sotto il commento che lo dice generato. */

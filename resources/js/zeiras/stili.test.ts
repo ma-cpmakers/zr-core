@@ -17,6 +17,8 @@ const NOMI = STILI_A_PARTE;
 /** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
+/** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534 e #3535). */
+const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"] as const;
 
 describe('gli stili dei componenti a parte escono dal CSS del primo carico (sprint 75 · T1.1, T1.2)', () => {
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
@@ -95,10 +97,11 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         const delBundle = bundleCss.split('\n');
 
         expect(intero).toBe(bundleIntero(bundleCss));
-        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css: le altre sono le righe del bundle, nel loro ordine.
-        expect(righe).toHaveLength(delBundle.length + 1);
-        expect(righe.slice(0, 2)).toStrictEqual(["@import './font.css';", "@import './movimento.css';"]);
-        expect(righe.slice(2)).toStrictEqual(delBundle.slice(1));
+        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css, e dalla #3535 quella di avanzamento.css: le altre sono
+        // le righe del bundle, nel loro ordine.
+        expect(righe).toHaveLength(delBundle.length + 2);
+        expect(righe.slice(0, 3)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
+        expect(righe.slice(3)).toStrictEqual(delBundle.slice(1));
     });
 
     it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
@@ -203,9 +206,9 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
 
     it('bundle.css e zeiras.css importano movimento.css subito dopo i font, prima di ogni regola del bundle (T4)', () => {
         for (const percorso of ['resources/css/bundle.css', 'resources/css/zeiras.css']) {
-            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 2);
+            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 3);
 
-            expect(prime).toStrictEqual(["@import './font.css';", "@import './movimento.css';"]);
+            expect(prime).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
         }
         expect(bundleIntero(bundleCss).split('\n').filter((riga) => riga === "@import './movimento.css';")).toHaveLength(1);
         expect(dividiIlCss(bundleCss).zeiras.split('\n').filter((riga) => riga === "@import './movimento.css';")).toHaveLength(1);
@@ -213,7 +216,7 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
         expect(bundleIntero(bundleCss)).not.toContain('prefers-reduced-motion: reduce) { *');
         // Un bundle senza Google prende in testa i font e, sotto, movimento.css.
         const senza = bundleCss.replace(/^.*\n/, '');
-        expect(coiCssDelPacchetto(senza)).toBe(`@import './font.css';\n@import './movimento.css';\n${senza}`);
+        expect(coiCssDelPacchetto(senza)).toBe(`${IMPORT_DEL_PACCHETTO.join('\n')}\n${senza}`);
     });
 
     it('con prefers-reduced-motion: reduce nessuna transizione, su ogni elemento e sui suoi ::before e ::after (T1)', () => {
@@ -224,5 +227,35 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
         expect(regole.replace(/@media \(prefers-reduced-motion: reduce\) \{[^{}]*\{[^{}]*\} \}/, '').trim()).toBe('');
         expect(regole).not.toMatch(/animation/);
         expect(bundleCss).toContain('@media (prefers-reduced-motion: reduce) { .zr-btn-spin { animation-duration: 2.4s; } }');
+    });
+});
+
+// Voce #3535 (Decisione 23090 di zr-pm-07). La barra d'avanzamento di Inertia senza il `<style>` che Inertia aggiunge da sé e la
+// CSP di tutti ferma: un modulo chiede `progress: { includeCSS: false }` e gli stili arrivano da resources/css/avanzamento.css,
+// scritto a mano, che bundle.css e zeiras.css importano sotto movimento.css. Colore e z-index dai token, per nome.
+describe('la barra d\'avanzamento di Inertia dal CSS del pacchetto (voce 3535)', () => {
+    const avanzamento = readFileSync(delRepo('resources/css/avanzamento.css'), 'utf8');
+    const regole = avanzamento.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+    const blocco = (selettore: string) => new RegExp(`(?:^|\\} )${selettore.replace(/[.*]/g, '\\$&')} \\{([^}]*)\\}`).exec(regole)?.[1]?.trim() ?? '';
+
+    it('bundle.css e zeiras.css importano avanzamento.css sotto movimento.css, una volta sola (AC 5)', () => {
+        for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
+            expect(css.split('\n').filter((riga) => riga === "@import './avanzamento.css';")).toHaveLength(1);
+        }
+        expect(bundleIntero(bundleCss)).not.toContain('#nprogress');
+    });
+
+    it('la barra: in alto, a tutta larghezza, alta 2 px, nel colore --pine, a --z-toast; il contenitore non prende i clic (AC 1, 4)', () => {
+        expect(blocco('#nprogress .bar')).toBe('position: fixed; z-index: var(--z-toast); top: 0; left: 0; width: 100%; height: 2px; background: var(--pine);');
+        expect(blocco('#nprogress')).toContain('pointer-events: none;');
+        // Il popover del browser ha `inset: 0`: si toglie prima di mettere il contenitore in alto, non dopo.
+        expect(blocco('#nprogress').indexOf('inset: unset;')).toBeLessThan(blocco('#nprogress').indexOf('top: 0;'));
+        expect(blocco('#nprogress::backdrop')).toBe('display: none;');
+    });
+
+    it('nessun colore e nessuno z-index scritti: l\'unico numero è lo spessore della barra (AC 3)', () => {
+        expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
+        expect(regole).not.toMatch(/z-index: *\d/);
+        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['2px']);
     });
 });

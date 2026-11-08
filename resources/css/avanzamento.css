@@ -1,0 +1,36 @@
+/*
+ * La barra d'avanzamento di Inertia (dalla v4.32.0, voce #3535): in alto, a tutta larghezza, nel colore `--pine` e sopra a tutto
+ * (`--z-toast`), senza prendere i clic. Inertia la disegna con un `<style>` suo, che la CSP di tutti ferma (`style-src 'self'`):
+ * un modulo le chiede `progress: { includeCSS: false }` in `createInertiaApp`, senza `color`, e gli stili arrivano da qui.
+ * Sono quelli di Inertia (nprogress) coi token: la punta luminosa e la rotella non ci sono, la barra basta. Lo spessore della
+ * barra è l'unico numero scritto: il design system non ha un token per lui.
+ * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, subito dopo i font.
+ */
+#nprogress {
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
+  /* Il popover del browser ha `inset: 0`: si toglie prima di mettere la barra in alto. */
+  inset: unset;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+}
+#nprogress::backdrop { display: none; }
+#nprogress .bar {
+  position: fixed;
+  z-index: var(--z-toast);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--pine);
+}
+#nprogress .peg, #nprogress .spinner { display: none; }
+.nprogress-custom-parent { position: relative; overflow: hidden; }
+.nprogress-custom-parent #nprogress .bar { position: absolute; }

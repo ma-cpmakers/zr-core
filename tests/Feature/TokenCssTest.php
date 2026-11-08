@@ -135,6 +135,11 @@ function valoriAMano(iterable $file): array
         // Sprint 104: il contorno del fuoco del design system (`outline: 2px solid var(--focus)`, come in bundle.css) non è un token, e
         // il suo 2px non è il raggio `radius-2xs` arrivato con la richiesta 139.
         $testo = (string) preg_replace('/outline:\s*2px solid var\(--focus\)/', '', senzaCommenti($sorgente->getContents()));
+        // Voce #3535: lo spessore della barra d'avanzamento di Inertia (`height: 2px` in `#nprogress .bar`, avanzamento.css) non è un
+        // token: il design system non ne ha uno per lui, e il suo 2px non è né `border-ring` né `radius-2xs`. Solo lì, solo quello.
+        if ($sorgente->getFilename() === 'avanzamento.css') {
+            $testo = (string) preg_replace('/(#nprogress \.bar \{[^}]*?)height:\s*2px;/', '$1', $testo);
+        }
         if (preg_match($colore, $testo, $trovato) === 1) {
             $problemi[] = "{$sorgente->getRelativePathname()}: «{$trovato[0]}»";
         }

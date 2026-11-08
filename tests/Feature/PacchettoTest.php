@@ -5766,7 +5766,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Sprint 92 · T2 (voce #2945): dalla `v3.15.0` anche il bundle intero coi font del pacchetto e le `@font-face` di quei font.
     // Sprint 110 · T2.4 (voce #3319): dalla `v4.13.0` la regola che nasconde la ricerca nella cornice del cliente, provvisoria.
     // Voce #3534: dalla `v4.32.0` la regola per chi chiede meno movimento, che bundle.css e zeiras.css importano.
-    expect($css)->toBe(['resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #3535: dalla `v4.33.0` gli stili della barra d'avanzamento di Inertia, che bundle.css e zeiras.css importano.
+    expect($css)->toBe(['resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)
