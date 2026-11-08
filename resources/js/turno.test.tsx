@@ -159,6 +159,28 @@ describe('uno alla volta (AC 3)', () => {
         expect(azione()).toBeNull();
     });
 
+    it('il clic sul primo che arriva nello stesso passo della sostituzione, prima che React lo tolga, non chiama la sua azione (rilievo R3)', () => {
+        const annullaIlPrimo = vi.fn();
+        mostra({ children: 'Primo', onAction: annullaIlPrimo });
+        const delPrimo = azione()!;
+        act(() => {
+            mostraToast({ children: 'Secondo' });
+            delPrimo.click();
+        });
+
+        expect(annullaIlPrimo).not.toHaveBeenCalled();
+        expect(tutti()).toHaveLength(1);
+    });
+
+    it('l\'azione che chiede un Toast nuovo lo vede a schermo, solo lui (rilievo R4)', () => {
+        mostra({ children: 'Board archiviata', onAction: () => mostraToast({ children: 'Board ripristinata' }) });
+        act(() => azione()!.click());
+        passano(100);
+
+        expect(tutti()).toHaveLength(1);
+        expect(tutti()[0]!.textContent).toContain('Board ripristinata');
+    });
+
     it('il tempo è del nuovo: quello del primo non lo chiude prima', () => {
         mostra({ children: 'Primo' });
         passano(4000);
@@ -228,6 +250,43 @@ describe('«Annulla» nella lingua della pagina, e chiude subito (AC 4)', () => 
         expect(tutti()).toHaveLength(0);
     });
 
+    it('chi preme «Annulla» da tastiera ritrova il fuoco dove l\'aveva quando il Toast è comparso (rilievo R5)', () => {
+        const archivia = document.createElement('button');
+        document.body.append(archivia);
+        archivia.focus();
+        mostra({ children: 'Board archiviata', onAction: () => undefined });
+        act(() => azione()!.focus());
+        act(() => azione()!.click());
+
+        expect(document.activeElement).toBe(archivia);
+        archivia.remove();
+    });
+
+    it('chiuso con la ✕ dal fuoco, idem; chiuso dal tempo, col fuoco altrove, il fuoco non si sposta', () => {
+        const archivia = document.createElement('button');
+        const altro = document.createElement('input');
+        document.body.append(archivia, altro);
+        archivia.focus();
+        mostra({ children: 'Board archiviata', onAction: () => undefined });
+        act(() => chiudi()!.focus());
+        act(() => chiudi()!.click());
+        expect(document.activeElement).toBe(archivia);
+
+        mostra({ children: 'Salvato' });
+        act(() => altro.focus());
+        passano(5000);
+        expect(tutti()).toHaveLength(0);
+        expect(document.activeElement).toBe(altro);
+        archivia.remove();
+        altro.remove();
+    });
+
+    it('un actionLabel vuoto non toglie il pulsante: dice «Annulla» (rilievo R7)', () => {
+        mostra({ children: 'Board archiviata', actionLabel: '', onAction: () => undefined });
+
+        expect(azione()!.textContent).toBe(italiano.undo);
+    });
+
     it('senza azione non c\'è «Annulla», e la ✕ c\'è', () => {
         mostra({ children: 'Salvato' });
 
@@ -254,7 +313,11 @@ describe('esportato dai due ingressi, con le props del Toast (AC 5)', () => {
     it('ciò che si mostra ha le props del Toast della cornice, senza onClose (la chiusura è della cornice) e con actionLabel facoltativo', () => {
         expectTypeOf<ToastDaMostrare['children']>().toEqualTypeOf<ToastDellaCorniceProps['children']>();
         expectTypeOf<ToastDaMostrare['tone']>().toEqualTypeOf<ToastDellaCorniceProps['tone']>();
-        expectTypeOf<ToastDaMostrare['onAction']>().toEqualTypeOf<ToastDellaCorniceProps['onAction']>();
+        expectTypeOf<NonNullable<ToastDaMostrare['onAction']>>().toEqualTypeOf<NonNullable<ToastDellaCorniceProps['onAction']>>();
+        // Un testo dell'azione senza l'azione non si scrive (rilievo R7): sparirebbe senza avviso.
+        // @ts-expect-error actionLabel senza onAction
+        const senzaAzione: ToastDaMostrare = { children: 'Salvato', actionLabel: 'Riporta' };
+        expect(senzaAzione).toBeDefined();
         expectTypeOf<ToastDaMostrare['closeLabel']>().toEqualTypeOf<ToastDellaCorniceProps['closeLabel']>();
         expectTypeOf<ToastDaMostrare>().not.toHaveProperty('onClose');
     });

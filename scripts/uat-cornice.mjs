@@ -1434,12 +1434,15 @@ async function toastDiTurno(page, apri) {
     await page.mouse.move(1, 1);
     await pausa(9000);
     const a9 = await quanti();
+    // La lingua della pagina è quella di `<html lang>`, che il modulo scrive per la persona: con `?lingua` la pagina di prova la
+    // mette lì, e una pagina del modulo deve dire la stessa della sua cornice.
     const etichetta = await page.evaluate(() => document.querySelector('.zr-toast-action')?.textContent ?? '');
+    const dellaPagina = (await page.evaluate(() => document.documentElement.lang)).slice(0, 2);
     await page.screenshot({ path: join(cartella, 'toast-di-turno.png') });
     await pausa(1600);
     const a106 = await quanti();
     scrivi(a9.length === 1 && a106.length === 0 ? '✅' : '❌', ...righe[0], `a 9 s ${a9.length}, a 10,6 s ${a106.length}`);
-    scrivi(etichetta === ANNULLA[lingua] ? '✅' : '❌', ...righe[3], `«${etichetta}», atteso «${ANNULLA[lingua] ?? '?'}» (lingua ${lingua})`);
+    scrivi(etichetta === ANNULLA[lingua] && dellaPagina === lingua ? '✅' : '❌', ...righe[3], `«${etichetta}», atteso «${ANNULLA[lingua] ?? '?'}» (lingua ${lingua}, <html lang> ${dellaPagina})`);
 
     await page.click('#uat-turno');
     await page.mouse.move(1, 1);

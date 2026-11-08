@@ -15,12 +15,14 @@ const DURATA_CON_AZIONE = 10_000;
 
 /**
  * Ciò che il modulo mostra: le props del Toast della cornice, senza `onClose` (la chiusura è della cornice: la ✕, l'azione, il
- * tempo, il Toast dopo). Con `onAction` il Toast ha l'azione, e `actionLabel` è facoltativo: senza, il pulsante dice «Annulla»
- * nella lingua della pagina.
+ * tempo, il Toast dopo). Con `onAction` il Toast ha l'azione, e `actionLabel` è facoltativo: senza, o vuoto, il pulsante dice
+ * «Annulla» nella lingua della pagina. Senza `onAction` non c'è `actionLabel`: un testo senza pulsante sparirebbe in silenzio.
  */
-export type ToastDaMostrare = Omit<ToastDellaCorniceProps, 'onClose' | 'actionLabel'> & { actionLabel?: string };
+export type ToastDaMostrare = Omit<ToastDellaCorniceProps, 'onClose' | 'actionLabel' | 'onAction'> &
+    ({ onAction?: undefined; actionLabel?: undefined } | { onAction: NonNullable<ToastDellaCorniceProps['onAction']>; actionLabel?: string });
 
-type Turno = { n: number; toast: ToastDaMostrare };
+/** Un Toast a schermo: il suo numero, ciò che mostra, e dove era il fuoco quando è comparso, per renderlo a chi lo preme. */
+type Turno = { n: number; toast: ToastDaMostrare; prima: HTMLElement | null };
 
 /** I testi del Toast di turno, per lingua: un file loro (`resources/lingue/toast/`), solo nella build di chi lo usa. */
 const file = import.meta.glob<typeof inglese>('../lingue/toast/*.json', { eager: true, import: 'default' });
@@ -64,7 +66,9 @@ export function mostraToast(toast: ToastDaMostrare): void {
     if (!posto.isConnected) {
         document.body.append(posto);
     }
-    cambia({ n: ++volte, toast });
+    // Il fuoco dentro il Toast che se ne va non è un posto a cui tornare: resta quello di prima.
+    const fuoco = document.activeElement instanceof HTMLElement && !document.activeElement.closest('.zr-toast') ? document.activeElement : null;
+    cambia({ n: ++volte, toast, prima: fuoco ?? turno?.prima ?? null });
 }
 
 /** Toglie subito il Toast di turno, se c'è: per esempio quando ciò che diceva non vale più. */
@@ -77,6 +81,22 @@ const chiudiSeE = (n: number) => {
     if (turno?.n === n) {
         cambia(null);
     }
+};
+
+/**
+ * La ✕ o l'azione del Toast numero `n`, se è ancora lui (un clic che arriva insieme al Toast dopo non vale). Chi la preme da
+ * tastiera ritrova il fuoco dove l'aveva quando il Toast è comparso, se quell'elemento c'è ancora: il Toast che si chiude lo
+ * lascerebbe al `body`. Poi il Toast si chiude, e l'azione viene dopo: può chiedere lei un Toast nuovo.
+ */
+const premuto = (n: number, poi?: () => void) => {
+    if (turno?.n !== n) {
+        return;
+    }
+    if (document.activeElement?.closest('.zr-toast') && turno.prima?.isConnected) {
+        turno.prima.focus();
+    }
+    chiudiSeE(n);
+    poi?.();
 };
 
 /**
@@ -119,14 +139,11 @@ function ToastDiTurno() {
                 {...resto}
                 {...(onAction
                     ? {
-                          actionLabel: actionLabel ?? annullaNellaLingua(),
-                          onAction: () => {
-                              chiudiSeE(n);
-                              onAction();
-                          },
+                          actionLabel: actionLabel || annullaNellaLingua(),
+                          onAction: () => premuto(n, onAction),
                       }
                     : {})}
-                onClose={() => chiudiSeE(n)}
+                onClose={() => premuto(n)}
             />
         </div>
     );
