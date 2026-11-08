@@ -1016,9 +1016,11 @@ async function fontDelPacchetto(page, diGoogle) {
 // R.L (dalla `v4.4.0`, #3015): nel JS d'ingresso c'è solo l'italiano, e le altre lingue la cornice le chiede con `fetch`. Dalla
 // prima riga del documento si tiene ogni testo che la cornice mette a schermo, e le richieste dei file delle lingue
 // (`assets/<codice>-<impronta>.json`). R.L.1 la cornice è nella lingua della pagina in ogni testo dall'apertura (in italiano già
-// al primo disegno, senza richieste di lingue), e dice quanto ha atteso; R.L.2 i precarichi della riga del Blade: quelli della
-// lingua della pagina e dell'inglese, nessuno in italiano, e ognuno preso dalla richiesta della cornice (senza il «preloaded but
-// not used» di Chromium); R.L.3 con le lingue che non arrivano la cornice si disegna in italiano. I testi «di una lingua sola»
+// al primo disegno, senza richieste di lingue), e dice quanto ha atteso; R.L.2 i precarichi della riga del Blade: quello della
+// lingua della pagina, o dell'inglese per una lingua che zr-core non ha (fino alla `v4.29.0` anche l'inglese accanto all'altra
+// lingua), nessuno in italiano, e ognuno preso dalla richiesta della cornice (senza il «preloaded but not used» di Chromium);
+// R.L.3 con le lingue che non arrivano la cornice si disegna in italiano; R.L.4 (dalla `v4.30.0`, #3530) i file delle lingue
+// chiesti dall'apertura sono della sola lingua della pagina: in spagnolo mai l'inglese. I testi «di una lingua sola»
 // sono quelli lunghi, con uno spazio, che le altre due lingue non hanno: dai file del repo accanto allo script (con `--staff`
 // anche quelli dello staff, che la sua cornice ha nel JS d'ingresso in tutte e tre le lingue, e con `--cliente` quelli del cliente).
 const UN_FILE_DI_LINGUA = /\/(en|es)-[\w-]{8,}\.json(?:\?|$)/;
@@ -1071,15 +1073,17 @@ async function laLingua(page, registrata) {
         const senzaRichieste = sua !== 'it' || dellaPrima.length === 0;
         scrivi(altrove.length === 0 && nellaSua && senzaRichieste ? '✅' : '❌', 'R.L.1', `la cornice in ${lingua || '(nessuna lingua)'} dall'apertura, in ogni testo: ${sua === 'it' ? 'al primo disegno, senza richieste di lingue' : 'dopo l\'attesa della sua lingua'} (#3015)`, `primo testo a ${primo ?? '—'} ms dall'apertura, ${testi.length} stati dei testi; lingue chieste: ${nomi(dellaPrima) || 'nessuna'}${altrove.length ? ` · in un'altra lingua: ${[...new Set(altrove)].slice(0, 3).join(' | ')}` : ''}${nellaSua ? '' : ' · il primo stato non è nella sua lingua'}`);
     }
-    const attesi = sua === 'it' ? 0 : sua === 'en' ? 1 : 2;
+    const attesi = sua === 'it' ? 0 : 1;
     // Le pagine di prova servite da servi-demo con `?lingua=` hanno i precarichi, salvo con `&precarico=0`: lì mancarli è un difetto.
     const promessi = /[?&]lingua=/.test(page.url()) && !/[?&]precarico=0(?:&|$)/.test(page.url());
     if (sua !== 'it' && precarichi.length === 0 && !promessi) {
         scrivi('➖', 'R.L.2', 'i precarichi della lingua nella testa della pagina (#3015)', 'la pagina non ne ha: manca la riga `Cornice::precaricoDellaLingua()` nel Blade, e la cornice aspetta un giro di rete in più');
     } else {
-        const bene = precarichi.length === attesi && precarichi.every((uno) => !uno.endsWith('senza crossorigin')) && registrata.avvisi.length === 0;
+        const bene = precarichi.length === attesi && precarichi.every((uno) => !uno.endsWith('senza crossorigin') && new URL(uno.split(' ')[0]).pathname.split('/').pop().startsWith(`${sua}-`)) && registrata.avvisi.length === 0;
         scrivi(bene ? '✅' : '❌', 'R.L.2', `i precarichi della lingua nella testa della pagina: ${attesi} in ${lingua || 'italiano'}, ognuno preso dalla cornice (#3015)`, `${precarichi.map((uno) => uno.split('/').pop()).join(' ') || 'nessuno'}${registrata.avvisi.length ? ` · non usati: ${registrata.avvisi.join(' | ')}` : ''}`);
     }
+    const altre = registrata.richieste.filter((richiesta) => !new URL(richiesta.url).pathname.split('/').pop().startsWith(`${sua}-`));
+    scrivi(altre.length === 0 ? '✅' : '❌', 'R.L.4', `i file delle lingue chiesti dall'apertura sono della sola lingua della pagina: ${sua === 'it' ? 'nessuno' : `${sua}, mai ${sua === 'en' ? 'lo spagnolo' : 'l\'inglese'}`} (#3530)`, nomi(registrata.richieste) || 'nessuno');
 }
 
 /** Mentre R.L.3 ferma i file delle lingue: i loro «Failed to load resource» in console sono della prova, non errori (E.1). */
