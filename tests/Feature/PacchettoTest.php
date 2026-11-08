@@ -4380,9 +4380,11 @@ it('il README dice chi passa a `zeiras.css` e chi resta su `bundle.css`, e lo di
 })->with([
     'le due strade' => ['Il CSS', '@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
     'per chi è zeiras.css' => ['Il CSS', 'È per chi prende quei due campi **solo** dai loro moduli'],
-    'chi resta su bundle.css' => ['Il CSS', 'Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`'],
-    'perché' => ['Il CSS', 'quel campo resterebbe senza stili'],
-    'dallo stesso posto' => ['Il CSS', 'Con `bundle.css` i due campi si prendono dallo stesso posto'],
+    // Voce #3511: dalla v4.28.0 `componenti` prende i due campi dai loro moduli, coi loro stili.
+    'chi resta su bundle.css' => ['Il CSS', 'Fino alla `v4.27.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su `bundle.css`'],
+    'perché' => ['Il CSS', 'quel campo restava senza stili'],
+    'dallo stesso posto' => ['Il CSS', 'E con `bundle.css` i due campi si prendevano dallo stesso posto'],
+    'dalla v4.28.0' => ['Il CSS', 'Dalla `v4.28.0` `componenti`, e con lui `window.Zeiras`, prende i due campi dai loro moduli, coi loro stili'],
     'nessuno deve cambiare' => ['Passare alla v3.3', 'Nessun frontend deve cambiare niente: `bundle.css` resta com\'era.'],
     'la riga che cambia' => ['Passare alla v3.3', '+@import \'../../vendor/zeiras/zr-core/resources/css/zeiras.css\';'],
     'chi non lo fa' => ['Passare alla v3.3', 'Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa'],

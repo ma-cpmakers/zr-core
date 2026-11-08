@@ -107,6 +107,26 @@ describe('i file generati sono quelli che il bundle genera (T1.1; voce 3511 · A
     });
 });
 
+// Voce #3511 (revisione, R1): le fermate della divisione in moduli, ognuna su un corpo finto di poche righe (il corpo comincia
+// alla riga 4 del bundle). Quella del giro è la sola difesa contro una `var` letta appena caricato il modulo, in un giro di
+// import, prima di esistere.
+describe('davanti a un corpo che non sa dividere lo script si ferma e dice perché (voce 3511)', () => {
+    it.each<[string, string[], string[], RegExp]>([
+        ['un nome dichiarato due volte', ['  function A() {}', '  function A() {}'], ['A'], /«A» è dichiarato due volte \(righe 4 e 5\)/],
+        ['una proprietà data a un nome che il corpo non dichiara', ['  function A() {}', '  B.x = A;'], ['A'], /la riga 5 dà una proprietà a «B», che il corpo del bundle non dichiara/],
+        ['due nomi registrati che danno un valore allo stesso nome', ['  var n = 0;', '  function A() { n += 1; }', '  function B() { n += 1; }'], ['A', 'B'], /dichiarano due nomi registrati e devono stare nello stesso modulo/],
+        ['due nomi registrati con lo stesso file', ['  function Ab() {}', '  function AB() {}'], ['Ab', 'AB'], /due moduli avrebbero lo stesso file, AB\.js/],
+        ['un nome registrato col file di componenti.js', ['  function componenti() {}'], ['componenti'], /due moduli avrebbero lo stesso file, componenti\.js/],
+        ['una var letta appena caricato da un modulo che lei importa', ['  function A() { return y; }', '  var y = B.k;', '  var B = { k: 1, a: function () { return A; } };'], ['A', 'B'], /la riga 5 legge subito «B» di B\.js, che importa interni\/y\.js: in un giro il nome può non esserci ancora/],
+    ])('%s', (_caso, corpo, nomi, messaggio) => {
+        expect(() => moduli({ corpo, nomi })).toThrow(messaggio);
+    });
+
+    it('lo stesso giro con una funzione dichiarata, solo letta e non chiamata, passa: in un giro c\'è già', () => {
+        expect(Object.keys(moduli({ corpo: ['  function A() { return y; }', '  var y = B.k;', '  function B() { return A; }'], nomi: ['A', 'B'] })).sort()).toStrictEqual(['A.js', 'B.js', 'componenti.js', 'interni/y.js']);
+    });
+});
+
 describe('ogni nome è lo stesso oggetto da componenti.js e dal suo modulo, e uno stato del bundle c\'è una volta (voce 3511 · AC 2, AC 3)', () => {
     it('componenti.js esporta gli stessi nomi del bundle, quanti sono, e ognuno è quello del modulo del suo nome', () => {
         const nomi = nomiRegistrati();

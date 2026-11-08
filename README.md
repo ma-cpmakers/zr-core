@@ -85,7 +85,7 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
-È per chi prende quei due campi **solo** dai loro moduli, in pagine caricate a richiesta: il CSS del primo carico pesa circa
+È per chi prende quei due campi **solo** dai loro moduli (dalla `v4.28.0` anche da `componenti`), in pagine caricate a richiesta: il CSS del primo carico pesa circa
 0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto. Si importa al posto di
 `bundle.css`, nello stesso ordine:
 
@@ -94,12 +94,12 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
-Chi prende MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` resta su `bundle.css`: con `zeiras.css`
-quel campo resterebbe senza stili. Con `bundle.css` i due campi si prendono dallo stesso posto, tutti e due dai loro moduli o
-tutti e due da `…/zeiras/componenti`: gli stili che un modulo porta arrivano dopo il bundle, e con MentionField dal suo modulo e
-AddressField da `componenti` la lista di AddressField si allunga (da 300 a 360 px, e sotto i 720 px senza limite). Dai due moduli,
-con `bundle.css`, gli stili dei campi arrivano due volte, uguali, e ciò che si vede non cambia. Chi non cambia niente resta
-com'è.
+Fino alla `v4.27.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su
+`bundle.css`: con `zeiras.css` quel campo restava senza stili. E con `bundle.css` i due campi si prendevano dallo stesso posto:
+gli stili che un modulo porta arrivano dopo il bundle, e con MentionField dal suo modulo e AddressField da `componenti` la lista
+di AddressField si allungava (da 300 a 360 px, e sotto i 720 px senza limite). Dalla `v4.28.0` `componenti`, e con lui
+`window.Zeiras`, prende i due campi dai loro moduli, coi loro stili: da qualunque posto, con `zeiras.css` i campi hanno i loro
+stili, e con `bundle.css` arrivano due volte, uguali, e ciò che si vede non cambia. Chi non cambia niente resta com'è.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le
@@ -111,7 +111,11 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l'app usa: i componenti della cornice, più
   quelli delle sue pagine. Dalla `v4.28.0` ogni componente ha un modulo suo, `resources/js/zeiras/<Nome>`, che `componenti`
   ri-esporta soltanto (#3511): un componente che usa solo una pagina a richiesta (`import()`) sta nel pezzo di quella pagina, e
-  non nel JS d'ingresso, anche preso da `componenti`. Lo stesso nome dai due posti è lo stesso componente. Il `package.json` del
+  non nel JS d'ingresso, anche quando la pagina lo importa da `componenti` (`import { DataTable } from '…/zeiras/componenti'`).
+  Non così se la pagina chiede `componenti` stesso con `import()`: il modulo è già nell'ingresso, e preso intero porta lì ogni
+  componente. Lo stesso nome dai due posti è lo stesso componente. Dei moduli si importano per nome, come contratto, solo
+  `componenti` e i tre coi loro tipi (`MentionField`, `AddressField`, `Alert`): gli altri nomi e la cartella `interni/` cambiano
+  coi riallineamenti. Il `package.json` del
   pacchetto dice quali file hanno effetti quando si importano (`sideEffects`: i CSS, il TypeScript, il bundle UMD): una build
   che lo legge, come Vite, lascia fuori i moduli che nessuno usa.
 
@@ -126,7 +130,7 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   pagina o in un dialogo che si carica a richiesta (`import()`). Fino alla `v4.27.0` il modulo dei componenti era uno solo: la
   cornice lo importa, quindi stava nel JS d'ingresso, e con lui ogni componente che una qualunque pagina ne prendeva, anche a
   richiesta. Preso dal suo modulo, MentionField sta nel pezzo della pagina che lo usa e il JS del primo carico non lo porta;
-  dalla `v4.28.0` è così anche preso da `…/zeiras/componenti`.
+  dalla `v4.28.0` è così anche importato da `…/zeiras/componenti`.
 
   ```ts
   import { MentionField, type MentionOption } from '../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField';
@@ -136,12 +140,12 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi; dalla
   `v4.28.0` `componenti`, e con lui `window.Zeiras`, lo ri-esporta dal suo modulo: è lo stesso componente, col contatore
   uno. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
-  componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) il modulo le ha
-  sue, e si cambiano con la prop `labels`.
+  componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) sono quelle di `componenti`
+  (dalla `v4.28.0` lo stesso oggetto), e si cambiano con la prop `labels`.
 
   **AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta),
   `resources/js/zeiras/AddressField`, con le stesse regole: da `…/zeiras/componenti` e da `window.Zeiras` c'è anche lui, fino
-  alla `v4.27.0` nella stessa app si prendeva da un posto solo (dalla `v4.28.0` i tre posti danno lo stesso componente), e le etichette di partenza (`ADDRESS_LABELS`) il modulo le ha sue.
+  alla `v4.27.0` nella stessa app si prendeva da un posto solo (dalla `v4.28.0` i tre posti danno lo stesso componente), e le etichette di partenza (`ADDRESS_LABELS`) si cambiano con la prop `labels`.
 
   ```ts
   import { AddressField, type AddressPlace, type AddressSuggestion } from '../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField';
@@ -492,6 +496,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.27.0` | l'email del collega nella ricerca (#2916): il registro dà al membro del workspace (`workspace.membro`) anche la chiave `email`, la rotta `POST /cornice/ricerca` la lascia passare per il solo membro, e la seconda riga del risultato è «Amministratore · marta@example.com»; un termine con la chiocciola va al backoffice com'è scritto, e il backoffice trova un membro anche da un pezzo della sua email (zr-backoffice #2917). Niente da fare per i moduli: arriva con l'aggiornamento |
 | `v4.28.0` | il design system `ds-1794240112-cc62`, il lotto 0526 (richieste 224-231, dalla board di zr-board): la `KanbanBoard` sposta le liste dalla maniglia, col puntatore o da tastiera (Spazio prende, ← → spostano, Spazio lascia, Esc annulla), e dal «⋯» della lista con «Sposta a sinistra» e «Sposta a destra», con ogni passo detto al lettore di schermo (`onMoveList`); una scheda non entra dove la lista da cui parte non la manda (`transitions`), dove i requisiti del modulo dicono di no (`canEnter`, con le regole accese sotto l'intestazione, `rules`) o in una lista piena col limite che blocca (`limit` e `blocks`: «Al limite», «Aggiungi scheda» spento), e la lista che la rifiuta lo dice («Non consentito qui», `onRefuse`); la `KanbanColumn` ha il ruolo e la soglia delle pronte (`kind`, `threshold`) e un'azione a tutta larghezza (`action`); il «⋯» della lista ha «Rinomina» (`onRenameList`) e le voci del modulo (`actions`), e «Vai alla lista» porta il fuoco su una lista scelta per nome; con `onMove` o `onMoveList` la board è controllata e segue le liste che il modulo le ridà (il server decide); vicino al bordo la corsia scorre a velocità fissa. Senza le props nuove la board è quella di prima. Niente da fare per i moduli: zr-board può passare la sua board alle props nuove quando vuole |
 | `v4.29.0` | Finanze non è più in arrivo nel registro (#3567): `in_arrivo: false` per `flow`, come per il CRM dalla `v1.16.0`, perché il backoffice la dà `disponibile` a ogni workspace. Cambia solo ciò che vede chi non ha una sessione (Registrati di zr-home): Finanze vi compare «Disponibile». La cornice con la sessione non cambia. Niente da fare per i moduli: arriva con l'aggiornamento |
+| `v4.28.0` | un modulo per componente (#3511): `…/zeiras/componenti` ri-esporta ogni nome dal suo modulo, e un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche importato da `componenti`; il JS d'ingresso della sola cornice scende di 73 byte. MentionField, AddressField e Alert sono lo stesso componente da `componenti`, da `window.Zeiras` e dal loro modulo: un contatore degli id solo, le etichette di partenza condivise, e con `bundle.css` gli stili dei due campi arrivano anche dai loro moduli, uguali. I componenti che usano gli id del bundle (Field, Checkbox, Dialog, Menu, MentionField e altri) portano con sé il modulo dell'`AppShell`, che conta gli id con loro: con la cornice nell'ingresso c'è già | niente; con `zeiras.css` i due campi si possono prendere anche da `componenti` | un caso che prende MentionField o AddressField dal suo modulo e confronta l'id del campo con un numero fisso va riletto: il contatore è quello di tutti i componenti | i pezzi a richiesta delle pagine che usano componenti che la cornice non usa: il componente sta lì, non nel JS d'ingresso |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

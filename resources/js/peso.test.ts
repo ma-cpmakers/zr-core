@@ -321,6 +321,8 @@ function pesiNelReadme(nome: string): number[] {
 let conIlLayout: Costruito;
 let soloCornice: Costruito;
 let coiDatiDentro: Costruito;
+let coiSegniSenzaSideEffects: Costruito;
+let senzaSegniSenzaSideEffects: Costruito;
 let conIlLimiteAlto: Costruito;
 let perNome: Costruito;
 let diSempre: Costruito;
@@ -361,11 +363,24 @@ beforeAll(async () => {
     vi.stubEnv('NODE_ENV', 'production');
     soloCornice = await app('resources/demo/peso/cornice.ts');
     // Sprint 50 · T6 (review, R9): la stessa app col modulo dei componenti senza i segni «puri» del generatore.
-    coiDatiDentro = await app('resources/demo/peso/cornice.ts', {}, [{
+    const senzaSegni: Plugin = {
         name: 'zr-core:componenti-senza-segni',
         enforce: 'pre',
         load: (id) => (/\/resources\/js\/zeiras\/(?:interni\/)?[^/]+\.js$/.test(id) ? readFileSync(id, 'utf8').replaceAll('/* @__PURE__ */ ', '') : null),
-    }]);
+    };
+    coiDatiDentro = await app('resources/demo/peso/cornice.ts', {}, [senzaSegni]);
+    // Voce #3511 (revisione, R3): la stessa app da una build che non legge `sideEffects`, coi segni e senza.
+    const conEffetti: Plugin = {
+        name: 'zr-core:componenti-con-effetti',
+        enforce: 'pre',
+        async resolveId(fonte, chi, opzioni) {
+            const trovato = await this.resolve(fonte, chi, { ...opzioni, skipSelf: true });
+
+            return trovato && /\/resources\/js\/zeiras\/(?:interni\/)?[^/]+\.js$/.test(trovato.id) ? { ...trovato, moduleSideEffects: true } : null;
+        },
+    };
+    coiSegniSenzaSideEffects = await app('resources/demo/peso/cornice.ts', {}, [conEffetti]);
+    senzaSegniSenzaSideEffects = await app('resources/demo/peso/cornice.ts', {}, [conEffetti, senzaSegni]);
     conIlLimiteAlto = await app('resources/demo/peso/cornice.ts', { assetsInlineLimit: 1_000_000 });
     perNome = await app('resources/demo/peso/per-nome.ts');
     diSempre = await app('resources/demo/peso/oggi.ts');
@@ -454,9 +469,12 @@ describe('un\'app che usa anche due componenti per nome porta quelli e non gli a
     });
 });
 
-// Sprint 71 · T1.1, T1.2 (voce #2433, Decisione 16375). `componenti.js` è un modulo solo: se l'ingresso lo importa (la cornice lo
-// fa), sta nell'ingresso con tutto ciò che una qualunque pagina ne usa, anche una pagina a richiesta. MentionField ha per questo un
-// modulo suo: preso da lì, sta nel pezzo della pagina. La classe del suo campo, `zr-mention`, è il segno del suo codice.
+// Sprint 71 · T1.1, T1.2 (voce #2433, Decisione 16375). Fino alla `v4.27.0` `componenti.js` era un modulo solo: se l'ingresso lo
+// importa (la cornice lo fa), stava nell'ingresso con tutto ciò che una qualunque pagina ne usava, anche una pagina a richiesta.
+// MentionField ha per questo un modulo suo: preso da lì, sta nel pezzo della pagina. Dalla `v4.28.0` (voce 3511) lo stesso vale
+// per una pagina che importa MentionField da `componenti.js` (il caso della DataTable, AC 1); qui la pagina a richiesta è
+// `componenti.js` stesso, con `import()`: è un modulo dell'ingresso, e il suo spazio dei nomi preso intero porta ogni componente
+// nell'ingresso. La classe del suo campo, `zr-mention`, è il segno del suo codice.
 const DI_MENTIONFIELD = 'zr-mention';
 
 describe('MentionField preso dal suo modulo in una pagina a richiesta sta nel pezzo della pagina, non nel JS d\'ingresso (sprint 71 · T1.1, T1.2)', () => {
@@ -466,7 +484,7 @@ describe('MentionField preso dal suo modulo in una pagina a richiesta sta nel pe
         expect(conMentionAParte.pezzi.filter((pezzo) => pezzo.includes(DI_MENTIONFIELD))).toHaveLength(1);
     });
 
-    it('da componenti, com\'era prima: è nel JS d\'ingresso, e l\'ingresso pesa di più', () => {
+    it('con `import()` di componenti stesso è nel JS d\'ingresso, e l\'ingresso pesa di più', () => {
         expect(conMentionDaComponenti.js).toContain(DI_MENTIONFIELD);
         expect(gzip(conMentionDaComponenti.js)).toBeGreaterThan(gzip(conMentionAParte.js));
     });
@@ -711,12 +729,15 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // Sprint 50 · T6 (review, R9). Il tetto è la misura con una tolleranza scelta di 99 byte, non più: un ingresso che scende
     // di 100 byte o più vuole il tetto riscritto (zr-pm: «niente oltre»). Fino alla `v4.27.0` i segni «puri» del generatore toglievano
     // dall'ingresso almeno 500 byte (T1.4: 515 alla misura di T1): il modulo dei componenti era uno solo. Dalla `v4.28.0` (voce #3511)
-    // ogni componente ha un modulo suo, e la build non prende quello di CrmContacts dove nessuno lo usa: qui la stessa app, costruita
-    // coi moduli senza i segni, è uguale. I segni restano per chi costruisce senza leggere `sideEffects` del pacchetto.
-    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» dei moduli dei componenti l\'ingresso non ha i contatti finti e pesa lo stesso (sprint 50 · T1.4, T5.4; voce 3511)', () => {
+    // ogni componente ha un modulo suo, e una build che legge `sideEffects` del pacchetto non prende quello di CrmContacts dove
+    // nessuno lo usa: la stessa app, costruita coi moduli senza i segni, è uguale. Per una build che `sideEffects` non lo legge
+    // (qui un plugin che dà effetti a ogni modulo dei componenti) i segni tolgono ancora almeno 500 byte (532 misurati).
+    it('il tetto sta a meno di 100 byte da ciò che l\'ingresso pesa, e senza i segni «puri» dei moduli dei componenti l\'ingresso non ha i contatti finti e pesa lo stesso; da una build che non legge `sideEffects` i segni tolgono contatti, formattatori e almeno 500 byte (sprint 50 · T1.4, T5.4; voce 3511)', () => {
         expect(TETTO_DELL_INGRESSO - gzip(soloCornice.js)).toBeLessThan(100);
         expect(volte(coiDatiDentro.js, DEI_CONTATTI_FINTI)).toBe(0);
         expect(gzip(coiDatiDentro.js)).toBe(gzip(soloCornice.js));
+        expect([coiSegniSenzaSideEffects, senzaSegniSenzaSideEffects].map((costruita) => [volte(costruita.js, DEI_CONTATTI_FINTI), volte(costruita.js, DEI_FORMATTATORI) > 0])).toStrictEqual([[0, false], [1, true]]);
+        expect(gzip(senzaSegniSenzaSideEffects.js) - gzip(coiSegniSenzaSideEffects.js)).toBeGreaterThanOrEqual(500);
     });
 
     it.each(['README.md', 'CLAUDE.md'])('%s dice il tetto di 19.599 byte, e il 17.478 della v3.0.0 solo dove il README dice come passare alla v3; non più quelli di 19.672 byte, di 19.434 byte, di 19.394 byte, di 19.282 byte, di 19.136 byte, di 18.589 byte, di 18.169 byte, di 17.922 byte, di 17.511 byte, di 17.456 byte, di 17.566 byte, di 17.188 byte, di 16.880 byte, di 17.573 byte, di 17.213 byte, di 17.336 byte, di 17.675, di 17.650, di 17.575, di 17.495, di 17.934, di 17.918, di 17.911, di 17.900, di 17.875, di 17.826, di 17.819, di 17.789, di 18.229, di 18.554, di 18.486, di 18.449 e di 18.432 e nemmeno quello coi 32 byte in più (sprint 33 · T1.3; sprint 36 · T2.6, T3.5; sprint 37 · T4.5; sprint 42 · T2.5; sprint 50 · T5.4; sprint 61 · T1; v2.25.3; sprint 70 · T1.1; voce 2544 T1.4; voce 2549 T2.7; voce 2062 T4.4; voce 2730; sprint 106 · T4.1; voce 3055)', (file) => {
