@@ -765,10 +765,10 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         { tipo: 'crm.trattativa', id: 'uat-t1', titolo: 'UAT Rinnovo 2027', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Proposta', esito: 'aperta' } },
         { tipo: 'crm.trattativa', id: 'uat-t2', titolo: 'UAT Fornitura 2026', contesto: { pipeline: 'UAT Vendite', fase: 'UAT Contratto', esito: 'vinta' } },
     ];
-    // Sprint 27 · T2 (voce #1787): un membro del workspace, col solo ruolo e come codice, c'è senza parametri: non dipende da un
+    // Sprint 27 · T2 (voce #1787): un membro del workspace, col ruolo come codice (e dallo sprint 119 l'email), c'è senza parametri: non dipende da un
     // modulo, e il backoffice lo dà in ogni workspace. Viene dopo le altre fonti nuove e prima di board e cartelle, come in
     // ricerca.crea.
-    const membro = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } };
+    const membro = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } };
     /** Ciò che la ricerca di «uat» dava sul tag `v1.14.0`: board e cartelle in ordine di titolo, e in fondo i due tipi che il registro non ha. */
     const diPrima = [
         { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
@@ -839,7 +839,7 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         const fuoriCodice = risultati.filter(({ tipo, contesto }) => Object.entries(risorsaDi(tipo)?.codici ?? {}).some(([chiave, codici]) => !codici.includes(String(contesto?.[chiave]))));
         expect(fuoriCodice.map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta']]);
         expect(risultati.filter(({ tipo }) => tipo === 'crm.trattativa').map(({ id, contesto }) => [id, contesto?.esito])).toStrictEqual([['uat-t1', 'aperta'], ['uat-t2', 'vinta']]);
-        expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } }]);
+        expect(risultati.filter(({ tipo }) => tipo === 'workspace.membro')).toStrictEqual([{ tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } }]);
     });
 
     it.each<[string, string | undefined, Record<string, unknown>]>([

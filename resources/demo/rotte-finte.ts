@@ -297,9 +297,9 @@ const risultatiDiProva = [
             { tipo: 'bookings.calendario', id: 'uat-c1', titolo: 'UAT Sala pesi', contesto: null },
         ]
         : []),
-    // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il solo `ruolo`, e come codice: è ciò
-    // che la rotta vera lascia uscire (mai l'email), e il suo testo nella lingua lo mette la cornice.
-    { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore' } },
+    // Un membro del workspace, in ogni caso: non dipende da un modulo. Di `contesto` ha il `ruolo`, come codice, e dalla
+    // `v4.27.0` (sprint 119) l'`email`: è ciò che la rotta vera lascia uscire, e il testo del ruolo nella lingua lo mette la cornice.
+    { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } },
     // Poi board e cartelle, in ordine di titolo, senza `contesto`.
     { tipo: 'board.board', id: 'uat-13', titolo: 'UAT Lancio Q1', contesto: null },
     { tipo: 'board.board', id: 'uat-12', titolo: 'UAT Lancio Q4', contesto: null },
