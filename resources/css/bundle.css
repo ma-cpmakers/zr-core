@@ -1,5 +1,6 @@
-/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts. A un riallineamento si rigenera con `npm run componenti`. */
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, e la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css). A un riallineamento si rigenera con `npm run componenti`. */
 @import './font.css';
+@import './movimento.css';
 
 body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 22px; background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; }
 .zr-icon { display: block; flex: none; }

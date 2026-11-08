@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { bundleIntero, coiFontDelPacchetto, dividiIlCss, leggi, moduli, STILI_A_PARTE } from '../../../scripts/componenti-genera.mjs';
+import { bundleIntero, coiCssDelPacchetto, coiFontDelPacchetto, dividiIlCss, leggi, moduli, STILI_A_PARTE } from '../../../scripts/componenti-genera.mjs';
 
 // Sprint 75 · T1 (voce 2570). Dalla `v3.3.0` `npm run componenti` divide anche resources/zeiras/bundle.css (copia derivata del
 // design system, che resta com'è): resources/css/zeiras.css è il bundle senza gli stili dei componenti di `STILI_A_PARTE`, e
@@ -34,7 +34,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         const divisi = dividiIlCss(bundleCss);
         const delCss = corpo(divisi.zeiras);
 
-        expect([...piene(delCss), ...NOMI.flatMap((nome) => piene(corpo(divisi.stili[nome])))].sort()).toStrictEqual(piene(coiFontDelPacchetto(bundleCss)).sort());
+        expect([...piene(delCss), ...NOMI.flatMap((nome) => piene(corpo(divisi.stili[nome])))].sort()).toStrictEqual(piene(coiCssDelPacchetto(bundleCss)).sort());
         expect(delCss).not.toMatch(/\.zr-(mention|address)/);
         expect(piene(corpo(divisi.stili.MentionField!)).every((riga) => /^\/\* MentionField[: ]|zr-mention/.test(riga))).toBe(true);
         expect(piene(corpo(divisi.stili.AddressField!)).every((riga) => /^\/\* AddressField[: ]|zr-address/.test(riga))).toBe(true);
@@ -95,9 +95,10 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         const delBundle = bundleCss.split('\n');
 
         expect(intero).toBe(bundleIntero(bundleCss));
-        expect(righe).toHaveLength(delBundle.length);
-        expect(righe.filter((riga, indice) => riga !== delBundle[indice])).toStrictEqual(["@import './font.css';"]);
-        expect(righe[0]).toBe("@import './font.css';");
+        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css: le altre sono le righe del bundle, nel loro ordine.
+        expect(righe).toHaveLength(delBundle.length + 1);
+        expect(righe.slice(0, 2)).toStrictEqual(["@import './font.css';", "@import './movimento.css';"]);
+        expect(righe.slice(2)).toStrictEqual(delBundle.slice(1));
     });
 
     it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
@@ -190,5 +191,35 @@ describe('al tocco il Button si prende su 44 px (v4.31.0, zr-pm-07 10/11)', () =
             expect(css).not.toBe(zeirasCss);
             expect(Math.min(areaDelButton(css).alta, areaDelButton(css).larga)).toBeLessThan(44);
         }
+// Voce #3534 (Decisione 23090 di zr-pm-07). Chi chiede al sistema meno movimento non ha transizioni in nessuna pagina che carica il
+// CSS del pacchetto: la regola sta in resources/css/movimento.css, scritto a mano, e bundle.css e zeiras.css la importano subito
+// dopo i font. Non è nella parte copiata dal bundle, che la CI confronta riga per riga col design system.
+describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
+    const movimento = readFileSync(delRepo('resources/css/movimento.css'), 'utf8');
+    const regole = movimento.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+
+    it('bundle.css e zeiras.css importano movimento.css subito dopo i font, prima di ogni regola del bundle (T4)', () => {
+        for (const percorso of ['resources/css/bundle.css', 'resources/css/zeiras.css']) {
+            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 2);
+
+            expect(prime).toStrictEqual(["@import './font.css';", "@import './movimento.css';"]);
+        }
+        expect(bundleIntero(bundleCss).split('\n').filter((riga) => riga === "@import './movimento.css';")).toHaveLength(1);
+        expect(dividiIlCss(bundleCss).zeiras.split('\n').filter((riga) => riga === "@import './movimento.css';")).toHaveLength(1);
+        // La regola non sta nella parte copiata dal bundle: senza la riga dell'import, bundle.css è il bundle coi soli font cambiati.
+        expect(bundleIntero(bundleCss)).not.toContain('prefers-reduced-motion: reduce) { *');
+        // Un bundle senza Google prende in testa i font e, sotto, movimento.css.
+        const senza = bundleCss.replace(/^.*\n/, '');
+        expect(coiCssDelPacchetto(senza)).toBe(`@import './font.css';\n@import './movimento.css';\n${senza}`);
+    });
+
+    it('con prefers-reduced-motion: reduce nessuna transizione, su ogni elemento e sui suoi ::before e ::after (T1)', () => {
+        expect(regole).toBe('@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }');
+    });
+
+    it('senza la preferenza niente cambia, e le animazioni restano del design system: lo spinner del Button gira a 2,4 s (T2, T3)', () => {
+        expect(regole.replace(/@media \(prefers-reduced-motion: reduce\) \{[^{}]*\{[^{}]*\} \}/, '').trim()).toBe('');
+        expect(regole).not.toMatch(/animation/);
+        expect(bundleCss).toContain('@media (prefers-reduced-motion: reduce) { .zr-btn-spin { animation-duration: 2.4s; } }');
     });
 });

@@ -27,7 +27,9 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   `destinazioneDellaNotifica`. I font, dalla `v3.15.0`,
   arrivano dal pacchetto e non da Google Fonts (#2945): i woff2 e le licenze OFL in `resources/fonts/`, le `@font-face` in
   `resources/css/font.css`, che `resources/css/bundle.css` e `zeiras.css` importano al posto dell'`@import` di Google; la CSP di
-  tutti ha `font-src 'self'`. Dalla `v4.0.0` Google è fuori dalla CSP di tutti (#2946, maggiore: stringe).
+  tutti ha `font-src 'self'`. Dalla `v4.0.0` Google è fuori dalla CSP di tutti (#2946, maggiore: stringe). Dalla `v4.32.0` (#3534) i due importano, sotto i
+  font, anche `resources/css/movimento.css`, scritto a mano: con `prefers-reduced-motion: reduce` nessuna transizione (righe MV di
+  `uat-cornice`).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.

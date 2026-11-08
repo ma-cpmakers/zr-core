@@ -1,0 +1,10 @@
+/*
+ * Meno movimento per chi lo chiede al sistema (dalla v4.32.0, voce #3534): con `prefers-reduced-motion: reduce` nessun elemento
+ * di una pagina che carica il CSS del pacchetto ha transizioni, nemmeno quelli delle pagine del modulo e i loro ::before e
+ * ::after. Il design system ne spegne alcune, componente per componente; questa regola le spegne tutte, così un modulo non la
+ * scrive nel suo CSS. Le animazioni restano del design system, che le rallenta invece di fermarle (lo spinner del Button).
+ * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, subito dopo i font.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
