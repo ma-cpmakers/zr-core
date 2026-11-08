@@ -4,10 +4,11 @@
 // (dalla `v3.17.0`, voce #2910), e con `&dialogo=1` anche un Dialog aperto sotto di lui. Con `?configurazione=0` la barra è quella
 // di chi non è Superadmin, senza «Configurazione» (dalla `v4.3.0`, voce #2954), e con `?invio=1` la ricerca parte solo con Invio
 // (voce #2965). Con `?ruolo=…&fino=<data ISO>` il riquadro in fondo alla barra dice il ruolo e la fine della sessione (dalla `v4.5.0`,
-// voce #2989). Quante volte il modulo ha cercato lo dice `data-cerche` sul `body`.
+// voce #2989). Quante volte il modulo ha cercato lo dice `data-cerche` sul `body`. Con `?turno=1` due pulsanti chiedono il Toast di
+// turno (dalla `v5.0.0`, voce #3537): uno con «Annulla», nella lingua di `?lingua`, e uno senza azione, che prende il suo posto.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CorniceDelloStaff, ToastDellaCornice } from '../js/app';
+import { CorniceDelloStaff, ToastDellaCornice, mostraToast } from '../js/app';
 import { Dialog } from '../js/zeiras/componenti';
 import type { ShellSearchResult } from '../zeiras/index';
 import '../css/zeiras.css';
@@ -70,6 +71,23 @@ function Pagina() {
             <h1>UAT {attiva}</h1>
             <p id="uat-ultima">{ultima}</p>
             <Dialog open={dialogo} title="UAT dialogo" onClose={() => setDialogo(false)}>UAT il Toast sta sopra</Dialog>
+            {scelti.get('turno') === '1' ? (
+                <p>
+                    <button
+                        type="button"
+                        id="uat-turno"
+                        onClick={() => {
+                            document.documentElement.lang = lingua;
+                            mostraToast({ children: 'UAT archiviata', onAction: () => setUltima('annulla di turno') });
+                        }}
+                    >
+                        UAT Toast con l'azione
+                    </button>
+                    <button type="button" id="uat-turno-senza" onClick={() => mostraToast({ children: 'UAT salvata' })}>
+                        UAT Toast senza azione
+                    </button>
+                </p>
+            ) : null}
             {toast ? <ToastDellaCornice actionLabel="Annulla" onAction={() => setUltima('annulla')} onClose={() => setToast(false)}>UAT fatto</ToastDellaCornice> : null}
         </CorniceDelloStaff>
     );

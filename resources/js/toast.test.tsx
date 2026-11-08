@@ -253,3 +253,35 @@ describe('il testo entra nella regione `role="status"` un passo dopo la regione,
         expect(regione.parentElement!.style.opacity).toBe('');
     });
 });
+
+// Voce #3537: due Toast della cornice insieme — quello di un modulo e quello di turno, mentre il modulo passa a `mostraToast` —
+// volevano essere tutti e due l'ultimo figlio del `body`, e ognuno rimetteva in coda il suo nodo dopo l'altro: la pagina restava
+// ferma in un giro di spostamenti senza fine. Un altro Toast dopo il proprio nodo non conta come «altro che arriva dopo».
+describe('due Toast della cornice insieme non si rincorrono in coda al body (voce 3537)', () => {
+    it('restano tutti e due, e il body si sposta un numero finito di volte', async () => {
+        const append = HTMLElement.prototype.append;
+        let volte = 0;
+        const spia = vi.spyOn(HTMLElement.prototype, 'append').mockImplementation(function (this: HTMLElement, ...nodi) {
+            if (++volte > 50) {
+                throw new Error('i due Toast si rincorrono');
+            }
+            append.apply(this, nodi);
+        });
+        try {
+            await act(async () =>
+                radice.render(
+                    <>
+                        <ToastDellaCornice>Primo</ToastDellaCornice>
+                        <ToastDellaCornice>Secondo</ToastDellaCornice>
+                    </>,
+                ),
+            );
+            await act(async () => vi.advanceTimersByTime(100));
+        } finally {
+            spia.mockRestore();
+        }
+
+        expect(volte).toBeLessThanOrEqual(4);
+        expect([...document.querySelectorAll('.zr-toast-text')].map((testo) => testo.textContent)).toEqual(['Primo', 'Secondo']);
+    });
+});

@@ -618,6 +618,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o con `data-theme="system"` quando il sistema è scuro; senza `data-theme`, o con `"light"`, la pagina resta chiara anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; nessun modulo cambia finché non scrive `data-theme`. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). E i rimedi provvisori al CSS del design system in `rimedi.css` (vedi «Rimedi provvisori al design system»): lo `scroll-padding` dei contenitori che scorrono, che lascia all'anello del fuoco i suoi 4 px (#3888, richiesta 278); coi colori forzati il contorno sulla voce attiva del menu e sul segmento scelto, e il campo Cerca chiuso che si distingue dalla barra (#3889, richieste 288 e 279); con la ricerca aperta sotto i 720 px le azioni della barra che non allargano la pagina (#3890, richiesta 283). E le schede della `KanbanBoard` si trascinano anche col dito (#3913, richiesta 294; vedi «Le schede della KanbanBoard col dito»): pezzo del tocco 1.423 byte con gzip, tetto 1.443 (la misura più 20); JS d'ingresso invariato. E col dito nel margine, a lavagna scorsa fino in fondo, la carta lasciata sul padding del bordo va alla colonna accanto (zr-crm, prova dal vivo della `v4.35.4`): pezzo del tocco 1.480 byte, tetto 1.500 (la misura più 20). E i rilievi R4-R8 della revisione della `v4.35.2` (vedi «Le carte della DealPipeline col dito»): una board in sola lettura non chiede il pezzo del tocco, la penna come il dito, i bordi dello schermo per una lavagna più grande, il clic dopo una nuova pressione, e tre righe di `uat-cornice` (TC.4 con `onOpen`, TC.8 in verticale, TC.9 con 700 ms di pressione): pezzo del tocco 1.521 byte, tetto 1.541 (la misura più 20). Cosa fare: niente, finché il modulo non sceglie il tema; per lo scuro scrive su `<html>` `data-theme` dalla scelta della persona (`dark`, `light` o `system`) dopo aver provato in scuro le sue pagine, e toglie i valori scuri che si era scritto nel suo CSS. |
 | `v4.36.1` | i rilievi R1-R3 della revisione della `v4.36.0` (sì di zr-pm-74 del 17/11): lo `scroll-padding` della #3888 anche su `.zr-main-body`, il corpo che scorre sotto il percorso (R1; riga RP.1 di `uat-cornice`); col dito la scheda della `KanbanBoard` o la carta della `DealPipeline` che passa altrove manda `dragenter` e `dragleave` come il mouse, e una lista che la rifiutava non resta segnata né dà `onRefuse` quando la scheda è lasciata fuori dalla lavagna (R2; riga TK.7); una lavagna le cui carte diventano trascinabili cambiando solo `draggable` arriva al dito (R3). Pezzo del tocco 1.563 byte con gzip, tetto 1.583 (la misura più 20); JS d'ingresso invariato. Cosa fare: aggiornare, prima del deploy che porta la `v4.36.0` (zr-board e zr-crm). |
 | `v5.0.0` | il tema di Tailwind 4 dal pacchetto (#3536): `resources/css/zeiras-tailwind.css`, generato da `tokens.json` con `npm run token`, dà a Tailwind 4 ogni colore, famiglia, raggio, ombra e stile di testo coi nomi dei token (`bg-surface-raised`, `rounded-md`, `shadow-card`, `text-heading-1`), che rendono `var(--…)`; `@theme inline reference`, non scrive niente nella pagina («Il tema di Tailwind 4») | niente; un modulo con Tailwind 4 che ha il blocco `@theme` scritto a mano lo può togliere e importare il file dopo `tailwindcss`, tenendo i suoi alias | niente | la build del modulo: le classi dei token rendono `var(--…)` come prima |
+| `v5.0.0` | il Toast di turno (#3537): `mostraToast` e `chiudiToast`, con la durata del design system (5 secondi, 10 con un'azione), la pausa finché il puntatore è sopra o il fuoco è dentro, «Annulla» nella lingua della pagina (`resources/lingue/toast/`) e un Toast alla volta; `ToastDellaCornice` resta com'è, e due insieme non si rincorrono più in coda al `body`; l'ingresso dell'app con la sola cornice non cambia |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -3007,7 +3008,8 @@ import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app'
   design di Superadmin, Board e CRM (decisione di zr-pm del 3/11; il README del Toast nel design system dice ancora «in basso
   a sinistra», e la correzione è chiesta).
 - **La durata è del modulo**, come dice il README del Toast: 5 secondi, 10 se c'è un'azione; poi lo si smonta. Un Toast alla
-  volta: zr-core non tiene una coda.
+  volta: zr-core non tiene una coda. Dalla `v5.0.0` durata, pausa e «uno alla volta» li fa la cornice con `mostraToast` (sotto,
+  «Il Toast di turno»): un modulo che passa lì toglie il suo involucro.
 - **Con un `Dialog` aperto** (dalla `v3.17.1`) il Toast si rende dentro il dialogo, e resta in basso al centro sopra il velo:
   il dialogo è `aria-modal` e trattiene il Tab, e da lì il Tab arriva ad «Annulla» e il lettore di schermo legge il Toast.
   Quando il dialogo si chiude torna nel `body`, e un dialogo che si apre dopo lo prende. Un'anteprima (`inline`) non lo prende.
@@ -3018,6 +3020,37 @@ import { ToastDellaCornice } from '../../vendor/zeiras/zr-core/resources/js/app'
 - **Sul server** (l'SSR di Inertia) non si rende: arriva sul client dopo il montaggio, perché il `body` c'è solo lì.
 - Un'app che non lo usa non lo porta nella build. La pagina di prova è `staff.html?toast=1` (con `&dialogo=1` sopra un
   `Dialog` aperto), e `scripts/uat-cornice.mjs --staff` lo misura a 1280 e a 390 px (righe TO.1-TO.4) e col Tab dal dialogo (TO.5).
+
+### Il Toast di turno
+
+Dalla `v5.0.0` (#3537) il modulo non tiene più lo stato del Toast: lo chiede con `mostraToast`, e il resto lo fa la cornice.
+Si prende dai due ingressi, e un'app che non lo usa non lo porta nella build:
+
+```tsx
+import { mostraToast } from '../../vendor/zeiras/zr-core/resources/js/app';
+
+mostraToast({ children: 'Board archiviata', onAction: ripristina });
+mostraToast({ children: 'Non salvato', tone: 'danger' });
+```
+
+- **Le props** sono quelle di `ToastDellaCornice` senza `onClose`: `children`, `tone` (di successo se manca), `onAction`,
+  `actionLabel`, `closeLabel`. Il tipo è `ToastDaMostrare`.
+- **La durata** è quella del README del Toast nel design system: 5 secondi, 10 se c'è un'azione. Il tempo si ferma finché il
+  puntatore è sopra il Toast o il fuoco è dentro (chi arriva col Tab su «Annulla»), e quando escono riparte intero.
+- **«Annulla»**: con `onAction` il Toast ha l'azione, e senza `actionLabel` il pulsante dice «Annulla» nella lingua della
+  pagina, quella di `<html lang>` (`resources/lingue/toast/`, in inglese per una lingua che zr-core non ha). Premuti l'azione o
+  la ✕, il Toast si chiude subito, e l'azione viene dopo la chiusura: può chiedere lei un Toast nuovo.
+- **Uno alla volta**: un Toast nuovo prende il posto di quello aperto, che non torna e la cui azione non si preme più; la
+  regione `role="status"` lo annuncia. `chiudiToast()` toglie quello a schermo.
+- **Non si monta niente**: al primo Toast la cornice si fa un posto nel `body`, una radice di React sua, e lo tiene fra una pagina
+  e l'altra di Inertia. Per questo il testo non vede i contesti della pagina (un `LabelsProvider`, un contesto del modulo): è
+  una frase, come dice il README del Toast. Si chiama dal client — un clic, la risposta di una richiesta —, mai durante il
+  disegno sul server.
+- **L'aspetto** è il Toast del design system com'è, al posto di `ToastDellaCornice` (in basso al centro, dentro un `Dialog`
+  aperto), senza CSS in più. Un modulo che tiene il suo involucro e passa a `mostraToast` una pagina alla volta può averli tutti
+  e due a schermo per un po': dalla `v5.0.0` due Toast della cornice insieme non si rincorrono più in coda al `body`.
+- La pagina di prova è `staff.html?turno=1`, e `scripts/uat-cornice.mjs --staff` lo misura (righe TT.1-TT.4): la durata,
+  il Tab su «Annulla» oltre i 10 secondi, uno alla volta, «Annulla» nella lingua di `?lingua`.
 
 ## Il logo
 

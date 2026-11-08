@@ -1571,6 +1571,17 @@ it('i testi della cornice del cliente stanno in resources/lingue/cliente, un fil
         ->and(array_filter(array_map(fn (string $codice): array => array_values(array_intersect(array_values($cliente[$codice]), array_values(array_filter(fileDelleLingue('')[$codice], 'is_string')))), array_combine(array_keys($cliente), array_keys($cliente)))))->toBe([]);
 });
 
+it('«Annulla» del Toast di turno sta in resources/lingue/toast, un file per ogni lingua dei testi con lo stesso nome e la sola chiave undo, e non nelle lingue della cornice (voce 3537 · AC 4)', function () {
+    $toast = fileDelleLingue('toast/');
+
+    expect(array_keys($toast))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
+        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $toast))->toBe(array_fill_keys(array_keys($toast), ['undo']))
+        ->and(array_map(fn (array $delCodice): bool => is_string($delCodice['undo']) && trim($delCodice['undo']) !== '', $toast))->each->toBeTrue()
+        ->and(['it' => $toast['it']['undo'] ?? null, 'es' => $toast['es']['undo'] ?? null, 'en' => $toast['en']['undo'] ?? null])->toBe(['it' => 'Annulla', 'es' => 'Deshacer', 'en' => 'Undo'])
+        // Nelle lingue della cornice, che stanno nell'ingresso di ogni app, non c'è: entra solo nella build di chi mostra un Toast di turno.
+        ->and(array_filter(array_map(fn (array $delCodice): bool => array_key_exists('undo', $delCodice), fileDelleLingue(''))))->toBe([]);
+});
+
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
@@ -1706,7 +1717,8 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
     // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
     // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca. Revisione dello sprint 93
     // (R1): e quelli della cornice dello staff, in resources/lingue/staff. Sprint 110 · T2.5: e quelli della cornice del cliente.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/'))])))), idDeiProdotti()));
+    // Voce #3537 · AC 4: e «Annulla» del Toast di turno, in resources/lingue/toast.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/')), ...array_values(fileDelleLingue('toast/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1715,7 +1727,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office', 'Annulla', 'Deshacer', 'Undo')
         ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);

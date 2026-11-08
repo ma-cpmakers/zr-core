@@ -14,6 +14,20 @@ const DIALOGO_APERTO = '.zr-scrim:not(.is-inline) > .zr-dialog';
 /** Dove sta il Toast: nell'ultimo dialogo aperto, che sta sopra a tutto; senza, nel `body`. */
 const doveStare = (): HTMLElement => [...document.querySelectorAll<HTMLElement>(DIALOGO_APERTO)].at(-1) ?? document.body;
 
+/** I nodi dei Toast della cornice a schermo: uno dopo l'altro stanno in coda insieme (voce #3537). */
+const nodiDeiToast = new WeakSet<Element>();
+
+/** Se dopo il nodo c'è altro che un Toast: un piede coi pulsanti arrivato nel dialogo. Un altro Toast no, o si rincorrerebbero. */
+const altroDopo = (nodo: Element): boolean => {
+    for (let dopo = nodo.nextElementSibling; dopo; dopo = dopo.nextElementSibling) {
+        if (!nodiDeiToast.has(dopo)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
 export type ToastDellaCorniceProps = Parameters<typeof TipoDelToast>[0];
 
 /**
@@ -28,7 +42,8 @@ export type ToastDellaCorniceProps = Parameters<typeof TipoDelToast>[0];
  * stesso «Annulla» passa dal `body` al dialogo e torna, col fuoco se lo aveva, e chi se lo ricorda (i rimedi, alla chiusura di
  * un dialogo) non resta con un nodo staccato. Un osservatore del documento, acceso finché il Toast c'è, lo sposta quando un
  * dialogo si apre, si chiude o smette di essere un'anteprima, e lo rimette in coda al dialogo se dopo di lui arriva altro (un
- * piede coi pulsanti), perché il Tab lo trovi dopo l'ultima fermata.
+ * piede coi pulsanti), perché il Tab lo trovi dopo l'ultima fermata; un altro Toast dopo di lui non conta (dalla `v5.0.0`): due Toast,
+ * ognuno in coda dopo l'altro, si sposterebbero senza fine.
  *
  * La regione `role="status"` del `Toast` entra vuota, e 100 ms dopo arrivano il testo e i pulsanti: un lettore di schermo
  * annuncia ciò che cambia in una regione che c'è già, non sempre una che arriva piena. Fino ad allora il Toast è trasparente,
@@ -40,10 +55,11 @@ export function ToastDellaCornice(props: ToastDellaCorniceProps) {
 
     useEffect(() => {
         const suo = document.createElement('div');
+        nodiDeiToast.add(suo);
         const segui = (): void => {
             const dove = doveStare();
 
-            if (suo.parentElement !== dove || suo.nextElementSibling) {
+            if (suo.parentElement !== dove || altroDopo(suo)) {
                 const fuoco = document.activeElement instanceof HTMLElement && suo.contains(document.activeElement) ? document.activeElement : null;
 
                 dove.append(suo);

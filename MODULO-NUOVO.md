@@ -573,8 +573,10 @@ tutto») è arrivato: il prodotto nel registro, il suo stato nel workspace, l'in
 
 - **Mancanze note del design system**, già chieste a chi lo cura: il `Dialog` non tiene il fuoco dentro di sé; «Chiudi»
   del `Toast` e «Cerca» della `FilterBar` sono testi fissi in italiano. Controlla se una versione nuova le ha chiuse.
-- **Un `Toast`** si mostra con `ToastDellaCornice` (dalla `v3.17.0`), che lo mette già in basso al centro sopra dialoghi e
-  cassetto: niente CSS di posizione nel modulo, la durata resta tua (README, «Il Toast della cornice»).
+- **Un `Toast`** si mostra con `mostraToast` (dalla `v5.0.0`): la cornice lo mette in basso al centro sopra dialoghi e
+  cassetto, lo chiude dopo 5 secondi (10 con «Annulla»), non mentre ci sono sopra il puntatore o il fuoco, e ne tiene uno
+  alla volta (README, «Il Toast di turno»). Niente CSS di posizione né tempi nel modulo; `ToastDellaCornice` resta per chi
+  lo monta e lo smonta da sé (README, «Il Toast della cornice»).
 - **Una voce di `nav` senza `href`** ha come indirizzo «#»: «apri in un'altra scheda» non porta alla sua pagina. Con
   l'indirizzo vero l'`AppShell` chiama `onNavigate` **e** il browser lo segue, ricaricando (dalla `v2.25.0`, con un indirizzo di questa origine e
   una `naviga` data alla cornice, lo segue lei con `naviga`: la ricarica non c'è più, la doppia chiamata sì). Chiesto al design system
