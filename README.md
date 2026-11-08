@@ -214,7 +214,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.599 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.591 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -274,7 +274,8 @@ voci e l'Esc che non chiude anche il cassetto, e il lotto 0523 il nome «Moduli 
 scende a 1.362 byte. Dalla `v4.26.1` risale a 1.472 (1.462 misurati), per eccezione senza contropartita (sì di zr-pm-07 dell'08/11): il
 nome del selettore dei workspace e del pulsante del profilo dal loro testo, finché l'`AppShell` non lo fa da sé (righe 240 e 241).
 Dalla `v4.30.0` il JS d'ingresso scende di 73 byte, alla misura più 20: ogni componente del design system ha un modulo suo (#3511),
-e la build prende di ognuno solo ciò che la cornice usa.
+e la build prende di ognuno solo ciò che la cornice usa. Dalla `v4.31.0` scende di altri 8, alla misura più 20: la cornice chiede
+il solo file della lingua della persona, senza l'inglese (#3530).
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
@@ -499,6 +500,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.28.0` | il design system `ds-1794240112-cc62`, il lotto 0526 (richieste 224-231, dalla board di zr-board): la `KanbanBoard` sposta le liste dalla maniglia, col puntatore o da tastiera (Spazio prende, ← → spostano, Spazio lascia, Esc annulla), e dal «⋯» della lista con «Sposta a sinistra» e «Sposta a destra», con ogni passo detto al lettore di schermo (`onMoveList`); una scheda non entra dove la lista da cui parte non la manda (`transitions`), dove i requisiti del modulo dicono di no (`canEnter`, con le regole accese sotto l'intestazione, `rules`) o in una lista piena col limite che blocca (`limit` e `blocks`: «Al limite», «Aggiungi scheda» spento), e la lista che la rifiuta lo dice («Non consentito qui», `onRefuse`); la `KanbanColumn` ha il ruolo e la soglia delle pronte (`kind`, `threshold`) e un'azione a tutta larghezza (`action`); il «⋯» della lista ha «Rinomina» (`onRenameList`) e le voci del modulo (`actions`), e «Vai alla lista» porta il fuoco su una lista scelta per nome; con `onMove` o `onMoveList` la board è controllata e segue le liste che il modulo le ridà (il server decide); vicino al bordo la corsia scorre a velocità fissa. Senza le props nuove la board è quella di prima. Niente da fare per i moduli: zr-board può passare la sua board alle props nuove quando vuole |
 | `v4.29.0` | Finanze non è più in arrivo nel registro (#3567): `in_arrivo: false` per `flow`, come per il CRM dalla `v1.16.0`, perché il backoffice la dà `disponibile` a ogni workspace. Cambia solo ciò che vede chi non ha una sessione (Registrati di zr-home): Finanze vi compare «Disponibile». La cornice con la sessione non cambia. Niente da fare per i moduli: arriva con l'aggiornamento |
 | `v4.30.0` | un modulo per componente (#3511): `…/zeiras/componenti` ri-esporta ogni nome dal suo modulo, e un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche importato da `componenti`; il JS d'ingresso della sola cornice scende di 73 byte. MentionField, AddressField e Alert sono lo stesso componente da `componenti`, da `window.Zeiras` e dal loro modulo: un contatore degli id solo, le etichette di partenza condivise, e con `bundle.css` gli stili dei due campi arrivano anche dai loro moduli, uguali (un'app che prende `componenti` intero, come l'ingresso di sempre, ha nel CSS d'ingresso anche quei due file). I componenti che usano gli id del bundle (Field, Checkbox, Dialog, Menu, MentionField e altri) portano con sé il modulo dell'`AppShell`, che conta gli id con loro: con la cornice nell'ingresso c'è già. E le frasi delle notifiche nella sola lingua della pagina (Decisione 23057, per zr-home #3486): alla prima apertura della campanella la cornice chiede il solo file delle frasi della lingua della persona, non più anche quello dell'inglese (circa 1,9 KB con gzip in meno per chi usa l'italiano o lo spagnolo); ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI. Il pezzo della campanella scende a 2.685 byte. `…/frasi` resta com'è | niente; con `zeiras.css` i due campi si possono prendere anche da `componenti` | un caso che prende MentionField o AddressField dal suo modulo e confronta l'id del campo con un numero fisso va riletto: il contatore è quello di tutti i componenti; un caso che conta i file delle frasi chiesti all'apertura della campanella ne trova uno, non due | i pezzi a richiesta delle pagine che usano componenti che la cornice non usa: il componente sta lì, non nel JS d'ingresso; la campanella aperta su `layout.html`, `staff.html` e `cliente.html`, in italiano, spagnolo e inglese |
+| `v4.31.0` | i testi della cornice nella sola lingua della pagina (#3530): una pagina in spagnolo chiede, e precarica con `Cornice::precaricoDellaLingua()`, il solo `es.json`, senza l'inglese; in inglese o in una lingua che zr-core non ha il solo `en.json`, in italiano niente. La riga del Blade non cambia. Ogni file di `resources/lingue` ha ogni testo dell'italiano, non vuoto e nessuno in più, anche una lingua aggiunta: lo controlla la CI. Il JS d'ingresso della sola cornice scende di 8 byte. Niente da fare per chi aggiorna |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -3285,8 +3287,9 @@ frontend si fida dei proxy —, e chi mandava un host suo lo ritrovava negli ind
 
 Dalla `v4.4.0` nel JS d'ingresso c'è una lingua sola della cornice, l'italiano, la lingua di quasi tutte le persone di
 Zeiras (Decisione 20618 di zr-pm). L'inglese e lo spagnolo sono file della build, `.json` con l'impronta nel nome, che la
-cornice chiede con `fetch`: la lingua della persona e l'inglese, da cui prende i testi che a quella mancano. Una lingua che
-zr-core non ha (`pt-BR`) ha i testi dell'inglese. La richiesta parte quando il JS d'ingresso è eseguito, dalla lingua del
+cornice chiede con `fetch`: dalla `v4.31.0` (#3530) il solo file della lingua della persona, che ha tutti i testi (lo controlla
+la CI: una lingua con un testo in meno, vuoto o in più è rossa); fino alla `v4.30.0` anche l'inglese, per i testi che a quella
+mancavano. Una lingua che zr-core non ha (`pt-BR`) ha i testi dell'inglese. La richiesta parte quando il JS d'ingresso è eseguito, dalla lingua del
 documento (`<html lang>`), e la cornice la chiede da sé se la lingua dei dati è un'altra. Finché la lingua non è arrivata la
 cornice non si disegna: è vuota un attimo, mai in un'altra lingua. Se la lingua non arriva si disegna in italiano. A un
 cambio di lingua resta in quella di prima finché la nuova non è arrivata. Anche `testi` e `nomeDellaVoce`, per chi li usa
@@ -3301,8 +3304,9 @@ precarico dei file di quella lingua, così il browser comincia a scaricarli insi
 @vite('resources/js/app.tsx')
 ```
 
-- **Che cosa scrive**: in spagnolo due righe, `<link rel="preload" as="fetch" href="/build/assets/es-….json" crossorigin>` e
-  quella dell'inglese; in inglese o in una lingua che zr-core non ha, quella dell'inglese; in italiano niente. Sempre
+- **Che cosa scrive**: in spagnolo una riga, `<link rel="preload" as="fetch" href="/build/assets/es-….json" crossorigin>`
+  (fino alla `v4.30.0` anche quella dell'inglese: dalla `v4.31.0` la riga del Blade resta la stessa e precarica il solo file
+  della lingua); in inglese o in una lingua che zr-core non ha, quella dell'inglese; in italiano niente. Sempre
   `as="fetch"` e `crossorigin`, la forma della richiesta di `fetch`: con un'altra il browser scaricherebbe il file due
   volte. La lingua è quella dell'app (`App::getLocale()`): la riga va dopo il middleware che la mette («La parte server»).
   Una lingua che non ha la forma di una lingua non precarica niente.

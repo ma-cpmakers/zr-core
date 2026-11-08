@@ -4,9 +4,10 @@ import type { AppShellLabels } from '../zeiras/index';
 import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } from './registro';
 
 // Le lingue della cornice (resources/lingue): un file per lingua, e il nome del file è il codice. Una lingua nuova è un file in
-// più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Dove una lingua non ha un testo
-// si mostra l'inglese di zr-core: per questo i testi si danno all'`AppShell` sempre tutti, perché uno che manca lo
-// riempirebbe lui col suo default italiano.
+// più, senza toccare il codice, se per le non lette le bastano due forme (vedi `unreadOne`). Ogni file ha ogni testo
+// dell'italiano, e lo controlla la CI (`LingueTest.php`); dove una lingua non ha un testo si mostra l'inglese di zr-core, se è
+// arrivato: per questo i testi si danno all'`AppShell` sempre tutti, perché uno che manca lo riempirebbe lui col suo default
+// italiano.
 
 /**
  * I testi della cornice: tutti quelli dell'`AppShell` e quelli di zr-core, col nome di ogni prodotto del registro per id, quello
@@ -127,7 +128,10 @@ const codiceDelFile = (percorso: string) => codiceDi(percorso.replace(/^.*\/|\.j
 /** Il codice della lingua dell'ingresso e quello del ripiego, dai loro file. */
 export const DELL_INGRESSO = codiceDelFile('../lingue/it.json');
 const DEL_RIPIEGO = codiceDelFile('../lingue/en.json');
-/** L'inglese, il ripiego dei testi che mancano a una lingua: niente finché non è arrivato. */
+/**
+ * L'inglese, il ripiego dei testi che mancano a una lingua: niente finché non è arrivato. Dalla `v4.31.0` (voce 3530) arriva solo
+ * a chi lo usa o ha una lingua che zr-core non ha: una lingua che c'è non lo chiede, perché ha tutti i testi.
+ */
 let inglese: Partial<TestiDellaCornice> | undefined;
 
 /** Il codice di una lingua com'è nei nomi dei file: minuscolo, col trattino (`es_ES` → `es-es`). */
@@ -169,7 +173,7 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, a
     const pronta = (lingua: string) => {
         const codice = fileDi(lingua);
 
-        return codice === DELL_INGRESSO || ((codice === undefined || arrivati.has(codice)) && ripiego() !== undefined);
+        return codice === DELL_INGRESSO || (codice === undefined ? ripiego() !== undefined : arrivati.has(codice));
     };
     /** Un file a richiesta, una richiesta sola alla volta: arrivato resta, non arrivato si richiede alla chiamata dopo. */
     const chiedi = (codice: string): Promise<unknown> | undefined => {
@@ -196,8 +200,8 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, a
         /** I codici delle lingue, uno per file. */
         lingue: [...perCodice.keys()] as readonly string[],
         /**
-         * I testi in una lingua, sempre tutti: quelli che la lingua non ha, o ha vuoti, e quelli di una lingua che non c'è sono in
-         * inglese. Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Finché la lingua non è pronta
+         * I testi in una lingua, sempre tutti: quelli di una lingua che non c'è sono in inglese, e quelli che una lingua non ha, o ha
+         * vuoti, in inglese se è arrivato, se no in italiano (la CI non lascia uscire una lingua con un testo in meno). Una variante regionale senza file prende la lingua base: `it-IT`, `IT`, `es_ES`. Finché la lingua non è pronta
          * (`pronta`) sono quelli dell'italiano, la lingua dell'ingresso: la cornice non li mostra, e li mostra solo se la lingua
          * non arriva. Si compongono una volta per file, e ogni chiamata dà lo stesso oggetto, congelato: è di tutti quelli che lo
          * chiedono, e non si cambia. Lo dice anche il tipo: una scrittura non passa `tsc`.
@@ -229,17 +233,17 @@ export function caricaLingue(file: Record<string, Partial<TestiDellaCornice>>, a
         linguaDeiTesti(lingua: string): string | undefined {
             return fileDi(lingua) ?? DEL_RIPIEGO;
         },
-        /** Se i testi di una lingua sono pronti: l'italiano sempre; un'altra lingua quando sono arrivati il suo file e l'inglese. */
+        /** Se i testi di una lingua sono pronti: l'italiano sempre; un'altra lingua quando è arrivato il suo file, o l'inglese per una che zr-core non ha. */
         pronta,
         /**
-         * Chiede i file che servono a una lingua — il suo e l'inglese, il ripiego dei testi che le mancano; per l'italiano
-         * nessuno — e si compie quando la lingua è pronta. Due richieste insieme sono una. Se un file non arriva la promessa è
-         * respinta, e la chiamata dopo lo richiede.
+         * Chiede il file che serve a una lingua — il suo, o l'inglese per una lingua che zr-core non ha; per l'italiano nessuno,
+         * e dalla `v4.31.0` (voce 3530) mai l'inglese accanto a un'altra lingua — e si compie quando la lingua è pronta. Due
+         * richieste insieme sono una. Se il file non arriva la promessa è respinta, e la chiamata dopo lo richiede.
          */
         carica(lingua: string): Promise<void> {
-            const codice = fileDi(lingua);
+            const codice = fileDi(lingua) ?? DEL_RIPIEGO;
 
-            return codice === DELL_INGRESSO ? Promise.resolve() : Promise.all([codice, DEL_RIPIEGO].map((questo) => questo && chiedi(questo))).then(() => undefined);
+            return codice === DELL_INGRESSO ? Promise.resolve() : Promise.resolve(chiedi(codice)).then(() => undefined);
         },
     };
 }

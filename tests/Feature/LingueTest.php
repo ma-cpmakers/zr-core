@@ -902,7 +902,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
     foreach (array_intersect($prodotti, chiaviDiAppShellLabels()) as $id) {
         $problemi[] = "«{$id}» è l'id di un prodotto e un testo dell'AppShell";
     }
-    foreach (['it', 'es', 'en'] as $codice) {
+    // Ogni lingua, anche una aggiunta: dalla `v4.31.0` (voce 3530) la cornice chiede il solo file della lingua, senza l'inglese.
+    foreach (array_unique(['it', 'es', 'en', ...array_keys($lingue)]) as $codice) {
         $testi = $lingue[$codice] ?? [];
         foreach (array_diff($chiavi, array_keys($testi)) as $chiave) {
             $problemi[] = "$codice: manca «{$chiave}»";
@@ -1479,6 +1480,21 @@ function problemiDelleFrasiDiOgniLingua(array $frasi): array
 
     return $problemi;
 }
+
+it('una lingua aggiunta ai testi della cornice con un testo in meno, uno vuoto o uno in più non passa: la cornice chiede il solo file della lingua (voce 3530 · 4)', function () {
+    $lingue = lingueDellaCornice();
+    $lingue['fr'] = $lingue['en'];
+    unset($lingue['fr']['logout']);
+    $lingue['fr']['soon'] = '  ';
+    $lingue['fr']['ciao'] = 'Salut';
+
+    expect(problemiDelleLingue(lingueDellaCornice()))->toBe([])
+        ->and(problemiDelleLingue($lingue))->toEqualCanonicalizing([
+            'fr: manca «logout»',
+            'fr: «ciao» non è un testo della cornice',
+            'fr: «soon» è vuoto',
+        ]);
+});
 
 it('ogni file delle frasi ha ogni frase dell\'inglese, non vuota, e nessuna in più: la cornice chiede solo il file della lingua (voce #3511 · 10)', function () {
     $frasi = fileDelleLingue('notifiche/');

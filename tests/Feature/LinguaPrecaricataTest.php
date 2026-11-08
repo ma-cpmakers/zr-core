@@ -59,18 +59,18 @@ afterEach(function () {
     File::deleteDirectory($this->radice);
 });
 
-it('in `es` la pagina precarica i file di spagnolo e inglese del manifest del modulo, come `fetch` (sprint 106 · T3.1)', function () {
+it('in `es` la pagina precarica il solo file dello spagnolo del manifest del modulo, come `fetch`: dalla v4.31.0 non l\'inglese (sprint 106 · T3.1; voce 3530 · 3)', function () {
     App::setLocale('es');
 
     expect((string) Cornice::precaricoDellaLingua())
-        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json')."\n".precaricoDi($this->cartella, 'en-ENEN3333.json'));
+        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json'));
 });
 
-it('una lingua con la regione prende il file della lingua base: `es_MX` e `es-AR` precaricano spagnolo e inglese (sprint 106 · T3.1)', function (string $lingua) {
+it('una lingua con la regione prende il file della lingua base: `es_MX` e `es-AR` precaricano il solo spagnolo (sprint 106 · T3.1; voce 3530 · 3)', function (string $lingua) {
     App::setLocale($lingua);
 
     expect((string) Cornice::precaricoDellaLingua())
-        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json')."\n".precaricoDi($this->cartella, 'en-ENEN3333.json'));
+        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json'));
 })->with(['es_MX', 'es-AR', 'ES']);
 
 it('in `pt-BR`, che zr-core non ha, e in `en` la pagina precarica il solo inglese (sprint 106 · T3.1)', function (string $lingua) {
@@ -92,7 +92,7 @@ it('il precarico si scrive con `{{ }}`: Blade non lo rende testo (sprint 106 · 
         ->toBe('<head>'.precaricoDi($this->cartella, 'en-ENEN3333.json').'</head>');
 });
 
-it('con il pacchetto installato in symlink la chiave è il percorso vero del file, non quello sotto `vendor/` (sprint 106 · T3.1)', function () {
+it('con il pacchetto installato in symlink la chiave è il percorso vero del file, non quello sotto `vendor/` (sprint 106 · T3.1; voce 3530 · 3)', function () {
     $frontend = $this->radice.'/frontend';
     File::ensureDirectoryExists($frontend.'/vendor/zeiras');
     symlink(realpath(RADICE_DEL_PACCHETTO), $frontend.'/vendor/zeiras/zr-core');
@@ -103,7 +103,7 @@ it('con il pacchetto installato in symlink la chiave è il percorso vero del fil
     App::setLocale('es');
 
     expect((string) Cornice::precaricoDellaLingua())
-        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json')."\n".precaricoDi($this->cartella, 'en-ENEN3333.json'));
+        ->toBe(precaricoDi($this->cartella, 'es-ESES2222.json'));
 });
 
 it('senza manifest, con Vite in sviluppo o con una lingua che non è nel manifest la pagina non va in errore: niente precarico (sprint 106 · T3.2)', function (string $caso) {
@@ -117,11 +117,11 @@ it('senza manifest, con Vite in sviluppo o con una lingua che non è nel manifes
     expect((string) Cornice::precaricoDellaLingua())->toBe('');
 })->with(['senza manifest', 'Vite in sviluppo', 'lingua fuori dal manifest']);
 
-it('solo lo spagnolo nel manifest: precarica quello, e l\'inglese che manca non ferma la pagina (sprint 106 · T3.2)', function () {
-    manifestDiProva($this->cartella, ['../resources/lingue/es.json' => ['file' => 'assets/es-ESES2222.json']]);
+it('solo l\'inglese nel manifest: lo spagnolo che manca non ferma la pagina, e al suo posto non si precarica l\'inglese (sprint 106 · T3.2; voce 3530 · 3)', function () {
+    manifestDiProva($this->cartella, ['../resources/lingue/en.json' => ['file' => 'assets/en-ENEN3333.json']]);
     App::setLocale('es');
 
-    expect((string) Cornice::precaricoDellaLingua())->toBe(precaricoDi($this->cartella, 'es-ESES2222.json'));
+    expect((string) Cornice::precaricoDellaLingua())->toBe('');
 });
 
 it('una lingua che non ha la forma di una lingua non precarica niente, nemmeno l\'inglese (sprint 106 · T3.2)', function (string $lingua) {
