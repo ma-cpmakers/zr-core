@@ -749,6 +749,14 @@ describe('la rotta finta della ricerca legge la parola dal corpo di una POST', (
         ], workspace: 'uat-marketing' } });
     });
 
+    // Sprint 119 (voce #2916): come ricerca.crea dalla #2917 di zr-backoffice, un collega si trova anche da un pezzo della sua
+    // email; l'email di un altro tipo non conta (le schede d'esempio non ne hanno, il caso guarda che nessun altro risultato esca).
+    it('POST /cornice/ricerca trova il collega anche da un pezzo della sua email, chiocciola compresa (sprint 119)', async () => {
+        const katherine = { tipo: 'workspace.membro', id: 'uat-m1', titolo: 'UAT Katherine Johnson', contesto: { ruolo: 'amministratore', email: 'uat-katherine@example.com' } };
+        expect(await rispostaDi('/cornice/ricerca', cerca('katherine@exa'), '?schede=1&crm_attivo=1&prenotazioni=1')).toStrictEqual({ stato: 200, corpo: { data: [katherine], workspace: 'uat-marketing' } });
+        expect(await rispostaDi('/cornice/ricerca', cerca('@example.com'))).toStrictEqual({ stato: 200, corpo: { data: [katherine], workspace: 'uat-marketing' } });
+    });
+
     // Sprint 25 · T4 (voce #1639): i risultati d'esempio sono quelli di ricerca.crea. Per prime le fonti nuove — schede,
     // contatti, aziende, opportunità —, poi board e cartelle in ordine di titolo; ogni risultato porta `contesto`, i testi per
     // riconoscerlo o `null`, e un contatto può non avere né azienda né ruolo.

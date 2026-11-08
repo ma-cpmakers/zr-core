@@ -483,7 +483,8 @@ export function rotteFinte(slugDellaSessione: () => string | undefined, istante?
                 // «ua» dà il risultato vecchio di una board, ma non dove nessun modulo è attivo: lì passa dal filtro come ogni parola.
                 data: parola === 'ua' && !senzaModuli
                     ? [{ tipo: 'board.board', id: 'uat-ua', titolo: 'UAT risultato vecchio di «ua»', contesto: null }]
-                    : risultati().filter((risultato) => risultato.titolo.toLowerCase().includes(parola.toLowerCase()) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
+                    // Come ricerca.crea dalla #2917 di zr-backoffice (sprint 119): un collega si trova anche da un pezzo della sua email.
+                    : risultati().filter((risultato) => [risultato.titolo, risultato.tipo === 'workspace.membro' ? risultato.contesto?.email : undefined].some((testo) => typeof testo === 'string' && testo.toLowerCase().includes(parola.toLowerCase())) && (!senzaModuli || risultato.tipo.startsWith('workspace.'))),
                 workspace: slugDellaSessione(),
                 // Di chi è, come la rotta vera dalla `v2.4.0` (sprint 37 · T4): senza la persona della «sessione» non lo dice.
                 persona: personaDellaSessione?.()?.email,

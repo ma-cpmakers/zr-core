@@ -398,8 +398,9 @@ it('il controllo accetta `codici` solo come un oggetto che a chiavi di «contest
         ->toBe(['workspace.membro', 'board.scheda', 'crm.organizzazione'])
         // Quali codici, il controllo non lo sa: un elenco diverso, fatto bene, passa.
         ->and($delMembro(['ruolo' => ['proprietario', 'ospite']]))->toBe([])
-        // Una chiave che non è in `contesto`: il suo valore non arriverebbe mai al browser.
-        ->and($delMembro(['email' => ['personale']]))->toBe(['home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»'])
+        // Una chiave che non è in `contesto`: il suo valore non arriverebbe mai al browser. Dallo sprint 119 l'`email` lo è
+        // (senza codici: un'email non è un codice), e l'esempio è un'altra chiave.
+        ->and($delMembro(['mansione' => ['direttrice']]))->toBe(['home.workspace.membro: «codici» nomina «mansione», che non è una chiave di «contesto»'])
         ->and($delMembro(['ruolo' => ['membro'], 'Ruolo' => ['membro']]))->toBe(['home.workspace.membro: «codici» nomina «Ruolo», che non è una chiave di «contesto»'])
         // La chiave di un'altra risorsa non vale: una scheda ha `board` e `lista`, un'azienda non ha `contesto`.
         ->and($con(1, 0, ['ruolo' => ['membro']]))->toBe(['pm.board.scheda: «codici» nomina «ruolo», che non è una chiave di «contesto»'])
@@ -410,9 +411,9 @@ it('il controllo accetta `codici` solo come un oggetto che a chiavi di «contest
             ['ruolo' => 'membro'], ['ruolo' => ['primo' => 'membro']], ['ruolo' => null],
         ]))->toBe(array_fill(0, 8, ['home.workspace.membro: i codici di «ruolo» non sono un elenco di codici, minuscoli e diversi']))
         // Tutte e due le cose insieme.
-        ->and($delMembro(['email' => []]))->toBe([
-            'home.workspace.membro: «codici» nomina «email», che non è una chiave di «contesto»',
-            'home.workspace.membro: i codici di «email» non sono un elenco di codici, minuscoli e diversi',
+        ->and($delMembro(['mansione' => []]))->toBe([
+            'home.workspace.membro: «codici» nomina «mansione», che non è una chiave di «contesto»',
+            'home.workspace.membro: i codici di «mansione» non sono un elenco di codici, minuscoli e diversi',
         ])
         // E ciò che non è un oggetto: vuoto, un elenco, un testo, niente.
         ->and(array_map($delMembro, [[], ['proprietario', 'membro'], 'ruolo', null]))
