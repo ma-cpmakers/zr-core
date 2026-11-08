@@ -21,10 +21,10 @@ afterEach(() => {
 });
 
 describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', () => {
-    // Voce #3511 · AC 7 (Decisione 23057). Fino alla `v4.28.0` partivano due richieste, il file della lingua e quello
+    // Voce 3511 · AC 7 (Decisione 23057). Fino alla `v4.28.0` partivano due richieste, il file della lingua e quello
     // dell'inglese, per le frasi che la lingua non aveva; dalla `v4.29.0` ogni lingua di zr-core ha tutte le frasi dell'inglese
     // (lo controlla `LingueTest.php`), e la cornice chiede solo il file della lingua.
-    it.each([['it', /\/it\.json/], ['es', /\/es\.json/], ['es-MX', /\/es\.json/]])('per «%s» parte una sola richiesta, il file della lingua, all\'indirizzo della build e con un tempo massimo di dieci secondi: `en.json` non si chiede, nemmeno dopo (sprint 30 · T1.3, T1.4; voce #3511 · 7)', async (lingua, delFile) => {
+    it.each([['it', /\/it\.json/], ['es', /\/es\.json/], ['es-MX', /\/es\.json/]])('per «%s» parte una sola richiesta, il file della lingua, all\'indirizzo della build e con un tempo massimo di dieci secondi: `en.json` non si chiede, nemmeno dopo (sprint 30 · T1.3, T1.4; voce 3511 · 7)', async (lingua, delFile) => {
         const attesa = vi.spyOn(AbortSignal, 'timeout');
         const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT titolo' }));
         vi.stubGlobal('fetch', fetchFinto);
@@ -82,9 +82,9 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
-    // Voce #3511 · AC 7: dalla `v4.29.0` l'inglese di chi ha un'altra lingua non si chiede, e un `en.json` che arriverebbe male non
+    // Voce 3511 · AC 7: dalla `v4.29.0` l'inglese di chi ha un'altra lingua non si chiede, e un `en.json` che arriverebbe male non
     // conta. Per chi usa l'inglese, le frasi arrivate male sono quelle della sua lingua (sopra, con «en»).
-    it.each(ARRIVATE_MALE)('un `en.json` che darebbe %s non conta per chi ha l\'italiano: non si chiede, e le frasi della lingua sono pronte (sprint 33 · T3.1; voce #3511 · 7)', async (_caso, corpo) => {
+    it.each(ARRIVATE_MALE)('un `en.json` che darebbe %s non conta per chi ha l\'italiano: non si chiede, e le frasi della lingua sono pronte (sprint 33 · T3.1; voce 3511 · 7)', async (_caso, corpo) => {
         const fetchFinto = vi.fn(async (indirizzo: string) => risposta(/\/en\.json/.test(indirizzo) ? corpo : { 'notificationTitle.uat': 'UAT' }));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte } = await import('./campanella');
@@ -94,7 +94,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
-    it.each(ARRIVATE_MALE)('per chi usa l\'inglese un 200 con %s al posto di `en.json` è un errore, e niente resta in memoria (sprint 33 · T3.1; voce #3511 · 8)', async (_caso, corpo) => {
+    it.each(ARRIVATE_MALE)('per chi usa l\'inglese un 200 con %s al posto di `en.json` è un errore, e niente resta in memoria (sprint 33 · T3.1; voce 3511 · 8)', async (_caso, corpo) => {
         const fetchFinto = vi.fn(async (_indirizzo: string) => risposta(corpo));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte } = await import('./campanella');

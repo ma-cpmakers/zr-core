@@ -7827,8 +7827,8 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         return fetchFinto;
     };
 
-    // Voce #3511 · AC 7 e 9: fino alla `v4.28.0` all'apertura partiva anche l'inglese; dalla `v4.29.0` solo la lingua dei dati.
-    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura parte solo quello della lingua dei dati, una volta, non l\'inglese né lo spagnolo, e il titolo è la frase di sempre (T1.3; voce #3511 · 7, 9)', async () => {
+    // Voce 3511 · AC 7 e 9: fino alla `v4.28.0` all'apertura partiva anche l'inglese; dalla `v4.29.0` solo la lingua dei dati.
+    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura parte solo quello della lingua dei dati, una volta, non l\'inglese né lo spagnolo, e il titolo è la frase di sempre (T1.3; voce 3511 · 7, 9)', async () => {
         const frasi = caricatore();
         conLElenco();
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);

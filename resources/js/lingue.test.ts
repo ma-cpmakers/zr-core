@@ -1086,7 +1086,7 @@ describe('rigaDellaNotifica', () => {
 
 // Sprint 30 · T1 (voce #1875). Le frasi delle notifiche stanno in un file loro per lingua (resources/lingue/notifiche) e la
 // cornice le carica quando servono, una volta sola: fino alla `v4.28.0` il file della lingua e quello dell'inglese, dalla
-// `v4.29.0` (voce #3511 · AC 7 e 8) solo quello della lingua, che ha tutte le frasi dell'inglese (lo controlla `LingueTest.php`).
+// `v4.29.0` (voce 3511 · AC 7 e 8) solo quello della lingua, che ha tutte le frasi dell'inglese (lo controlla `LingueTest.php`).
 // Chi mostra le notifiche in una pagina sua le ha subito, da `./frasi`, e gli stessi testi.
 describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     /** Tre file che dicono quando sono chiesti; `rotti` non arrivano. */
@@ -1110,7 +1110,7 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
         return { chiesti, rotti, ...aRichiesta };
     }
 
-    it('per una lingua parte il suo file solo, mai l\'inglese né gli altri; prima non c\'è niente in memoria, dopo le frasi restano e non si richiedono, e due richieste insieme sono una (T1.3, T1.6; voce #3511 · 7)', async () => {
+    it('per una lingua parte il suo file solo, mai l\'inglese né gli altri; prima non c\'è niente in memoria, dopo le frasi restano e non si richiedono, e due richieste insieme sono una (T1.3, T1.6; voce 3511 · 7)', async () => {
         const frasi = fileFinti();
         expect(frasi.chiesti).toStrictEqual([]);
         expect(frasi.pronte('it')).toBeUndefined();
@@ -1129,9 +1129,9 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
         expect(frasi.chiesti).toHaveLength(1);
     });
 
-    // Fino alla `v4.28.0` una lingua senza una frase la aveva in inglese. Dalla `v4.29.0` (voce #3511 · AC 10) una lingua di
+    // Fino alla `v4.28.0` una lingua senza una frase la aveva in inglese. Dalla `v4.29.0` (voce 3511 · AC 10) una lingua di
     // zr-core non può essere senza una frase: lo ferma la CI (`LingueTest.php`), e la cornice non chiede l'inglese per niente.
-    it('le frasi di una lingua sono quelle del suo file, senza l\'inglese; l\'inglese, e una lingua che zr-core non ha, chiedono il solo inglese (T1.4; voce #3511 · 7, 8)', async () => {
+    it('le frasi di una lingua sono quelle del suo file, senza l\'inglese; l\'inglese, e una lingua che zr-core non ha, chiedono il solo inglese (T1.4; voce 3511 · 7, 8)', async () => {
         const frasi = fileFinti();
         const spagnole = await frasi.carica('es');
 
