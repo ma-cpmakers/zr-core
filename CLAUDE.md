@@ -33,7 +33,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   È di zr-core, non del backoffice.
 - **Le traduzioni della cornice**: due file per lingua, i testi della cornice e le frasi delle notifiche (che la cornice
   chiede con `fetch` quando si apre la campanella) — italiano, spagnolo, inglese per partire, e le lingue si devono
-  poter aggiungere; se un testo manca si mostra l'inglese. Nessun testo scritto nel codice. Accanto, coi pezzi a richiesta che
+  poter aggiungere; se un testo manca si mostra l'inglese (le frasi delle notifiche, dalla `v4.29.0`, non mancano mai: ogni
+  lingua le ha tutte, lo controlla la CI, e il pannello chiede solo il file della lingua). Nessun testo scritto nel codice. Accanto, coi pezzi a richiesta che
   li leggono, i testi delle risorse della ricerca (`resources/lingue/ricerca/`, dalla `v3.6.0`) e quelli dei due avvisi della
   cornice ridotta (`resources/lingue/avvisi/`, dalla `v3.7.0`).
 - **La parte server**: ciò che serve al frontend per dare alla cornice i dati della persona — chi è, la sua lingua, le

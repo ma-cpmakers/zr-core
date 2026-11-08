@@ -190,7 +190,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 | la stessa cornice, dall'ingresso di sempre | 211,0 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
-notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1 KB l'uno con gzip), che la cornice chiede con
+notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
 `fetch` quando si apre la campanella; dalla `v4.29.0` una pagina ne scarica uno solo, quello della lingua della persona
 (prima due, con quello dell'inglese). Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
 di JS, i rimedi provvisori di tastiera (circa 1,9 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel

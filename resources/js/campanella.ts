@@ -51,7 +51,9 @@ export function fraseConINomi(frase: unknown, chi: string, cosa?: string, quando
 
 /**
  * Le frasi di una lingua, sempre tutte quelle che l'inglese ha: quelle che la lingua non ha, o ha vuote, sono in inglese, come
- * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese.
+ * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese. Dalla `v4.29.0`
+ * (voce 3511) la cornice (`frasiARichiesta`) la chiama col solo file della lingua al posto dell'inglese: le frasi sono quelle
+ * del file, congelate, e che abbia tutte e sole quelle dell'inglese lo controlla la CI (`LingueTest.php`).
  */
 function componiFrasi(scelte: FrasiDelleNotifiche | undefined, inglesi: FrasiDelleNotifiche): Readonly<FrasiDelleNotifiche> {
     const frasi = { ...inglesi };

@@ -83,7 +83,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
     });
 
     // Voce 3511 · AC 7: dalla `v4.29.0` l'inglese di chi ha un'altra lingua non si chiede, e un `en.json` che arriverebbe male non
-    // conta. Per chi usa l'inglese, le frasi arrivate male sono quelle della sua lingua (sopra, con «en»).
+    // conta. Per chi usa l'inglese, le frasi arrivate male sono quelle della sua lingua (il caso sotto, con «en»).
     it.each(ARRIVATE_MALE)('un `en.json` che darebbe %s non conta per chi ha l\'italiano: non si chiede, e le frasi della lingua sono pronte (sprint 33 · T3.1; voce 3511 · 7)', async (_caso, corpo) => {
         const fetchFinto = vi.fn(async (indirizzo: string) => risposta(/\/en\.json/.test(indirizzo) ? corpo : { 'notificationTitle.uat': 'UAT' }));
         vi.stubGlobal('fetch', fetchFinto);
