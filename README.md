@@ -185,8 +185,10 @@ variabile del token da `zeiras-token.css`. Il modulo lo importa in quest'ordine:
 
 È un `@theme inline reference`: non scrive niente nella pagina, e un modulo che non usa una classe non paga niente. Esce da
 `npm run token` insieme a `zeiras-token.css`, e un token nuovo entra da sé al riallineamento. Un modulo che ha nel suo CSS lo stesso
-blocco `@theme` scritto a mano lo può togliere; gli alias suoi (`--spacing-space-*`, `--z-index-*`, la scala dei testi tolta con
-`--text-*: initial`) restano nel suo CSS, dopo l'import. Chi non usa Tailwind non lo importa.
+blocco `@theme` scritto a mano lo può togliere; gli alias che aggiungono nomi (`--spacing-space-*`, `--z-index-*`) restano nel
+suo CSS, dopo l'import. Una riga che svuota un gruppo di serie di Tailwind (`--text-*: initial`, `--color-*: initial`) va invece
+fra `@import 'tailwindcss'` e il tema del pacchetto: dopo, svuoterebbe anche i nomi del pacchetto, e le classi sparirebbero
+senza errore. Chi non usa Tailwind non lo importa.
 
 **Il JS**, da uno dei due ingressi del pacchetto (due dalla `v1.15.0`). React lo porta il frontend: il pacchetto non ne ha
 una copia. Dalla `v2.0.0` c'è un terzo ingresso, `…/resources/js/frasi`, solo per le tre funzioni di chi mostra le

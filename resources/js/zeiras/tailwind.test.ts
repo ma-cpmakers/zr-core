@@ -53,17 +53,27 @@ describe('il tema di Tailwind 4 coi nomi dei token (voce 3536)', () => {
     });
 
     it('i nomi che board, crm e cashflow usano oggi nel loro @theme ci sono tutti (AC 3)', () => {
-        // Dai blocchi `@theme` dei tre moduli, letti l'08/11/2026: colori, famiglie, raggi, ombre e stili di testo. Gli alias propri
-        // (`--spacing-space-*`, `--z-index-*`) restano nel loro app.css.
+        // Tutti i nomi dei blocchi `@theme` di board, crm e cashflow, letti l'08/11/2026 (revisione della voce, R2): colori, famiglie,
+        // raggi, ombre e stili di testo. Gli alias propri (`--spacing-space-*`, `--z-index-*`) restano nel loro app.css.
         const usati = [
-            'surface', 'surface-raised', 'surface-sunken', 'line', 'line-strong', 'ink', 'ink-muted', 'pine', 'pine-hover', 'on-pine', 'pine-soft',
-            'citrus', 'on-citrus', 'citrus-soft', 'citrus-ink', 'coral', 'on-coral', 'coral-soft', 'danger', 'danger-soft', 'warning', 'warning-soft',
-            'sky', 'sky-soft', 'plum', 'plum-soft', 'focus', 'scrim',
-        ].map((nome) => `--color-${nome}`).concat(
-            ['--font-sans', '--font-display', '--radius-2xs', '--radius-xs', '--radius-sm', '--radius-sm-md', '--radius-md', '--radius-md-lg', '--radius-lg'],
-            ['--shadow-card', '--shadow-lift', '--shadow-overlay', '--text-heading-1', '--text-heading-1--line-height', '--text-heading-1--font-weight'],
-            ['--text-heading-1--letter-spacing', '--text-body', '--text-body-sm', '--text-caption', '--text-overline', '--text-overline--letter-spacing'],
-        );
+            '--color-citrus', '--color-citrus-ink', '--color-citrus-soft', '--color-coral', '--color-coral-soft',
+            '--color-danger', '--color-danger-soft', '--color-focus', '--color-ink', '--color-ink-muted', '--color-line',
+            '--color-line-strong', '--color-on-citrus', '--color-on-coral', '--color-on-pine', '--color-pine',
+            '--color-pine-hover', '--color-pine-soft', '--color-plum', '--color-plum-soft', '--color-scrim', '--color-sky',
+            '--color-sky-soft', '--color-surface', '--color-surface-raised', '--color-surface-sunken', '--color-warning',
+            '--color-warning-soft', '--font-display', '--font-sans', '--radius-2xs', '--radius-lg', '--radius-md',
+            '--radius-md-lg', '--radius-sm', '--radius-sm-md', '--radius-xs', '--shadow-card', '--shadow-lift',
+            '--shadow-overlay', '--text-body', '--text-body--font-weight', '--text-body--line-height', '--text-body-sm',
+            '--text-body-sm--font-weight', '--text-body-sm--line-height', '--text-caption', '--text-caption--font-weight',
+            '--text-caption--line-height', '--text-display', '--text-display--font-weight', '--text-display--letter-spacing',
+            '--text-display--line-height', '--text-display-xl', '--text-display-xl--font-weight',
+            '--text-display-xl--letter-spacing', '--text-display-xl--line-height', '--text-heading-1',
+            '--text-heading-1--font-weight', '--text-heading-1--letter-spacing', '--text-heading-1--line-height',
+            '--text-heading-2', '--text-heading-2--font-weight', '--text-heading-2--line-height', '--text-heading-3',
+            '--text-heading-3--font-weight', '--text-heading-3--line-height', '--text-label', '--text-label--font-weight',
+            '--text-label--line-height', '--text-overline', '--text-overline--font-weight', '--text-overline--letter-spacing',
+            '--text-overline--line-height',
+        ];
 
         expect(usati.filter((nome) => !tema.has(nome))).toStrictEqual([]);
     });

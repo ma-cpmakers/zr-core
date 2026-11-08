@@ -2,6 +2,8 @@
 // vitest provano il generatore anche con token che il file non ha. Dalla v5.0.0 (voce #3536) le funzioni sono qui e lo script
 // scrive i due file: le variabili (zeiras-token.css) e il tema di Tailwind 4 coi loro nomi (zeiras-tailwind.css).
 
+const stiliDiTesto = (token) => token.type.groups.flatMap((gruppo) => gruppo.styles);
+
 const valore = (testo) => String(testo).replace(/^\{([a-z0-9-]+)\}$/, 'var(--$1)');
 
 /** Le variabili di zeiras-token.css, `[nome, valore]`, nell'ordine del file. */
@@ -12,16 +14,19 @@ export function variabiliDeiToken(token) {
             gruppo.tokens.map(({ name, value }) => [`--${name}`, valore(value)]),
         ),
         ...Object.entries(token.type.families).map(([famiglia, testo]) => [`--font-${famiglia}`, valore(testo)]),
-        ...stiliDiTesto(token).flatMap(({ name, fontSize, lineHeight, fontWeight, letterSpacing }) => [
-            [`--text-${name}`, fontSize],
-            [`--text-${name}--line-height`, lineHeight],
-            [`--text-${name}--font-weight`, fontWeight],
-            ...(letterSpacing === undefined ? [] : [[`--text-${name}--letter-spacing`, letterSpacing]]),
-        ]),
+        ...variabiliDiTesto(token),
     ];
 }
 
-const stiliDiTesto = (token) => token.type.groups.flatMap((gruppo) => gruppo.styles);
+/** Le variabili degli stili di testo, coi nomi del tema di Tailwind 4: misura, interlinea, peso e, dove c'è, spaziatura. */
+function variabiliDiTesto(token) {
+    return stiliDiTesto(token).flatMap(({ name, fontSize, lineHeight, fontWeight, letterSpacing }) => [
+        [`--text-${name}`, fontSize],
+        [`--text-${name}--line-height`, lineHeight],
+        [`--text-${name}--font-weight`, fontWeight],
+        ...(letterSpacing === undefined ? [] : [[`--text-${name}--letter-spacing`, letterSpacing]]),
+    ]);
+}
 
 /**
  * Il tema scuro (dalla v4.36.0, voce #3757): solo i colori e le ombre il cui valore scuro è diverso dal chiaro, `[nome, valore]`
@@ -76,7 +81,8 @@ export function temaDeiToken(token) {
         ...Object.keys(token.type.families).map((famiglia) => [`--font-${famiglia}`, `var(--font-${famiglia})`]),
         ...token.radius.tokens.map(({ name }) => daTema('radius', name)),
         ...token.shadow.tokens.map(({ name }) => daTema('shadow', name)),
-        ...variabiliDeiToken(token).filter(([nome]) => nome.startsWith('--text-')).map(([nome]) => [nome, `var(${nome})`]),
+        // Gli stili di testo dal loro gruppo, non dal nome: un colore che si chiamasse `text-…` non diventa una misura.
+        ...variabiliDiTesto(token).map(([nome]) => [nome, `var(${nome})`]),
     ];
 }
 

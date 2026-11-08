@@ -19,8 +19,9 @@ it('il README dice come si importa il tema e in che ordine (voce 3536 · AC 5)',
     expect(File::get(dirname(__DIR__, 2).'/README.md'))->toContain($frase);
 })->with([
     'la versione e il file' => ['**Il tema di Tailwind 4** (dalla `v5.0.0`, #3536): `resources/css/zeiras-tailwind.css`'],
-    'l\'ordine' => ["@import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';\n@import 'tailwindcss';\n@import '../../vendor/zeiras/zr-core/resources/css/zeiras-tailwind.css';"],
+    'l\'ordine' => ["@import '../../vendor/zeiras/zr-core/resources/css/bundle.css';\n@import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';\n@import 'tailwindcss';\n@import '../../vendor/zeiras/zr-core/resources/css/zeiras-tailwind.css';"],
     'niente nella pagina' => ['È un `@theme inline reference`: non scrive niente nella pagina'],
     'il blocco del modulo' => ['Un modulo che ha nel suo CSS lo stesso'],
+    'le righe che svuotano un gruppo prima del tema' => ['fra `@import \'tailwindcss\'` e il tema del pacchetto'],
     'la riga della versione' => ['| `v5.0.0` | il tema di Tailwind 4 dal pacchetto (#3536)'],
 ]);
