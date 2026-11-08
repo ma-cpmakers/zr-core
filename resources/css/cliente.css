@@ -1,5 +1,5 @@
 /*
  * La cornice del cliente (dalla `v4.13.0`, voce #3319): fino alla `v4.17.x` qui c'era la regola che nascondeva il campo della
  * ricerca. Dalla `v4.18.0` lo fa l'`AppShell` (`search={false}`, richiesta 201 al design system), e il file è vuoto: resta
- * perché il modulo che lo importa non si rompa, e si toglie alla prossima versione maggiore. L'import si può già togliere.
+ * perché il modulo che lo importa non si rompa (la `v5.0.0` cambia solo la cascata e lo lascia). L'import si può già togliere.
  */

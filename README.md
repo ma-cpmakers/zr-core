@@ -126,14 +126,15 @@ Con Tailwind 4 il design system sta così sopra il preflight (`base`), che non g
 classi di utilità (`utilities`): una classe messa su un componente vale, senza `!` — `p-0` su un `Button` gli toglie il
 padding, `h-8` sul campo di un `Input` lo porta a 32 px. Per questo il CSS del pacchetto si importa prima di `tailwindcss`:
 l'ordine lo fissa la prima riga della pagina che nomina uno strato, e quella di Tailwind (`theme, base, components,
-utilities`), che arriva dopo, non lo cambia; importato dopo, `zeiras` starebbe sotto `base` e il preflight cancellerebbe i
-componenti. Le regole del modulo fuori dagli strati vincono sul design system come su ogni strato. Gli `@import` dei font, di
+utilities`), che arriva dopo, non lo cambia. Importato dopo `tailwindcss`, l'ordine lo fisserebbe la riga di Tailwind, e
+`zeiras` finirebbe in coda, sopra `utilities`: le classi su un componente non avrebbero effetto; senza la riga, `zeiras`
+starebbe sotto `base` e il preflight cancellerebbe i componenti. Le regole del modulo fuori dagli strati vincono sul design system come su ogni strato. Gli `@import` dei font, di
 `movimento.css` e di `avanzamento.css` restano fuori dallo strato, com'erano; `rimedi.css` entra in `zeiras`
 (`@import './rimedi.css' layer(zeiras);`), prima delle regole del design system: un rimedio vale come la regola che corregge, e
 una classe di utilità lo supera allo stesso modo. Anche gli stili di MentionField e AddressField
 (`resources/css/zeiras/`) stanno in `zeiras`, con la stessa riga in testa. Una classe col modificatore che forza non vince
-sulle tre dichiarazioni forzate del design system (lo spazio a destra della colonna di spunta di `DataTable` e due righe di
-`SiteFooter`): fra due dichiarazioni forzate vince lo strato che viene prima. Con Tailwind 3, che non mette preflight e
+sulle sette dichiarazioni forzate del design system, in tre regole (lo spazio a destra della colonna di spunta di `DataTable`
+e le due righe in fondo a `SiteFooter`): fra due dichiarazioni forzate vince lo strato che viene prima. Con Tailwind 3, che non mette preflight e
 classi negli strati, vincerebbero tutti e due sul design system: il CSS del pacchetto chiede Tailwind 4.
 
 Una classe su un componente cambia solo quella pagina: un aspetto che il componente non ha e che serve anche altrove si chiede
@@ -708,11 +709,14 @@ Prima di passare il modulo importa il CSS del pacchetto (`bundle.css` o `zeiras.
 `tailwindcss` («Il CSS»), e non dentro un suo strato. Che cosa cambia nelle pagine: una classe di utilità su un componente del
 design system, o sui suoi elementi (`[&_input]:h-8`), che fino alla v4 non aveva effetto, adesso vale; il modulo le cerca nel
 suo codice e per ognuna decide se tenerla — è l'aspetto che il codice chiedeva — o toglierla. Un `!` messo per battere il
-design system si può togliere. Una regola del CSS del modulo fuori dagli strati vince sul design system come prima.
+design system si può togliere. Una regola del CSS del modulo fuori dagli strati vince adesso sempre sul design system:
+fino alla v4 i due stavano fuori dagli strati, e vinceva la regola più specifica o, a parità, quella dopo. Il modulo rilegge
+le sue regole fuori dagli strati che toccano una classe `zr-` (per esempio un'altezza al tocco sotto
+`@media (any-pointer: coarse)`): quelle che il design system batteva, perché più specifico, adesso valgono.
 
 Che cosa cambia nei test del modulo: un caso che vuole come prima riga del CSS l'`@import` dei font ha davanti quella degli
-strati. Che cosa si controlla: nella build `grep -o '@layer [a-z, ]*' public/build/assets/*.css | head -5` dà gli strati
-nell'ordine theme, base, zeiras, components, utilities; nel browser un `Button` ha il suo sfondo e il suo bordo, e
+strati. Che cosa si controlla: nel CSS principale della build, quello che importa `tailwindcss` e non quelli a parte,
+`grep -o '@layer [a-z, ]*' public/build/assets/app-*.css | head -6` nomina `zeiras` dopo `base` e prima di `components`; nel browser un `Button` ha il suo sfondo e il suo bordo, e
 `scripts/uat-cornice.mjs` dà le righe di sempre.
 
 ## La parte server
@@ -2998,8 +3002,8 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   build la porterebbe nel CSS di ogni app; dalla `v4.13.1` lo stesso file tiene campanella e profilo a destra della barra in alto,
   dove senza il campo non resterebbero. Ctrl/Cmd+K non apre la ricerca, e arriva ancora alla pagina (un editor che lo usa). È provvisorio: il CSS si toglie quando l'`AppShell` avrà
   la prop che non mostra la ricerca (richiesta 201 al design system). Dalla `v4.18.0` la cornice passa `search={false}`
-  all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta fino alla prossima
-  versione maggiore perché l'import non si rompa, e il modulo lo può già togliere.
+  all'`AppShell`: niente campo né Ctrl/Cmd+K, campanella e profilo a destra, e `cliente.css` è vuoto; resta perché l'import non si rompa
+  (la `v5.0.0` cambia solo la cascata e lo lascia), e il modulo lo può già togliere.
 - **La campanella del cliente** (dalla `v4.23.0`, #3398; design `zr-account--il-mio-spazio`, schermata 5): il numero è
   `non_lette` dei dati, «99+» oltre 99 e nessuno a 0. All'apertura la cornice chiede `GET /cornice/cliente/notifiche` (vedi «Le
   rotte della cornice») e mostra le righe con le frasi della `Cornice` (i quattro tipi da cliente di Bookings, vedi «La

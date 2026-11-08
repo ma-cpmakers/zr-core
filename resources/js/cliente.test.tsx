@@ -243,7 +243,7 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-search.is-open')).toBeNull();
     });
 
-    it('T2.4 il CSS del cliente è vuoto: resta perché chi lo importa non si rompa, fino alla prossima versione maggiore (v4.18.0)', () => {
+    it('T2.4 il CSS del cliente è vuoto: resta perché chi lo importa non si rompa, anche nella v5.0.0 (v4.18.0)', () => {
         const foglio = readFileSync(resolve(process.cwd(), 'resources/css/cliente.css'), 'utf8');
 
         expect(foglio.replace(/\/\*[\s\S]*?\*\//g, '').trim()).toBe('');

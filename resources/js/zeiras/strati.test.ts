@@ -172,32 +172,38 @@ const CLASSI = ['p-0', 'h-8'];
 // L'altezza del campo come la dà il design system (nessuna misura scritta qui: TokenCssTest le vieta nel codice di zr-core).
 const ALTEZZA_DEL_CAMPO = /^\.zr-input input, \.zr-select select \{ height: ([^;]+);/m.exec(readFileSync(delRepo('resources/zeiras/bundle.css'), 'utf8'))?.[1];
 
+/** Che cosa non va nella forma di un CSS generato (vuoto = a posto): la riga dell'ordine in testa, poi solo gli @import e lo strato. */
+function difettiDellaForma(testo: string, conGliImport: boolean) {
+    const { diPrimoLivello, regole } = leggiIlCss(testo);
+    const attese = conGliImport
+        ? [ORDINE_DEGLI_STRATI, "@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", '@layer zeiras {']
+        : [ORDINE_DEGLI_STRATI, '@layer zeiras {'];
+    const difetti: string[] = [];
+    if (testo.split('\n')[0] !== ORDINE_DEGLI_STRATI) difetti.push(`la prima riga non è quella dell'ordine: «${testo.split('\n')[0]}»`);
+    if (JSON.stringify(diPrimoLivello) !== JSON.stringify(attese)) difetti.push(`al primo livello: ${diPrimoLivello.join(' · ')}`);
+    if (regole.length === 0) difetti.push('nessuna regola');
+    regole.filter((regola) => regola.strato !== 'zeiras').forEach((regola) => difetti.push(`fuori dallo strato: ${regola.selettore}`));
+
+    return difetti;
+}
+
 describe('il CSS del design system in @layer zeiras (voce 3538)', () => {
     it('ogni CSS generato comincia con la riga dell\'ordine degli strati, e fuori da `@layer zeiras` ci sono solo gli @import del pacchetto (AC 1, 2)', () => {
         expect(ORDINE_DEGLI_STRATI).toBe('@layer theme, base, zeiras, components, utilities;');
         for (const percorso of GENERATI) {
-            const testo = readFileSync(delRepo(percorso), 'utf8');
-            const { diPrimoLivello, regole } = leggiIlCss(testo);
-
-            expect(testo.split('\n')[0], percorso).toBe(ORDINE_DEGLI_STRATI);
-            const attese = percorso.includes('/zeiras/')
-                ? [ORDINE_DEGLI_STRATI, '@layer zeiras {']
-                : [ORDINE_DEGLI_STRATI, "@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", '@layer zeiras {'];
-            expect(diPrimoLivello, percorso).toStrictEqual(attese);
-            expect(regole.length, percorso).toBeGreaterThan(0);
-            expect(regole.filter((regola) => regola.strato !== 'zeiras'), percorso).toStrictEqual([]);
+            expect(difettiDellaForma(readFileSync(delRepo(percorso), 'utf8'), !percorso.includes('/zeiras/')), percorso).toStrictEqual([]);
         }
     });
 
-    it('senza la riga, o con la riga dopo una regola, la prova del primo caso è rossa (AC 2)', () => {
+    it('senza la riga, con la riga dopo una regola, o con una regola fuori dallo strato, la prova del primo caso trova il difetto (AC 1, 2)', () => {
         const testo = readFileSync(delRepo('resources/css/zeiras.css'), 'utf8');
         const senza = testo.split('\n').slice(1).join('\n');
         const spostata = senza.replace('@layer zeiras {\n', `@layer zeiras {\n.zr-prima { color: red; }\n}\n${ORDINE_DEGLI_STRATI}\n@layer zeiras {\n`);
+        const fuori = `${testo}.zr-fuori { color: red; }\n`;
 
-        for (const sbagliato of [senza, spostata]) {
-            expect(sbagliato.split('\n')[0]).not.toBe(ORDINE_DEGLI_STRATI);
-            expect(leggiIlCss(sbagliato).diPrimoLivello[0]).not.toBe(ORDINE_DEGLI_STRATI);
-        }
+        expect(difettiDellaForma(senza, true)[0]).toMatch(/^la prima riga non è quella dell'ordine: «\/\* Generato da /);
+        expect(difettiDellaForma(spostata, true)).toHaveLength(2);
+        expect(difettiDellaForma(fuori, true)).toContain('fuori dallo strato: .zr-fuori');
     });
 
     describe.each(['resources/css/bundle.css', 'resources/css/zeiras.css'])('in una build di Tailwind 4 con %s prima di tailwindcss (AC 3)', (percorso) => {

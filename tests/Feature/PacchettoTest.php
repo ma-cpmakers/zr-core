@@ -4315,9 +4315,11 @@ it('il README dice, dove fa importare `bundle.css`, che il CSS del design system
     'sopra il preflight' => ['Con Tailwind 4 il design system sta così sopra il preflight (`base`), che non gli toglie sfondo, bordo e padding'],
     'le classi valgono' => ['una classe messa su un componente vale, senza `!`'],
     'prima di tailwindcss' => ['Per questo il CSS del pacchetto si importa prima di `tailwindcss`'],
-    'importato dopo' => ['importato dopo, `zeiras` starebbe sotto `base` e il preflight cancellerebbe i componenti'],
+    // Revisione della voce, R1: importato dopo `tailwindcss` `zeiras` va in coda, sopra `utilities`; sotto `base` va senza la riga.
+    'importato dopo' => ['Importato dopo `tailwindcss`, l\'ordine lo fisserebbe la riga di Tailwind, e `zeiras` finirebbe in coda, sopra `utilities`'],
+    'senza la riga' => ['senza la riga, `zeiras` starebbe sotto `base` e il preflight cancellerebbe i componenti'],
     'le regole fuori dagli strati' => ['Le regole del modulo fuori dagli strati vincono sul design system come su ogni strato'],
-    'le dichiarazioni forzate' => ['Una classe col modificatore che forza non vince sulle tre dichiarazioni forzate del design system'],
+    'le dichiarazioni forzate' => ['Una classe col modificatore che forza non vince sulle sette dichiarazioni forzate del design system, in tre regole'],
     'con Tailwind 3' => ['Con Tailwind 3, che non mette preflight e classi negli strati, vincerebbero tutti e due sul design system'],
     'a chi si chiede' => ['un aspetto che il componente non ha e che serve anche altrove si chiede all\'agente di zr-core'],
     // Sprint 92 · T4 (voce #2945): dalla v3.15.0 il CSS del design system che il README fa importare è quello coi font del pacchetto.
