@@ -76,7 +76,12 @@ const gruppi = async () => {
         ...[...gruppo.querySelectorAll('.zr-ws-item')].map((voce) => [voce.textContent, voce.getAttribute('href'), voce.matches('.is-active') || voce.hasAttribute('aria-current')]),
     ]);
 };
-const ilSelettore = () => contenitore.querySelector('.zr-ws-switch')!.getAttribute('aria-label');
+// Il nome del selettore lo danno i due testi, e «Cambia workspace» sta nella descrizione (il rimedio della riga 240).
+const ilSelettore = () => {
+    const selettore = contenitore.querySelector('.zr-ws-switch')!;
+
+    return `${selettore.getAttribute('aria-description')}: ${selettore.querySelector('.zr-ws-company')!.textContent} › ${selettore.querySelector('.zr-ws-name')!.textContent}`;
+};
 /** Finché nel selettore non c'è «Come cliente» (o un altro primo gruppo), al più per due secondi, un giro alla volta dentro `act`. */
 const finoAlGruppo = async (titolo: string) => {
     for (let giri = 0; giri < 200; giri++) {

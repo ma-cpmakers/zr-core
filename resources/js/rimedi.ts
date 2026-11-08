@@ -191,6 +191,25 @@ function cassetto(): void {
     });
 }
 
+/**
+ * Il selettore «Azienda › workspace» ha un `aria-label` che non comincia col testo che si vede («Cambia workspace: Studio Anna ›
+ * Studio Anna» per «Studio Anna Studio Anna», axe `label-content-name-mismatch`), e chi lo comanda con la voce dice ciò che
+ * legge. Allora il nome lo dà il testo del pulsante, e «Cambia workspace», la parte dell'`aria-label` prima dei due punti, va
+ * nella descrizione; quando l'azienda e il workspace hanno lo stesso nome l'azienda esce dal nome, che non lo dice due volte. Si
+ * rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra lingua), che cambia con i due nomi (riga 240).
+ */
+function nomeDelSelettore(): void {
+    document.querySelectorAll('.zr-shell .zr-ws-switch').forEach((selettore) => {
+        const nome = selettore.getAttribute('aria-label');
+        if (nome) {
+            selettore.removeAttribute('aria-label');
+            selettore.setAttribute('aria-description', nome.split(': ')[0]);
+        }
+        const [azienda, workspace] = selettore.querySelectorAll('.zr-ws-text > span');
+        azienda?.setAttribute('aria-hidden', `${azienda.textContent === workspace?.textContent}`);
+    });
+}
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
@@ -208,12 +227,14 @@ new MutationObserver((cambi) => {
     }
     azioniSottoLaRicerca();
     cassetto();
+    nomeDelSelettore();
     tastiera?.aOgniCambio();
-}).observe(document, { childList: true, subtree: true });
+}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
+    nomeDelSelettore();
 }
 
 // Un modulo, anche senza niente da dare: la cornice lo chiede con `import()`.

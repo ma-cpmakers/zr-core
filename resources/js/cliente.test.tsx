@@ -249,7 +249,8 @@ describe('la cornice del cliente', () => {
 
         expect(uno('.zr-ws-switch .zr-ws-company')?.textContent).toBe(delCliente.personalGroup);
         expect(uno('.zr-ws-switch .zr-ws-name')?.textContent).toBe(delCliente.personal);
-        expect(uno('.zr-ws-switch')?.getAttribute('aria-label')).toBe(`${testi(base).workspaceSwitch}: ${delCliente.personalGroup} › ${delCliente.personal}`);
+        // Il nome lo danno i due testi, e «Cambia workspace» sta nella descrizione: lo fa il rimedio della riga 240.
+        expect([uno('.zr-ws-switch')?.getAttribute('aria-label'), uno('.zr-ws-switch')?.getAttribute('aria-description')]).toStrictEqual([null, testi(base).workspaceSwitch]);
         await clic(uno('.zr-ws-switch'));
         expect(uno('.zr-ws-new')?.textContent).toBe(delCliente.firstWorkspace);
 
