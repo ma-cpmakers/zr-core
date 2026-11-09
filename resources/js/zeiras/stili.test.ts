@@ -77,7 +77,8 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.
         const senzaMention = aParte(leggi(bundleJs.replaceAll('zr-mention-', 'zr-nessuno-')), 'AddressField', divisi);
         expect(senzaMention).not.toContain('MentionField.css');
-    });
+        // Il bundle si legge due volte: col lotto 0526 (bundle.js da 301 KB) sulla CI ci vogliono più dei 5 secondi di partenza.
+    }, 30_000);
 });
 
 describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint 92 · T2, voce 2945)', () => {

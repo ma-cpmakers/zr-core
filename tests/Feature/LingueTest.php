@@ -1326,20 +1326,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 104 tipi della versione 8e80fafb e l\'elenco 64, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings e la fattura del CRM (sprint 79 · T2.1, T2.2, T2.3; 06/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 118 tipi della versione 6b369c95 e l\'elenco 78, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings e la fattura del CRM (sprint 79 · T2.1, T2.2, T2.3; 06/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('8e80fafb')
-        ->and($contratto['tipi'])->toHaveCount(104)
-        // L'impronta dei tipi di 8e80fafb, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('6b369c95')
+        ->and($contratto['tipi'])->toHaveCount(118)
+        // L'impronta dei tipi di 6b369c95, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('17cab5fc31ef40f4582cb14518a3cdf50be95de19a38d515dca8782b05308500')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(104)
-        ->and($contratto['non_arrivano'])->toHaveCount(64)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('5e38f1dab4989b6ac3ebfa3d3c1b62bb5c0d105e9b35685bdcabb5beecb038e6')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(118)
+        ->and($contratto['non_arrivano'])->toHaveCount(78)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
@@ -1351,6 +1351,9 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.invito.creato')
         // crm.fatture.crea emette la fattura per le app: Fattura::notifica() è false (zr-backoffice-ab su 8e80fafb).
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.fattura.creata')
+        // Gli eventi sui dati di Finanze sono per le app: nel Catalogo delle notifiche di flow ci sono solo i due flow.avviso.* (zr-backoffice-ea su 6b369c95).
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.flow.movimento.creato')
+        ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.flow.avviso.saldo_non_basta')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')
         ->and(array_filter($contratto['non_arrivano'], fn (string $fonte) => trim($fonte) === ''))->toBe([])
