@@ -158,6 +158,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-col-body { display: flex; flex-direction: column; gap: var(--space-2); min-height: 8px; overflow-y: auto; }
 .zr-col-add { display: flex; align-items: center; gap: var(--space-2); height: 36px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-md); background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink-muted); cursor: pointer; }
 .zr-col-add:hover { background: var(--surface-raised); color: var(--ink); }
+.zr-col-add[aria-disabled="true"] { opacity: .5; cursor: not-allowed; } .zr-col-add[aria-disabled="true"]:hover { background: transparent; color: var(--ink-muted); } /* la lista piena col limite che blocca (richiesta 227) */
 .zr-add-list { flex: none; width: var(--column-width); height: 48px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); border: var(--border-strong, 1.5px) dashed var(--line-strong); border-radius: var(--radius-lg); background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-muted); cursor: pointer; box-sizing: border-box; }
 .zr-add-list:hover { background: var(--surface-raised); color: var(--ink); }
 
@@ -199,6 +200,24 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-composer textarea::placeholder { color: var(--ink-muted); }
 .zr-composer-row { display: flex; gap: var(--space-2); }
 .zr-composer.is-error textarea { border-color: var(--danger); }
+/* richieste 224-231: la maniglia della lista, la lista presa, il rifiuto, le regole, la soglia */
+.zr-col-handle { position: relative; display: inline-grid; place-items: center; flex: none; width: 24px; height: 28px; margin-left: calc(-1 * var(--space-1)); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); cursor: grab; touch-action: none; }
+.zr-col-handle:hover { background: var(--surface-raised); color: var(--ink); }
+.zr-col-handle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .zr-col-handle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); } } /* al tocco la maniglia si prende su 44 px senza cambiare aspetto */
+.zr-col-head > .zr-inline-edit { flex: 1; min-width: 0; }
+.zr-lanes.is-moving { user-select: none; }
+.zr-lanes.is-moving > .zr-col { transition: transform .15s ease; }
+.zr-lanes > .zr-col.is-lifted { position: relative; z-index: 1; transition: none; box-shadow: var(--shadow-lift); }
+.zr-col.is-lifted .zr-col-handle { cursor: grabbing; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .zr-lanes.is-moving > .zr-col { transition: none; } }
+.zr-col.is-refused { border-color: var(--danger); }
+.zr-col-refused { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--danger-soft); color: var(--danger); font-size: 13px; line-height: 18px; font-weight: 600; }
+.zr-col-refused svg { flex: none; }
+.zr-col-rules { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; padding: 0 var(--space-1) 0 var(--space-2); list-style: none; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); }
+.zr-col-rules li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.zr-col-threshold { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--warning-soft); color: var(--warning); font-size: 13px; line-height: 18px; font-weight: 600; }
+.zr-col-action { align-self: stretch; justify-content: center; }
 
 /* ===================== Homepage (sito pubblico) ===================== */
 .zr-btn { text-decoration: none; box-sizing: border-box; }
