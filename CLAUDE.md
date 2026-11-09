@@ -142,8 +142,8 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 **senza l'indirizzo della board**: in questo file non entra. Documenti, commit e dialogo in **italiano**.
 
 ## Progetto sulla board
-→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 119 aperto (#2916, `v4.27.0`: l'email del collega
-   nella ricerca, Decisione 23051); dopo, il lotto 0526 come `v4.28.0` (al sì di Luciano, ramo `lotto-0526`) e la #3511 come
-   `v4.29.0` (ramo `voce-3511`). La 206 (tema) dopo zr-home #2780.
+→ progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 119 chiuso (#2916, `v4.27.0`). Una versione al giorno
+   (Decisione 23424): `v4.28.0` il lotto 0526 (09/11), `v4.29.0` la #3567 (10/11), poi #3511, #3530, #3534-#3537 fino a `v5.0.0`
+   (#3538) il 17/11, coi rami locali `voce-*`; la #3569 quando la #314 è deployata e zr-cashflow conferma. La 206 (tema) dopo zr-home #2780.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
