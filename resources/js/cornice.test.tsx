@@ -421,13 +421,14 @@ describe('la Cornice', () => {
             .toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finance', 'Reports', 'Automations', 'Content']);
     });
 
-    // Sprint 26 · T8 (voce #1792): dal 12/10/2026 il CRM è per tutti, e nel registro non è più in arrivo.
-    it('l\'ingresso del pacchetto dà su ogni voce del registro `in_arrivo`: i prodotti che chi non ha una sessione vede «In arrivo», distinti da quelli «Presto»; il CRM non lo è più (sprint 16 · T7.3; sprint 26 · T8.2)', async () => {
+    // Sprint 26 · T8 (voce #1792): dal 12/10/2026 il CRM è per tutti, e nel registro non è più in arrivo; dalla voce #3567
+    // nemmeno Finanze, che il backoffice dà a ogni workspace dal deploy della #3550.
+    it('l\'ingresso del pacchetto dà su ogni voce del registro `in_arrivo`: i prodotti che chi non ha una sessione vede «In arrivo», distinti da quelli «Presto»; il CRM e Finanze non lo sono più (sprint 16 · T7.3; sprint 26 · T8.2; voce 3567)', async () => {
         const ingresso = await import('./index');
 
         // Come lo legge una pagina senza sessione: `voce.in_arrivo`, un sì o un no su ogni voce.
-        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['bookings', 'flow', 'reports', 'automations', 'content']);
-        expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm']);
+        expect(ingresso.registro.filter((voce) => voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['bookings', 'reports', 'automations', 'content']);
+        expect(ingresso.registro.filter((voce) => !voce.in_arrivo).map((voce) => voce.id)).toStrictEqual(['home', 'pm', 'crm', 'flow']);
         expect(ingresso.registro.map((voce) => typeof voce.in_arrivo)).toStrictEqual(ordine.map(() => 'boolean'));
         // «Presto» è un'altra cosa, e non cambia: Bookings è in arrivo senza essere «Presto», e il CRM non è né l'uno né l'altro.
         expect(ingresso.registro.filter((voce) => voce.presto).map((voce) => voce.id)).toStrictEqual(['reports', 'automations', 'content']);
@@ -442,7 +443,7 @@ describe('la Cornice', () => {
         const { registro } = await import('./index');
         // La premessa: per il registro Bookings è in arrivo (fino alla `v1.15.0` lo era anche il CRM). Se la cornice lo leggesse come
         // «Presto», qui non si aprirebbe.
-        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['bookings', 'flow']);
+        expect(registro.filter((voce) => voce.in_arrivo && !voce.presto).map((voce) => voce.id)).toStrictEqual(['bookings']);
 
         await mostra(<Cornice dati={{ ...dati, prodotti }} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
 
