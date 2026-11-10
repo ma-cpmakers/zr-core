@@ -116,3 +116,79 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         expect(coiFontDelPacchetto(senza)).toBe(`@import './font.css';\n${senza}`);
     });
 });
+
+// v4.31.0 (zr-pm-07, 10/11). Al tocco ogni Button del design system si prende su 44 px senza cambiare aspetto: il pulsante
+// piccolo è alto 32 px, e con `pointer: coarse` il suo `::after` gli dà 44 px intorno (6 sopra e 6 sotto per «Deselect» della
+// barra della selezione del DataTable, misurato in Chromium a 390 px col tocco emulato). Il caso legge zeiras.css come lo
+// leggerebbe un telefono largo 390 px: le regole fuori da ogni `@media` e quelle dei `@media` che a quel telefono valgono,
+// nell'ordine del file; l'ultima dichiarazione vince. Diventa rosso se un riallineamento toglie l'area o la stringe.
+const LARGHEZZA_DEL_TELEFONO = 390;
+const vale = (condizione: string) => condizione.split(',').some((alternativa) => alternativa.trim().split(/\s+and\s+/).every((parte) => {
+    const misura = parte.match(/^\((max|min)-width:\s*(\d+)px\)$/);
+    if (misura) return misura[1] === 'max' ? Number(misura[2]) >= LARGHEZZA_DEL_TELEFONO : Number(misura[2]) <= LARGHEZZA_DEL_TELEFONO;
+    return /^\(pointer:\s*coarse\)$/.test(parte) || /^\(any-pointer:\s*coarse\)$/.test(parte);
+}));
+/** Le dichiarazioni che un telefono largo 390 px dà a un selettore (`:where()` tolto), nell'ordine del CSS. */
+function alTocco(css: string, selettore: string): Record<string, string> {
+    const dichiarazioni: Record<string, string> = {};
+    const leggiBlocco = (testo: string) => {
+        let i = 0;
+        while (i < testo.length) {
+            const graffa = testo.indexOf('{', i);
+            const puntoEVirgola = testo.indexOf(';', i);
+            if (graffa < 0) break;
+            if (puntoEVirgola >= 0 && puntoEVirgola < graffa) { i = puntoEVirgola + 1; continue; }
+            const preludio = testo.slice(i, graffa).trim();
+            let profondita = 1, fine = graffa + 1;
+            while (profondita > 0 && fine < testo.length) { if (testo[fine] === '{') profondita++; else if (testo[fine] === '}') profondita--; fine++; }
+            const dentro = testo.slice(graffa + 1, fine - 1);
+            if (preludio.startsWith('@media')) { if (vale(preludio.slice(6).trim())) leggiBlocco(dentro); }
+            else if (!preludio.startsWith('@')) {
+                const selettori = preludio.split(',').map((s) => s.replace(/:where\(([^)]*)\)/g, '$1').trim());
+                if (selettori.includes(selettore)) {
+                    for (const riga of dentro.split(';')) {
+                        const due = riga.indexOf(':');
+                        if (due > 0) dichiarazioni[riga.slice(0, due).trim()] = riga.slice(due + 1).trim();
+                    }
+                }
+            }
+            i = fine;
+        }
+    };
+    leggiBlocco(css.replace(/\/\*[\s\S]*?\*\//g, ''));
+    return dichiarazioni;
+}
+/** Quanti px misura al più poco un lato dell'area: `max(100%, 44px)` o `44px`; ogni altra forma è 0. */
+const almeno = (valore: string | undefined) => Number(valore?.match(/^(?:max\(100%,\s*(\d+)px\)|(\d+)px)$/)?.slice(1).find(Boolean) ?? 0);
+/** I lati dell'area al tocco del Button: 0 se manca l'area. */
+function areaDelButton(css: string) {
+    const dopo = alTocco(css, '.zr-btn::after');
+    const button = alTocco(css, '.zr-btn');
+    const ce = dopo.content !== undefined && dopo.content !== 'none' && dopo.position === 'absolute' && dopo.display !== 'none'
+        && ['relative', 'absolute', 'fixed', 'sticky'].includes(button.position ?? '');
+    return ce ? { alta: almeno(dopo.height), larga: almeno(dopo.width) } : { alta: 0, larga: 0 };
+}
+
+describe('al tocco il Button si prende su 44 px (v4.31.0, zr-pm-07 10/11)', () => {
+    const zeirasCss = readFileSync(delRepo('resources/css/zeiras.css'), 'utf8');
+
+    it('a 390 px con `pointer: coarse` l\'area del Button è alta e larga almeno 44 px, anche quella del pulsante piccolo da 32', () => {
+        expect(areaDelButton(zeirasCss)).toStrictEqual({ alta: 44, larga: 44 });
+        expect(almeno(alTocco(zeirasCss, '.zr-btn-sm')['min-height'])).toBeLessThan(44);
+    });
+
+    it('senza l\'area, o con un\'area più stretta, o spenta da una regola dopo, il caso è rosso', () => {
+        const riga = zeirasCss.split('\n').find((r) => r.includes('.zr-btn::after'))!;
+        const senza = zeirasCss.replace(riga, '');
+        const stretta = zeirasCss.replace(riga, riga.replace('height: max(100%, 44px)', 'height: max(100%, 43px)'));
+        const spenta = `${zeirasCss}\n.zr-btn::after { content: none; }\n`;
+        const soloSulMouse = zeirasCss.replace(riga, riga.replace('(pointer: coarse)', '(pointer: fine)'));
+        const soloLarga = zeirasCss.replace(riga, riga.replace('(pointer: coarse)', '(pointer: coarse) and (min-width: 1024px)'));
+        const senzaPosizione = zeirasCss.replace(riga, riga.replace(':where(.zr-btn) { position: relative; }', ''));
+
+        for (const css of [senza, stretta, spenta, soloSulMouse, soloLarga, senzaPosizione]) {
+            expect(css).not.toBe(zeirasCss);
+            expect(Math.min(areaDelButton(css).alta, areaDelButton(css).larga)).toBeLessThan(44);
+        }
+    });
+});
