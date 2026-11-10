@@ -241,7 +241,7 @@ function stiliUsati(righe, { proprie }) {
     return STILI_A_PARTE.filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
 }
 
-// Dalla `v4.29.0` (voce #3511): un modulo per ogni nome che il bundle registra, resources/js/zeiras/<Nome>.js, e `componenti.js`
+// Dalla `v4.30.0` (voce #3511): un modulo per ogni nome che il bundle registra, resources/js/zeiras/<Nome>.js, e `componenti.js`
 // che li ri-esporta soltanto. Prima `componenti.js` era un modulo solo: una pagina a richiesta che ne prendeva un componente
 // lasciava nel pezzo dell'ingresso, che importa lo stesso modulo, il codice di quel componente. Con un modulo per nome la build
 // di un frontend mette ogni componente nel pezzo che lo usa. Il corpo del bundle si divide in istruzioni (quelle che stanno su

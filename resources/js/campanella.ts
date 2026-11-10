@@ -51,7 +51,7 @@ export function fraseConINomi(frase: unknown, chi: string, cosa?: string, quando
 
 /**
  * Le frasi di una lingua, sempre tutte quelle che l'inglese ha: quelle che la lingua non ha, o ha vuote, sono in inglese, come
- * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese. Dalla `v4.29.0`
+ * i testi. Una frase di un tipo che l'inglese non ha non entra: quali tipi zr-core conosce lo dice l'inglese. Dalla `v4.30.0`
  * (voce 3511) la cornice (`frasiARichiesta`) la chiama col solo file della lingua al posto dell'inglese: le frasi sono quelle
  * del file, congelate, e che abbia tutte e sole quelle dell'inglese lo controlla la CI (`LingueTest.php`).
  */
@@ -94,7 +94,7 @@ const sonoFrasi = (arrivate: unknown): boolean =>
 /**
  * Le frasi di una lingua da file che si caricano quando servono, come li dà `import.meta.glob` senza `eager`: per la cornice,
  * che le chiede all'apertura della campanella. Parte il solo file della lingua, o della lingua base; mai gli altri, e dalla
- * `v4.29.0` (voce #3511) nemmeno l'inglese: ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI. Una volta
+ * `v4.30.0` (voce #3511) nemmeno l'inglese: ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI. Una volta
  * arrivate restano in memoria (`pronte`), e non si richiedono; due richieste insieme sono una sola. Se il file non arriva la
  * promessa è respinta e niente resta in memoria: la richiesta dopo riparte da capo. Lo stesso se arriva male (`sonoFrasi`): la
  * pagina di un proxy o un file vuoto con un 200 non diventano titoli di ripiego. Chi usa l'inglese, o una lingua senza un file

@@ -1452,7 +1452,7 @@ it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notific
 });
 
 /**
- * Voce #3511 · AC 10 (Decisione 23057). Dalla `v4.29.0` la cornice chiede il solo file delle frasi della lingua della pagina, e
+ * Voce #3511 · AC 10 (Decisione 23057). Dalla `v4.30.0` la cornice chiede il solo file delle frasi della lingua della pagina, e
  * l'inglese non arriva più a coprire una frase che manca: per questo ogni file delle frasi, anche di una lingua aggiunta dopo
  * italiano, spagnolo e inglese, ha ogni chiave di `en.json`, con un testo non vuoto, e nessuna in più.
  *

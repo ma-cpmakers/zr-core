@@ -16,7 +16,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 const FILE_DEL_BUNDLE = 'resources/zeiras/bundle.js';
 const FILE_DEL_MODULO = 'resources/js/zeiras/componenti.js';
-// Dalla `v3.1.0` (sprint 71 · T1.3) il comando scrive e controlla anche il modulo di MentionField, e dalla `v4.29.0` (voce #3511)
+// Dalla `v3.1.0` (sprint 71 · T1.3) il comando scrive e controlla anche il modulo di MentionField, e dalla `v4.30.0` (voce #3511)
 // quello di ogni nome che il bundle registra, con le righe private comuni in interni/.
 const FILE_A_PARTE = 'resources/js/zeiras/MentionField.js';
 const FILE_INTERNO = 'resources/js/zeiras/interni/h.js';
@@ -52,7 +52,7 @@ beforeEach(() => {
     cpSync(delRepo(FILE_DEL_CSS), nellaCopia(FILE_DEL_CSS));
     CSS_GENERATI.forEach((percorso, indice) => writeFileSync(nellaCopia(percorso), cssGenerati[indice]!));
     cpSync(delRepo('scripts'), nellaCopia('scripts'), { recursive: true });
-    // Dalla `v4.29.0` (voce #3511) lo script legge il bundle col parser di Vite: la copia prende i pacchetti del repo.
+    // Dalla `v4.30.0` (voce #3511) lo script legge il bundle col parser di Vite: la copia prende i pacchetti del repo.
     symlinkSync(delRepo('node_modules'), nellaCopia('node_modules'));
     cpSync(delRepo(FILE_DEL_BUNDLE), nellaCopia(FILE_DEL_BUNDLE));
     moduli.forEach((testo, percorso) => writeFileSync(nellaCopia(percorso), testo));

@@ -8,7 +8,7 @@ export function leggi(bundle: string): { corpo: string[]; nomi: string[] };
 export function genera(bundle: string): Record<string, string>;
 
 /**
- * I moduli dei componenti (dalla `v4.29.0`, voce #3511): per ogni file, da resources/js/zeiras, il suo testo; con `divisi` (da
+ * I moduli dei componenti (dalla `v4.30.0`, voce #3511): per ogni file, da resources/js/zeiras, il suo testo; con `divisi` (da
  * `dividiIlCss`) gli import degli stili dei componenti di cui un modulo usa le classi. Se il bundle non ha la forma che lo script
  * conosce lancia un errore che dice che cosa non torna.
  */

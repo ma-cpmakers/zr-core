@@ -7827,7 +7827,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         return fetchFinto;
     };
 
-    // Voce 3511 · AC 7 e 9: fino alla `v4.28.0` all'apertura partiva anche l'inglese; dalla `v4.29.0` solo la lingua dei dati.
+    // Voce 3511 · AC 7 e 9: fino alla `v4.29.0` all'apertura partiva anche l'inglese; dalla `v4.30.0` solo la lingua dei dati.
     it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura parte solo quello della lingua dei dati, una volta, non l\'inglese né lo spagnolo, e il titolo è la frase di sempre (T1.3; voce 3511 · 7, 9)', async () => {
         const frasi = caricatore();
         conLElenco();
@@ -7856,7 +7856,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
-    // Voce 3511 · AC 8: dalla `v4.29.0` `en.json` lo chiede solo una pagina in inglese, e la variante «en» è in inglese.
+    // Voce 3511 · AC 8: dalla `v4.30.0` `en.json` lo chiede solo una pagina in inglese, e la variante «en» è in inglese.
     const inInglese = '\u{2068}Giulia Bianchi\u{2069} created the area “\u{2068}Lancio corso\u{2069}”';
     it.each([['it', inItaliano], ['en', inInglese]])('se il file «%s» della lingua dei dati non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5; voce 3511 · 8)', async (rotto, titolo) => {
         const lingua = rotto;

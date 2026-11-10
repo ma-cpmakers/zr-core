@@ -6,7 +6,7 @@ import { AddressField, type AddressLabels, type AddressPlace, type AddressSugges
 import * as componenti from './componenti';
 import { Zeiras } from './index';
 // Sprint 72 · T1 (voce #2454, Decisione 16431). AddressField, arrivato col design system ds-1792851600-0de4, ha un modulo suo
-// come MentionField (MentionField.test.tsx): resources/js/zeiras/AddressField.js. Dalla `v4.29.0` (voce #3511) è lo stesso oggetto
+// come MentionField (MentionField.test.tsx): resources/js/zeiras/AddressField.js. Dalla `v4.30.0` (voce #3511) è lo stesso oggetto
 // di componenti.js, e che il file sia quello che il bundle genera lo prova componenti.test.ts. Qui: che il componente del modulo fa
 // ciò che fa quello di componenti.
 

@@ -1,5 +1,5 @@
 // Il comando che genera da resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) i moduli di resources/js/zeiras:
-// dalla `v4.29.0` (voce #3511) uno per ogni nome che il bundle registra, `<Nome>.js`, le righe private comuni a più nomi in
+// dalla `v4.30.0` (voce #3511) uno per ogni nome che il bundle registra, `<Nome>.js`, le righe private comuni a più nomi in
 // `interni/`, e `componenti.js` che li esporta per nome; dalla `v3.3.0` divide anche resources/zeiras/bundle.css in
 // resources/css/zeiras.css e negli stili di ogni componente di `STILI_A_PARTE` (resources/css/zeiras/<Nome>.css), che il modulo
 // che ne usa le classi importa; dalla `v3.15.0` scrive anche resources/css/bundle.css, il bundle

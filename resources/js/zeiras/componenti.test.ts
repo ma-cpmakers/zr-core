@@ -11,7 +11,7 @@ import { Zeiras } from './index';
 
 // Sprint 25 · T1 (voce #1759). I componenti del design system come moduli ES: escono da scripts/componenti.mjs, che prende il
 // corpo di resources/zeiras/bundle.js riga per riga e ne esporta per nome ciò che il bundle registra in `window.Zeiras`. Dalla
-// `v4.29.0` (voce #3511) un modulo per nome, resources/js/zeiras/<Nome>.js, le righe private comuni in interni/, e `componenti.js`
+// `v4.30.0` (voce #3511) un modulo per nome, resources/js/zeiras/<Nome>.js, le righe private comuni in interni/, e `componenti.js`
 // che li esporta soltanto. La cornice e `Zeiras` li prendono da lì: una copia sola del design system per app. Il bundle, le
 // dichiarazioni e i file generati si leggono qui come testo (`?raw`), senza `node:fs`. Ciò che i file devono contenere è scritto
 // qui senza passare dallo script: rigenerarli con lo stesso script non vedrebbe uno script cambiato.

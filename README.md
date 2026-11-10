@@ -85,7 +85,7 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
-È per chi prende quei due campi **solo** dai loro moduli (dalla `v4.29.0` anche da `componenti`), in pagine caricate a richiesta: il CSS del primo carico pesa circa
+È per chi prende quei due campi **solo** dai loro moduli (dalla `v4.30.0` anche da `componenti`), in pagine caricate a richiesta: il CSS del primo carico pesa circa
 0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto. Si importa al posto di
 `bundle.css`, nello stesso ordine:
 
@@ -94,10 +94,10 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 @import '../../vendor/zeiras/zr-core/resources/css/zeiras-token.css';
 ```
 
-Fino alla `v4.28.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su
+Fino alla `v4.29.0` chi prendeva MentionField o AddressField da `…/zeiras/componenti` o da `window.Zeiras` restava su
 `bundle.css`: con `zeiras.css` quel campo restava senza stili. E con `bundle.css` i due campi si prendevano dallo stesso posto:
 gli stili che un modulo porta arrivano dopo il bundle, e con MentionField dal suo modulo e AddressField da `componenti` la lista
-di AddressField si allungava (da 300 a 360 px, e sotto i 720 px senza limite). Dalla `v4.29.0` `componenti`, e con lui
+di AddressField si allungava (da 300 a 360 px, e sotto i 720 px senza limite). Dalla `v4.30.0` `componenti`, e con lui
 `window.Zeiras`, prende i due campi dai loro moduli, coi loro stili: da qualunque posto, con `zeiras.css` i campi hanno i loro
 stili, e con `bundle.css` arrivano due volte, uguali, e ciò che si vede non cambia. Chi non cambia niente resta com'è.
 
@@ -109,7 +109,7 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
 - **L'ingresso per le app**, `resources/js/app` (dalla `v1.15.0`): la cornice e ciò che le sta intorno, cioè gli stessi nomi
   dell'ingresso di sempre tranne `Zeiras`. I componenti del design system si prendono per nome dal loro modulo,
   `resources/js/zeiras/componenti`, e nella build del frontend entra solo ciò che l'app usa: i componenti della cornice, più
-  quelli delle sue pagine. Dalla `v4.29.0` ogni componente ha un modulo suo, `resources/js/zeiras/<Nome>`, che `componenti`
+  quelli delle sue pagine. Dalla `v4.30.0` ogni componente ha un modulo suo, `resources/js/zeiras/<Nome>`, che `componenti`
   ri-esporta soltanto (#3511): un componente che usa solo una pagina a richiesta (`import()`) sta nel pezzo di quella pagina, e
   non nel JS d'ingresso, anche quando la pagina lo importa da `componenti` (`import { DataTable } from '…/zeiras/componenti'`).
   Non così se la pagina chiede `componenti` stesso con `import()`: il modulo è già nell'ingresso, e i componenti che la pagina
@@ -127,25 +127,25 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   Da questo ingresso nessuno scrive `window.Zeiras` né `window.React`.
 
   **MentionField ha anche un modulo suo** (dalla `v3.1.0`), `resources/js/zeiras/MentionField`, per chi lo usa solo in una
-  pagina o in un dialogo che si carica a richiesta (`import()`). Fino alla `v4.28.0` il modulo dei componenti era uno solo: la
+  pagina o in un dialogo che si carica a richiesta (`import()`). Fino alla `v4.29.0` il modulo dei componenti era uno solo: la
   cornice lo importa, quindi stava nel JS d'ingresso, e con lui ogni componente che una qualunque pagina ne prendeva, anche a
   richiesta. Preso dal suo modulo, MentionField sta nel pezzo della pagina che lo usa e il JS del primo carico non lo porta;
-  dalla `v4.29.0` è così anche importato da `…/zeiras/componenti`.
+  dalla `v4.30.0` è così anche importato da `…/zeiras/componenti`.
 
   ```ts
   import { MentionField, type MentionOption } from '../../vendor/zeiras/zr-core/resources/js/zeiras/MentionField';
   ```
 
-  Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Fino alla `v4.28.0` nella stessa
+  Da `…/resources/js/zeiras/componenti` (e da `window.Zeiras`) MentionField resta com'era. Fino alla `v4.29.0` nella stessa
   app si prendeva da un posto solo, perché i due posti erano due copie, ognuna col suo contatore degli id dei campi; dalla
-  `v4.29.0` `componenti`, e con lui `window.Zeiras`, lo ri-esporta dal suo modulo: è lo stesso componente, col contatore
+  `v4.30.0` `componenti`, e con lui `window.Zeiras`, lo ri-esporta dal suo modulo: è lo stesso componente, col contatore
   uno. Il modulo esce da `npm run componenti` come quello dei componenti, ed è lo stesso
   componente del design system, riga per riga; le etichette di partenza (`MENTION_LABELS`) sono quelle di `componenti`
-  (dalla `v4.29.0` lo stesso oggetto), e si cambiano con la prop `labels`.
+  (dalla `v4.30.0` lo stesso oggetto), e si cambiano con la prop `labels`.
 
   **AddressField ha un modulo suo allo stesso modo** (dalla `v3.2.0`, col design system che lo porta),
   `resources/js/zeiras/AddressField`, con le stesse regole: da `…/zeiras/componenti` e da `window.Zeiras` c'è anche lui, fino
-  alla `v4.28.0` nella stessa app si prendeva da un posto solo (dalla `v4.29.0` i tre posti danno lo stesso componente), e le etichette di partenza (`ADDRESS_LABELS`) si cambiano con la prop `labels`.
+  alla `v4.29.0` nella stessa app si prendeva da un posto solo (dalla `v4.30.0` i tre posti danno lo stesso componente), e le etichette di partenza (`ADDRESS_LABELS`) si cambiano con la prop `labels`.
 
   ```ts
   import { AddressField, type AddressPlace, type AddressSuggestion } from '../../vendor/zeiras/zr-core/resources/js/zeiras/AddressField';
@@ -158,7 +158,7 @@ notifiche in una pagina sua (vedi «Passare alla v2»), e dalla `v3.0.0` anche p
   sono approvate.
 
   Dalla `v4.8.1` ha un modulo suo anche l'Alert, `resources/js/zeiras/Alert`, ma è della cornice: lo prende il pezzo degli
-  avvisi della cornice ridotta (#3055). Un frontend prende l'Alert da `…/zeiras/componenti`, come prima: dalla `v4.29.0` è lo
+  avvisi della cornice ridotta (#3055). Un frontend prende l'Alert da `…/zeiras/componenti`, come prima: dalla `v4.30.0` è lo
   stesso componente del modulo suo.
 
 - **L'ingresso di sempre**, `resources/js`: in più dà `Zeiras`, il design system intero in un oggetto, e lo scrive anche in
@@ -191,7 +191,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
-`fetch` quando si apre la campanella; dalla `v4.29.0` una pagina ne scarica uno solo, quello della lingua della persona
+`fetch` quando si apre la campanella; dalla `v4.30.0` una pagina ne scarica uno solo, quello della lingua della persona
 (prima due, con quello dell'inglese). Prima stavano nel JS d'ingresso, che per la sola cornice pesava 69,3 KB (18,8 con gzip). Il quarto è un pezzo
 di JS, i rimedi provvisori di tastiera (circa 1,9 KB con gzip), che la cornice chiede quando si monta: vedi «Il fuoco nel
 pannello delle notifiche», «Tab dentro un dialogo aperto» e «Menu del profilo e barra dei moduli senza errori di accessibilità», sotto. Il quinto, dalla `v2.0.0`, è un altro pezzo di JS, quello
@@ -273,11 +273,11 @@ trattiene il Tab, il `Menu` che segue il suo pulsante, i nomi dei colori di `Lab
 voci e l'Esc che non chiude anche il cassetto, e il lotto 0523 il nome «Moduli e pagine» del `nav` della barra; la contropartita sono i rimedi delle righe 4 e 136, tolti: il pezzo dei rimedi
 scende a 1.362 byte. Dalla `v4.26.1` risale a 1.472 (1.462 misurati), per eccezione senza contropartita (sì di zr-pm-07 dell'08/11): il
 nome del selettore dei workspace e del pulsante del profilo dal loro testo, finché l'`AppShell` non lo fa da sé (righe 240 e 241).
-Dalla `v4.29.0` il JS d'ingresso scende di 73 byte, alla misura più 20: ogni componente del design system ha un modulo suo (#3511),
+Dalla `v4.30.0` il JS d'ingresso scende di 73 byte, alla misura più 20: ogni componente del design system ha un modulo suo (#3511),
 e la build prende di ognuno solo ciò che la cornice usa.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la
-ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.29.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
+ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
@@ -304,7 +304,7 @@ misura vera), e di altri 21 nella stessa: 1 per le impronte nuove dei nomi dei p
 contropartita). Nella `v4.20.0` è salito a 2.592, la misura più 20: le due chiamate che segnano lette le notifiche, uscite dal JS
 d'ingresso (Decisione 22247). Nella `v4.23.0` è salito a 2.729, la misura più 20: le quattro righe delle notifiche da cliente
 nel registro, la funzione che apre una notifica da cliente in «Il mio spazio» e le due chiamate che segnano lette con le
-rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Nella `v4.29.0` è sceso a 2.685, la misura
+rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Nella `v4.30.0` è sceso a 2.685, la misura
 più 20: chiede solo il file delle frasi della lingua della pagina, senza l'inglese (#3511). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
@@ -425,12 +425,12 @@ CSS:
 ```
 
 Chi prende anche uno solo dei due campi da `…/zeiras/componenti` o da `window.Zeiras` non lo fa: con `zeiras.css` quel campo
-resterebbe senza stili (fino alla `v4.28.0`: dalla `v4.29.0` `componenti` porta gli stili dei due campi, vedi «Il CSS»). Il risparmio è di circa 0,5 KB con gzip (vedi «Quanto pesa il CSS», sopra).
+resterebbe senza stili (fino alla `v4.29.0`: dalla `v4.30.0` `componenti` porta gli stili dei due campi, vedi «Il CSS»). Il risparmio è di circa 0,5 KB con gzip (vedi «Quanto pesa il CSS», sopra).
 
 Una cosa cambia, con `bundle.css`, per chi prende MentionField dal suo modulo (dalla `v3.1.0`) e AddressField da
 `…/zeiras/componenti` o da `window.Zeiras` (nessun frontend, il 25/10/2026): dalla `v3.3.0` il modulo di MentionField porta i
 suoi stili, che arrivano dopo il bundle e allungano la lista di AddressField. Chi è in questo caso prende anche AddressField dal
-suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra). Dalla `v4.29.0` il caso non c'è più: da `componenti`
+suo modulo, o MentionField da `componenti` (vedi «Il CSS», sopra). Dalla `v4.30.0` il caso non c'è più: da `componenti`
 AddressField arriva dal suo modulo, coi suoi stili.
 
 ### Passare alla v3.8
@@ -498,7 +498,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.27.0` | l'email del collega nella ricerca (#2916): il registro dà al membro del workspace (`workspace.membro`) anche la chiave `email`, la rotta `POST /cornice/ricerca` la lascia passare per il solo membro, e la seconda riga del risultato è «Amministratore · marta@example.com»; un termine con la chiocciola va al backoffice com'è scritto, e il backoffice trova un membro anche da un pezzo della sua email (zr-backoffice #2917). Niente da fare per i moduli: arriva con l'aggiornamento |
 | `v4.28.0` | il design system `ds-1794240112-cc62`, il lotto 0526 (richieste 224-231, dalla board di zr-board): la `KanbanBoard` sposta le liste dalla maniglia, col puntatore o da tastiera (Spazio prende, ← → spostano, Spazio lascia, Esc annulla), e dal «⋯» della lista con «Sposta a sinistra» e «Sposta a destra», con ogni passo detto al lettore di schermo (`onMoveList`); una scheda non entra dove la lista da cui parte non la manda (`transitions`), dove i requisiti del modulo dicono di no (`canEnter`, con le regole accese sotto l'intestazione, `rules`) o in una lista piena col limite che blocca (`limit` e `blocks`: «Al limite», «Aggiungi scheda» spento), e la lista che la rifiuta lo dice («Non consentito qui», `onRefuse`); la `KanbanColumn` ha il ruolo e la soglia delle pronte (`kind`, `threshold`) e un'azione a tutta larghezza (`action`); il «⋯» della lista ha «Rinomina» (`onRenameList`) e le voci del modulo (`actions`), e «Vai alla lista» porta il fuoco su una lista scelta per nome; con `onMove` o `onMoveList` la board è controllata e segue le liste che il modulo le ridà (il server decide); vicino al bordo la corsia scorre a velocità fissa. Senza le props nuove la board è quella di prima. Niente da fare per i moduli: zr-board può passare la sua board alle props nuove quando vuole |
 | `v4.29.0` | Finanze non è più in arrivo nel registro (#3567): `in_arrivo: false` per `flow`, come per il CRM dalla `v1.16.0`, perché il backoffice la dà `disponibile` a ogni workspace. Cambia solo ciò che vede chi non ha una sessione (Registrati di zr-home): Finanze vi compare «Disponibile». La cornice con la sessione non cambia. Niente da fare per i moduli: arriva con l'aggiornamento |
-| `v4.29.0` | un modulo per componente (#3511): `…/zeiras/componenti` ri-esporta ogni nome dal suo modulo, e un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche importato da `componenti`; il JS d'ingresso della sola cornice scende di 73 byte. MentionField, AddressField e Alert sono lo stesso componente da `componenti`, da `window.Zeiras` e dal loro modulo: un contatore degli id solo, le etichette di partenza condivise, e con `bundle.css` gli stili dei due campi arrivano anche dai loro moduli, uguali (un'app che prende `componenti` intero, come l'ingresso di sempre, ha nel CSS d'ingresso anche quei due file). I componenti che usano gli id del bundle (Field, Checkbox, Dialog, Menu, MentionField e altri) portano con sé il modulo dell'`AppShell`, che conta gli id con loro: con la cornice nell'ingresso c'è già. E le frasi delle notifiche nella sola lingua della pagina (Decisione 23057, per zr-home #3486): alla prima apertura della campanella la cornice chiede il solo file delle frasi della lingua della persona, non più anche quello dell'inglese (circa 1,9 KB con gzip in meno per chi usa l'italiano o lo spagnolo); ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI. Il pezzo della campanella scende a 2.685 byte. `…/frasi` resta com'è | niente; con `zeiras.css` i due campi si possono prendere anche da `componenti` | un caso che prende MentionField o AddressField dal suo modulo e confronta l'id del campo con un numero fisso va riletto: il contatore è quello di tutti i componenti; un caso che conta i file delle frasi chiesti all'apertura della campanella ne trova uno, non due | i pezzi a richiesta delle pagine che usano componenti che la cornice non usa: il componente sta lì, non nel JS d'ingresso; la campanella aperta su `layout.html`, `staff.html` e `cliente.html`, in italiano, spagnolo e inglese |
+| `v4.30.0` | un modulo per componente (#3511): `…/zeiras/componenti` ri-esporta ogni nome dal suo modulo, e un componente che usa solo una pagina a richiesta sta nel pezzo della pagina, anche importato da `componenti`; il JS d'ingresso della sola cornice scende di 73 byte. MentionField, AddressField e Alert sono lo stesso componente da `componenti`, da `window.Zeiras` e dal loro modulo: un contatore degli id solo, le etichette di partenza condivise, e con `bundle.css` gli stili dei due campi arrivano anche dai loro moduli, uguali (un'app che prende `componenti` intero, come l'ingresso di sempre, ha nel CSS d'ingresso anche quei due file). I componenti che usano gli id del bundle (Field, Checkbox, Dialog, Menu, MentionField e altri) portano con sé il modulo dell'`AppShell`, che conta gli id con loro: con la cornice nell'ingresso c'è già. E le frasi delle notifiche nella sola lingua della pagina (Decisione 23057, per zr-home #3486): alla prima apertura della campanella la cornice chiede il solo file delle frasi della lingua della persona, non più anche quello dell'inglese (circa 1,9 KB con gzip in meno per chi usa l'italiano o lo spagnolo); ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI. Il pezzo della campanella scende a 2.685 byte. `…/frasi` resta com'è | niente; con `zeiras.css` i due campi si possono prendere anche da `componenti` | un caso che prende MentionField o AddressField dal suo modulo e confronta l'id del campo con un numero fisso va riletto: il contatore è quello di tutti i componenti; un caso che conta i file delle frasi chiesti all'apertura della campanella ne trova uno, non due | i pezzi a richiesta delle pagine che usano componenti che la cornice non usa: il componente sta lì, non nel JS d'ingresso; la campanella aperta su `layout.html`, `staff.html` e `cliente.html`, in italiano, spagnolo e inglese |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1463,8 +1463,8 @@ cornice === null ? pagina : (
   d'ingresso della cornice: stanno in `resources/lingue/notifiche/<codice>.json`, un file per lingua, e la cornice le
   chiede con `fetch` quando si apre la campanella, insieme all'elenco: il solo file della lingua della persona, una volta
   sola (alla seconda apertura sono in memoria, e si richiede solo l'elenco); chi usa l'inglese, o una lingua che zr-core
-  non ha, chiede quello dell'inglese. Fino alla `v4.28.0` partiva sempre anche il file dell'inglese, per le frasi che una
-  lingua non aveva: dalla `v4.29.0` (#3511) ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI di
+  non ha, chiede quello dell'inglese. Fino alla `v4.29.0` partiva sempre anche il file dell'inglese, per le frasi che una
+  lingua non aveva: dalla `v4.30.0` (#3511) ogni file delle frasi ha tutte quelle dell'inglese, e lo controlla la CI di
   zr-core. Nella build del
   frontend sono file `.json` con l'impronta nel nome, accanto al JS (restano file anche se il frontend alza `build.assetsInlineLimit`), e la cornice li chiede da dove la pagina prende il
   JS: la CSP di tutti lo lascia fare (`connect-src 'self'`); un frontend che serve la build da un'altra origine
