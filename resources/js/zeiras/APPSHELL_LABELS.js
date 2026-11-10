@@ -5,7 +5,7 @@
 
   /* Testi fissi dell'AppShell: tutti sostituibili con la prop labels (it di default) */
   var APPSHELL_LABELS = {
-    soon: 'Presto', off: 'Da attivare', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
+    soon: 'Presto', off: 'Da attivare', inactive: 'Non attivo', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
     personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
