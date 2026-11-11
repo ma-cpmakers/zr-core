@@ -21,9 +21,12 @@ afterEach(() => {
 });
 
 describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', () => {
-    it('per una lingua partono due richieste, il suo file e quello dell\'inglese, agli indirizzi della build e con un tempo massimo di dieci secondi (T1.3, T1.4)', async () => {
+    // Voce 3511 · AC 7 (Decisione 23057). Fino alla `v4.29.0` partivano due richieste, il file della lingua e quello
+    // dell'inglese, per le frasi che la lingua non aveva; dalla `v4.30.0` ogni lingua di zr-core ha tutte le frasi dell'inglese
+    // (lo controlla `LingueTest.php`), e la cornice chiede solo il file della lingua.
+    it.each([['it', /\/it\.json/], ['es', /\/es\.json/], ['es-MX', /\/es\.json/]])('per «%s» parte una sola richiesta, il file della lingua, all\'indirizzo della build e con un tempo massimo di dieci secondi: `en.json` non si chiede, nemmeno dopo (sprint 30 · T1.3, T1.4; voce 3511 · 7)', async (lingua, delFile) => {
         const attesa = vi.spyOn(AbortSignal, 'timeout');
-        const fetchFinto = vi.fn(async (indirizzo: string, _opzioni?: RequestInit) => risposta(/\/it\.json/.test(indirizzo) ? { 'notificationTitle.uat': 'UAT titolo' } : { 'notificationTitle.uat': 'UAT title', 'notificationTitle.solo': 'UAT only' }));
+        const fetchFinto = vi.fn(async (_indirizzo: string, _opzioni?: RequestInit) => risposta({ 'notificationTitle.uat': 'UAT titolo' }));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte, indirizziDelleFrasi } = await import('./campanella');
 
@@ -31,15 +34,17 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         expect(Object.keys(indirizziDelleFrasi).sort()).toStrictEqual([EN, '../lingue/notifiche/es.json', IT]);
         expect(indirizziDelleFrasi[IT]).toMatch(/\/it\.json(\?|$)/);
 
-        await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT titolo', 'notificationTitle.solo': 'UAT only' });
-        expect(fetchFinto.mock.calls.map(([indirizzo]) => indirizzo).sort()).toStrictEqual([indirizziDelleFrasi[EN], indirizziDelleFrasi[IT]].sort());
-        expect(attesa.mock.calls).toStrictEqual([[10_000], [10_000]]);
+        await expect(caricaFrasi(lingua)).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT titolo' });
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+        expect(fetchFinto.mock.calls[0]?.[0]).toMatch(delFile);
+        expect(fetchFinto.mock.calls[0]?.[0]).not.toBe(indirizziDelleFrasi[EN]);
+        expect(attesa.mock.calls).toStrictEqual([[10_000]]);
         expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal)).toStrictEqual(attesa.mock.results.map((esito) => esito.value));
 
         // In memoria: non si richiedono.
-        expect(frasiPronte('it')).toStrictEqual({ 'notificationTitle.uat': 'UAT titolo', 'notificationTitle.solo': 'UAT only' });
-        await caricaFrasi('it');
-        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(frasiPronte(lingua)).toStrictEqual({ 'notificationTitle.uat': 'UAT titolo' });
+        await caricaFrasi(lingua);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
     it.each([[404], [500], [503]])('una risposta %i è un errore, anche se ha un corpo: niente resta in memoria, e la richiesta dopo riparte da capo e riesce (T1.5)', async (status) => {
@@ -50,10 +55,10 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
 
         await expect(caricaFrasi('it')).rejects.toBeUndefined();
         expect(frasiPronte('it')).toBeUndefined();
-        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
-        expect(fetchFinto).toHaveBeenCalledTimes(4);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
     // Sprint 33 · T3.1 (voce #1909). Un 200 che non porta le frasi — la pagina di un proxy, un file vuoto — è un errore come un
@@ -71,19 +76,32 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
 
         await expect(caricaFrasi('it')).rejects.toBeUndefined();
         expect(frasiPronte('it')).toBeUndefined();
-        expect(fetchFinto).toHaveBeenCalledTimes(2);
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
 
         await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
-        expect(fetchFinto).toHaveBeenCalledTimes(4);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 
-    it.each(ARRIVATE_MALE)('un 200 con %s al posto delle frasi dell\'inglese è un errore anche se quelle della lingua sono arrivate bene (sprint 33 · T3.1)', async (_caso, corpo) => {
+    // Voce 3511 · AC 7: dalla `v4.30.0` l'inglese di chi ha un'altra lingua non si chiede, e un `en.json` che arriverebbe male non
+    // conta. Per chi usa l'inglese, le frasi arrivate male sono quelle della sua lingua (il caso sotto, con «en»).
+    it.each(ARRIVATE_MALE)('un `en.json` che darebbe %s non conta per chi ha l\'italiano: non si chiede, e le frasi della lingua sono pronte (sprint 33 · T3.1; voce 3511 · 7)', async (_caso, corpo) => {
         const fetchFinto = vi.fn(async (indirizzo: string) => risposta(/\/en\.json/.test(indirizzo) ? corpo : { 'notificationTitle.uat': 'UAT' }));
         vi.stubGlobal('fetch', fetchFinto);
         const { caricaFrasi, frasiPronte } = await import('./campanella');
 
-        await expect(caricaFrasi('it')).rejects.toBeUndefined();
-        expect(frasiPronte('it')).toBeUndefined();
+        await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
+        expect(frasiPronte('it')).toStrictEqual({ 'notificationTitle.uat': 'UAT' });
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(ARRIVATE_MALE)('per chi usa l\'inglese un 200 con %s al posto di `en.json` è un errore, e niente resta in memoria (sprint 33 · T3.1; voce 3511 · 8)', async (_caso, corpo) => {
+        const fetchFinto = vi.fn(async (_indirizzo: string) => risposta(corpo));
+        vi.stubGlobal('fetch', fetchFinto);
+        const { caricaFrasi, frasiPronte } = await import('./campanella');
+
+        await expect(caricaFrasi('en')).rejects.toBeUndefined();
+        expect(frasiPronte('en')).toBeUndefined();
+        expect(fetchFinto).toHaveBeenCalledTimes(1);
     });
 
     it.each(['en', 'en-GB'])('chi usa l\'inglese («%s») fa una sola richiesta di `en.json` per volta, e in memoria restano le frasi (sprint 33 · T3.5)', async (lingua) => {
@@ -106,7 +124,7 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
             const { caricaFrasi } = await import('./campanella');
 
             await expect(caricaFrasi('it')).resolves.toStrictEqual({ 'notificationTitle.uat': 'UAT' });
-            expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal)).toStrictEqual([undefined, undefined]);
+            expect(fetchFinto.mock.calls.map(([, opzioni]) => opzioni?.signal)).toStrictEqual([undefined]);
         } finally {
             Reflect.deleteProperty(AbortSignal, 'timeout');
         }
@@ -128,14 +146,14 @@ describe('le frasi delle notifiche si chiedono con `fetch` (sprint 30 · T1)', (
         const { caricaFrasi, frasiPronte } = await import('./campanella');
 
         const chiesta = caricaFrasi('es');
-        expect(orologi).toHaveLength(2);
+        expect(orologi).toHaveLength(1);
         orologi.forEach((orologio) => orologio.abort());
 
         await expect(chiesta).rejects.toThrow('The operation timed out.');
         expect(frasiPronte('es')).toBeUndefined();
 
         void caricaFrasi('es').catch(() => undefined);
-        expect(fetchFinto).toHaveBeenCalledTimes(4);
+        expect(fetchFinto).toHaveBeenCalledTimes(2);
     });
 });
 

@@ -1085,8 +1085,9 @@ describe('rigaDellaNotifica', () => {
 });
 
 // Sprint 30 · T1 (voce #1875). Le frasi delle notifiche stanno in un file loro per lingua (resources/lingue/notifiche) e la
-// cornice le carica quando servono: il file della lingua e quello dell'inglese, una volta sola. Chi mostra le notifiche in
-// una pagina sua le ha subito, da `./frasi`, e gli stessi testi.
+// cornice le carica quando servono, una volta sola: fino alla `v4.29.0` il file della lingua e quello dell'inglese, dalla
+// `v4.30.0` (voce 3511 · AC 7 e 8) solo quello della lingua, che ha tutte le frasi dell'inglese (lo controlla `LingueTest.php`).
+// Chi mostra le notifiche in una pagina sua le ha subito, da `./frasi`, e gli stessi testi.
 describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     /** Tre file che dicono quando sono chiesti; `rotti` non arrivano. */
     function fileFinti(rotti = new Set<string>()) {
@@ -1109,15 +1110,15 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
         return { chiesti, rotti, ...aRichiesta };
     }
 
-    it('per una lingua partono il suo file e quello dell\'inglese, mai gli altri; prima non c\'è niente in memoria, dopo le frasi restano e non si richiedono, e due richieste insieme sono una (T1.3, T1.6)', async () => {
+    it('per una lingua parte il suo file solo, mai l\'inglese né gli altri; prima non c\'è niente in memoria, dopo le frasi restano e non si richiedono, e due richieste insieme sono una (T1.3, T1.6; voce 3511 · 7)', async () => {
         const frasi = fileFinti();
         expect(frasi.chiesti).toStrictEqual([]);
         expect(frasi.pronte('it')).toBeUndefined();
 
         const [prime, insieme] = await Promise.all([frasi.carica('it-IT'), frasi.carica('it')]);
-        expect(frasi.chiesti.sort()).toStrictEqual(['en', 'it']);
+        expect(frasi.chiesti).toStrictEqual(['it']);
         expect(insieme).toBe(prime);
-        expect(prime).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
+        expect(prime).toStrictEqual(frasiItaliane);
         expect(Object.isFrozen(prime)).toBe(true);
         expect(frasi.pronte('IT')).toBe(prime);
         // Le altre lingue non sono in memoria finché nessuno le chiede.
@@ -1125,17 +1126,23 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
         expect(frasi.pronte('en')).toBeUndefined();
 
         expect(await frasi.carica('it')).toBe(prime);
-        expect(frasi.chiesti).toHaveLength(2);
+        expect(frasi.chiesti).toHaveLength(1);
     });
 
-    it('una lingua senza una frase, o con la frase vuota, la ha in inglese; una frase di un tipo che l\'inglese non ha non entra; una lingua che zr-core non ha chiede il solo inglese (T1.4)', async () => {
+    // Fino alla `v4.29.0` una lingua senza una frase la aveva in inglese. Dalla `v4.30.0` (voce 3511 · AC 10) una lingua di
+    // zr-core non può essere senza una frase: lo ferma la CI (`LingueTest.php`), e la cornice non chiede l'inglese per niente.
+    it('le frasi di una lingua sono quelle del suo file, senza l\'inglese; l\'inglese, e una lingua che zr-core non ha, chiedono il solo inglese (T1.4; voce 3511 · 7, 8)', async () => {
         const frasi = fileFinti();
         const spagnole = await frasi.carica('es');
 
-        expect(spagnole['notificationTitle.com.zeiras.board.scheda.creata']).toBe('New card');
-        expect(spagnole['notificationTitle.com.zeiras.board.scheda.modificata']).toBe('Card changed');
+        expect(frasi.chiesti).toStrictEqual(['es']);
+        expect(spagnole['notificationTitle.com.zeiras.board.scheda.creata']).toBeUndefined();
         expect(spagnole['notificationTitle.com.zeiras.board.cartella.creata']).toBe('Nueva área');
-        expect(Object.keys(spagnole).sort()).toStrictEqual(Object.keys(frasiInglesi).sort());
+        expect(spagnole['notificationTitle.com.zeiras.crm.contatto.creato']).toBe('Nuevo contacto');
+
+        frasi.chiesti.length = 0;
+        expect(await frasi.carica('en-GB')).toStrictEqual(frasiInglesi);
+        expect(frasi.chiesti).toStrictEqual(['en']);
 
         frasi.chiesti.length = 0;
         const diNessuno = await frasi.carica('zz');
@@ -1145,16 +1152,16 @@ describe('le frasi delle notifiche a richiesta (sprint 30 · T1)', () => {
     });
 
     it('se un file non arriva la promessa è respinta e niente resta in memoria: la richiesta dopo riparte, e se arriva le frasi ci sono (T1.5)', async () => {
-        for (const rotto of ['it', 'en']) {
+        for (const [lingua, rotto] of [['it', 'it'], ['en', 'en'], ['zz', 'en']] as const) {
             const frasi = fileFinti(new Set([rotto]));
 
-            await expect(frasi.carica('it')).rejects.toThrow('Failed to fetch dynamically imported module');
-            expect(frasi.pronte('it')).toBeUndefined();
+            await expect(frasi.carica(lingua)).rejects.toThrow('Failed to fetch dynamically imported module');
+            expect(frasi.pronte(lingua)).toBeUndefined();
 
             frasi.rotti.clear();
             frasi.chiesti.length = 0;
-            expect(await frasi.carica('it')).toStrictEqual({ ...frasiInglesi, ...frasiItaliane });
-            expect(frasi.chiesti.sort()).toStrictEqual(['en', 'it']);
+            expect(await frasi.carica(lingua)).toStrictEqual(rotto === 'it' ? frasiItaliane : frasiInglesi);
+            expect(frasi.chiesti).toStrictEqual([rotto]);
         }
     });
 

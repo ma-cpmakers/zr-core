@@ -1,0 +1,8 @@
+// Generato da scripts/componenti.mjs: non si ritocca a mano.
+// Sono righe private di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) che servono
+// a 2 nomi registrati: stanno qui una volta sola e chi le usa le importa.
+// A un riallineamento si rigenera con `npm run componenti`.
+
+  var FOCUSABLE = ['a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])', 'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]'].map(function (s) { return s + ':not([tabindex="-1"])'; }).join(', ');
+
+export { FOCUSABLE };

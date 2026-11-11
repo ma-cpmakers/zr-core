@@ -1,16 +1,17 @@
-// Generato da scripts/componenti.mjs: non si ritocca a mano. È MentionField di resources/zeiras/bundle.js (il design system di
-// Zeiras, copia derivata) in un modulo suo: il suo blocco del bundle e le righe private che usa, riga per riga; i componenti che
-// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.
-import * as React from 'react';
-import { Avatar, Icon, Label } from './componenti';
+// Generato da scripts/componenti.mjs: non si ritocca a mano.
+// È MentionField di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) in un modulo suo: le sue
+// righe del bundle e quelle private che usa lui solo; il resto lo importa.
+// A un riallineamento si rigenera con `npm run componenti`.
+import { h } from './interni/h';
+import { useState } from './interni/useState';
+import { cx } from './interni/cx';
+import { Icon } from './Icon';
+import { Label } from './Label';
+import { Avatar } from './Avatar';
+import { useId } from './AppShell';
+import { MENTION_LABELS } from './MENTION_LABELS';
 import '../../css/zeiras/MentionField.css';
-  var h = React.createElement;
-  var useState = React.useState;
-  var useRef = React.useRef;
-  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
-  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }
 
-  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM' };
   function MentionField(p) {
     var id = useId('mnt');
     var L = Object.assign({}, MENTION_LABELS, p.labels || {});

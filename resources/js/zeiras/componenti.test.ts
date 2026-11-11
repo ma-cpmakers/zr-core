@@ -1,22 +1,30 @@
 import * as React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { genera } from '../../../scripts/componenti-genera.mjs';
+import { dividiIlCss, genera, leggi, moduli } from '../../../scripts/componenti-genera.mjs';
 import bundle from '../../zeiras/bundle.js?raw';
 import dichiarazioni from '../../zeiras/index.d.ts?raw';
 import * as componenti from './componenti';
-import generato from './componenti.js?raw';
 import { Zeiras } from './index';
 
-// Sprint 25 · T1 (voce #1759). I componenti del design system come modulo ES: `componenti.js` esce da scripts/componenti.mjs, che
-// prende il corpo di resources/zeiras/bundle.js riga per riga e ne esporta per nome ciò che il bundle registra in `window.Zeiras`.
-// La cornice e `Zeiras` li prendono da lì: una copia sola del design system per app. Il bundle, le dichiarazioni e il file generato
-// si leggono qui come testo (`?raw`), senza `node:fs`. Ciò che il file deve contenere è scritto qui senza passare
-// dallo script: rigenerarlo con lo stesso script non vedrebbe uno script cambiato.
+// Sprint 25 · T1 (voce #1759). I componenti del design system come moduli ES: escono da scripts/componenti.mjs, che prende il
+// corpo di resources/zeiras/bundle.js riga per riga e ne esporta per nome ciò che il bundle registra in `window.Zeiras`. Dalla
+// `v4.30.0` (voce #3511) un modulo per nome, resources/js/zeiras/<Nome>.js, le righe private comuni in interni/, e `componenti.js`
+// che li esporta soltanto. La cornice e `Zeiras` li prendono da lì: una copia sola del design system per app. Il bundle, le
+// dichiarazioni e i file generati si leggono qui come testo (`?raw`), senza `node:fs`. Ciò che i file devono contenere è scritto
+// qui senza passare dallo script: rigenerarli con lo stesso script non vedrebbe uno script cambiato.
 
 const INIZIO_DELLA_REGISTRAZIONE = '  window.Zeiras = Object.assign(window.Zeiras || {}, {';
 const righeDelBundle = bundle.split('\n');
 const rigaDellaRegistrazione = righeDelBundle.indexOf(INIZIO_DELLA_REGISTRAZIONE);
+// I file generati, per percorso da resources/js/zeiras (`componenti.js`, `Button.js`, `interni/h.js`), e i moduli che danno.
+const testi = Object.fromEntries(Object.entries(import.meta.glob<string>(['./*.js', './interni/*.js'], { query: '?raw', import: 'default', eager: true })).map(([percorso, testo]) => [percorso.slice(2), testo]));
+const caricati = Object.fromEntries(Object.entries(import.meta.glob<Record<string, unknown>>(['./*.js', './interni/*.js'], { eager: true })).map(([percorso, modulo]) => [percorso.slice(2), modulo]));
+const generato = testi['componenti.js'] ?? '';
+// Il CSS col suo testo: in vitest un `import` di un CSS, anche con `?raw`, non lo dà.
+const css = readFileSync(resolve('resources/zeiras/bundle.css'), 'utf8');
 
 /** I nomi che il bundle registra in `window.Zeiras`, nell'ordine in cui li registra. */
 function nomiRegistrati(): string[] {
@@ -35,6 +43,15 @@ function nomiDichiarati(): string[] {
     return [...dichiarazioni.matchAll(/^export declare (?:function|const) ([A-Za-z_$][\w$]*)/gm)].map((trovato) => trovato[1] ?? '');
 }
 
+/** Le righe del bundle di un modulo generato: dopo il commento e gli import, prima dell'`export` in fondo. */
+function corpoDi(testo: string): string[] {
+    const righe = testo.split('\n');
+    const inizio = righe.indexOf('') + 1;
+    const fine = righe.at(-2)?.startsWith('export {') ? righe.length - 3 : righe.length - 1;
+
+    return righe.slice(inizio, fine);
+}
+
 const come = (oggetto: object) => oggetto as Record<string, unknown>;
 
 // Sprint 50 · T1 (voce 2073). Le tre righe del bundle che il modulo segna pure, con ciò che va davanti al segno: i dati di esempio
@@ -50,46 +67,103 @@ function nelModulo(riga: string): string {
     return segnata === undefined ? riga : segnata + PURO + riga.slice(segnata.length);
 }
 
-describe('il file generato è quello che il bundle genera (T1.1)', () => {
-    it('rigenerato in memoria dal bundle è uguale al file, carattere per carattere', () => {
-        expect(genera(bundle)).toBe(generato);
+/** Le righe non vuote, in ordine, per confrontarle come insieme con ripetizioni. */
+const ordinate = (righe: string[]) => righe.filter((riga) => riga.trim() !== '').sort();
+
+describe('i file generati sono quelli che il bundle genera (T1.1; voce 3511 · AC 4)', () => {
+    it('rigenerati in memoria dal bundle sono uguali ai file, carattere per carattere, e non ce n\'è uno in più né uno in meno', () => {
+        const rigenerati = moduli(leggi(bundle), dividiIlCss(css));
+
+        expect(Object.keys(testi).sort()).toEqual(Object.keys(rigenerati).sort());
+        for (const [percorso, testo] of Object.entries(rigenerati)) {
+            expect(testi[percorso], percorso).toBe(testo);
+        }
     });
 
-    it('con un carattere cambiato nel bundle non è più uguale: un bundle riallineato senza rigenerare non passa', () => {
+    it('con un carattere cambiato nel bundle un modulo non è più uguale: un bundle riallineato senza rigenerare non passa', () => {
         const cambiato = bundle.replace("p.label || 'Percorso'", "p.label || 'Percorsi'");
 
         expect(cambiato).not.toBe(bundle);
-        expect(genera(cambiato)).not.toBe(generato);
+        expect(Object.entries(moduli(leggi(cambiato), dividiIlCss(css))).filter(([percorso, testo]) => testi[percorso] !== testo).map(([percorso]) => percorso)).toEqual(['Breadcrumb.js']);
     });
 
-    it('comincia col commento che dice da dove esce e con l\'import di React; il corpo è quello del bundle riga per riga; in fondo gli export', () => {
-        const nomi = nomiRegistrati();
+    it('componenti.js ha il commento che dice da dove esce e poi solo un `export … from` per nome registrato, dal suo modulo', () => {
         const righe = generato.split('\n');
+        const esportazioni = righe.filter((riga) => !riga.startsWith('//') && riga !== '');
+
+        expect(righe[0]).toBe('// Generato da scripts/componenti.mjs: non si ritocca a mano.');
+        expect(esportazioni.map((riga) => /^export \{ (\w+) \} from '\.\/(\w+)';$/.exec(riga)?.slice(1))).toEqual(esportazioni.map(() => expect.any(Array)));
+        expect(esportazioni.map((riga) => /^export \{ (\w+) \} from '\.\/(\w+)';$/.exec(riga)).every((trovato) => trovato?.[1] === trovato?.[2])).toBe(true);
+        expect(esportazioni.map((riga) => /^export \{ (\w+) \}/.exec(riga)?.[1]).sort()).toEqual([...nomiRegistrati()].sort());
+    });
+
+    it('ogni riga del corpo del bundle sta in un modulo solo: nessuna è copiata in due, nessuna manca, e i moduli non leggono la finestra (voce 3511 · AC 3)', () => {
+        const delCorpo = righeDelBundle.slice(3, rigaDellaRegistrazione).map(nelModulo);
+        const neiModuli = Object.entries(testi).filter(([percorso]) => percorso !== 'componenti.js').flatMap(([, testo]) => corpoDi(testo));
 
         expect(rigaDellaRegistrazione).toBeGreaterThan(3);
-        expect(righe.slice(0, 3)).toEqual([
-            '// Generato da scripts/componenti.mjs: non si ritocca a mano. Sono i componenti di resources/zeiras/bundle.js (il design system',
-            '// di Zeiras, copia derivata) come modulo ES, esportati per nome; a un riallineamento si rigenera con `npm run componenti`.',
-            "import * as React from 'react';",
-        ]);
-        // Dalla quarta riga del bundle (le prime tre sono il commento del formato, l'apertura e `var React = window.React;`) fino
-        // alla riga prima della registrazione.
-        expect(righe.slice(3, righe.length - nomi.length - 3)).toEqual(righeDelBundle.slice(3, rigaDellaRegistrazione).map(nelModulo));
-        expect(righe.slice(righe.length - nomi.length - 3)).toEqual(['export {', ...nomi.map((nome) => `  ${nome},`), '};', '']);
-        expect(generato).not.toContain('window.React');
-        expect(generato).not.toContain('window.Zeiras');
+        expect(ordinate(neiModuli)).toEqual(ordinate(delCorpo));
+        expect(Object.values(testi).join('\n')).not.toMatch(/window\.(React|Zeiras)\b/);
+    });
+});
+
+// Voce #3511 (revisione, R1): le fermate della divisione in moduli, ognuna su un corpo finto di poche righe (il corpo comincia
+// alla riga 4 del bundle). Quella del giro è la sola difesa contro una `var` letta appena caricato il modulo, in un giro di
+// import, prima di esistere.
+describe('davanti a un corpo che non sa dividere lo script si ferma e dice perché (voce 3511)', () => {
+    it.each<[string, string[], string[], RegExp]>([
+        ['un nome dichiarato due volte', ['  function A() {}', '  function A() {}'], ['A'], /«A» è dichiarato due volte \(righe 4 e 5\)/],
+        ['una proprietà data a un nome che il corpo non dichiara', ['  function A() {}', '  B.x = A;'], ['A'], /la riga 5 dà una proprietà a «B», che il corpo del bundle non dichiara/],
+        ['due nomi registrati che danno un valore allo stesso nome', ['  var n = 0;', '  function A() { n += 1; }', '  function B() { n += 1; }'], ['A', 'B'], /dichiarano due nomi registrati e devono stare nello stesso modulo/],
+        ['due nomi registrati con lo stesso file', ['  function Ab() {}', '  function AB() {}'], ['Ab', 'AB'], /due moduli avrebbero lo stesso file, AB\.js/],
+        ['un nome registrato col file di componenti.js', ['  function componenti() {}'], ['componenti'], /due moduli avrebbero lo stesso file, componenti\.js/],
+        ['una var letta appena caricato da un modulo che lei importa', ['  function A() { return y; }', '  var y = B.k;', '  var B = { k: 1, a: function () { return A; } };'], ['A', 'B'], /la riga 5 legge subito «B» di B\.js, che importa interni\/y\.js: in un giro il nome può non esserci ancora/],
+    ])('%s', (_caso, corpo, nomi, messaggio) => {
+        expect(() => moduli({ corpo, nomi })).toThrow(messaggio);
+    });
+
+    it('lo stesso giro con una funzione dichiarata, solo letta e non chiamata, passa: in un giro c\'è già', () => {
+        expect(Object.keys(moduli({ corpo: ['  function A() { return y; }', '  var y = B.k;', '  function B() { return A; }'], nomi: ['A', 'B'] })).sort()).toStrictEqual(['A.js', 'B.js', 'componenti.js', 'interni/y.js']);
+    });
+});
+
+describe('ogni nome è lo stesso oggetto da componenti.js e dal suo modulo, e uno stato del bundle c\'è una volta (voce 3511 · AC 2, AC 3)', () => {
+    it('componenti.js esporta gli stessi nomi del bundle, quanti sono, e ognuno è quello del modulo del suo nome', () => {
+        const nomi = nomiRegistrati();
+
+        expect(Object.keys(componenti).sort()).toEqual([...nomi].sort());
+        expect(nomi.filter((nome) => caricati[`${nome}.js`]?.[nome] !== come(componenti)[nome])).toEqual([]);
+        expect(nomi.filter((nome) => come(componenti)[nome] === undefined)).toEqual([]);
+    });
+
+    it('il contatore degli id è uno: Field, Checkbox e di nuovo Field, da tre moduli, contano in fila', () => {
+        const idDi = (markup: string, prefisso: string) => Number(new RegExp(`id="${prefisso}-(\\d+)`).exec(markup)?.[1]);
+        const campo = caricati['Field.js']!['Field'] as typeof componenti.Field;
+        const casella = caricati['Checkbox.js']!['Checkbox'] as typeof componenti.Checkbox;
+        const primo = idDi(renderToStaticMarkup(React.createElement(campo, { label: 'Nome' })), 'fld');
+        const secondo = idDi(renderToStaticMarkup(React.createElement(casella, { label: 'Sì', hint: 'Si può cambiare' })), 'chk');
+        const terzo = idDi(renderToStaticMarkup(React.createElement(campo, { label: 'Cognome' })), 'fld');
+
+        expect([secondo - primo, terzo - secondo]).toStrictEqual([1, 1]);
+    });
+
+    it('il contesto dei testi comuni è uno: LabelsProvider dal suo modulo arriva a useLabels dal suo', () => {
+        const Fornitore = caricati['LabelsProvider.js']!['LabelsProvider'] as typeof componenti.LabelsProvider;
+        const usaITesti = caricati['useLabels.js']!['useLabels'] as typeof componenti.useLabels;
+        const Legge = () => React.createElement('span', null, usaITesti().close);
+
+        expect(renderToStaticMarkup(React.createElement(Fornitore, { labels: { close: 'Serra' } }, React.createElement(Legge)))).toBe('<span>Serra</span>');
     });
 });
 
 describe('il modulo segna pure le tre righe dei dati di esempio e dei formattatori dei numeri, e nessun\'altra (sprint 50 · T1.3)', () => {
     it('dal corpo del bundle cambiano tre righe sole, quelle, e solo per il segno', () => {
-        const righe = generato.split('\n');
-        const corpo = righeDelBundle.slice(3, rigaDellaRegistrazione);
-        const diverse = corpo.flatMap((riga, indice) => (righe[indice + 3] === riga ? [] : [righe[indice + 3]]));
+        const delCorpo = new Set(righeDelBundle.slice(3, rigaDellaRegistrazione));
+        const diverse = Object.values(testi).flatMap((testo) => corpoDi(testo)).filter((riga) => !delCorpo.has(riga));
 
-        expect(diverse).toEqual([
-            "  var NF = /* @__PURE__ */ new Intl.NumberFormat('it-IT');",
+        expect(diverse.sort()).toEqual([
             "  var EUR = /* @__PURE__ */ new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });",
+            "  var NF = /* @__PURE__ */ new Intl.NumberFormat('it-IT');",
             '  var SAMPLE_CONTACTS = /* @__PURE__ */ [',
         ]);
     });

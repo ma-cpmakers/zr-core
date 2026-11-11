@@ -7827,7 +7827,8 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         return fetchFinto;
     };
 
-    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura partono quello della lingua dei dati e quello dell\'inglese, non lo spagnolo, e il titolo è la frase di sempre (T1.3)', async () => {
+    // Voce 3511 · AC 7 e 9: fino alla `v4.29.0` all'apertura partiva anche l'inglese; dalla `v4.30.0` solo la lingua dei dati.
+    it('prima dell\'apertura nessun file di frasi è chiesto; all\'apertura parte solo quello della lingua dei dati, una volta, non l\'inglese né lo spagnolo, e il titolo è la frase di sempre (T1.3; voce 3511 · 7, 9)', async () => {
         const frasi = caricatore();
         conLElenco();
         await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} />);
@@ -7835,7 +7836,7 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
 
         await clic(uno('.zr-bell'));
 
-        expect([...new Set(frasi.chiesti)].sort()).toStrictEqual(['en', 'it']);
+        expect(frasi.chiesti).toStrictEqual(['it']);
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
@@ -7855,19 +7856,23 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         expect(titoli()).toStrictEqual([inItaliano]);
     });
 
-    it.each(['it', 'en'])('se il file «%s» non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5)', async (rotto) => {
+    // Voce 3511 · AC 8: dalla `v4.30.0` `en.json` lo chiede solo una pagina in inglese, e la variante «en» è in inglese.
+    const inInglese = '\u{2068}Giulia Bianchi\u{2069} created the area “\u{2068}Lancio corso\u{2069}”';
+    it.each([['it', inItaliano], ['en', inInglese]])('se il file «%s» della lingua dei dati non arriva il pannello mostra l\'errore con «Riprova», non un elenco di titoli di ripiego, e la cornice resta quella di sempre; «Riprova» richiede elenco e frasi (T1.5; voce 3511 · 8)', async (rotto, titolo) => {
+        const lingua = rotto;
         const frasi = caricatore();
         frasi.rotti.add(rotto);
         const fetchFinto = conLElenco();
-        await mostra(<Cornice dati={{ ...dati, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
+        await mostra(<Cornice dati={{ ...dati, lingua, non_lette: 3 }} onLogout={esciSenzaEffetto} />);
 
         await clic(uno('.zr-bell'));
-        expect(errore()?.querySelector('p')?.textContent).toBe('Non riusciamo a caricare le notifiche.');
+        expect(errore()?.querySelector('p')?.textContent).toBe(testi(lingua).notificationsError);
+        expect(testi('it').notificationsError).toBe('Non riusciamo a caricare le notifiche.');
         expect(inAttesa()).toBe(false);
         expect(titoli()).toStrictEqual([]);
-        expect(contenitore.textContent).not.toContain(testi('it').notificationTitle);
+        expect(contenitore.textContent).not.toContain(testi(lingua).notificationTitle);
         // Non è un `403 accettazione_richiesta`: niente avviso sopra la pagina, e la campanella ha ancora il suo numero.
-        expect(contenitore.textContent).not.toContain(testiDegliAvvisi('it').acceptanceTitle);
+        expect(contenitore.textContent).not.toContain(testiDegliAvvisi(lingua).acceptanceTitle);
         expect(uno('.zr-bell-count')?.textContent).toBe('3');
         expect(fetchFinto).toHaveBeenCalledOnce();
 
@@ -7875,9 +7880,10 @@ describe('le frasi delle notifiche arrivano quando si apre la campanella (sprint
         const primaDiRiprova = frasi.chiesti.length;
         await clic(errore()?.querySelector('button') ?? null);
         expect(fetchFinto).toHaveBeenCalledTimes(2);
-        expect(frasi.chiesti.slice(primaDiRiprova)).toContain(rotto);
+        expect(frasi.chiesti.slice(primaDiRiprova)).toStrictEqual([rotto]);
+        expect(frasi.chiesti).toStrictEqual([rotto, rotto]);
         expect(errore()).toBeNull();
-        expect(titoli()).toStrictEqual([inItaliano]);
+        expect(titoli()).toStrictEqual([titolo]);
     });
 
     // Sprint 33 · T1 (voce #1915). Dalla `v2.0.0` ciò che compone le righe e carica le frasi è un pezzo a richiesta

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execPath } from 'node:process';
@@ -16,12 +16,10 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 const FILE_DEL_BUNDLE = 'resources/zeiras/bundle.js';
 const FILE_DEL_MODULO = 'resources/js/zeiras/componenti.js';
-// Dalla `v3.1.0` (sprint 71 · T1.3) il comando scrive e controlla anche il modulo di MentionField.
+// Dalla `v3.1.0` (sprint 71 · T1.3) il comando scrive e controlla anche il modulo di MentionField, e dalla `v4.30.0` (voce #3511)
+// quello di ogni nome che il bundle registra, con le righe private comuni in interni/.
 const FILE_A_PARTE = 'resources/js/zeiras/MentionField.js';
-// Dalla `v3.2.0` (sprint 72 · T1.3) anche quello di AddressField.
-const FILE_DI_ADDRESS = 'resources/js/zeiras/AddressField.js';
-// Dalla `v4.8.1` (voce 3055) anche quello dell'Alert, senza un CSS suo.
-const FILE_DELL_ALERT = 'resources/js/zeiras/Alert.js';
+const FILE_INTERNO = 'resources/js/zeiras/interni/h.js';
 // Dalla `v3.3.0` (sprint 75 · T1.1) divide anche bundle.css: il CSS senza gli stili dei due componenti, e quelli di ognuno.
 const FILE_DEL_CSS = 'resources/zeiras/bundle.css';
 // Dalla `v3.15.0` (sprint 92 · T2) anche il bundle intero coi font del pacchetto.
@@ -30,12 +28,14 @@ const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso
 const radice = mkdtempSync(join(tmpdir(), 'zr-core-componenti-'));
 const copia = join(radice, 'una copia #1 100% ?sì');
 const nellaCopia = (percorso: string) => join(copia, percorso);
-const generato = readFileSync(delRepo(FILE_DEL_MODULO), 'utf8');
+// I moduli che il bundle genera, come stanno nel repo: in resources/js/zeiras e in interni/, i soli `.js`.
+const MODULI = ['resources/js/zeiras', 'resources/js/zeiras/interni'].flatMap((cartella) => readdirSync(delRepo(cartella)).filter((nome) => nome.endsWith('.js')).map((nome) => `${cartella}/${nome}`));
+const moduli = new Map(MODULI.map((percorso) => [percorso, readFileSync(delRepo(percorso), 'utf8')]));
+const generato = moduli.get(FILE_DEL_MODULO)!;
 const RITOCCATO = `${generato}// ritoccato a mano\n`;
-const generatoAParte = readFileSync(delRepo(FILE_A_PARTE), 'utf8');
-const generatoDiAddress = readFileSync(delRepo(FILE_DI_ADDRESS), 'utf8');
-const generatoDellAlert = readFileSync(delRepo(FILE_DELL_ALERT), 'utf8');
+const generatoAParte = moduli.get(FILE_A_PARTE)!;
 const cssGenerati = CSS_GENERATI.map((percorso) => readFileSync(delRepo(percorso), 'utf8'));
+const scrittiTutti = /^scritti (\d+) moduli in resources\/js\/zeiras \(\d+ nomi esportati da componenti\.js\) e 4 CSS\n$/;
 
 /** Lancia il comando nella copia, da una cartella che non è la sua: uscita, ciò che scrive e ciò che dice. */
 function comando(argomenti: string[] = [], script = nellaCopia('scripts/componenti.mjs')) {
@@ -47,16 +47,15 @@ function comando(argomenti: string[] = [], script = nellaCopia('scripts/componen
 beforeEach(() => {
     rmSync(copia, { recursive: true, force: true });
     mkdirSync(nellaCopia('resources/zeiras'), { recursive: true });
-    mkdirSync(nellaCopia('resources/js/zeiras'), { recursive: true });
+    mkdirSync(nellaCopia('resources/js/zeiras/interni'), { recursive: true });
     mkdirSync(nellaCopia('resources/css/zeiras'), { recursive: true });
     cpSync(delRepo(FILE_DEL_CSS), nellaCopia(FILE_DEL_CSS));
     CSS_GENERATI.forEach((percorso, indice) => writeFileSync(nellaCopia(percorso), cssGenerati[indice]!));
     cpSync(delRepo('scripts'), nellaCopia('scripts'), { recursive: true });
+    // Dalla `v4.30.0` (voce #3511) lo script legge il bundle col parser di Vite: la copia prende i pacchetti del repo.
+    symlinkSync(delRepo('node_modules'), nellaCopia('node_modules'));
     cpSync(delRepo(FILE_DEL_BUNDLE), nellaCopia(FILE_DEL_BUNDLE));
-    writeFileSync(nellaCopia(FILE_DEL_MODULO), generato);
-    writeFileSync(nellaCopia(FILE_A_PARTE), generatoAParte);
-    writeFileSync(nellaCopia(FILE_DI_ADDRESS), generatoDiAddress);
-    writeFileSync(nellaCopia(FILE_DELL_ALERT), generatoDellAlert);
+    moduli.forEach((testo, percorso) => writeFileSync(nellaCopia(percorso), testo));
 });
 
 afterAll(() => {
@@ -66,11 +65,19 @@ afterAll(() => {
 // Ogni caso lancia il comando fino a tre volte, poco meno di un secondo l'una: col lotto 0514 (bundle più grande) un runner lento
 // ha passato i 5 secondi di vitest (PR 176, giro «ultima»: 37 s per il file, contro i 21 del giro «minima»). Il tetto è per caso.
 describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartella col `#` nel percorso (sprint 25 · T6, R3)', { timeout: 20_000 }, () => {
-    it('`--controlla` col file che il bundle genera: esce 0 e dice quanti nomi esporta', () => {
+    it('`--controlla` coi file che il bundle genera: esce 0, dice quanti nomi esporta e che i moduli sono tutti e soli quelli generati', () => {
         const esito = comando(['--controlla']);
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^resources\/js\/zeiras\/componenti\.js: è quello che resources\/zeiras\/bundle\.js genera \(\d+ nomi esportati\)\nresources\/js\/zeiras\/MentionField\.js: è quello che resources\/zeiras\/bundle\.js genera \(MentionField\)\nresources\/js\/zeiras\/AddressField\.js: è quello che resources\/zeiras\/bundle\.js genera \(AddressField\)\nresources\/js\/zeiras\/Alert\.js: è quello che resources\/zeiras\/bundle\.js genera \(Alert\)\nresources\/css\/zeiras\.css: è quello che resources\/zeiras\/bundle\.css genera \(senza gli stili di MentionField e di AddressField\)\nresources\/css\/bundle\.css: è quello che resources\/zeiras\/bundle\.css genera \(il bundle intero coi font del pacchetto\)\nresources\/css\/zeiras\/MentionField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di MentionField\)\nresources\/css\/zeiras\/AddressField\.css: è quello che resources\/zeiras\/bundle\.css genera \(gli stili di AddressField\)\n$/);
+        expect(esito.detto).toBe([
+            `resources/js/zeiras/componenti.js: è quello che resources/zeiras/bundle.js genera (${(generato.match(/^export \{/gm) ?? []).length} nomi esportati)`,
+            'resources/css/zeiras.css: è quello che resources/zeiras/bundle.css genera (senza gli stili di MentionField e di AddressField)',
+            'resources/css/bundle.css: è quello che resources/zeiras/bundle.css genera (il bundle intero coi font del pacchetto)',
+            'resources/css/zeiras/MentionField.css: è quello che resources/zeiras/bundle.css genera (gli stili di MentionField)',
+            'resources/css/zeiras/AddressField.css: è quello che resources/zeiras/bundle.css genera (gli stili di AddressField)',
+            `resources/js/zeiras: ${MODULI.length} moduli, tutti quelli che resources/zeiras/bundle.js genera e nessun altro`,
+            '',
+        ].join('\n'));
     });
 
     it('`--controlla` col file ritoccato a mano: esce 1, dice che non è quello che il bundle genera, e non lo riscrive', () => {
@@ -94,49 +101,54 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         const esito = comando();
 
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
-        expect(esito.detto).toMatch(/^scritto resources\/js\/zeiras\/componenti\.js \(\d+ nomi esportati\)\nscritto resources\/js\/zeiras\/MentionField\.js \(MentionField\)\nscritto resources\/js\/zeiras\/AddressField\.js \(AddressField\)\nscritto resources\/js\/zeiras\/Alert\.js \(Alert\)\nscritto resources\/css\/zeiras\.css \(senza gli stili di MentionField e di AddressField\)\nscritto resources\/css\/bundle\.css \(il bundle intero coi font del pacchetto\)\nscritto resources\/css\/zeiras\/MentionField\.css \(gli stili di MentionField\)\nscritto resources\/css\/zeiras\/AddressField\.css \(gli stili di AddressField\)\n$/);
+        expect(esito.detto).toMatch(scrittiTutti);
+        expect(scrittiTutti.exec(esito.detto)?.[1]).toBe(String(MODULI.length));
     });
 
-    it('`--controlla` col modulo di MentionField ritoccato a mano, o senza: esce 1, dice quale file non è quello che il bundle genera, e non scrive niente (sprint 71 · T1.3)', () => {
-        writeFileSync(nellaCopia(FILE_A_PARTE), `${generatoAParte}// ritoccato a mano\n`);
+    it.each([FILE_A_PARTE, FILE_INTERNO])('`--controlla` col modulo %s ritoccato a mano, o senza: esce 1, dice quale file non è quello che il bundle genera, e non scrive niente; senza `--controlla` lo riscrive (sprint 71 · T1.3; voce 3511)', (percorso) => {
+        const suo = moduli.get(percorso)!;
+        writeFileSync(nellaCopia(percorso), `${suo}// ritoccato a mano\n`);
         const ritoccato = comando(['--controlla']);
 
-        expect([ritoccato.uscita, ritoccato.detto, ritoccato.file === generato, readFileSync(nellaCopia(FILE_A_PARTE), 'utf8') === `${generatoAParte}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
-        expect(ritoccato.errore).toContain('resources/js/zeiras/MentionField.js non è quello che resources/zeiras/bundle.js genera.');
+        expect([ritoccato.uscita, ritoccato.detto, ritoccato.file === generato, readFileSync(nellaCopia(percorso), 'utf8') === `${suo}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
+        expect(ritoccato.errore).toContain(`${percorso} non è quello che resources/zeiras/bundle.js genera.`);
         expect(ritoccato.errore).not.toContain('componenti.js non è');
 
-        rmSync(nellaCopia(FILE_A_PARTE));
+        rmSync(nellaCopia(percorso));
         const senza = comando(['--controlla']);
 
         expect([senza.uscita, senza.detto]).toStrictEqual([1, '']);
-        expect(senza.errore).toContain('resources/js/zeiras/MentionField.js non è quello che resources/zeiras/bundle.js genera (il file non c\'è).');
+        expect(senza.errore).toContain(`${percorso} non è quello che resources/zeiras/bundle.js genera (il file non c'è).`);
+        expect(comando().uscita).toBe(0);
+        expect(readFileSync(nellaCopia(percorso), 'utf8')).toBe(suo);
     });
 
-    // Lettura della PR #126 (rilievo 8): un bundle che `leggi` accetta e il blocco di MentionField no.
-    it.each([[['--controlla']], [[]]])('con un bundle che non ha più il blocco di MentionField (argomenti: %j) esce 1, dice che cosa non torna e non scrive nessuno dei due file (sprint 71 · T1.3)', (argomenti) => {
-        writeFileSync(nellaCopia(FILE_DEL_BUNDLE), readFileSync(delRepo(FILE_DEL_BUNDLE), 'utf8').replace('  /* ---------- MentionField: ', '  /* ---------- Menzioni: '));
+    // Voce #3511 · AC 4: un modulo che il bundle non genera — scritto a mano, o rimasto da un bundle di prima — non passa il controllo.
+    it.each(['resources/js/zeiras/Scritto.js', 'resources/js/zeiras/interni/rimasto.js'])('`--controlla` con un modulo in più, %s: esce 1 e lo nomina; senza `--controlla` lo toglie (voce 3511)', (percorso) => {
+        writeFileSync(nellaCopia(percorso), "export const Scritto = 'a mano';\n");
+        const inPiu = comando(['--controlla']);
+
+        expect([inPiu.uscita, inPiu.detto]).toStrictEqual([1, '']);
+        expect(inPiu.errore).toContain(`${percorso} non è un modulo che resources/zeiras/bundle.js genera: scritto a mano, o rimasto da un bundle di prima.`);
+
+        const scritto = comando();
+
+        expect([scritto.uscita, scritto.errore]).toStrictEqual([0, '']);
+        expect(scritto.detto).toContain(`tolto ${percorso} (il bundle non lo genera più)`);
+        expect(existsSync(nellaCopia(percorso))).toBe(false);
+        expect(comando(['--controlla']).uscita).toBe(0);
+    });
+
+    // Lettura della PR #126 (rilievo 8): un bundle che `leggi` accetta e la divisione in moduli no.
+    it.each([[['--controlla']], [[]]])('con un bundle che `leggi` accetta e che lo script non sa dividere in moduli (argomenti: %j) esce 1, dice che cosa non torna e non scrive nessun file (sprint 71 · T1.3; voce 3511)', (argomenti) => {
+        writeFileSync(nellaCopia(FILE_DEL_BUNDLE), readFileSync(delRepo(FILE_DEL_BUNDLE), 'utf8').replace('\n  function Logo(', '\n  console.log(1);\n  function Logo('));
         writeFileSync(nellaCopia(FILE_DEL_MODULO), RITOCCATO);
         writeFileSync(nellaCopia(FILE_A_PARTE), `${generatoAParte}// ritoccato a mano\n`);
         const esito = comando(argomenti);
 
         expect([esito.uscita, esito.detto, esito.file === RITOCCATO, readFileSync(nellaCopia(FILE_A_PARTE), 'utf8') === `${generatoAParte}// ritoccato a mano\n`]).toStrictEqual([1, '', true, true]);
-        expect(esito.errore).toContain('resources/zeiras/bundle.js: forma inattesa del bundle: il commento «/* ---------- MentionField: …», che segna il blocco di MentionField, c\'è 0 volte');
-        expect(esito.errore).toContain('Nessun file è stato scritto: né resources/js/zeiras/componenti.js né resources/js/zeiras/MentionField.js né resources/js/zeiras/AddressField.js né resources/js/zeiras/Alert.js: lo script va riallineato alla forma nuova del bundle.');
-    });
-
-    it('`--controlla` col modulo di AddressField ritoccato a mano, o senza: esce 1 e dice quale file (sprint 72 · T1.3)', () => {
-        writeFileSync(nellaCopia(FILE_DI_ADDRESS), `${generatoDiAddress}// ritoccato a mano\n`);
-        const ritoccato = comando(['--controlla']);
-
-        expect([ritoccato.uscita, ritoccato.detto, readFileSync(nellaCopia(FILE_DI_ADDRESS), 'utf8') === `${generatoDiAddress}// ritoccato a mano\n`]).toStrictEqual([1, '', true]);
-        expect(ritoccato.errore).toContain('resources/js/zeiras/AddressField.js non è quello che resources/zeiras/bundle.js genera.');
-        rmSync(nellaCopia(FILE_DI_ADDRESS));
-        const senza = comando(['--controlla']);
-
-        expect([senza.uscita, senza.detto]).toStrictEqual([1, '']);
-        expect(senza.errore).toContain('resources/js/zeiras/AddressField.js non è quello che resources/zeiras/bundle.js genera (il file non c\'è).');
-        expect(comando().uscita).toBe(0);
-        expect(readFileSync(nellaCopia(FILE_DI_ADDRESS), 'utf8')).toBe(generatoDiAddress);
+        expect(esito.errore).toMatch(/resources\/zeiras\/bundle\.js: forma inattesa del bundle: la riga \d+ \(«console\.log\(1\);»\) non dichiara un nome né dà una proprietà a un nome/);
+        expect(esito.errore).toContain('Nessun file è stato scritto: né resources/js/zeiras/componenti.js né gli altri moduli di resources/js/zeiras: lo script va riallineato alla forma nuova del bundle.');
     });
 
     it.each(CSS_GENERATI)('`--controlla` con %s ritoccato a mano, o senza: esce 1 e dice che non è quello che bundle.css genera; senza `--controlla` lo riscrive (sprint 75 · T1.1)', (percorso) => {
@@ -160,23 +172,6 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect(esito.uscita).toBe(1);
         expect(esito.errore).toContain('resources/zeiras/bundle.css: non si legge');
         expect(readFileSync(nellaCopia(FILE_A_PARTE), 'utf8')).toBe(`${generatoAParte}// ritoccato a mano\n`);
-    });
-
-    it('`--controlla` col modulo dell\'Alert ritoccato a mano: esce 1 e dice quale file; senza `--controlla` lo riscrive (voce 3055)', () => {
-        writeFileSync(nellaCopia(FILE_DELL_ALERT), `${generatoDellAlert}// ritoccato a mano\n`);
-        const ritoccato = comando(['--controlla']);
-
-        expect([ritoccato.uscita, ritoccato.detto]).toStrictEqual([1, '']);
-        expect(ritoccato.errore).toContain('resources/js/zeiras/Alert.js non è quello che resources/zeiras/bundle.js genera.');
-        expect(comando().uscita).toBe(0);
-        expect(readFileSync(nellaCopia(FILE_DELL_ALERT), 'utf8')).toBe(generatoDellAlert);
-    });
-
-    it('senza `--controlla` riscrive anche il modulo di MentionField ritoccato (sprint 71 · T1.3)', () => {
-        writeFileSync(nellaCopia(FILE_A_PARTE), `${generatoAParte}// ritoccato a mano\n`);
-
-        expect(comando().uscita).toBe(0);
-        expect(readFileSync(nellaCopia(FILE_A_PARTE), 'utf8')).toBe(generatoAParte);
     });
 
     it.each([[['--controlla']], [[]]])('con un bundle di un\'altra forma (argomenti: %j) esce 1, dice che cosa non torna e non scrive niente', (argomenti) => {

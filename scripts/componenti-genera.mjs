@@ -1,12 +1,14 @@
-// Il testo di resources/js/zeiras/componenti.js da quello di resources/zeiras/bundle.js (il design system di Zeiras, copia
-// derivata): gli stessi componenti come modulo ES, esportati per nome. Il bundle è una funzione che legge `window.React` e scrive
-// tutto in `window.Zeiras`: chi lo importa li porta tutti nella build. Il modulo importa React da sé ed esporta ogni componente
-// col suo nome, e la build di un frontend tiene solo quelli che l'app usa. Il corpo non si riscrive: è quello del bundle riga per
-// riga (tranne tre righe segnate pure, sotto), senza le prime tre (il commento del formato, l'apertura della funzione, `var React = window.React;`) e senza la
-// registrazione in `window.Zeiras` in fondo, al cui posto vanno gli `export`. Qui si conosce una forma sola del bundle, e la si
-// controlla prima di comporre: se una cosa non torna un errore dice quale. Questo file lavora solo su testi, senza `node:fs`:
-// lo importano il comando (scripts/componenti.mjs, che legge e scrive i file) e un caso di vitest, che i file li prende come
-// testo (`?raw`).
+// I moduli ES di resources/js/zeiras dal testo di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata): gli
+// stessi componenti, un modulo per ogni nome che il bundle registra, e `componenti.js` che li esporta per nome. Il bundle è una
+// funzione che legge `window.React` e scrive tutto in `window.Zeiras`: chi lo importa li porta tutti nella build. I moduli
+// importano React da sé, e la build di un frontend tiene solo quelli che l'app usa, ognuno nel pezzo che lo usa. Il corpo non si
+// riscrive: è quello del bundle riga per riga (tranne tre righe segnate pure, sotto), senza le prime tre (il commento del formato,
+// l'apertura della funzione, `var React = window.React;`) e senza la registrazione in `window.Zeiras` in fondo, al cui posto vanno
+// gli `export`; come si divide fra i moduli lo dice `moduli`. Qui si conosce una forma sola del bundle, e la si controlla prima di
+// comporre: se una cosa non torna un errore dice quale. Questo file lavora solo su testi, senza `node:fs`: lo importano il comando
+// (scripts/componenti.mjs, che legge e scrive i file) e i casi di vitest, che i file li prendono come testo (`?raw`).
+
+import { parseAst } from 'vite';
 
 const FORMATO = 4;
 const SPAZIO_DEI_NOMI = 'Zeiras';
@@ -56,12 +58,6 @@ function haLaForma(righe, da, forma) {
 const PURO = '/* @__PURE__ */ ';
 // Ciò che il modulo non può più leggere: `window.React` non è detto che ci sia, e `window.Zeiras` lo scrive chi importa il modulo.
 const DALLA_FINESTRA = [/\bwindow\.React\b/, new RegExp(`\\bwindow\\.${SPAZIO_DEI_NOMI}\\b`)];
-
-const INTESTAZIONE = [
-    '// Generato da scripts/componenti.mjs: non si ritocca a mano. Sono i componenti di resources/zeiras/bundle.js (il design system',
-    '// di Zeiras, copia derivata) come modulo ES, esportati per nome; a un riallineamento si rigenera con `npm run componenti`.',
-    "import * as React from 'react';",
-];
 
 /** Si ferma dicendo che cosa, nel bundle, non è come lo script lo conosce. */
 function vuole(condizione, cheCosa) {
@@ -148,70 +144,14 @@ export function leggi(bundle) {
     return { corpo, nomi };
 }
 
-/** Il modulo: l'intestazione, il corpo del bundle com'è (tranne i segni «puri») e, al posto della registrazione, gli `export` coi nomi registrati. */
-export function componi({ corpo, nomi }) {
-    return [...INTESTAZIONE, ...corpo, 'export {', ...nomi.map((nome) => `  ${nome},`), '};', ''].join('\n');
-}
-
-/**
- * Il testo di resources/js/zeiras/componenti.js per questo bundle. Se il bundle non ha la forma che lo script conosce lancia un
- * errore che dice che cosa non torna.
- */
-export function genera(bundle) {
-    return componi(leggi(bundle));
-}
-
-// I componenti che hanno anche un modulo loro (dalla `v3.1.0`, Decisione 16375): chi li usa solo in una pagina a richiesta li
-// prende da lì, e il JS d'ingresso non li porta. `componenti.js` è un modulo solo, e un modulo che l'ingresso importa sta
-// nell'ingresso con tutto ciò che una qualunque pagina ne usa. Il modulo di un componente ha il suo blocco del bundle riga per
-// riga — dalla funzione `<Nome>` risalendo alle righe attaccate che sono sue (le `var` che usa lei sola, il commento «/*
-// ---------- <Nome>: …» se le sta sopra), e giù fino alla graffa che la chiude, con ciò che il blocco dichiara (per
-// MentionField anche `MENTION_LABELS`, che il modulo ha suo) — e le righe private che il blocco usa, nell'ordine del bundle; i
-// componenti che il bundle registra li prende da `./componenti` per nome. Il blocco non comincia dal commento perché nel design
-// system ds-1792851600-0de4 quello di AddressField sta fra il commento di MentionField e la sua funzione. Da `componenti` il
-// componente resta: nella stessa app
-// si prende da un posto solo.
-// Le righe private che un modulo porta sono queste, guardate una per una: una riga con uno stato (un contesto, una cache)
-// copiata darebbe alla copia uno stato suo, e il componente non vedrebbe più quello di `componenti`. `uid` è guardata: le due
-// copie contano gli id ognuna per sé, e la regola del posto solo lo evita. Se il blocco usa una riga privata che qui non c'è, o
-// non usa più una di queste, lo script si ferma e dice quale: la riga si guarda e l'elenco si riallinea.
-export const A_PARTE = {
-    MentionField: [
-        '  var h = React.createElement;',
-        '  var useState = React.useState;',
-        '  var useRef = React.useRef;',
-        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
-        "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
-    ],
-    // Dalla `v3.2.0` (sprint 72, Decisione 16431): le stesse righe di MentionField, perché AddressField usa le stesse.
-    AddressField: [
-        '  var h = React.createElement;',
-        '  var useState = React.useState;',
-        '  var useRef = React.useRef;',
-        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
-        "  var uid = 0; function useId(prefix) { var r = useRef(null); if (!r.current) { uid += 1; r.current = (prefix || 'zr') + '-' + uid; } return r.current; }",
-    ],
-    // Dalla `v4.8.1` (#3055, Decisione 21220): l'Alert dell'avviso della cornice ridotta, che arriva col pezzo degli avvisi.
-    // `TONE_ICON` è una tabella di soli testi, senza stato: la usa anche il Toast, che resta in `componenti`.
-    Alert: [
-        '  var h = React.createElement;',
-        "  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }",
-        "  var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };",
-    ],
-};
-
-// I componenti di `A_PARTE` che nel bundle stanno in un gruppo con altri (dalla `v4.8.1`, #3055): l'Alert sta sotto il commento
-// «Feedback», col Toast, in bundle.js e in bundle.css. Il blocco non ha un commento suo e comincia dalla funzione, e gli stili
-// restano in zeiras.css, dove servono anche al Toast della cornice. Se il bundle gli dà un commento suo, lo script si ferma: il
-// componente esce da questo elenco, e i suoi stili da zeiras.css.
-export const NEL_GRUPPO = ['Alert'];
-
-/** I componenti di `A_PARTE` coi loro stili in resources/css/zeiras/<Nome>.css: tutti tranne quelli di `NEL_GRUPPO`. */
-export const CON_GLI_STILI_A_PARTE = Object.keys(A_PARTE).filter((nome) => !NEL_GRUPPO.includes(nome));
+// I componenti coi loro stili in resources/css/zeiras/<Nome>.css (dalla `v3.3.0`, sprint 75, voce 2570): il modulo che usa le loro
+// classi li importa, e un'app che li prende solo in una pagina a richiesta non li porta nel CSS del primo carico. Gli stili degli
+// altri restano in resources/css/zeiras.css (quelli dell'Alert anche: servono al Toast della cornice, #3055).
+export const STILI_A_PARTE = ['MentionField', 'AddressField'];
 
 const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
 
-// Dalla `v3.3.0` (sprint 75, voce 2570): gli stili di ogni componente di `A_PARTE` escono anche da resources/zeiras/bundle.css,
+// Dalla `v3.3.0` (sprint 75, voce 2570): gli stili di ogni componente di `STILI_A_PARTE` escono anche da resources/zeiras/bundle.css,
 // così un'app che li prende dai loro moduli a richiesta non li porta nel CSS del primo carico. Nel bundle gli stili di un
 // componente cominciano con una riga «/* <Nome>» (seguita da uno spazio, dai due punti o dalla chiusura del commento) e finiscono
 // prima della riga che comincia il commento seguente, o a fine file.
@@ -245,7 +185,7 @@ export function bundleIntero(css) {
 }
 
 /**
- * Il bundle CSS diviso: `zeiras` (resources/css/zeiras.css) è il bundle senza gli stili dei componenti di `A_PARTE`, le altre
+ * Il bundle CSS diviso: `zeiras` (resources/css/zeiras.css) è il bundle senza gli stili dei componenti di `STILI_A_PARTE`, le altre
  * righe com'erano e nel loro ordine; `stili[nome]` (resources/css/zeiras/<Nome>.css) sono quelli di un componente; `proprie[nome]`
  * le classi che solo i suoi stili definiscono (una classe che sta negli stili di due componenti è del primo dei due). Se gli stili
  * di un componente non ci sono, ci sono due volte o non hanno una classe loro, lancia un errore.
@@ -254,7 +194,7 @@ export function dividiIlCss(css) {
     const righe = coiFontDelPacchetto(css).split('\n');
     const tolte = new Set();
     const blocchi = {};
-    for (const nome of CON_GLI_STILI_A_PARTE) {
+    for (const nome of STILI_A_PARTE) {
         const inizi = righe.flatMap((riga, indice) => (INIZIO_DEGLI_STILI(nome).test(riga) ? [indice] : []));
         vuole(inizi.length === 1, `il commento «/* ${nome} …», che segna gli stili di ${nome} in bundle.css, c'è ${inizi.length} volte`);
         const [inizio] = inizi;
@@ -271,7 +211,7 @@ export function dividiIlCss(css) {
     // un commento in mezzo agli stili del componente, e il resto dei suoi stili lasciato in zeiras.css.
     // Il prefisso viene dalla prima classe del blocco che il resto non ha (revisione della PR #134, seconda lettura).
     const delResto = new Set(classiIn(resto));
-    for (const nome of CON_GLI_STILI_A_PARTE) {
+    for (const nome of STILI_A_PARTE) {
         const sua = classiIn(blocchi[nome]).find((classe) => !delResto.has(classe) && /^zr-[a-z]+/.test(classe));
         vuole(sua !== undefined, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
         const [prefisso] = /^zr-[a-z]+/.exec(sua);
@@ -280,12 +220,12 @@ export function dividiIlCss(css) {
     }
     const prese = new Set(classiIn(resto));
     const proprie = {};
-    for (const nome of [...CON_GLI_STILI_A_PARTE].sort((a, b) => righe.indexOf(blocchi[a][0]) - righe.indexOf(blocchi[b][0]))) {
+    for (const nome of [...STILI_A_PARTE].sort((a, b) => righe.indexOf(blocchi[a][0]) - righe.indexOf(blocchi[b][0]))) {
         proprie[nome] = classiIn(blocchi[nome]).filter((classe) => !prese.has(classe));
         vuole(proprie[nome].length > 0, `gli stili di ${nome} in bundle.css non hanno una classe loro`);
         proprie[nome].forEach((classe) => prese.add(classe));
     }
-    const nomi = CON_GLI_STILI_A_PARTE;
+    const nomi = STILI_A_PARTE;
 
     return {
         zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, e coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.`), ...resto].join('\n'),
@@ -294,215 +234,338 @@ export function dividiIlCss(css) {
     };
 }
 
-/** I componenti di `A_PARTE` di cui queste righe usano una classe propria (come nome intero), nell'ordine di `A_PARTE`. */
+/** I componenti di `STILI_A_PARTE` di cui queste righe usano una classe propria (come nome intero), nell'ordine dell'elenco. */
 function stiliUsati(righe, { proprie }) {
     const testo = righe.join('\n');
 
-    return CON_GLI_STILI_A_PARTE.filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
-}
-const NOME = '[A-Za-z_$][\\w$]*';
-// Le forme che una riga del corpo col rientro del bundle (due spazi) può avere: una dichiarazione `var` o `function` di un nome
-// solo, un commento, una chiusura (`}`, `};`, `];`, `].map(…`), un nome dato a una proprietà di un altro (`Avatar.Stack =
-// AvatarStack;`). Ogni altra forma — `const`, `let`, `var { … } =`, un'istruzione — ferma lo script: un nome dichiarato in una
-// forma che lo script non legge sparirebbe dal modulo senza errore.
-const FORME = [new RegExp(`^ {2}var ${NOME} = `), new RegExp(`^ {2}function ${NOME}\\(`), /^ {2}\/[*/]/, /^ {2}[}\]]/, new RegExp(`^ {2}(${NOME})\\.${NOME} = ${NOME};$`)];
-const DICHIARAZIONE = new RegExp(`^(?:var|function) (${NOME})`);
-// Un nome usato: non dopo un punto (una proprietà), fuori dai testi e dai commenti.
-const NOME_USATO = /(?<![.\w$])[A-Za-z_$][\w$]*/g;
-
-/**
- * Se una barra apre un'espressione regolare: dopo un carattere da cui comincia un valore, a inizio testo, dopo `=>` o dopo una
- * parola che ha un valore dopo di sé (`return`, `typeof`…). Si guarda la coda di quanto letto, senza copiare tutto il testo. Dopo
- * `)` resta una divisione (`(a + b) / 2`), anche in `if (p) /re/`: il bundle non ha quella forma.
- */
-function apreUnaRegex(letto) {
-    let fine = letto.length;
-    while (fine > 0 && /\s/.test(letto[fine - 1])) fine--;
-
-    return fine === 0 || /[(,=:[!&|?{};]$|=>$|(?:^|[^\w$])(?:return|typeof|void|case|do|else|delete|new|throw|in|of)$/.test(letto.slice(Math.max(0, fine - 12), fine));
+    return STILI_A_PARTE.filter((altro) => proprie[altro].some((classe) => new RegExp(`(?<![\\w-])${classe}(?![\\w-])`).test(testo)));
 }
 
-/**
- * Il testo senza testi né commenti, letti insieme da sinistra a destra: un testo diventa `''`, un commento uno spazio. Così un
- * apostrofo in un commento non apre un testo, e un `//` in un testo non apre un commento.
- */
-function pulito(testo) {
-    let fuori = '';
-    for (let qui = 0; qui < testo.length; qui++) {
-        const carattere = testo[qui];
-        if (carattere === "'" || carattere === '"') {
-            let fine = qui + 1;
-            while (fine < testo.length && testo[fine] !== carattere && testo[fine] !== '\n') fine += testo[fine] === '\\' ? 2 : 1;
-            fuori += "''";
-            qui = fine;
-        } else if (testo.startsWith('/*', qui)) {
-            const fine = testo.indexOf('*/', qui + 2);
-            fuori += ' ';
-            qui = fine < 0 ? testo.length : fine + 1;
-        } else if (testo.startsWith('//', qui)) {
-            const fine = testo.indexOf('\n', qui);
-            fuori += ' ';
-            qui = (fine < 0 ? testo.length : fine) - 1;
-        } else if (carattere === '/' && apreUnaRegex(fuori)) {
-            // Un'espressione regolare (una barra dove comincia un valore): le sue virgolette e parentesi non contano, come
-            // `/["\\]/g` di DealPipeline (lotto 0514). Si salta fino alla barra che la chiude, fuori da una classe `[…]`.
-            let fine = qui + 1, classe = false;
-            while (fine < testo.length && testo[fine] !== '\n' && (classe || testo[fine] !== '/')) {
-                if (testo[fine] === '\\') fine++; else if (testo[fine] === '[') classe = true; else if (testo[fine] === ']') classe = false;
-                fine++;
-            }
-            // I flag dopo la barra che chiude (`g`, `i`, `u`…) non sono nomi; una regex che non si chiude lascia l'a capo.
-            if (testo[fine] === '/') while (/[a-z]/.test(testo[fine + 1] ?? '')) fine++;
-            else fine--;
-            fuori += '//';
-            qui = fine;
-        } else {
-            fuori += carattere;
-        }
-    }
+// Dalla `v4.30.0` (voce #3511): un modulo per ogni nome che il bundle registra, resources/js/zeiras/<Nome>.js, e `componenti.js`
+// che li ri-esporta soltanto. Prima `componenti.js` era un modulo solo: una pagina a richiesta che ne prendeva un componente
+// lasciava nel pezzo dell'ingresso, che importa lo stesso modulo, il codice di quel componente. Con un modulo per nome la build
+// di un frontend mette ogni componente nel pezzo che lo usa. Il corpo del bundle si divide in istruzioni (quelle che stanno su
+// una riga in comune vanno insieme: «var uid = 0; function useId…»), ognuna col testo che le sta sopra, commenti compresi, e va
+// in un posto solo: un'istruzione non si copia mai, così uno stato (il contatore degli id, un contesto, una cache) c'è una volta.
+// Il posto lo dice chi la usa: la dichiarazione di un nome registrato sta nel suo modulo; una riga privata che serve a un nome
+// registrato solo (anche attraverso altre righe) sta nel suo modulo; una che serve a più nomi sta in resources/js/zeiras/interni/,
+// insieme alle altre che servono agli stessi nomi, in un modulo che prende il nome della prima. `Avatar.Stack = AvatarStack;` sta
+// col nome a cui dà la proprietà. Ogni altra istruzione senza dichiarazione ferma lo script. Un modulo importa da un altro i nomi
+// che usa; se un modulo legge appena caricato un nome di un altro che a sua volta lo importa (un giro), lo script si ferma: in un
+// giro il nome letto subito può non esserci ancora. Le righe le legge il parser della build (`parseAst` di Vite).
+const COMMENTO_GENERATO = (...cheCosa) => ['// Generato da scripts/componenti.mjs: non si ritocca a mano.', ...cheCosa.map((riga) => `// ${riga}`), '// A un riallineamento si rigenera con `npm run componenti`.'];
 
-    return fuori;
-}
-const nomiUsati = (righe) => new Set(pulito(righe.join('\n')).match(NOME_USATO) ?? []);
-const profonditaDi = (testo) => [...pulito(testo)].reduce((conto, carattere) => conto + ('{(['.includes(carattere) ? 1 : '})]'.includes(carattere) ? -1 : 0), 0);
+/** I nomi che un'istruzione dichiara, o `null` se non ne dichiara. Una dichiarazione che non è di nomi semplici ferma lo script. */
+function dichiaratiDa(istruzione, numero) {
+    if (istruzione.type === 'FunctionDeclaration' || istruzione.type === 'ClassDeclaration') return [istruzione.id.name];
+    if (istruzione.type !== 'VariableDeclaration') return null;
 
-/**
- * L'istruzione che comincia alla riga `indice` del corpo, se è una dichiarazione `var` o `function`: le sue righe, fino a quella
- * che chiude le graffe. Se le graffe non si chiudono prima della riga col rientro del bundle che viene dopo (un'espressione
- * regolare può avere parentesi che il conto sbaglierebbe), lo script si ferma. `null` se la riga non comincia una dichiarazione.
- */
-function istruzioneDa(corpo, indice, numero) {
-    if (!/^ {2}(?:var|function) /.test(corpo[indice])) return null;
-    let fine = indice;
-    while (profonditaDi(corpo.slice(indice, fine + 1).join('\n')) > 0) {
-        fine++;
-        vuole(fine < corpo.length && (!/^ {2}\S/.test(corpo[fine]) || profonditaDi(corpo.slice(indice, fine + 1).join('\n')) <= 0), `le graffe della dichiarazione della riga ${numero(indice)} non si chiudono dove comincia la riga seguente col rientro del bundle: lo script non sa dire che cosa dichiara`);
-    }
-    vuole(profonditaDi(corpo.slice(indice, fine + 1).join('\n')) === 0, `le graffe della dichiarazione della riga ${numero(indice)} non tornano: lo script non sa dire che cosa dichiara`);
+    return istruzione.declarations.map((dichiarazione) => {
+        vuole(dichiarazione.id.type === 'Identifier', `la riga ${numero} dichiara i nomi in una forma che lo script non legge (${dichiarazione.id.type})`);
 
-    return corpo.slice(indice, fine + 1).join('\n');
-}
-
-/**
- * I nomi che un'istruzione del corpo dichiara fuori dalle graffe («var uid = 0; function useId…»): quelli dentro una funzione
- * sono suoi. Una virgola fuori dalle graffe (più nomi in una dichiarazione), o una riga `var` con una barra e un'altra
- * dichiarazione (un'espressione regolare può avere parentesi che il conto sbaglierebbe), ferma lo script.
- */
-function dichiaratiIn(istruzione, numero) {
-    if (istruzione === null) return [];
-    const testo = pulito(istruzione);
-    const dichiarati = [];
-    let profondita = 0;
-    for (let qui = 2; qui < testo.length; qui++) {
-        const carattere = testo[qui];
-        if ('{(['.includes(carattere)) profondita++;
-        else if ('})]'.includes(carattere)) profondita--;
-        else if (profondita === 0 && carattere === ',') vuole(false, `la riga ${numero} dichiara più nomi con la virgola: lo script legge un nome per dichiarazione`);
-        else if (profondita === 0 && /[\s;]/.test(testo[qui - 1] ?? ' ')) {
-            const trovato = DICHIARAZIONE.exec(testo.slice(qui));
-            if (trovato) dichiarati.push(trovato[1]);
-        }
-    }
-    // Una riga `var` con una barra (un'espressione regolare) e un'altra dichiarazione dopo un `;`: il conto delle graffe potrebbe
-    // non vederla, e si conta sul testo. Nel corpo di una `function` le dichiarazioni sono sue.
-    vuole(!/^ {2}var /.test(istruzione) || !testo.includes('/') || !/;\s*(?:var|function) /.test(testo), `la riga ${numero} ha una barra e più di una dichiarazione: lo script non sa dire con certezza quali nomi dichiara`);
-
-    return dichiarati;
-}
-
-/**
- * Il testo del modulo di `nome` (una chiave di `A_PARTE`) dal corpo e dai nomi che dà `leggi`. Se una cosa non è come lo script
- * la conosce — il blocco, una forma di riga, una riga privata che non è nell'elenco — lancia un errore che dice quale.
- */
-export function aParte({ corpo, nomi }, nome, divisi = undefined) {
-    const numero = (indice) => indice + 4;
-    corpo.forEach((riga, indice) => {
-        vuole(!/^ {2}\S/.test(riga) || FORME.some((forma) => forma.test(riga)), `la riga ${numero(indice)} («${riga.trim().slice(0, 60)}») ha una forma che lo script non conosce`);
+        return dichiarazione.id.name;
     });
+}
 
-    const inizi = corpo.flatMap((riga, indice) => (riga.startsWith(INIZIO_DEL_BLOCCO(nome)) ? [indice] : []));
-    const nelGruppo = NEL_GRUPPO.includes(nome);
-    vuole(!nelGruppo || inizi.length === 0, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …» segna un blocco di ${nome}, che lo script legge in un gruppo (NEL_GRUPPO): l'elenco va riallineato, e gli stili di ${nome} escono da zeiras.css`);
-    vuole(nelGruppo || inizi.length === 1, `il commento «${INIZIO_DEL_BLOCCO(nome).trim()} …», che segna il blocco di ${nome}, c'è ${inizi.length} volte`);
-    const funzioni = corpo.flatMap((riga, indice) => (riga === `  function ${nome}(p) {` ? [indice] : []));
-    vuole(!nelGruppo || funzioni.length === 1, `la riga «function ${nome}(p) {» c'è ${funzioni.length} volte`);
-    const funzione = nelGruppo ? funzioni[0] : corpo.indexOf(`  function ${nome}(p) {`, inizi[0]);
-    vuole(nelGruppo || funzione > inizi[0], `dopo il commento del blocco di ${nome} non c'è la riga «function ${nome}(p) {»`);
-    const fine = corpo.findIndex((riga, indice) => indice > funzione && /^ {2}\S/.test(riga));
-    vuole(fine > funzione && corpo[fine] === '  }', `la funzione ${nome} non si chiude con una riga «}» (riga ${numero(fine)})`);
-    // Il blocco comincia dalla funzione e risale, una riga alla volta, sulle sole righe che sono sue: il suo commento (e lì si
-    // ferma), o una `var` su una riga sola che dichiara un nome che la funzione usa e che il resto del bundle non usa. Ogni altra
-    // riga — vuota, una chiusura, il commento di un altro componente, una `var` che la funzione non usa — chiude la risalita.
-    // Una `var` attaccata che dichiara un nome usato anche fuori dal blocco ferma lo script: è una riga privata da guardare
-    // (`A_PARTE`), e nel blocco darebbe alla copia uno stato suo senza che nessuno l'abbia guardata.
-    const usatiDallaFunzione = nomiUsati(corpo.slice(funzione, fine + 1));
-    let inizio = funzione;
-    while (inizio > 0) {
-        const sopra = corpo[inizio - 1];
-        if (sopra.startsWith(INIZIO_DEL_BLOCCO(nome))) {
-            inizio -= 1;
-            break;
+/** I nomi che un modello di assegnazione lega (`a`, `{ a, b: c }`, `[a, ...b]`, `a = 1`). */
+function legatiDa(modello, nomi = []) {
+    if (modello === null) return nomi;
+    if (modello.type === 'Identifier') nomi.push(modello.name);
+    else if (modello.type === 'AssignmentPattern') legatiDa(modello.left, nomi);
+    else if (modello.type === 'RestElement') legatiDa(modello.argument, nomi);
+    else if (modello.type === 'ArrayPattern') modello.elements.forEach((elemento) => legatiDa(elemento, nomi));
+    else if (modello.type === 'ObjectPattern') modello.properties.forEach((proprieta) => legatiDa(proprieta.type === 'RestElement' ? proprieta : proprieta.value, nomi));
+
+    return nomi;
+}
+
+/** I nomi che una funzione ha suoi: il suo nome, i parametri, e ciò che dichiara dentro (fuori dalle funzioni che ha dentro). */
+function localiDi(funzione) {
+    const nomi = [...(funzione.id ? [funzione.id.name] : []), ...funzione.params.flatMap((parametro) => legatiDa(parametro))];
+    const cerca = (nodo) => {
+        if (nodo === null || typeof nodo !== 'object') return;
+        if (Array.isArray(nodo)) {
+            nodo.forEach(cerca);
+
+            return;
         }
-        // In un gruppo (NEL_GRUPPO) una riga privata dell'elenco chiude la risalita: il modulo la porta da sé, nell'ordine del
-        // bundle (per l'Alert `TONE_ICON`, che usa anche il Toast).
-        if (!FORME[0].test(sopra) || (nelGruppo && A_PARTE[nome].includes(sopra))) break;
-        const dichiarati = dichiaratiIn(istruzioneDa(corpo, inizio - 1, numero), numero(inizio - 1));
-        if (!dichiarati.some((dichiarato) => usatiDallaFunzione.has(dichiarato))) break;
-        const usatiFuori = nomiUsati([...corpo.slice(0, inizio - 1), ...corpo.slice(fine + 1)]);
-        const anchePerAltri = dichiarati.find((dichiarato) => usatiFuori.has(dichiarato));
-        vuole(anchePerAltri === undefined, `la riga ${numero(inizio - 1)} sta attaccata alla funzione ${nome} e dichiara «${anchePerAltri}», che usa anche il resto del bundle: è una riga privata da guardare (A_PARTE), non del blocco`);
-        inizio -= 1;
-    }
-    const blocco = corpo.slice(inizio, fine + 1);
-    const delBlocco = new Set(blocco.flatMap((_riga, indice) => dichiaratiIn(istruzioneDa(corpo, inizio + indice, numero), numero(inizio + indice))));
+        if (nodo.type === 'VariableDeclarator') legatiDa(nodo.id, nomi);
+        if ((nodo.type === 'FunctionDeclaration' || nodo.type === 'ClassDeclaration') && nodo.id) nomi.push(nodo.id.name);
+        if (/Function/.test(nodo.type)) return;
+        for (const chiave of Object.keys(nodo)) if (!['type', 'start', 'end', 'range', 'loc'].includes(chiave)) cerca(nodo[chiave]);
+    };
+    cerca(funzione.body);
 
-    // Dove sta ogni dichiarazione del corpo fuori dal blocco: un nome usato che è lì si porta con la sua riga, o si importa.
-    const rigaDi = new Map();
-    corpo.forEach((_riga, indice) => {
-        if (indice < inizio || indice > fine) dichiaratiIn(istruzioneDa(corpo, indice, numero), numero(indice)).forEach((dichiarato) => rigaDi.set(dichiarato, indice));
-    });
-    const daImportare = new Set();
-    const righePrivate = new Set();
-    const daGuardare = [...nomiUsati(blocco)];
-    while (daGuardare.length > 0) {
-        const usato = daGuardare.pop();
-        if (!rigaDi.has(usato) || daImportare.has(usato)) continue;
-        if (nomi.includes(usato)) {
-            // Da ./componenti si prendono solo componenti: un altro nome registrato (le etichette di partenza) il modulo lo ha
-            // suo, nel blocco. Se è rimasto fuori, il blocco ha una forma che la risalita non conosce.
-            vuole(corpo[rigaDi.get(usato)].startsWith(`  function ${usato}(`), `${nome} usa «${usato}», che il bundle registra alla riga ${numero(rigaDi.get(usato))}, fuori dal blocco, non come «function ${usato}(»: se è suo (le etichette di partenza) il blocco ha una forma che la risalita non conosce; se è un nome comune da prendere da ./componenti, l'elenco dei nomi che si importano va riallineato`);
-            daImportare.add(usato);
+    return new Set(nomi);
+}
+
+/**
+ * I nomi che un nodo usa (`usati`), quelli che legge appena il modulo si carica (`subito`: fuori da una funzione, o in una
+ * funzione passata a una chiamata fatta lì, come il `.map` dei dati di esempio), fra questi quelli che chiama (`chiamati`), e
+ * quelli a cui dà un valore (`assegnati`: `uid += 1` di AppShell), fuori dai nomi che una funzione ha suoi. Una proprietà
+ * (`a.b`, `{ b: … }`) non è un nome.
+ */
+function nomiIn(nodo, letti, inFunzione = false, funzioniSubito = false, locali = new Set()) {
+    if (nodo === null || typeof nodo !== 'object') return;
+    if (Array.isArray(nodo)) {
+        nodo.forEach((uno) => nomiIn(uno, letti, inFunzione, funzioniSubito, locali));
+
+        return;
+    }
+    if (nodo.type === 'Identifier') {
+        letti.usati.add(nodo.name);
+        if (!inFunzione) letti.subito.add(nodo.name);
+
+        return;
+    }
+    if (nodo.type === 'MemberExpression' && !nodo.computed) {
+        nomiIn(nodo.object, letti, inFunzione, false, locali);
+
+        return;
+    }
+    if (['Property', 'MethodDefinition', 'PropertyDefinition'].includes(nodo.type) && !nodo.computed && !nodo.shorthand) {
+        nomiIn(nodo.value, letti, inFunzione, funzioniSubito, locali);
+
+        return;
+    }
+    const assegnato = nodo.type === 'AssignmentExpression' ? nodo.left : nodo.type === 'UpdateExpression' ? nodo.argument : null;
+    if (assegnato?.type === 'Identifier' && !locali.has(assegnato.name)) letti.assegnati.add(assegnato.name);
+    if ((nodo.type === 'CallExpression' || nodo.type === 'NewExpression') && !inFunzione) {
+        if (nodo.callee.type === 'Identifier') letti.chiamati.add(nodo.callee.name);
+        nomiIn(nodo.callee, letti, false, true, locali);
+        nomiIn(nodo.arguments, letti, false, true, locali);
+
+        return;
+    }
+    const funzione = /Function/.test(nodo.type);
+    const dentro = funzione ? new Set([...locali, ...localiDi(nodo)]) : locali;
+    for (const chiave of Object.keys(nodo)) {
+        if (!['type', 'start', 'end', 'range', 'loc'].includes(chiave)) nomiIn(nodo[chiave], letti, inFunzione || (funzione && !funzioniSubito), false, dentro);
+    }
+}
+
+/**
+ * Le istruzioni del corpo, quelle su una riga in comune insieme: per ognuna il testo (con ciò che le sta sopra), il numero della
+ * riga del bundle, i nomi che dichiara, quelli che usa, legge subito e chiama, e il nome a cui dà una proprietà (`Avatar.Stack`).
+ */
+function istruzioni(corpo) {
+    const testo = corpo.join('\n');
+    let albero;
+    try {
+        albero = parseAst(testo);
+    } catch (errore) {
+        vuole(false, `il corpo non si legge come JavaScript (${errore.message.split('\n')[0]})`);
+    }
+    const rigaDi = (posto) => testo.slice(0, posto).split('\n').length - 1;
+    const unita = [];
+    for (const istruzione of albero.body) {
+        const prima = rigaDi(istruzione.start), ultima = rigaDi(istruzione.end);
+        const numero = prima + 4;
+        const dichiarati = dichiaratiDa(istruzione, numero);
+        let proprietaDi = null;
+        if (dichiarati === null) {
+            const assegnazione = istruzione.type === 'ExpressionStatement' ? istruzione.expression : null;
+            proprietaDi = assegnazione?.type === 'AssignmentExpression' && assegnazione.left.type === 'MemberExpression' && !assegnazione.left.computed && assegnazione.left.object.type === 'Identifier' ? assegnazione.left.object.name : null;
+            vuole(proprietaDi !== null, `la riga ${numero} («${testo.slice(istruzione.start, Math.min(istruzione.end, istruzione.start + 60)).split('\n')[0]}») non dichiara un nome né dà una proprietà a un nome: lo script non sa in quale modulo metterla`);
+        }
+        const letti = { usati: new Set(), subito: new Set(), chiamati: new Set(), assegnati: new Set() };
+        nomiIn(istruzione, letti);
+        const sullaStessaRiga = unita.at(-1)?.ultima === prima ? unita.at(-1) : null;
+        if (sullaStessaRiga !== null) {
+            sullaStessaRiga.ultima = ultima;
+            sullaStessaRiga.dichiarati.push(...(dichiarati ?? []));
+            vuole(proprietaDi === null && sullaStessaRiga.proprietaDi === null, `la riga ${numero} dà una proprietà a un nome sulla riga di un'altra istruzione: lo script non sa in quale modulo metterla`);
+            for (const chiave of ['usati', 'subito', 'chiamati', 'assegnati']) letti[chiave].forEach((nome) => sullaStessaRiga[chiave].add(nome));
             continue;
         }
-        const indice = rigaDi.get(usato);
-        if (righePrivate.has(indice)) continue;
-        vuole(A_PARTE[nome].includes(corpo[indice]), `${nome} usa «${usato}», dichiarato alla riga ${numero(indice)} del bundle, e la riga non è fra le righe private che lo script porta nel suo modulo (A_PARTE): va guardata, e l'elenco riallineato`);
-        righePrivate.add(indice);
-        daGuardare.push(...nomiUsati([corpo[indice]]));
+        unita.push({ prima, ultima, numero, dichiarati: dichiarati ?? [], proprietaDi, dichiarazione: istruzione.type, ...letti });
     }
-    // Una proprietà data fuori dal blocco a un nome che il modulo porta (del blocco, o di una sua riga privata) non entrerebbe.
-    const portati = new Set([...delBlocco, ...[...righePrivate].flatMap((indice) => dichiaratiIn(corpo[indice], numero(indice)))]);
-    corpo.forEach((riga, indice) => {
-        const assegnato = FORME[4].exec(riga)?.[1];
-        vuole(assegnato === undefined || !portati.has(assegnato), `la riga ${numero(indice)} dà una proprietà a ${assegnato}, che il modulo di ${nome} porta: lo script non porta quella riga`);
+    // Il testo di un'istruzione va dalla riga dopo quella che chiude la precedente alla riga che la chiude: i commenti sopra sono suoi.
+    unita.forEach((una, indice) => {
+        una.testo = corpo.slice(indice === 0 ? 0 : unita[indice - 1].ultima + 1, una.ultima + 1);
+        while (una.testo.length > 1 && una.testo[0].trim() === '') una.testo = una.testo.slice(1);
     });
-    const portate = [...righePrivate].map((indice) => corpo[indice]);
-    const mancanti = A_PARTE[nome].filter((riga) => !portate.includes(riga));
-    vuole(mancanti.length === 0, `la riga privata «${mancanti[0]?.trim().slice(0, 60)}» dell'elenco di ${nome} (A_PARTE) non c'è più nel bundle, o ${nome} non la usa più: l'elenco va riallineato`);
 
-    // Le righe private e il blocco, nell'ordine del bundle: una riga privata che sta dopo il blocco resta dopo.
-    const righe = [...righePrivate, ...blocco.map((_riga, indice) => inizio + indice)].sort((a, b) => a - b);
+    return unita;
+}
 
-    return [
-        `// Generato da scripts/componenti.mjs: non si ritocca a mano. È ${nome} di resources/zeiras/bundle.js (il design system di`,
-        '// Zeiras, copia derivata) in un modulo suo: il suo blocco del bundle e le righe private che usa, riga per riga; i componenti che',
-        '// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.',
-        "import * as React from 'react';",
-        ...(daImportare.size > 0 ? [`import { ${[...daImportare].sort().join(', ')} } from './componenti';`] : []),
-        ...(divisi === undefined ? [] : stiliUsati(righe.map((indice) => corpo[indice]), divisi).map((altro) => `import '../../css/zeiras/${altro}.css';`)),
-        ...righe.map((indice, posto) => (posto > 0 && indice === inizio ? ['', corpo[indice]] : [corpo[indice]])).flat(),
-        '',
-        `export { ${nome} };`,
+/** Il nome del file di un modulo, da resources/js/zeiras. */
+const fileDi = (modulo) => (modulo.interno ? `interni/${modulo.nome}.js` : `${modulo.nome}.js`);
+/** Il percorso con cui il modulo `da` importa il modulo `a`. */
+function percorso(da, a) {
+    if (da.interno === a.interno) return `./${a.nome}`;
+
+    return da.interno ? `../${a.nome}` : `./interni/${a.nome}`;
+}
+
+/**
+ * I moduli dei componenti: per ogni file, da resources/js/zeiras (`componenti.js`, `<Nome>.js`, `interni/<nome>.js`), il suo testo.
+ * Con `divisi` (da `dividiIlCss`) un modulo che usa le classi proprie di un componente di `STILI_A_PARTE` ne importa gli stili.
+ * Se una cosa non è come lo script la conosce lancia un errore che dice quale.
+ */
+export function moduli({ corpo, nomi }, divisi = undefined) {
+    const unita = istruzioni(corpo);
+    const dove = new Map();
+    unita.forEach((una, indice) => una.dichiarati.forEach((nome) => {
+        vuole(!dove.has(nome), `«${nome}» è dichiarato due volte (righe ${unita[dove.get(nome) ?? 0]?.numero} e ${una.numero})`);
+        dove.set(nome, indice);
+    }));
+    // Certe istruzioni stanno nello stesso modulo di un'altra, e chi usa l'una usa anche l'altra: quella che dà una proprietà a un
+    // nome sta con lui, e quella che dà un valore a un nome dichiarato altrove (`uid += 1` di AppShell) sta con la sua dichiarazione,
+    // perché in un modulo ES un nome importato non si assegna. Il gruppo ha il modulo del nome registrato che contiene.
+    const capo = unita.map((_una, indice) => indice);
+    const radice = (indice) => (capo[indice] === indice ? indice : (capo[indice] = radice(capo[indice])));
+    const unisci = (a, b) => {
+        capo[radice(a)] = radice(b);
+    };
+    unita.forEach((una, indice) => {
+        if (una.proprietaDi !== null) {
+            vuole(dove.has(una.proprietaDi), `la riga ${una.numero} dà una proprietà a «${una.proprietaDi}», che il corpo del bundle non dichiara`);
+            unisci(indice, dove.get(una.proprietaDi));
+        }
+        for (const nome of una.assegnati) if (dove.has(nome) && dove.get(nome) !== indice) unisci(indice, dove.get(nome));
+    });
+    const registratiIn = (indice) => unita[indice].dichiarati.filter((nome) => nomi.includes(nome));
+    const perGruppo = new Map();
+    unita.forEach((_una, indice) => {
+        const gruppo = radice(indice);
+        const scelto = perGruppo.get(gruppo);
+        if (scelto === undefined || (registratiIn(scelto).length === 0 && registratiIn(indice).length > 0)) perGruppo.set(gruppo, indice);
+        else vuole(registratiIn(indice).length === 0 || registratiIn(scelto).length === 0, `le righe ${unita[scelto].numero} e ${unita[indice].numero} dichiarano due nomi registrati e devono stare nello stesso modulo (una dà un valore o una proprietà a un nome dell'altra): lo script dà un modulo a ognuno`);
+    });
+    const conChi = unita.map((_una, indice) => perGruppo.get(radice(indice)));
+    const dipende = unita.map(() => new Set());
+    unita.forEach((una, indice) => {
+        for (const nome of una.usati) if (dove.has(nome) && conChi[dove.get(nome)] !== conChi[indice]) dipende[conChi[indice]].add(conChi[dove.get(nome)]);
+    });
+
+    // Per ogni istruzione, i nomi registrati che la raggiungono.
+    const diChi = unita.map(() => new Set());
+    for (const nome of nomi) {
+        vuole(dove.has(nome), `il bundle registra «${nome}», che il corpo non dichiara`);
+        const visti = new Set();
+        const daVedere = [dove.get(nome)];
+        while (daVedere.length > 0) {
+            const indice = daVedere.pop();
+            if (visti.has(indice)) continue;
+            visti.add(indice);
+            diChi[indice].add(nome);
+            daVedere.push(...dipende[indice]);
+        }
+    }
+    // Il modulo di ogni istruzione.
+    const perNome = new Map();
+    const interni = new Map();
+    const modulo = unita.map((una, indice) => {
+        const registrati = una.dichiarati.filter((nome) => nomi.includes(nome));
+        vuole(registrati.length <= 1, `la riga ${una.numero} dichiara più nomi registrati (${registrati.join(', ')}): lo script dà un modulo a ognuno`);
+        if (conChi[indice] !== indice) return null;
+        if (registrati.length === 1) {
+            const suo = { nome: registrati[0], interno: false, unita: [] };
+            perNome.set(registrati[0], suo);
+
+            return suo;
+        }
+        if (diChi[indice].size === 1) return [...diChi[indice]][0];
+        const chiave = [...diChi[indice]].sort().join(',');
+        const primo = unita.flatMap((altra, quale) => (conChi[quale] === indice ? altra.dichiarati : []))[0];
+        if (!interni.has(chiave)) interni.set(chiave, { nome: primo, interno: true, unita: [] });
+
+        return interni.get(chiave);
+    });
+    const moduloDi = (indice) => {
+        const suo = modulo[conChi[indice]];
+
+        return typeof suo === 'string' ? perNome.get(suo) : suo;
+    };
+    unita.forEach((_una, indice) => moduloDi(indice).unita.push(indice));
+    const tutti = [...perNome.values(), ...interni.values()];
+    const nomiDeiFile = new Map();
+    for (const uno of tutti) {
+        const chiave = fileDi(uno).toLowerCase();
+        vuole(!nomiDeiFile.has(chiave) && !['componenti.js', 'index.js'].includes(chiave), `due moduli avrebbero lo stesso file, ${fileDi(uno)}`);
+        nomiDeiFile.set(chiave, uno);
+    }
+
+    // Gli import: per ogni modulo, i nomi che usa e che stanno in un altro.
+    const importa = new Map(tutti.map((uno) => [uno, new Map()]));
+    const esporta = new Map(tutti.map((uno) => [uno, new Set(uno.interno ? [] : [uno.nome])]));
+    for (const uno of tutti) {
+        for (const indice of uno.unita) {
+            for (const nome of unita[indice].usati) {
+                if (!dove.has(nome)) continue;
+                const altro = moduloDi(dove.get(nome));
+                if (altro === uno) continue;
+                if (!importa.get(uno).has(altro)) importa.get(uno).set(altro, new Set());
+                importa.get(uno).get(altro).add(nome);
+                esporta.get(altro).add(nome);
+            }
+        }
+    }
+    // Un nome letto subito da un altro modulo (una `var`, o una funzione chiamata lì per lì) non può stare in un giro.
+    const raggiunge = (da, a, visti = new Set()) => {
+        if (da === a) return true;
+        if (visti.has(da)) return false;
+        visti.add(da);
+
+        return [...importa.get(da).keys()].some((altro) => raggiunge(altro, a, visti));
+    };
+    for (const uno of tutti) {
+        for (const indice of uno.unita) {
+            for (const nome of unita[indice].subito) {
+                if (!dove.has(nome) || moduloDi(dove.get(nome)) === uno) continue;
+                const altro = moduloDi(dove.get(nome));
+                const funzione = unita[dove.get(nome)].dichiarazione === 'FunctionDeclaration';
+                vuole((funzione && !unita[indice].chiamati.has(nome)) || !raggiunge(altro, uno), `la riga ${unita[indice].numero} legge subito «${nome}» di ${fileDi(altro)}, che importa ${fileDi(uno)}: in un giro il nome può non esserci ancora`);
+            }
+        }
+    }
+
+    const file = {};
+    file['componenti.js'] = [
+        ...COMMENTO_GENERATO(
+            'Sono i nomi che resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) registra, ognuno dal suo modulo',
+            '(resources/js/zeiras/<Nome>.js): la build di un frontend mette ogni componente nel pezzo che lo usa.',
+        ),
+        // Nell'ordine in cui il bundle li dichiara, non in quello della registrazione: la build mette i moduli nell'ordine in cui li
+        // incontra, e un'app che li prende tutti (l'ingresso di sempre) resta, con gzip, quasi quanto il bundle (+96 byte, non +993).
+        ...[...nomi].sort((a, b) => dove.get(a) - dove.get(b)).map((nome) => `export { ${nome} } from './${nome}';`),
         '',
     ].join('\n');
+    for (const uno of tutti) {
+        const righe = uno.unita.sort((a, b) => a - b).flatMap((indice) => unita[indice].testo);
+        const usaReact = uno.unita.some((indice) => unita[indice].usati.has('React') && !dove.has('React'));
+        const stili = divisi === undefined ? [] : stiliUsati(righe, divisi);
+        const quanti = new Set(uno.unita.flatMap((indice) => [...diChi[conChi[indice]]])).size;
+        file[fileDi(uno)] = [
+            ...(uno.interno
+                ? COMMENTO_GENERATO(
+                    'Sono righe private di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) che servono',
+                    `a ${quanti === 0 ? 'nessun nome registrato' : `${quanti} nomi registrati`}: stanno qui una volta sola e chi le usa le importa.`,
+                )
+                : COMMENTO_GENERATO(
+                    `È ${uno.nome} di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) in un modulo suo: le sue`,
+                    'righe del bundle e quelle private che usa lui solo; il resto lo importa.',
+                    ...(esporta.get(uno).size > 1
+                        ? [`Qui stanno anche ${[...esporta.get(uno)].filter((nome) => nome !== uno.nome).sort().join(', ')}, che altri moduli importano da qui: ${uno.nome}`, 'dà un valore a un nome delle loro righe, e in un modulo ES un nome importato non si assegna.']
+                        : []),
+                )),
+            ...(usaReact ? ["import * as React from 'react';"] : []),
+            // Gli import nell'ordine del bundle (dalla prima riga di ogni modulo): la build mette i moduli nell'ordine in cui li
+            // incontra, e il codice resta vicino a quello che nel bundle gli sta accanto, che con gzip pesa meno.
+            ...[...importa.get(uno)].sort(([a], [b]) => Math.min(...a.unita) - Math.min(...b.unita)).map(([altro, usati]) => `import { ${[...usati].sort().join(', ')} } from '${percorso(uno, altro)}';`),
+            ...stili.map((altro) => `import '${uno.interno ? '../' : ''}../../css/zeiras/${altro}.css';`),
+            '',
+            ...righe,
+            ...(esporta.get(uno).size > 0 ? ['', `export { ${[...esporta.get(uno)].sort().join(', ')} };`] : []),
+            '',
+        ].join('\n');
+    }
+
+    return file;
+}
+
+/** I file dei moduli dei componenti per questo bundle (vedi `moduli`), senza gli import degli stili. */
+export function genera(bundle) {
+    return moduli(leggi(bundle));
 }

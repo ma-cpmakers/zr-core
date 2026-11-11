@@ -1,11 +1,13 @@
-// Generato da scripts/componenti.mjs: non si ritocca a mano. È Alert di resources/zeiras/bundle.js (il design system di
-// Zeiras, copia derivata) in un modulo suo: il suo blocco del bundle e le righe private che usa, riga per riga; i componenti che
-// usa li prende da ./componenti. A un riallineamento si rigenera con `npm run componenti`.
-import * as React from 'react';
-import { Button, Icon, useLabels } from './componenti';
-  var h = React.createElement;
-  function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
-  var TONE_ICON = { info: 'info', success: 'checkCircle', warning: 'alert', danger: 'xCircle' };
+// Generato da scripts/componenti.mjs: non si ritocca a mano.
+// È Alert di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) in un modulo suo: le sue
+// righe del bundle e quelle private che usa lui solo; il resto lo importa.
+// A un riallineamento si rigenera con `npm run componenti`.
+import { h } from './interni/h';
+import { cx } from './interni/cx';
+import { Icon } from './Icon';
+import { Button } from './Button';
+import { useLabels } from './useLabels';
+import { TONE_ICON } from './interni/TONE_ICON';
 
   function Alert(p) {
     var tone = p.tone || 'info', C = useLabels();
