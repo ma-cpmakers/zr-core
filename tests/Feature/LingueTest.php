@@ -846,13 +846,15 @@ function italianoAtteso(): array
  * spazio», «Come cliente», «Crea il tuo workspace»): nelle lingue della cornice non ci sono, e senza aziende non ha il selettore;
  * dalla `v4.25.0` (#3417) la cornice dei membri passa `personal` con la prop `spazio`, e i due testi stanno nel pezzo degli avvisi. Dal
  * lotto 0518 (`v4.18.0`) anche quanti risultati ha la ricerca (`searchCount`): non sta nelle lingue della cornice ma coi testi del
- * pezzo della ricerca (`resources/lingue/ricerca/`), che la cornice dà all'`AppShell` solo coi risultati.
+ * pezzo della ricerca (`resources/lingue/ricerca/`), che la cornice dà all'`AppShell` solo coi risultati. Dalla `v4.31.0` anche i due
+ * del riquadro del piano (`planTitle`, `planText`): la cornice dei membri non lo mostra, perché nei moduli non si parla di prezzo
+ * (regola di Luciano del 10/11, zr-pm-97); la cornice dello staff ha i suoi, in `resources/lingue/staff/`.
  *
  * @return list<string>
  */
 function testiDellAppShellCheLaCorniceNonUsa(): array
 {
-    return ['searchSubmitHint', 'searchPressEnter', 'searchCount', 'off', 'workspaceSettings', 'personal', 'personalGroup', 'firstWorkspace'];
+    return ['searchSubmitHint', 'searchPressEnter', 'searchCount', 'off', 'workspaceSettings', 'personal', 'personalGroup', 'firstWorkspace', 'planTitle', 'planText'];
 }
 
 /**
