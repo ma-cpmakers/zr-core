@@ -41,7 +41,16 @@ describe('le lingue della cornice', () => {
 
         // Tutti i testi, sempre: con uno solo in meno l'`AppShell` mostrerebbe il suo default italiano.
         expect(tedesco).toStrictEqual({ ...inglese, soon: 'Bald' });
-        expect(tedesco.planText).not.toBe(italiano.planText);
+        expect(tedesco.notificationsEmptyText).not.toBe(italiano.notificationsEmptyText);
+    });
+
+    // v4.31.0 (regola di Luciano del 10/11, zr-pm-97): nei moduli non si parla di prezzo, e i testi del riquadro del piano escono.
+    it('nessuna lingua della cornice ha i testi del riquadro del piano, né un testo che parla di prezzo (v4.31.0)', () => {
+        for (const lingua of [italiano, spagnolo, inglese]) {
+            expect(lingua).not.toHaveProperty('planTitle');
+            expect(lingua).not.toHaveProperty('planText');
+            expect(Object.values(lingua).join('\n')).not.toMatch(/gratis|free\b|senza limiti|sin límites|no limits/i);
+        }
     });
 
     it('una lingua senza il nome di un prodotto, o col nome vuoto, lo mostra in inglese, non in italiano (T7.2)', () => {

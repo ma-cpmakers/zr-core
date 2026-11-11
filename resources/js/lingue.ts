@@ -21,10 +21,12 @@ import type { IdDiProdotto, TipoDellaRicerca, TipoDiRisorsa, VoceDelRegistro } f
  * 0512 del design system): la cornice non segna moduli `off` e non passa le impostazioni del workspace. Né i tre dello spazio
  * cliente di zr-account (`personal`, `personalGroup`, `firstWorkspace`, dal design system 1793914149-8632): la cornice dei membri
  * passa `personal` solo con la prop `spazio` (dalla `v4.25.0`), coi due testi dal pezzo degli avvisi, e senza aziende non ha il selettore. Né quanti risultati ha la ricerca (`searchCount`, dal lotto 0518): lo dice
- * l'`AppShell` solo coi risultati, che arrivano col pezzo della ricerca, e il testo sta coi suoi (`resources/lingue/ricerca/`).
+ * l'`AppShell` solo coi risultati, che arrivano col pezzo della ricerca, e il testo sta coi suoi (`resources/lingue/ricerca/`). Né i due
+ * del riquadro del piano (`planTitle`, `planText`): dalla `v4.31.0` la cornice dei membri non lo mostra, perché nei moduli non si
+ * parla di prezzo (regola di Luciano del 10/11, zr-pm-97); quella dello staff ha i suoi, in `resources/lingue/staff/`.
  */
 export type TestiDellaCornice = Required<
-    Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'searchCount' | 'off' | 'workspaceSettings' | 'personal' | 'personalGroup' | 'firstWorkspace'>
+    Omit<AppShellLabels, 'searchSubmitHint' | 'searchPressEnter' | 'searchCount' | 'off' | 'workspaceSettings' | 'personal' | 'personalGroup' | 'firstWorkspace' | 'planTitle' | 'planText'>
 > &
     Record<IdDiProdotto, string> &
     Record<TipoDiRisorsa, string> &

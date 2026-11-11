@@ -1001,6 +1001,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // La foto della persona, se ce l'ha (dalla `v4.2.0`): senza, l'`Avatar` mette le iniziali.
                 userPhoto: persona.foto,
                 personal: mio?.personal,
+                // Niente riquadro del piano in fondo alla barra (dalla `v4.31.0`): nei moduli non si parla di prezzo, e il piano
+                // lo mostra Home nelle sue pagine, con un dato vero (regola di Luciano del 10/11, zr-pm-97).
+                plan: false,
                 accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
