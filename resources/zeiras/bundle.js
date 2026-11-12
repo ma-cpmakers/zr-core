@@ -69,7 +69,8 @@
     form: 'M4 4h16v16H4zM8 9h8M8 13h8M8 17h4',
     target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
     gantt: 'M4 4v16M7 7h7M10 12h10M7 17h6',
-    archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4' /* la scatola col coperchio: «Archivia» (richiesta 187) */
+    archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4', /* la scatola col coperchio: «Archivia» (richiesta 187) */
+    lock: 'M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM8 11V7a4 4 0 0 1 8 0v4' /* il lucchetto: una voce che non si apre perché non è attiva (richieste 238 e 239) */
   };
   var ICON_NAMES = Object.keys(PATHS);
   /* il numero accanto a un nome: si vede da solo, il lettore di schermo lo sente staccato e col suo nome (richieste 12, 70, 35) */
@@ -175,7 +176,7 @@
 
   /* Testi fissi dell'AppShell: tutti sostituibili con la prop labels (it di default) */
   var APPSHELL_LABELS = {
-    soon: 'Presto', off: 'Da attivare', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
+    soon: 'Presto', off: 'Da attivare', inactive: 'Non attivo', settings: 'Impostazioni', planTitle: 'Piano Personale', planText: 'Gratis, senza limiti per i progetti personali',
     nav: 'Navigazione principale', openMenu: 'Apri il menu', closeMenu: 'Chiudi il menu', userFallback: 'Utente Zeiras', create: 'Crea',
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
     personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
@@ -302,17 +303,17 @@
 
     /* con navigate un clic semplice su una voce con href di questa origine non ricarica la pagina (richieste 27 e 98); Ctrl, Cmd, Maiusc, Alt, il tasto centrale e un'altra origine restano del browser */
     function spa(e) { var a = e && e.currentTarget; return !!(p.navigate && a && a.href && !e.defaultPrevented && !e.button && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && a.protocol === location.protocol && a.host === location.host); }
-    function go(it, e) { var to = it.href && spa(e) ? e.currentTarget.href : null; if ((!it.href || to) && e) e.preventDefault(); if (it.soon) return; setOpen(false); setDrawer(false); setPop(null); if (p.onNavigate) p.onNavigate(it.id); if (to) p.navigate(to); }
+    function go(it, e) { if (it.soon || it.inactive) { if (e) e.preventDefault(); return; } /* «Presto» e «Non attivo» non portano da nessuna parte, nemmeno con un href (richiesta 239) */ var to = it.href && spa(e) ? e.currentTarget.href : null; if ((!it.href || to) && e) e.preventDefault(); setOpen(false); setDrawer(false); setPop(null); if (p.onNavigate) p.onNavigate(it.id); if (to) p.navigate(to); }
     function item(it) {
       var isActive = it.id === active;
       return h('a', {
-        key: it.id, href: it.href || '#', className: cx('zr-nav-item', isActive && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
-        'aria-current': isActive ? 'page' : undefined, 'aria-disabled': it.soon ? 'true' : undefined, tabIndex: it.soon ? -1 : undefined,
+        key: it.id, href: it.soon || it.inactive ? '#' : it.href || '#', className: cx('zr-nav-item', isActive && 'is-active', (it.soon || it.inactive) && 'is-soon', it.inactive && 'is-inactive', it.off && 'is-off'), /* inactive: si comporta come «Presto», col suo testo (richiesta 239) */
+        'aria-current': isActive ? 'page' : undefined, 'aria-disabled': it.soon || it.inactive ? 'true' : undefined, tabIndex: it.soon || it.inactive ? -1 : undefined,
         onClick: function (e) { go(it, e); }
       },
         h(Icon, { name: it.icon, size: 18 }),
         h('span', { className: 'zr-nav-label' }, it.label),
-        it.soon ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
+        it.soon || it.inactive ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), it.soon ? L.soon : L.inactive) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
         it.count ? countParts(it.count, 'zr-count', it.countLabel) : null);
     }
 
@@ -385,13 +386,13 @@
       }, prodGroup.items.map(function (it) {
         var isCur = it.id === current.id;
         return h('a', {
-          key: it.id, href: it.href || '#', className: cx('zr-nav-item', isCur && 'is-active', it.soon && 'is-soon', it.off && 'is-off'),
-          'aria-current': isCur ? 'true' : undefined, 'aria-disabled': it.soon ? 'true' : undefined, tabIndex: it.soon ? -1 : undefined,
-          onClick: function (e) { if (!it.href) e.preventDefault(); if (isCur) { setOpen(false); return; } go(it, e); }
+          key: it.id, href: it.soon || it.inactive ? '#' : it.href || '#', className: cx('zr-nav-item', isCur && 'is-active', (it.soon || it.inactive) && 'is-soon', it.inactive && 'is-inactive', it.off && 'is-off'),
+          'aria-current': isCur ? 'true' : undefined, 'aria-disabled': it.soon || it.inactive ? 'true' : undefined, tabIndex: it.soon || it.inactive ? -1 : undefined,
+          onClick: function (e) { if (!it.href || it.soon || it.inactive) e.preventDefault(); if (isCur) { setOpen(false); return; } go(it, e); }
         },
           h(Icon, { name: it.icon, size: 18 }),
           h('span', { className: 'zr-nav-label' }, it.label),
-          it.soon ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.soon) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
+          it.soon || it.inactive ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), it.soon ? L.soon : L.inactive) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : isCur ? h(Icon, { name: 'check', size: 16 }) : null);
       }).reduce(function (acc, el, i) { acc.push(el); var it = prodGroup.items[i]; if (it.home && i < prodGroup.items.length - 1) acc.push(h('div', { key: 'sep', className: 'zr-product-sep', role: 'separator' })); return acc; }, [])) : null) : null;
     var groups = nav.filter(function (g) { return !(prodGroup && g === prodGroup); });
 
@@ -2185,7 +2186,7 @@
   function EmptyState(p) {
     return h('div', { className: cx('zr-empty', p.compact && 'is-compact') },
       h('span', { className: cx('zr-iconbox', 'zr-label-' + (p.tone || 'pine')) }, h(Icon, { name: p.icon || 'folder', size: 22 })),
-      h(p.headingLevel === 2 ? 'h2' : p.headingLevel === 4 ? 'h4' : 'h3', { className: 'zr-empty-title' }, p.title), /* il livello del titolo lo dice la pagina: h3 se non lo dice (richiesta 16) */
+      h(p.headingLevel === 1 ? 'h1' : p.headingLevel === 2 ? 'h2' : p.headingLevel === 4 ? 'h4' : 'h3', { className: 'zr-empty-title' }, p.title), /* il livello del titolo lo dice la pagina: h3 se non lo dice (richiesta 16); h1 quando l'EmptyState è tutta la pagina, una pagina d'errore, con lo stesso aspetto (richiesta 236) */
       p.text ? h('p', null, p.text) : null,
       p.action || null);
   }

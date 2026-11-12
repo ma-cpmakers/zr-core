@@ -64,7 +64,8 @@
     form: 'M4 4h16v16H4zM8 9h8M8 13h8M8 17h4',
     target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
     gantt: 'M4 4v16M7 7h7M10 12h10M7 17h6',
-    archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4' /* la scatola col coperchio: «Archivia» (richiesta 187) */
+    archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4', /* la scatola col coperchio: «Archivia» (richiesta 187) */
+    lock: 'M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM8 11V7a4 4 0 0 1 8 0v4' /* il lucchetto: una voce che non si apre perché non è attiva (richieste 238 e 239) */
   };
 
 export { PATHS };

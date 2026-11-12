@@ -523,9 +523,10 @@ final class Cornice
     /**
      * Il precarico dei testi della cornice nella lingua della pagina (dalla `v4.4.0`), da mettere nella testa del documento
      * prima di `@vite`: `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}`. Nel JS d'ingresso c'è solo l'italiano; le altre
-     * lingue sono file `.json` della build che la cornice chiede con `fetch` (resources/js/lingue.ts), il suo e quello inglese,
-     * da cui prende i testi che le mancano. Qui escono come `preload; as=fetch; crossorigin`, la forma della richiesta di
-     * `fetch`: senza `crossorigin` il browser scaricherebbe il file due volte. In italiano niente.
+     * lingue sono file `.json` della build che la cornice chiede con `fetch` (resources/js/lingue.ts): fino alla `v4.30.0` il suo e
+     * quello inglese, dalla `v4.31.0` (voce 3530) il suo solo, che ha tutti i testi, o l'inglese per una lingua che zr-core non
+     * ha. Qui esce come `preload; as=fetch; crossorigin`, la forma della richiesta di `fetch`: senza `crossorigin` il browser
+     * scaricherebbe il file due volte. In italiano niente.
      *
      * La lingua è quella dell'app (`App::getLocale()`), che il modulo mette dalla sessione. Il file si cerca nel manifest del
      * frontend con la chiave di Vite: il suo percorso, risolti i link simbolici, relativo alla radice del frontend. Senza
@@ -540,31 +541,25 @@ final class Cornice
             return new HtmlString('');
         }
 
-        // Il file della lingua com'è nei nomi (`es_MX` → `es-mx`), o della sua lingua base; sempre l'inglese, il ripiego.
+        // Il file della lingua com'è nei nomi (`es_MX` → `es-mx`), o della sua lingua base; l'inglese per una lingua che non c'è.
         $file = [];
         foreach (glob(__DIR__.'/../resources/lingue/*.json') ?: [] as $percorso) {
             $file[strtolower(basename($percorso, '.json'))] = $percorso;
         }
         $codice = strtolower(str_replace('_', '-', $lingua));
-        $sua = array_values(array_filter([$codice, explode('-', $codice)[0]], fn (string $scelto) => isset($file[$scelto])))[0] ?? null;
+        $sua = array_values(array_filter([$codice, explode('-', $codice)[0]], fn (string $scelto) => isset($file[$scelto])))[0]
+            ?? self::LINGUA_DEL_RIPIEGO;
 
-        if ($sua === self::LINGUA_DELL_INGRESSO) {
+        if ($sua === self::LINGUA_DELL_INGRESSO || ! isset($file[$sua])) {
             return new HtmlString('');
         }
 
-        $righe = [];
-        foreach (array_unique(array_filter([$sua, self::LINGUA_DEL_RIPIEGO])) as $scelto) {
-            if (! isset($file[$scelto])) {
-                continue;
-            }
-            try {
-                $righe[] = '<link rel="preload" as="fetch" href="'.e(Vite::asset(self::percorsoPerVite($file[$scelto]))).'" crossorigin>';
-            } catch (ViteException) {
-                // Il manifest non c'è, o non ha il file: il precarico manca.
-            }
+        try {
+            return new HtmlString('<link rel="preload" as="fetch" href="'.e(Vite::asset(self::percorsoPerVite($file[$sua]))).'" crossorigin>');
+        } catch (ViteException) {
+            // Il manifest non c'è, o non ha il file: il precarico manca.
+            return new HtmlString('');
         }
-
-        return new HtmlString(implode("\n", $righe));
     }
 
     /** Il percorso di un file come lo scrive Vite nelle chiavi del manifest: relativo alla radice del frontend, senza link simbolici. */

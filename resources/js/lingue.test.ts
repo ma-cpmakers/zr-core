@@ -41,7 +41,16 @@ describe('le lingue della cornice', () => {
 
         // Tutti i testi, sempre: con uno solo in meno l'`AppShell` mostrerebbe il suo default italiano.
         expect(tedesco).toStrictEqual({ ...inglese, soon: 'Bald' });
-        expect(tedesco.planText).not.toBe(italiano.planText);
+        expect(tedesco.notificationsEmptyText).not.toBe(italiano.notificationsEmptyText);
+    });
+
+    // v4.31.0 (regola di Luciano del 10/11, zr-pm-97): nei moduli non si parla di prezzo, e i testi del riquadro del piano escono.
+    it('nessuna lingua della cornice ha i testi del riquadro del piano, né un testo che parla di prezzo (v4.31.0)', () => {
+        for (const lingua of [italiano, spagnolo, inglese]) {
+            expect(lingua).not.toHaveProperty('planTitle');
+            expect(lingua).not.toHaveProperty('planText');
+            expect(Object.values(lingua).join('\n')).not.toMatch(/gratis|free\b|senza limiti|sin límites|no limits/i);
+        }
     });
 
     it('una lingua senza il nome di un prodotto, o col nome vuoto, lo mostra in inglese, non in italiano (T7.2)', () => {
@@ -1937,8 +1946,9 @@ describe('le risorse della ricerca fuori dal registro (sprint 74 · T2)', () => 
 });
 
 // Sprint 106 · T1 (voce 3015, Decisione 20618 di zr-pm): nel JS d'ingresso resta l'italiano, la lingua di quasi tutte le persone
-// di Zeiras; le altre lingue, inglese compreso, arrivano a richiesta. Chi ha un'altra lingua la aspetta con l'inglese, che è il
-// ripiego dei testi che le mancano.
+// di Zeiras; le altre lingue, inglese compreso, arrivano a richiesta. Fino alla `v4.30.0` chi aveva un'altra lingua la aspettava
+// con l'inglese, il ripiego dei testi che le mancano; dalla `v4.31.0` (voce 3530) solo con la sua: ogni file dei testi ha ogni
+// testo dell'italiano, e lo controlla la CI (`LingueTest.php`).
 describe('le lingue a richiesta (sprint 106 · T1)', () => {
     /** Un file che arriva quando lo si chiede, e conta le richieste. */
     const arriva = (testi: Partial<TestiDellaCornice>) => vi.fn(() => Promise.resolve(testi));
@@ -1950,7 +1960,7 @@ describe('le lingue a richiesta (sprint 106 · T1)', () => {
         return { dellInglese, delloSpagnolo, ...lingueDiProva };
     };
 
-    it("l'italiano è pronto subito, senza richieste; lo spagnolo dopo che spagnolo e inglese sono arrivati, e prima i suoi testi sono quelli dell'italiano (T1.2)", async () => {
+    it("l'italiano è pronto subito, senza richieste; lo spagnolo quando è arrivato il suo file, senza l'inglese, e prima i suoi testi sono quelli dell'italiano (T1.2; voce 3530 · 1)", async () => {
         const { dellInglese, delloSpagnolo, pronta, carica, testi: testiDiProva } = conLeDue();
 
         expect(pronta('it-IT')).toBe(true);
@@ -1961,39 +1971,46 @@ describe('le lingue a richiesta (sprint 106 · T1)', () => {
         expect(pronta('es-ES')).toBe(false);
         expect(testiDiProva('es')).toStrictEqual(italiano);
         await carica('es-ES');
-        expect([dellInglese, delloSpagnolo].map((file) => file.mock.calls.length)).toStrictEqual([1, 1]);
+        expect([dellInglese, delloSpagnolo].map((file) => file.mock.calls.length)).toStrictEqual([0, 1]);
         expect(pronta('es')).toBe(true);
         expect(testiDiProva('es_ES')).toStrictEqual(spagnolo);
+
+        // Nemmeno dopo: richiesta di nuovo, la lingua arrivata non chiede niente, e l'inglese non parte mai.
+        await carica('es');
+        expect([dellInglese, delloSpagnolo].map((file) => file.mock.calls.length)).toStrictEqual([0, 1]);
     });
 
-    it("una lingua che zr-core non ha chiede il solo inglese; un testo che manca a una lingua arrivata è in inglese (T1.2)", async () => {
+    it("l'inglese, e una lingua che zr-core non ha, chiedono il solo inglese, una volta; un testo che manca a una lingua arrivata è in inglese, se l'inglese c'è (T1.2; voce 3530 · 2)", async () => {
         const dellInglese = arriva(inglese);
         const delloSpagnolo = arriva({ ...spagnolo, logout: ' ' });
         const { pronta, carica, testi: testiDiProva } = caricaLingue({ '../lingue/it.json': italiano }, { '../lingue/en.json': dellInglese, '../lingue/es.json': delloSpagnolo });
 
+        await Promise.all([carica('pt-BR'), carica('en'), carica('en-GB')]);
         await carica('pt-BR');
         expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 0]);
         expect(pronta('pt-BR')).toBe(true);
         expect(testiDiProva('pt-BR')).toStrictEqual(inglese);
+        expect(testiDiProva('en')).toStrictEqual(inglese);
 
         await carica('es');
         expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 1]);
         expect(testiDiProva('es')).toStrictEqual({ ...spagnolo, logout: inglese.logout });
     });
 
-    it("lo spagnolo non è pronto senza l'inglese; due richieste insieme sono una; un file non arrivato si richiede alla chiamata dopo (T1.2)", async () => {
-        const dellInglese = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(inglese);
-        const delloSpagnolo = arriva(spagnolo);
+    it("lo spagnolo è pronto senza l'inglese; due richieste insieme sono una; un file non arrivato si richiede alla chiamata dopo (T1.2; voce 3530 · 1)", async () => {
+        const dellInglese = arriva(inglese);
+        const delloSpagnolo = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(spagnolo);
         const { pronta, carica, testi: testiDiProva } = caricaLingue({ '../lingue/it.json': italiano }, { '../lingue/en.json': dellInglese, '../lingue/es.json': delloSpagnolo });
 
         const insieme = [carica('es'), carica('es-ES')];
         await expect(Promise.all(insieme)).rejects.toThrow('Failed to fetch');
-        expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([1, 1]);
+        expect([dellInglese.mock.calls.length, delloSpagnolo.mock.calls.length]).toStrictEqual([0, 1]);
         expect(pronta('es')).toBe(false);
         expect(testiDiProva('es')).toStrictEqual(italiano);
 
         await carica('es');
-        expect(dellInglese).toHaveBeenCalledTimes(2);
+        expect(delloSpagnolo).toHaveBeenCalledTimes(2);
+        expect(dellInglese).not.toHaveBeenCalled();
         expect(pronta('es')).toBe(true);
         expect(testiDiProva('es')).toStrictEqual(spagnolo);
     });

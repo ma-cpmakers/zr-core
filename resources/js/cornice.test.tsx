@@ -503,13 +503,27 @@ describe('la Cornice', () => {
         // Coi testi del selettore e delle non lette (T2). «Nuovo workspace» non c'è finché zr-home non ha la sua pagina; gli stati
         // delle notifiche e della ricerca tornano coi loro dati.
         const raggiunti = [
-            'soon', 'settings', 'planTitle', 'planText', 'nav', 'openMenu', 'create', 'workspaceSwitch', 'search', 'searchPlaceholder',
+            'soon', 'settings', 'nav', 'openMenu', 'create', 'workspaceSwitch', 'search', 'searchPlaceholder',
             'searchHint', 'notifications', 'unread', 'forMe', 'all', 'seeAll', 'notificationsEmpty', 'notificationsEmptyText', 'account',
             'profile', 'accountSettings', 'plan', 'company', 'logout', 'crumbs', 'products', 'dashboard',
         ] as const;
         for (const chiave of raggiunti) {
             expect(pagina, chiave).toMatch(frase(attesi[chiave]));
         }
+    });
+
+    // v4.31.0 (regola di Luciano del 10/11, zr-pm-97): nei moduli non si parla di prezzo. Il riquadro del piano, con «Piano
+    // Personale» e «Gratis, senza limiti…», era un testo fisso della cornice, uguale per tutti: il piano lo mostrerà Home.
+    it('niente riquadro del piano in fondo alla barra, e nessun testo del piano o del prezzo nella pagina (v4.31.0)', async () => {
+        const appShell = vi.spyOn(componenti, 'AppShell');
+        await mostra(<Cornice dati={dati} onLogout={esciSenzaEffetto} crumbs={percorso} />);
+
+        expect(uno('.zr-side-foot')).not.toBeNull();
+        expect(uno('.zr-plan')).toBeNull();
+        expect(appShell.mock.lastCall?.[0]).toMatchObject({ plan: false });
+        expect(appShell.mock.lastCall?.[0].labels).not.toHaveProperty('planTitle');
+        expect(appShell.mock.lastCall?.[0].labels).not.toHaveProperty('planText');
+        expect(document.body.textContent).not.toMatch(/Piano Personale|Gratis|senza limiti/i);
     });
 
     it('nome ed email della persona in cima al menu del profilo; il workspace dei dati come testo in cima alla sidebar, senza azienda né selettore (T4.3)', async () => {
@@ -7398,10 +7412,11 @@ describe('chi non ha accettato i documenti legali', () => {
         const senzaLaPagina = (props: Record<string, unknown>) => valori(Object.fromEntries(Object.entries(props).filter(([nome]) => nome !== 'children')));
 
         const senza = await date(diSempre);
-        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`, più `navigate` dalla `v4.17.0`.
+        // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`, più `navigate` dalla `v4.17.0` e
+        // `plan` (sempre `false`: niente riquadro del piano) dalla `v4.31.0`.
         expect(Object.keys(senza).sort()).toStrictEqual([
             'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'navigate', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
-            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
+            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'plan', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
         ]);
         expect([senza.product, senza.flush, senza.unreadCount, senza.notificationsState, senza.searchState]).toStrictEqual(['pm', true, 7, 'ready', 'ready']);
         expect([avviso(), uno('main')?.textContent]).toStrictEqual([null, 'La pagina']);

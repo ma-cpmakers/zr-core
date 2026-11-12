@@ -112,19 +112,34 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
         expect(chiesti).toStrictEqual([]);
     });
 
-    it('in spagnolo cornice e pagina aspettano spagnolo e inglese, poi la cornice è in spagnolo: mai un testo italiano o inglese (T2.1)', async () => {
+    it('in spagnolo cornice e pagina aspettano lo spagnolo, il solo file chiesto, poi la cornice è in spagnolo: mai un testo italiano o inglese (T2.1; voce 3530 · 1)', async () => {
         const { Cornice } = await import('./index');
 
         await mostra(createElement(Cornice, { dati: { ...dati, lingua: 'es' }, product: 'pm', onLogout: () => {} }, laPagina()));
-        expect([contenitore.innerHTML, [...chiesti].sort()]).toStrictEqual(['', ['en', 'es']]);
+        expect([contenitore.innerHTML, chiesti]).toStrictEqual(['', ['es']]);
 
         await arrivano('es');
-        expect(contenitore.innerHTML).toBe('');
-        await arrivano('en');
 
         expect(contenitore.querySelector('#pagina')).not.toBeNull();
         expect(visibile()).toContain(spagnolo.skipToContent);
         expect(inUnAltraLingua(soloItaliani, soloInglesi)).toStrictEqual([]);
+        // Nemmeno dopo: l'inglese dei testi non si chiede in una pagina in spagnolo.
+        await mostra(createElement(Cornice, { dati: { ...dati, lingua: 'es-ES' }, product: 'crm', onLogout: () => {} }, laPagina()));
+        expect(chiesti).toStrictEqual(['es']);
+    });
+
+    it('in inglese, e in una lingua che zr-core non ha, la cornice chiede il solo inglese, una volta; in italiano nessun file (voce 3530 · 2)', async () => {
+        const { Cornice } = await import('./index');
+
+        await mostra(createElement(Cornice, { dati: { ...dati, lingua: 'fr' }, product: 'pm', onLogout: () => {} }, laPagina()));
+        expect([contenitore.innerHTML, chiesti]).toStrictEqual(['', ['en']]);
+        await arrivano('en');
+        expect(visibile()).toContain(inglese.skipToContent);
+
+        await mostra(createElement(Cornice, { dati: { ...dati, lingua: 'en' }, product: 'pm', onLogout: () => {} }, laPagina()));
+        await mostra(createElement(Cornice, { dati, product: 'pm', onLogout: () => {} }, laPagina()));
+        expect(chiesti).toStrictEqual(['en']);
+        expect(visibile()).toContain(italiano.skipToContent);
     });
 
     it('da italiano a spagnolo la cornice resta in italiano finché lo spagnolo non arriva, e la pagina non si smonta (T2.2)', async () => {
@@ -173,16 +188,28 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
         expect(visibile()).toContain(spagnolo.skipToContent);
     });
 
-    it('la cornice dello staff in spagnolo aspetta la sua lingua come quella dei moduli (T2.4)', async () => {
+    it('la cornice dello staff in spagnolo aspetta la sua lingua come quella dei moduli, e chiede il solo spagnolo (T2.4; voce 3530 · 1)', async () => {
         const { CorniceDelloStaff } = await import('./app');
 
         await mostra(createElement(CorniceDelloStaff, { lingua: 'es', persona: { nome: 'Ada Lovelace', email: 'ada@example.com' }, onLogout: () => {} }, laPagina()));
-        expect(contenitore.innerHTML).toBe('');
-        await arrivano('es', 'en');
+        expect([contenitore.innerHTML, chiesti]).toStrictEqual(['', ['es']]);
+        await arrivano('es');
 
         expect(contenitore.querySelector('#pagina')).not.toBeNull();
         expect(visibile()).toContain(spagnolo.skipToContent);
         expect(inUnAltraLingua(soloItaliani, soloInglesi)).toStrictEqual([]);
+    });
+
+    it('la cornice del cliente in spagnolo chiede il solo spagnolo dei testi della cornice, poi si disegna in spagnolo (voce 3530 · 1)', async () => {
+        const { CorniceDelCliente } = await import('./app');
+
+        await mostra(createElement(CorniceDelCliente, { dati: { lingua: 'es', persona: { nome: 'Ada Lovelace', email: 'ada@example.com' }, aziende: [], aggiornati_il: '2026-11-06T09:00:00+00:00' }, nav: [], onLogout: () => {} }, laPagina()));
+        expect([contenitore.innerHTML, chiesti]).toStrictEqual(['', ['es']]);
+        await arrivano('es');
+
+        expect(contenitore.querySelector('#pagina')).not.toBeNull();
+        expect(visibile()).toContain(spagnolo.skipToContent);
+        expect(chiesti).toStrictEqual(['es']);
     });
 
     it('senza dati la pagina si vede da sola, e la barra minima arriva nella lingua del documento, mai in un\'altra (T2.4)', async () => {
@@ -200,12 +227,12 @@ describe('la cornice non si disegna in un\'altra lingua (sprint 106 · T2)', () 
         expect(mostrati.some((una) => una.includes(spagnolo.skipToContent) || una.includes(spagnolo.logout))).toBe(true);
     });
 
-    it('con `<html lang="es">` spagnolo e inglese si chiedono quando il JS d\'ingresso è eseguito, prima di ogni render (T2.5)', async () => {
+    it('con `<html lang="es">` lo spagnolo, e lui solo, si chiede quando il JS d\'ingresso è eseguito, prima di ogni render (T2.5; voce 3530 · 1)', async () => {
         document.documentElement.lang = 'es-ES';
 
         await import('./app');
 
-        expect([...chiesti].sort()).toStrictEqual(['en', 'es']);
+        expect(chiesti).toStrictEqual(['es']);
         expect(contenitore.innerHTML).toBe('');
     });
 });
@@ -228,7 +255,7 @@ describe('la lingua che arriva fra il disegno e l\'effetto (sprint 106 · T4.2)'
         document.documentElement.lang = 'es';
         const { Fragment } = await import('react');
         const { Cornice } = await import('./index');
-        expect([...attese.keys()].sort()).toStrictEqual(['en', 'es']);
+        expect([...attese.keys()]).toStrictEqual(['es']);
         // Le lingue arrivano mentre React disegna: il primo disegno della cornice è vuoto, l'effetto viene dopo che sono arrivate.
         const Arrivano = () => {
             attese.forEach((arriva) => arriva());

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import type { MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
+import type { AppShellLabels, MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
 import type { GruppoDiVoci } from './cornice';
 import { DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { AppShell } from './zeiras/componenti';
@@ -16,7 +16,7 @@ import inglese from '../lingue/staff/en.json';
  */
 const file = import.meta.glob<TestiDelloStaff>('../lingue/staff/*.json', { eager: true, import: 'default' });
 
-type TestiDelloStaff = Pick<TestiDellaCornice, 'settings' | 'planTitle' | 'planText' | 'searchPlaceholder' | 'searchHint' | 'searchEmptyText' | 'notificationsEmptyText' | 'logout'> & {
+type TestiDelloStaff = Required<Pick<AppShellLabels, 'planTitle' | 'planText'>> & Pick<TestiDellaCornice, 'settings' | 'searchPlaceholder' | 'searchHint' | 'searchEmptyText' | 'notificationsEmptyText' | 'logout'> & {
     /** In cima alla barra, al posto del workspace. */
     area: string;
     /** Quanti risultati ha trovato la ricerca (`{n}`), per il lettore di schermo: nella zona viva dell'`AppShell` (voce #2986). */
@@ -45,7 +45,7 @@ function testiDelloStaff(lingua: string): TestiDelloStaff {
 export interface CorniceDelloStaffProps {
     /**
      * La lingua dello staff (`it`, `es`, `en`…): in una lingua che zr-core non ha, la cornice è in inglese; se il file della lingua
-     * (o l'inglese) non arriva, tutta in italiano (dalla `v4.5.1`, voce #3031).
+     * (o l'inglese, per una lingua che zr-core non ha) non arriva, tutta in italiano (dalla `v4.5.1`, voce #3031).
      */
     lingua: string;
     /** Chi è entrato: nell'avatar e in cima al menu del profilo. */

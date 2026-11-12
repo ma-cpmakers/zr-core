@@ -9,7 +9,7 @@ import { Icon } from './Icon';
   function EmptyState(p) {
     return h('div', { className: cx('zr-empty', p.compact && 'is-compact') },
       h('span', { className: cx('zr-iconbox', 'zr-label-' + (p.tone || 'pine')) }, h(Icon, { name: p.icon || 'folder', size: 22 })),
-      h(p.headingLevel === 2 ? 'h2' : p.headingLevel === 4 ? 'h4' : 'h3', { className: 'zr-empty-title' }, p.title), /* il livello del titolo lo dice la pagina: h3 se non lo dice (richiesta 16) */
+      h(p.headingLevel === 1 ? 'h1' : p.headingLevel === 2 ? 'h2' : p.headingLevel === 4 ? 'h4' : 'h3', { className: 'zr-empty-title' }, p.title), /* il livello del titolo lo dice la pagina: h3 se non lo dice (richiesta 16); h1 quando l'EmptyState è tutta la pagina, una pagina d'errore, con lo stesso aspetto (richiesta 236) */
       p.text ? h('p', null, p.text) : null,
       p.action || null);
   }
