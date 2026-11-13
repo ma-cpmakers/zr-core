@@ -49,6 +49,8 @@ const marketing: DatiDellaCornice = {
     // Sprint 115 · T3 (#2909): con `?assistenza=1` lo staff è entrato con «Accedi come», con `?assistenza=lettura` di sola
     // lettura: sopra la pagina la fascia di assistenza, e la campanella mostra senza scrivere.
     ...(scelti.has('assistenza') && { assistenza: { persona: { nome: 'UAT Anna', cognome: 'Bianchi', email: 'uat-anna@example.com' }, sola_lettura: scelti.get('assistenza') === 'lettura' } }),
+    // v4.32.0 (#3686): con `?ospite=1` la persona è ospite del workspace, e il menu Moduli ha i soli moduli `attivo`.
+    ...(scelti.has('ospite') && { ospite: true as const }),
 };
 // Lo stesso workspace dopo un cambio di nome, con altre non lette: la cornice resta montata e mostra i dati nuovi.
 const marketingDopo: DatiDellaCornice = {
@@ -431,7 +433,7 @@ const attesaLenta = 6000;
  */
 function indirizzoDi(nome: Nome, lenta?: number): string {
     const parametri = new URLSearchParams({ pagina: nome });
-    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona', 'sessione', 'assistenza']) {
+    for (const parametro of ['segno', 'non_lette', 'dopo', 'persona', 'sessione', 'assistenza', 'ospite']) {
         const valore = scelti.get(parametro);
         if (valore !== null) {
             parametri.set(parametro, valore);

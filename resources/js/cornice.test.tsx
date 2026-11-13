@@ -266,6 +266,37 @@ describe('la Cornice', () => {
         expect(uno('main')?.textContent).toBe('La pagina');
     });
 
+    // v4.32.0 (voce 3686, decisione di zr-pm-97 12/11): l'ospite zeiras-ospite-1 vedeva sulla Board la Dashboard e sei moduli «Presto»,
+    // con app.elenca che gli dava solo `pm`. All'ospite il menu ha i soli moduli `attivo` e il modulo aperto: niente «Presto», del
+    // registro o per stato, niente `disponibile` e niente Dashboard. Il caso è rosso se all'ospite compare un modulo che non è suo.
+    it.each([
+        [{ pm: 'attivo' }, 'pm', ['Board']],
+        [{ pm: 'attivo', crm: 'attivo', bookings: 'disponibile', flow: 'in_arrivo', reports: 'attivo' }, 'pm', ['Board', 'CRM']],
+        // Nelle pagine di Home che l'ospite apre («Scegli il workspace») la Dashboard non c'è lo stesso: Home non gliela apre.
+        [{ pm: 'attivo' }, undefined, ['Board']],
+    ] as const)('all\'ospite il menu Moduli mostra solo i moduli che app.elenca gli dà, e il modulo aperto: niente «Presto» e niente Dashboard (voce 3686, %j)', async (prodotti, product, attese) => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, prodotti, ospite: true }} {...(product ? { product } : {})} onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        // Dentro un modulo il menu Moduli è quello del pulsante del prodotto; sulla Dashboard sta nella barra.
+        if (product) await clic(uno('.zr-product-switch'));
+        const voci = tutti(product ? '.zr-product-menu a.zr-nav-item' : '.zr-nav .zr-nav-group a.zr-nav-item');
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(attese);
+        expect(voci.filter((voce) => voce.querySelector('.zr-nav-soon'))).toStrictEqual([]);
+        // Ogni voce che non è il modulo aperto porta da qualche parte.
+        for (const voce of voci.filter((v) => !(product && v.querySelector('.zr-nav-label')?.textContent === 'Board'))) {
+            expect(voce.getAttribute('href')).not.toBe('#');
+        }
+    });
+
+    it('a un membro, senza `ospite`, il menu resta quello di prima: i «Presto» ci sono ancora (voce 3686)', async () => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, prodotti: { pm: 'attivo' } }} product="pm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+
+        await clic(uno('.zr-product-switch'));
+        const voci = tutti('.zr-product-menu a.zr-nav-item');
+        expect(voci.map((voce) => voce.querySelector('.zr-nav-label')?.textContent)).toStrictEqual(['Dashboard', 'Board', 'CRM', 'Bookings', 'Finanze', 'Report', 'Automazioni', 'Contenuti']);
+        expect(voci.filter((voce) => voce.querySelector('.zr-nav-soon'))).toHaveLength(6);
+    });
+
     // Sprint 69 · T2.2-T2.3 (voce #2210): un modulo `disponibile` non è attivo nel workspace, e la sua pagina direbbe «non attivo» (403).
     // Chi può attivarlo ha `moduli` nei dati (la parte server lo dà solo a chi amministra) e la voce porta a Impostazioni › Moduli;
     // per gli altri la voce non c'è (dalla voce 2544, regola 2209 della Home: chi non può attivare un modulo non lo vede

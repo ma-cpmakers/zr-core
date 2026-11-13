@@ -130,7 +130,7 @@ final class Cornice
      * prima di `accettazione_richiesta`. Una risposta che la cornice non sa leggere è BackofficeNonRisponde, mai «non è
      * un'assistenza», e non resta nella sessione: la pagina dopo rilegge.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, ospite?: true, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true}|null
      */
     public static function dati(): ?array
     {
@@ -164,6 +164,7 @@ final class Cornice
             'workspace' => ['nome' => $workspace['nome'], 'slug' => $workspace['slug']],
             ...($letti ?? ['prodotti' => [], 'aziende' => [], 'non_lette' => 0]),
             ...($letti === null ? [] : self::moduli($workspace['slug'])),
+            ...self::ospite(),
             'aggiornati_il' => $lettura['segno'],
             ...self::assistenza($letti !== null),
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
@@ -242,7 +243,7 @@ final class Cornice
      * com'è anche la lingua (`conLaLinguaRicordata()`): lingua e segno restano una coppia. Niente se non c'è.
      * Anche in `non_letti`.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, workspace: array{nome: string, slug: string}, prodotti: array<string, string>, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette: int, moduli?: string, ospite?: true, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true, sessione_il: string, lingua_il?: string}|array{non_letti: true, aggiornati_il: string, lingua: string, persona: array{nome: string, email: string, impronta: string|null}, workspace: array{nome: string, slug: string}, sessione_il: string, lingua_il?: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}}|null
      */
     public static function dopo(): ?array
     {
@@ -836,6 +837,18 @@ final class Cornice
         } catch (Throwable) {
             // La riga non lancia.
         }
+    }
+
+    /**
+     * L'ospite del workspace (`ospite`, dalla `v4.32.0`, #3686): se il ruolo della sessione è `ospite`, `true`, e la cornice gli
+     * mostra nel menu Moduli i soli moduli che il backoffice gli dà, senza «Presto» e senza la Dashboard, che Home non gli apre
+     * (decisione di zr-pm-97, 12/11). Per ogni altro ruolo la chiave manca. Il ruolo resta qui: al browser arriva il booleano.
+     *
+     * @return array{ospite?: true}
+     */
+    private static function ospite(): array
+    {
+        return Sessione::ruolo() === 'ospite' ? ['ospite' => true] : [];
     }
 
     /**

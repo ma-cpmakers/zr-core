@@ -70,6 +70,11 @@ export interface DatiDellaCornice {
      * solo a chi lo amministra. Un modulo `disponibile` nel menu Moduli porta lì; senza, non porta da nessuna parte.
      */
     moduli?: string | undefined;
+    /**
+     * La persona è ospite del workspace (dalla `v4.32.0`, #3686): la parte server lo ricava dal ruolo, che al browser non arriva.
+     * Il menu Moduli ha allora i soli moduli che il backoffice le dà, senza «Presto» e senza la Dashboard, che Home non le apre.
+     */
+    ospite?: true | undefined;
     /** Le notifiche non lette nel workspace: il numero sulla campanella, «99+» oltre 99. */
     non_lette?: number | undefined;
     /**
@@ -534,7 +539,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
         // agli altri non si mostra spento, come nella griglia della Home (regola 2209; voce 2544, dalla `v3.2.3`). Restano sempre
         // un «Presto» del registro, che non è spento ma futuro, e il modulo aperto: senza la sua voce l'`AppShell` toglierebbe
         // tutto il menu Moduli, Dashboard compresa.
-        items: registro.filter((voce) => (!ridotta || voce === dashboard) && (voce.presto || voce === aperto || dati.moduli || dati.prodotti[voce.id as IdDiProdotto] !== 'disponibile')).map((voce) => {
+        // All'ospite (dalla `v4.32.0`, #3686, decisione di zr-pm-97) i soli moduli che il backoffice gli dà, e il modulo aperto:
+        // niente «Presto», niente moduli che esistono ma non sono suoi, e niente Dashboard, che Home non gli apre.
+        items: registro.filter((voce) => (!ridotta || voce === dashboard) && (dati.ospite
+            ? voce === aperto || (voce !== dashboard && !voce.presto && dati.prodotti[voce.id as IdDiProdotto] === 'attivo')
+            : voce.presto || voce === aperto || dati.moduli || dati.prodotti[voce.id as IdDiProdotto] !== 'disponibile')).map((voce) => {
             // «Presto» è un prodotto futuro: per il registro, o perché il backoffice non lo dà `attivo` né `disponibile` (in
             // arrivo, non elencato, o in uno stato che zr-core non conosce). Uno `disponibile` porta a Impostazioni › Moduli
             // (dalla `v2.25.0`; linea guida 15): qui arriva solo se la persona può attivarlo. La Dashboard non ha uno stato: porta sempre. `in_arrivo` del
