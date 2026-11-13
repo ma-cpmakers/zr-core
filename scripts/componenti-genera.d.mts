@@ -26,5 +26,5 @@ export function coiFontDelPacchetto(css: string): string;
 /** Il CSS del bundle coi file del pacchetto (dalla `v4.32.0`, #3534): i font come `coiFontDelPacchetto` e, nella riga sotto, l'`@import` di movimento.css. */
 export function coiCssDelPacchetto(css: string): string;
 
-/** Il testo di resources/css/bundle.css (dalla `v3.15.0`): il bundle intero coi font del pacchetto (e dalla `v4.31.0` movimento.css), sotto il commento che lo dice generato. */
+/** Il testo di resources/css/bundle.css (dalla `v3.15.0`): il bundle intero coi font del pacchetto (e dalla `v4.32.0` movimento.css), sotto il commento che lo dice generato. */
 export function bundleIntero(css: string): string;
