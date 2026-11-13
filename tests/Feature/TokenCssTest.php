@@ -140,6 +140,10 @@ function valoriAMano(iterable $file): array
         if ($sorgente->getFilename() === 'avanzamento.css') {
             $testo = (string) preg_replace('/(#nprogress \.bar \{[^}]*?)height:\s*2px;/', '$1', $testo);
         }
+        // E il caso di stili.test.ts che controlla lo stesso spessore: il blocco atteso e l'unica misura delle regole.
+        if ($sorgente->getFilename() === 'stili.test.ts') {
+            $testo = (string) preg_replace(["/(blocco\('#nprogress \.bar'\)\)\.toBe\('[^']*?)height:\s*2px;/", "/toStrictEqual\(\['2px'\]\)/"], ['$1', ''], $testo);
+        }
         if (preg_match($colore, $testo, $trovato) === 1) {
             $problemi[] = "{$sorgente->getRelativePathname()}: «{$trovato[0]}»";
         }
