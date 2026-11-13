@@ -106,7 +106,7 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-profile-head > span:last-child')?.textContent).toBe(persona.nome + persona.email);
     });
 
-    it('T2.1 il menu del profilo è Profilo, Impostazioni, Informativa privacy, una linea, Esci: le prime due alle pagine di app.zeiras.com, la privacy su zeiras.com in una scheda nuova (dalla v4.35.0, #3753), Esci a onLogout; niente Piano né Azienda', async () => {
+    it('T2.1 il menu del profilo è Profilo, Impostazioni, Informativa privacy, una linea, Esci: le prime due alle pagine di app.zeiras.com, la privacy su zeiras.com in una scheda nuova (dalla v4.35.0, voce 3753), Esci a onLogout; niente Piano né Azienda', async () => {
         const naviga = vi.fn();
         const onLogout = vi.fn();
         await mostra(<CorniceDelCliente dati={dati} nav={nav} naviga={naviga} onLogout={onLogout} />);

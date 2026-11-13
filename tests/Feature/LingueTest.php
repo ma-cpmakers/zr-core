@@ -889,6 +889,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         // `unreadOne` e `mainContent` erano testi di zr-core; dalla `v4.17.0` sono anche dell'`AppShell` (righe 13 e 30), e vengono da lì.
         ...array_diff(chiaviDiAppShellLabels(), testiDellAppShellCheLaCorniceNonUsa()), 'products', 'dashboard', 'notificationTitle', 'markingAllRead', 'markRestRead', 'unreadNone',
         ...chiaviDegliAvvisi(), 'skipToContent',
+        // Voce 3753 (dalla `v4.35.0`): la voce del menu del profilo che apre l'informativa privacy, e la sua pagina su zeiras.com.
+        'privacy', 'privacyUrl',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',

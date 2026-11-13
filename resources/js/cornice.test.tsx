@@ -913,7 +913,7 @@ describe('la Cornice', () => {
         expect(tutti('.zr-nav .zr-nav-group')[0]?.querySelectorAll('a.zr-nav-item')).toHaveLength(8);
     });
 
-    it('senza la prop `piano` il menu del profilo è Profilo, Impostazioni, Azienda, Informativa privacy, una linea, Esci, e «Piano» non c\'è; account, impostazioni e notifiche portano su app.zeiras.com, la privacy su zeiras.com in una scheda nuova (dalla v4.35.0, #3753), «Esci» chiama il frontend (linea guida 15; sprint 15 · T1.1)', async () => {
+    it('senza la prop `piano` il menu del profilo è Profilo, Impostazioni, Azienda, Informativa privacy, una linea, Esci, e «Piano» non c\'è; account, impostazioni e notifiche portano su app.zeiras.com, la privacy su zeiras.com in una scheda nuova (dalla v4.35.0, voce 3753), «Esci» chiama il frontend (linea guida 15; sprint 15 · T1.1)', async () => {
         const naviga = vi.fn();
         const esci = vi.fn();
         await mostra(<Cornice dati={dati} product="bookings" naviga={naviga} onLogout={esci} />);
@@ -989,7 +989,7 @@ describe('la Cornice', () => {
         ]);
     });
 
-    it.each(['it', 'es', 'en'])('il menu del profilo è quello che l\'`AppShell` mette da sé, senza la prop tolta la sola voce «Piano», e con l\'informativa privacy prima della linea (dalla v4.35.0, #3753): stessi testi, stesse icone, stesso ordine, e gli stessi `danger`, `disabled` e `hint`, in "%s" (sprint 15 · T1.3)', async (lingua) => {
+    it.each(['it', 'es', 'en'])('il menu del profilo è quello che l\'`AppShell` mette da sé, senza la prop tolta la sola voce «Piano», e con l\'informativa privacy prima della linea (dalla v4.35.0, voce 3753): stessi testi, stesse icone, stesso ordine, e gli stessi `danger`, `disabled` e `hint`, in "%s" (sprint 15 · T1.3)', async (lingua) => {
         const t = testi(lingua);
         // L'`AppShell` da solo, coi testi della lingua e senza una lista sua: è il menu del design system, che può cambiare.
         await mostra(<Zeiras.AppShell user="Ada Lovelace" labels={t} />);
@@ -1015,7 +1015,7 @@ describe('la Cornice', () => {
         ['es', 'https://zeiras.com/es/privacidad/'],
         ['en', 'https://zeiras.com/en/privacy/'],
         ['de', 'https://zeiras.com/en/privacy/'],
-    ])('in "%s" l\'informativa privacy del menu del profilo apre %s in una scheda nuova (dalla v4.35.0, #3753)', async (lingua, indirizzo) => {
+    ])('in "%s" l\'informativa privacy del menu del profilo apre %s in una scheda nuova (dalla v4.35.0, voce 3753)', async (lingua, indirizzo) => {
         const apri = vi.spyOn(window, 'open').mockReturnValue(null);
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);
         await clic(uno('.zr-avatar-btn'));
@@ -6803,7 +6803,7 @@ describe('una prop fuori da `CorniceProps` non prende il posto di ciò che decid
         expect(appShell).toHaveBeenCalled();
         const props = (appShell.mock.lastCall?.[0] ?? {}) as Record<string, unknown>;
         expect(Object.keys(fuoriDalTipo).map((nome) => [nome, props[nome]])).toStrictEqual(Object.keys(fuoriDalTipo).map((nome) => [nome, undefined]));
-        // Il menu del profilo, dalla `v4.35.0` (#3753), la cornice lo dà sempre, anche con `piano`: quello del frontend non arriva.
+        // Il menu del profilo, dalla `v4.35.0` (voce 3753), la cornice lo dà sempre, anche con `piano`: quello del frontend non arriva.
         expect((props.accountItems as MenuItem[]).map((voce) => voce.label ?? null)).toStrictEqual(['Profilo', 'Impostazioni', 'Piano', 'Azienda', 'Informativa privacy', null, 'Esci']);
     });
 });
