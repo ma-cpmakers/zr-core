@@ -53,7 +53,7 @@ const colCliente = argomenti.includes('--cliente') && argomenti.splice(argomenti
 // --spazio (dalla v4.25.0, #3417): la cornice dei membri ha la prop `spazio`, e girano le righe SP. Prima del tag zr-core la lancia
 // su `layout.html?spazio=1` in italiano, spagnolo e inglese.
 const colloSpazio = argomenti.includes('--spazio') && argomenti.splice(argomenti.indexOf('--spazio'), 1).length > 0;
-// --barra (dalla v4.32.0, #3535): la pagina ha la barra d'avanzamento di Inertia con `includeCSS: false`, e girano le righe AV.
+// --barra (dalla v4.33.0, #3535): la pagina ha la barra d'avanzamento di Inertia con `includeCSS: false`, e girano le righe AV.
 // Prima del tag zr-core la lancia su `layout.html?barra=1`, che ha la visita lenta («UAT alla Corta lenta»); su una pagina del
 // modulo con `--barra` si clicca il primo collegamento interno della pagina, e la barra si vede solo se la risposta tarda.
 const conLaBarra = argomenti.includes('--barra') && argomenti.splice(argomenti.indexOf('--barra'), 1).length > 0;

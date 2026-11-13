@@ -3133,7 +3133,7 @@ con l'annuncio ai frontend; uno che le stringe, in una maggiore.
 La CSP di tutti non ammette stili in linea, e la barra d'avanzamento di Inertia, di suo, aggiunge alla pagina un `<style>`.
 Un modulo la tiene senza `<style>` — `progress: { includeCSS: false }` in `createInertiaApp` — oppure la spegne (`progress: false`).
 
-Dalla `v4.32.0` (#3535) gli stili della barra arrivano dal pacchetto: `resources/css/avanzamento.css`, che `bundle.css` e
+Dalla `v4.33.0` (#3535) gli stili della barra arrivano dal pacchetto: `resources/css/avanzamento.css`, che `bundle.css` e
 `zeiras.css` importano sotto i font. La barra sta in alto, a tutta larghezza, alta 2 px, nel colore `--pine` e a `--z-toast`,
 e non prende i clic; la punta luminosa e la rotella di Inertia non ci sono. Il modulo non passa `color`, che non serve più:
 

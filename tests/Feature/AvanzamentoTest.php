@@ -24,10 +24,10 @@ it('lo zip del pacchetto porta avanzamento.css, e bundle.css e zeiras.css lo imp
 it('il README dice come si usa la barra del pacchetto e che un modulo può togliere le sue regole (voce 3535 · AC 5)', function (string $frase) {
     expect(File::get(dirname(__DIR__, 2).'/README.md'))->toContain($frase);
 })->with([
-    'la versione e il file' => ['Dalla `v4.32.0` (#3535) gli stili della barra arrivano dal pacchetto: `resources/css/avanzamento.css`'],
+    'la versione e il file' => ['Dalla `v4.33.0` (#3535) gli stili della barra arrivano dal pacchetto: `resources/css/avanzamento.css`'],
     'includeCSS: false' => ['    progress: { includeCSS: false },'],
     'niente color' => ['Il modulo non passa `color`, che non serve più'],
     'il modulo toglie le sue regole' => ['Un modulo che ha scritto nel suo CSS le regole di `#nprogress` le può togliere'],
     'la CSP non si allarga' => ['sorgente in più nella CSP: niente `\'unsafe-inline\'`, niente hash.'],
-    'la riga della versione' => ['| `v4.32.0` | la barra d\'avanzamento di Inertia dal pacchetto (#3535)'],
+    'la riga della versione' => ['| `v4.33.0` | la barra d\'avanzamento di Inertia dal pacchetto (#3535)'],
 ]);

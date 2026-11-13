@@ -1,5 +1,5 @@
 /*
- * La barra d'avanzamento di Inertia (dalla v4.32.0, voce #3535): in alto, a tutta larghezza, nel colore `--pine` e sopra a tutto
+ * La barra d'avanzamento di Inertia (dalla v4.33.0, voce #3535): in alto, a tutta larghezza, nel colore `--pine` e sopra a tutto
  * (`--z-toast`), senza prendere i clic. Inertia la disegna con un `<style>` suo, che la CSP di tutti ferma (`style-src 'self'`):
  * un modulo le chiede `progress: { includeCSS: false }` in `createInertiaApp`, senza `color`, e gli stili arrivano da qui.
  * Sono quelli di Inertia (nprogress) coi token: la punta luminosa e la rotella non ci sono, la barra basta. Lo spessore della
