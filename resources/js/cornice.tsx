@@ -987,6 +987,9 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // che c'è da quando i dati dicono `assistenza`, prima ancora che il pezzo con la barra sia arrivato: la barra compare al suo
     // posto, e l'`AppShell` non si rimonta. Senza assistenza nessun contenitore: il DOM della cornice è quello di sempre. Il
     // corpo non ha una classe: il CSS lo trova come il figlio che non è la barra (un attributo in meno nell'ingresso).
+    // Scostamento dichiarato dal design di admin (decisione di zr-pm-97, 13/11): sotto i 1024 px, col cassetto aperto, il
+    // cassetto parte sotto la barra — nel design la barra ne copre la cima — e logo e selettore «Azienda › workspace» si vedono
+    // interi. Lo fa solo assistenza.css, ancorando cassetto e velo al corpo: nessun componente del design system è toccato.
     const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
     // Serve solo con l'avviso, e con l'avviso i testi ci sono.
     const spenta = (daAccettare ? a?.acceptanceOff : a?.downOff)!;

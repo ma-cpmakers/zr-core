@@ -32,3 +32,14 @@
 .zr-assist-bar .zr-btn { background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus); }
 .zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; }
 .zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
+/*
+ * Il cassetto sotto la barra (scostamento dal design di admin, decisione di zr-pm-97 del 13/11): sotto i 1024 px il design
+ * dell'AppShell mette il cassetto e il suo velo in `position: fixed` da `top: 0`, e la barra, che ha uno strato più alto, ne
+ * coprirebbe la cima: il logo e il selettore «Azienda › workspace» non si vedrebbero. Nel prototipo di admin è così; nel
+ * pacchetto il cassetto e il velo si ancorano al corpo (`position: absolute`, il corpo è `relative`), che comincia sotto la
+ * barra, quale che sia la sua altezza — va a capo su due o tre righe sul telefono. Il velo scuro copre il corpo e non la barra,
+ * che resta in vista. Solo qui, solo in assistenza, e senza `contain` sul corpo: menu e dialoghi restano in `fixed` sulla finestra.
+ */
+@media (max-width: 1023px) {
+  .zr-assist .zr-side, .zr-assist .zr-side-scrim { position: absolute; }
+}

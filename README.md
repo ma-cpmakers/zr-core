@@ -2002,7 +2002,10 @@ cornice === null ? pagina : (
   `resources/css/assistenza.css`, scritto a mano, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`: una pagina
   che li carica non scrive niente. L'`AppShell` sta in un contenitore (`zr-assist`) che c'è solo in assistenza: senza, nessuna
   barra e nessun elemento in più, e il DOM della cornice è quello di sempre. Prima della `v4.34.0` la fascia era un `Alert`
-  `warning` dentro il contenuto, sopra la pagina (Decisione 22312). Testi e fascia stanno nel pezzo degli avvisi, che la
+  `warning` dentro il contenuto, sopra la pagina (Decisione 22312). Sotto i 1.024 px, col cassetto aperto, il cassetto parte
+  **sotto** la barra, e il logo e il selettore «Azienda › workspace» si vedono interi: è uno scostamento dichiarato dal design
+  di admin, dove la barra copre la cima del cassetto (decisione di zr-pm-97 del 13/11); lo fa `assistenza.css`, ancorando
+  cassetto e velo al corpo, senza toccare i componenti del design system. Testi e fascia stanno nel pezzo degli avvisi, che la
   cornice chiede anche in assistenza. In assistenza la campanella mostra e non scrive: il pannello non ha «Segna tutte come
   lette», e una notifica aperta si apre senza segnarla letta, col numero com'era. Una pagina aperta prima che i dati dicessero
   l'assistenza, che chiede la lettura e riceve il 403 `azione_non_consentita_in_assistenza`, apre lo stesso la risorsa: per la

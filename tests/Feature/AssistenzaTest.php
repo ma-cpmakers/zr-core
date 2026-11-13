@@ -43,5 +43,6 @@ it('il README dice dove sta la fascia di assistenza e come si prova (voce 3723 �
     'il pulsante' => ['backoffice», che chiama `onLogout` come «Esci»'],
     'il file' => ['`resources/css/assistenza.css`, scritto a mano, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`'],
     'senza assistenza nessuna barra' => ['che c\'è solo in assistenza: senza, nessuna'],
+    'il cassetto sotto la barra, scostamento dal design' => ['di admin, dove la barra copre la cima del cassetto (decisione di zr-pm-97 del 13/11); lo fa `assistenza.css`, ancorando'],
     'la riga della versione' => ['| `v4.34.0` | la fascia di assistenza come nel design di admin (#3723)'],
 ]);

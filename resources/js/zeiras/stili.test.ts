@@ -296,6 +296,21 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
     it('nessun colore e nessuna misura scritti: tutto dai token (AC 1)', () => {
         expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
         expect(regole).not.toMatch(/z-index: *\d/);
-        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px']);
+        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px', '1023px']);
+    });
+
+    it('sotto i 1024 px il cassetto e il suo velo si ancorano al corpo, sotto la barra: `absolute` solo in assistenza, allo stesso punto di rottura dell\'AppShell, senza `contain` che sposti menu e dialoghi (scostamento dal design di admin, decisione di zr-pm-97 del 13/11)', () => {
+        const delDesignSystem = bundleCss.replace(/\s+/g, ' ');
+
+        // L'AppShell mette cassetto e velo in `fixed` da `top: 0` a questo punto di rottura: è ciò che la regola del pacchetto sposta.
+        expect(delDesignSystem).toContain('@media (max-width: 1023px) { .zr-shell { grid-template-columns: minmax(0, 1fr); min-height: 0; } .zr-side { position: fixed; top: 0;');
+        expect(delDesignSystem).toContain('.zr-side-scrim { position: fixed; inset: 0;');
+        expect(regole).toContain('@media (max-width: 1023px) { .zr-assist .zr-side, .zr-assist .zr-side-scrim { position: absolute; } }');
+        // Il corpo è il riferimento della posizione, e non crea un contesto che sposti i `fixed` di menu e dialoghi.
+        expect(blocco('.zr-assist > :not(.zr-assist-bar)')).toContain('position: relative;');
+        expect(regole).not.toMatch(/\bcontain\s*:|\btransform\s*:|\bfilter\s*:|will-change/);
+        // La barra resta sopra il cassetto: il suo strato è più alto di quello del cassetto (`--z-dialog` + 2).
+        expect(blocco('.zr-assist-bar')).toContain('z-index: calc(var(--z-dialog) + 3);');
+        expect(delDesignSystem).toContain('z-index: calc(var(--z-dialog) + 2); width: min(320px, 86vw);');
     });
 });
