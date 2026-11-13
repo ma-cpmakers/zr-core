@@ -46,13 +46,14 @@ pagina usa. La CSP di tutti li ammette (`font-src 'self'`), e dalla `v4.0.0` non
 `resources/css/bundle.css` («Passare alla v3.15», «Passare alla v4»).
 
 **Il tema scuro** (dalla `v4.36.0`, #3757): `zeiras-token.css` porta anche i valori scuri di `tokens.json`, per i colori e le
-ombre che nel tema scuro cambiano, e la cornice e ogni componente li prendono da sé, perché leggono solo le variabili. Vale la
-scelta della persona, che il modulo scrive su `<html>`: con `data-theme="dark"` il tema scuro, con `data-theme="light"` il
-chiaro, qualunque sia quello del sistema; senza `data-theme` (la persona non ha scelto, o ha scelto «Come il sistema») segue
-il sistema, `prefers-color-scheme`. Il file dice anche `color-scheme`, così barre di scorrimento e campi del browser seguono il
-tema. Con il sistema scuro una pagina senza `data-theme` diventa scura: ciò che il modulo colora coi token segue, un colore
-scritto a mano no. Un modulo che si era scritto i valori scuri nel suo CSS li toglie: arrivano dal pacchetto, senza un import
-in più. I valori sono quelli che il design system ha già (Decisione di zr-pm-cc del 13/11, prima che il suo CSS li porti).
+ombre che nel tema scuro cambiano, e la cornice e ogni componente li prendono da sé, perché leggono solo le variabili. Il tema lo
+sceglie il modulo, con l'attributo `data-theme` su `<html>`, dove scrive la scelta della persona: `data-theme="dark"` dà il tema
+scuro, `data-theme="system"` segue il sistema (`prefers-color-scheme`: scuro solo quando il sistema è scuro), `data-theme="light"`
+il chiaro. **Senza `data-theme` la pagina resta chiara**, anche col sistema scuro: un modulo passa allo scuro quando scrive la
+scelta della persona e ha provato in scuro le sue pagine, perché ciò che colora da sé, fuori dai token, nessuno l'ha visto in
+scuro (correzione di zr-pm-cc del 13/11). Il file dice anche `color-scheme`, così barre di scorrimento e campi del browser seguono
+il tema. Un modulo che si era scritto i valori scuri nel suo CSS li toglie: arrivano dal pacchetto, senza un import in più. I
+valori sono quelli che il design system ha già (Decisione di zr-pm-cc del 13/11, prima che il suo CSS li porti).
 
 **Meno movimento** (dalla `v4.32.0`, #3534): chi chiede al sistema meno movimento (`prefers-reduced-motion: reduce`) non ha
 transizioni in nessuna pagina che carica il CSS del pacchetto. La regola sta in `resources/css/movimento.css`, che `bundle.css`
@@ -568,6 +569,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.3` | le correzioni del trascinamento col dito dalla revisione della `v4.35.2` (sì di zr-pm-74 del 16/11): la carta tenuta non ha il drag del browser, che su Safari iOS e Chrome Android dopo mezzo secondo si prendeva il dito e fermava il trascinamento; se la lavagna si aggiorna mentre il dito tiene una carta, la pagina non scorre e alla fine la carta non resta presa né la colonna accesa. Il pezzo del tocco sale a 1.359 byte, la misura più 20; il JS d'ingresso non cambia | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: TC.1 guarda anche il drag del browser |
 | `v4.35.4` | il trascinamento col dito della `DealPipeline` quando la lavagna non arriva al bordo dello schermo (zr-crm e zr-pm-74, 16/11): il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo, e la carta lasciata lì va alla colonna che si vede sul bordo invece di tornare indietro. Pezzo del tocco 1.370 byte, tetto 1.390 (la misura più 20); JS d'ingresso invariato. Niente da fare per i moduli: aggiornare. |
 | `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o, senza `data-theme`, col sistema scuro; `data-theme="light"` tiene il chiaro anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; una pagina senza `data-theme` col sistema scuro diventa scura. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). Cosa fare: chi ha scritto i valori scuri nel suo CSS li toglie; chi scrive `data-theme` su `<html>` non ha altro da fare. |
+| `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o con `data-theme="system"` quando il sistema è scuro; senza `data-theme`, o con `"light"`, la pagina resta chiara anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; nessun modulo cambia finché non scrive `data-theme`. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). Cosa fare: niente, finché il modulo non sceglie il tema; per lo scuro scrive su `<html>` `data-theme` dalla scelta della persona (`dark`, `light` o `system`) dopo aver provato in scuro le sue pagine, e toglie i valori scuri che si era scritto nel suo CSS. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

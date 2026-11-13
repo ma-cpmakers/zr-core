@@ -4,7 +4,8 @@
 // chiaro; un valore che rimanda a un altro token (`{pine}`) diventa `var(--pine)`. Dalla v4.36.0 (voce #3757, Decisione di zr-pm-cc
 // del 13/11) anche il tema scuro di tokens.json: i colori e le ombre il cui valore scuro è diverso dal chiaro, una volta con
 // `:root[data-theme="dark"]` (la persona ha scelto «Scuro») e una dentro `@media (prefers-color-scheme: dark)` con
-// `:root:not([data-theme="light"])` (nessuna scelta, o «Come il sistema», e il sistema è scuro); con `data-theme="light"` resta il chiaro. Dalla v3.13.0 (voce #2828) anche gli stili di testo,
+// `:root[data-theme="system"]` («Come il sistema», e il sistema è scuro). Senza `data-theme`, o con `"light"`, resta il chiaro anche col
+// sistema scuro: un modulo passa allo scuro quando scrive la scelta della persona (correzione di zr-pm-cc del 13/11, prima dell'uscita). Dalla v3.13.0 (voce #2828) anche gli stili di testo,
 // coi nomi del tema di Tailwind 4: `--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight` e, dove
 // c'è, `--text-heading-1--letter-spacing`; dalla v4.2.0 anche gli spessori di bordo (`--border-strong`, richiesta 139). È un
 // file statico, non uno stile iniettato da JS: con una CSP senza 'unsafe-inline' lo stile iniettato è bloccato. Si lancia con
@@ -40,7 +41,7 @@ const blocco = (rientro, righe) => righe.map(([nome, testo]) => `${rientro}${nom
 
 const css = `/* Generato da scripts/token-css.mjs da resources/zeiras/tokens.json: non si modifica a mano, si rigenera con
    \`npm run token\` a ogni riallineamento al design system. Il tema chiaro, e dalla v4.36.0 il tema scuro: con
-   data-theme="dark" su <html>, o senza data-theme (né "light") quando il sistema è scuro. Si carica dopo bundle.css. */
+   data-theme="dark" su <html>, o con data-theme="system" quando il sistema è scuro. Si carica dopo bundle.css. */
 :root {
     color-scheme: light;
 ${blocco('    ', variabili)}
@@ -50,7 +51,7 @@ ${blocco('    ', variabili)}
 ${blocco('    ', scure)}
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root[data-theme="system"] {
         color-scheme: dark;
 ${blocco('        ', scure)}
     }

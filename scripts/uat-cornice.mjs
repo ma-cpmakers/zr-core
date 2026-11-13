@@ -1837,8 +1837,10 @@ async function barraDiInertia(page, csp) {
 
 // TS (dalla v4.36.0, #3757): il tema scuro dal CSS del pacchetto, con `--scuro`. Un fondo è scuro quando la sua luminanza è sotto
 // 0,1 e chiaro quando è sopra 0,5; l'inchiostro all'opposto. TS.1 con `data-theme="dark"` e il sistema chiaro la pagina e la barra
-// laterale sono scure; TS.2 senza `data-theme` e il sistema scuro, scure; TS.3 con `data-theme="light"` e il sistema scuro, chiare;
-// TS.4 senza `data-theme` e il sistema chiaro, chiare. Poi la pagina torna come l'ha aperta la UAT: scura scelta, sistema chiaro.
+// laterale sono scure; TS.2 con `data-theme="system"` e il sistema scuro, scure; TS.3 con `data-theme="system"` e il sistema chiaro,
+// chiare; TS.4 senza `data-theme` e col sistema scuro, chiare: un modulo che non scrive la scelta della persona non diventa scuro da
+// sé (correzione di zr-pm-cc del 13/11); TS.5 con `data-theme="light"` e il sistema scuro, chiare. Poi la pagina torna come l'ha
+// aperta la UAT: scura scelta, sistema chiaro.
 async function temaScuro(page) {
     const leggi = () => page.evaluate(() => {
         const rgb = (testo) => (testo.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
@@ -1856,32 +1858,29 @@ async function temaScuro(page) {
             laterale: laterale ? luce(rgb(getComputedStyle(laterale).backgroundColor)) : null,
         };
     });
-    const scuro = (l) => l.fondo < 0.1 && l.inchiostro > 0.5 && l.schema === 'dark';
-    const chiaro = (l) => l.fondo > 0.5 && l.inchiostro < 0.1 && l.schema !== 'dark';
+    const scuro = (l) => l.fondo < 0.1 && l.inchiostro > 0.5 && l.schema === 'dark' && (l.laterale === null || l.laterale < 0.1);
+    const chiaro = (l) => l.fondo > 0.5 && l.inchiostro < 0.1 && l.schema !== 'dark' && (l.laterale === null || l.laterale > 0.5);
     const prova = (l) => `data-theme ${l.tema ?? 'assente'}, color-scheme ${l.schema}, luminanza del fondo ${l.fondo.toFixed(3)}, dell'inchiostro ${l.inchiostro.toFixed(3)}${l.laterale === null ? '' : `, della barra laterale ${l.laterale.toFixed(3)}`}`;
-    const metti = (tema) => page.evaluate((valore) => (valore === null ? document.documentElement.removeAttribute('data-theme') : document.documentElement.setAttribute('data-theme', valore)), tema);
+    const caso = async (tema, sistema) => {
+        await page.evaluate((valore) => (valore === null ? document.documentElement.removeAttribute('data-theme') : document.documentElement.setAttribute('data-theme', valore)), tema);
+        await page.emulateMedia({ colorScheme: sistema });
+        await pausa(200);
+        return leggi();
+    };
 
     const primo = await leggi();
-    // La barra laterale (`.zr-side`, col fondo `surface-raised`) conta quando la pagina ce l'ha.
-    scrivi(scuro(primo) && (primo.laterale === null || primo.laterale < 0.1) ? '✅' : '❌', 'TS.1', 'con data-theme="dark" e il sistema chiaro la pagina e la barra laterale sono scure', prova(primo));
+    scrivi(scuro(primo) ? '✅' : '❌', 'TS.1', 'con data-theme="dark" e il sistema chiaro la pagina e la barra laterale sono scure', prova(primo));
     await page.screenshot({ path: join(cartella, 'tema-scuro-1280.png') });
-    await metti(null);
-    await page.emulateMedia({ colorScheme: 'dark' });
-    await pausa(200);
-    const secondo = await leggi();
-    scrivi(scuro(secondo) ? '✅' : '❌', 'TS.2', 'senza data-theme e col sistema scuro la pagina è scura', prova(secondo));
-    await metti('light');
-    await pausa(200);
-    const terzo = await leggi();
-    scrivi(chiaro(terzo) ? '✅' : '❌', 'TS.3', 'con data-theme="light" e il sistema scuro la pagina è chiara', prova(terzo));
-    await page.screenshot({ path: join(cartella, 'tema-chiaro-scelto-1280.png') });
-    await metti(null);
-    await page.emulateMedia({ colorScheme: 'light' });
-    await pausa(200);
-    const quarto = await leggi();
-    scrivi(chiaro(quarto) ? '✅' : '❌', 'TS.4', 'senza data-theme e col sistema chiaro la pagina è chiara', prova(quarto));
-    await metti('dark');
-    await pausa(200);
+    const secondo = await caso('system', 'dark');
+    scrivi(scuro(secondo) ? '✅' : '❌', 'TS.2', 'con data-theme="system" e il sistema scuro la pagina è scura', prova(secondo));
+    const terzo = await caso('system', 'light');
+    scrivi(chiaro(terzo) ? '✅' : '❌', 'TS.3', 'con data-theme="system" e il sistema chiaro la pagina è chiara', prova(terzo));
+    const quarto = await caso(null, 'dark');
+    scrivi(chiaro(quarto) ? '✅' : '❌', 'TS.4', 'senza data-theme e col sistema scuro la pagina resta chiara: il modulo non diventa scuro da sé', prova(quarto));
+    await page.screenshot({ path: join(cartella, 'tema-senza-scelta-sistema-scuro-1280.png') });
+    const quinto = await caso('light', 'dark');
+    scrivi(chiaro(quinto) ? '✅' : '❌', 'TS.5', 'con data-theme="light" e il sistema scuro la pagina è chiara', prova(quinto));
+    await caso('dark', 'light');
 }
 
 // MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna

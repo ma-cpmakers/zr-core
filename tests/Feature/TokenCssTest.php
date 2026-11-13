@@ -167,7 +167,7 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
         ->and(array_keys(variabiliDiRoot($css)))->toEqualCanonicalizing(array_keys(valoriDeiToken()))
         // Il :root col tema chiaro, poi i due blocchi del tema scuro (dalla v4.36.0, voce 3757), e nient'altro: niente @import, niente
         // @font-face.
-        ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}\s*:root\[data-theme="dark"\]\s*\{[^{}]*\}\s*@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{[^{}]*\}\s*\}$/');
+        ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}\s*:root\[data-theme="dark"\]\s*\{[^{}]*\}\s*@media \(prefers-color-scheme: dark\)\s*\{\s*:root\[data-theme="system"\]\s*\{[^{}]*\}\s*\}$/');
 });
 
 /**
@@ -212,7 +212,9 @@ function dichiarazioniDelBlocco(string $css, string $selettore): ?array
     return $dichiarazioni;
 }
 
-it('il tema scuro di tokens.json c\'è due volte, uguale: con data-theme="dark" e, quando il sistema è scuro, senza data-theme="light"; il :root dice il tema chiaro (voce 3757)', function () {
+// Correzione di zr-pm-cc del 13/11, prima dell'uscita: senza `data-theme` la pagina resta chiara anche col sistema scuro (i moduli
+// hanno CSS loro che nessuno ha provato in scuro); il sistema si segue solo con `data-theme="system"`.
+it('il tema scuro di tokens.json c\'è due volte, uguale: con data-theme="dark" e, quando il sistema è scuro, con data-theme="system"; senza data-theme resta il chiaro (voce 3757)', function () {
     $css = File::get(__DIR__.'/../../resources/css/zeiras-token.css');
     $scuri = valoriScuriDeiToken();
     $attesi = ['color-scheme' => 'dark', ...$scuri];
@@ -221,11 +223,13 @@ it('il tema scuro di tokens.json c\'è due volte, uguale: con data-theme="dark" 
     expect(array_keys($scuri))->toContain('--surface', '--ink', '--pine', '--shadow-card')
         ->and($scuri)->not->toHaveKey('--success')
         ->and(dichiarazioniDelBlocco($css, ':root[data-theme="dark"]'))->toBe($attesi)
-        ->and(dichiarazioniDelBlocco($css, ':root:not([data-theme="light"])'))->toBe($attesi)
-        ->and(preg_match('/@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/', $css))->toBe(1)
+        ->and(dichiarazioniDelBlocco($css, ':root[data-theme="system"]'))->toBe($attesi)
+        ->and(preg_match('/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\[data-theme="system"\]\s*\{/', $css))->toBe(1)
         ->and(dichiarazioniDelBlocco($css, ':root')['color-scheme'] ?? null)->toBe('light')
-        // Nessun selettore per il tema chiaro scelto: con data-theme="light" vale il :root, e il blocco del sistema scuro lo esclude.
-        ->and(str_contains($css, 'data-theme="light"] {'))->toBe(false);
+        // Il sistema scuro da solo non scurisce niente: nel blocco del sistema c'è solo il selettore di chi lo chiede, e nessun
+        // `:root` senza attributo (né `:not(...)`) prende i valori scuri.
+        ->and(preg_match_all('/:root(?!\[data-theme="(?:dark|system)"\])[^{,]*\{/', cssSenzaCommenti($css)))->toBe(1)
+        ->and(str_contains($css, ':not('))->toBe(false);
 });
 
 it('il controllo del tema scuro trova il valore chiaro al posto dello scuro, il token che manca e quello in più (voce 3757)', function () {
@@ -241,7 +245,7 @@ it('il controllo del tema scuro trova il valore chiaro al posto dello scuro, il 
     expect(dichiarazioniDelBlocco($css, ':root[data-theme="dark"]'))->not->toBe(['color-scheme' => 'dark', ...$scuri])
         ->and(array_keys(array_diff_assoc($sbagliato, $scuri)))->toEqualCanonicalizing(['--surface', '--success'])
         ->and(array_keys(array_diff_key($scuri, $sbagliato)))->toBe(['--ink'])
-        ->and(dichiarazioniDelBlocco($css, ':root:not([data-theme="light"])'))->toBeNull();
+        ->and(dichiarazioniDelBlocco($css, ':root[data-theme="system"]'))->toBeNull();
 });
 
 it('zeiras-token.css porta i dodici stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1; label dalla v4.2.0; wordmark e micro dal secondo lotto del 05/11)', function () {

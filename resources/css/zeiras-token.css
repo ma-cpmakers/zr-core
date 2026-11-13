@@ -1,6 +1,6 @@
 /* Generato da scripts/token-css.mjs da resources/zeiras/tokens.json: non si modifica a mano, si rigenera con
    `npm run token` a ogni riallineamento al design system. Il tema chiaro, e dalla v4.36.0 il tema scuro: con
-   data-theme="dark" su <html>, o senza data-theme (né "light") quando il sistema è scuro. Si carica dopo bundle.css. */
+   data-theme="dark" su <html>, o con data-theme="system" quando il sistema è scuro. Si carica dopo bundle.css. */
 :root {
     color-scheme: light;
     --surface: #f7f6f2;
@@ -158,7 +158,7 @@
     --shadow-overlay: 0 24px 64px rgba(0,0,0,0.7);
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root[data-theme="system"] {
         color-scheme: dark;
         --surface: #0f1412;
         --surface-raised: #171e1b;
