@@ -179,9 +179,21 @@ export function coiFontDelPacchetto(css) {
     return righe.join('\n');
 }
 
-/** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, e i font del pacchetto. */
+// Voce #3534 (Decisione 23090 di zr-pm-07): sotto i font, l'`@import` di movimento.css, la regola del pacchetto che spegne le
+// transizioni per chi chiede meno movimento. È un file scritto a mano: nei CSS generati c'è solo la riga che lo importa.
+const MOVIMENTO_DEL_PACCHETTO = "@import './movimento.css';";
+
+/** Il CSS del bundle coi file del pacchetto: i font al posto di Google e, nella riga sotto, movimento.css. */
+export function coiCssDelPacchetto(css) {
+    const righe = coiFontDelPacchetto(css).split('\n');
+    righe.splice(righe.indexOf(FONT_DEL_PACCHETTO) + 1, 0, MOVIMENTO_DEL_PACCHETTO);
+
+    return righe.join('\n');
+}
+
+/** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, i font del pacchetto e movimento.css. */
 export function bundleIntero(css) {
-    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.'), coiFontDelPacchetto(css)].join('\n');
+    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, e la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css).'), coiCssDelPacchetto(css)].join('\n');
 }
 
 /**
@@ -191,7 +203,7 @@ export function bundleIntero(css) {
  * di un componente non ci sono, ci sono due volte o non hanno una classe loro, lancia un errore.
  */
 export function dividiIlCss(css) {
-    const righe = coiFontDelPacchetto(css).split('\n');
+    const righe = coiCssDelPacchetto(css).split('\n');
     const tolte = new Set();
     const blocchi = {};
     for (const nome of STILI_A_PARTE) {
@@ -228,7 +240,7 @@ export function dividiIlCss(css) {
     const nomi = STILI_A_PARTE;
 
     return {
-        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, e coi font del pacchetto (resources/css/font.css) al posto di Google Fonts.`), ...resto].join('\n'),
+        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, e la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css).`), ...resto].join('\n'),
         stili: Object.fromEntries(nomi.map((nome) => [nome, [GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/${nome}.js.`), ...blocchi[nome], ''].join('\n')])),
         proprie,
     };

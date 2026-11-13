@@ -23,6 +23,8 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
+ * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
+ *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
 import { createHash } from 'node:crypto';
@@ -1535,6 +1537,56 @@ async function ilMioSpazio(page) {
     scrivi(dopo.segno ? '✅' : '❌', 'SP.2', 'un clic semplice sulla voce non ricarica la pagina', `segno nella finestra dopo il clic: ${dopo.segno}; indirizzo ${dopo.dove}`);
 }
 
+// MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna
+// transizione: su ogni elemento della pagina e sui suoi ::before e ::after, sul cassetto aperto (una copia di `.zr-side` con
+// `is-open`, accanto a lui), sulla freccia del selettore e su un elemento del modulo con una transizione sua (messa dallo script);
+// MV.2 senza la preferenza il cassetto, la freccia e l'elemento del modulo hanno la loro; MV.3 con la preferenza lo spinner del
+// Button gira ancora, a 2,4 s per giro. Alla fine la preferenza torna quella del browser.
+async function menoMovimento(page) {
+    const misura = () => page.evaluate(() => {
+        const durata = (valore) => Math.max(0, ...valore.split(',').map((v) => (v.trim().endsWith('ms') ? parseFloat(v) / 1000 : parseFloat(v)) || 0));
+        const lato = document.querySelector('.zr-shell .zr-side');
+        const aperto = lato?.cloneNode(false);
+        aperto?.classList.add('is-open');
+        aperto?.removeAttribute('id');
+        if (aperto) lato.parentNode.insertBefore(aperto, lato);
+        const delModulo = document.createElement('div');
+        delModulo.style.transition = 'opacity 1s';
+        document.querySelector('main')?.appendChild(delModulo) ?? document.body.appendChild(delModulo);
+        const spinner = document.createElement('span');
+        spinner.className = 'zr-btn-spin';
+        document.body.appendChild(spinner);
+        let massima = 0;
+        for (const el of document.querySelectorAll('*')) {
+            for (const parte of [null, '::before', '::after']) {
+                massima = Math.max(massima, durata(getComputedStyle(el, parte).transitionDuration));
+            }
+        }
+        const chev = document.querySelector('.zr-shell .zr-ws-chev');
+        const visto = {
+            massima,
+            cassetto: aperto ? durata(getComputedStyle(aperto).transitionDuration) : null,
+            freccia: chev ? durata(getComputedStyle(chev).transitionDuration) : null,
+            modulo: durata(getComputedStyle(delModulo).transitionDuration),
+            spinner: `${getComputedStyle(spinner).animationName} ${getComputedStyle(spinner).animationDuration}`,
+        };
+        aperto?.remove();
+        delModulo.remove();
+        spinner.remove();
+        return visto;
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const meno = await misura();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const solito = await misura();
+    await page.emulateMedia({ reducedMotion: null });
+    // La freccia del selettore manca solo nella cornice dello staff, che il selettore non ce l'ha: altrove manca = ❌.
+    const frecciaBuona = (misurata, buona) => (misurata === null ? conLoStaff : buona(misurata));
+    scrivi(meno.massima === 0 && meno.cassetto === 0 && meno.modulo === 0 && frecciaBuona(meno.freccia, (durata) => durata === 0) ? '✅' : '❌', 'MV.1', 'con prefers-reduced-motion: reduce nessuna transizione, anche sul cassetto, sulla freccia del selettore e su un elemento del modulo', `la più lunga ${meno.massima}s; cassetto ${meno.cassetto}s, freccia ${meno.freccia ?? '—'}s, modulo ${meno.modulo}s`);
+    scrivi(solito.cassetto > 0 && solito.modulo === 1 && frecciaBuona(solito.freccia, (durata) => durata > 0) ? '✅' : '❌', 'MV.2', 'senza la preferenza il cassetto, la freccia del selettore e l\'elemento del modulo hanno la loro transizione', `cassetto ${solito.cassetto}s, freccia ${solito.freccia ?? 'non c\'è'}${solito.freccia === null ? '' : 's'}, modulo ${solito.modulo}s`);
+    scrivi(meno.spinner === 'zr-spin 2.4s' ? '✅' : '❌', 'MV.3', 'con la preferenza lo spinner del Button gira ancora, a 2,4 s per giro', meno.spinner);
+}
+
 async function ilCliente(page, larghezza) {
     const id = larghezza > 720 ? 'CL' : 'CL390';
     const campo = await page.evaluate(() => {
@@ -1602,6 +1654,7 @@ async function a390(page, apri, diGoogle, errori, csp) {
     pagina = page.url();
     await page.screenshot({ path: join(cartella, 'pagina-390.png') });
     await controllaAxe(page, 'A390.1', 'a 390 px, a pannelli chiusi');
+    await menoMovimento(page);
     if (!colCliente) {
         await ricerca(page, false);
         await tornaAllaPagina();
