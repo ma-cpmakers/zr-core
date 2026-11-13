@@ -974,22 +974,24 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             {daAccettare ? a.acceptanceText : a.downText}
         </Alert>
     ) : null;
-    // La fascia di assistenza (dalla `v4.22.0`, #2909): quando lo staff è entrato con «Accedi come», chi è la persona assistita e
-    // che cosa valgono le modifiche, col pulsante che termina l'assistenza uscendo, come «Esci». Non si chiude, e resta anche
-    // nella cornice ridotta, sopra l'avviso, nello stesso contenitore. Il prototipo la mette sopra la barra in alto: l'`AppShell`
-    // non ha quel posto, e la fascia sta dove sta l'avviso (scostamento dichiarato, Decisione 22312).
-    const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
-    const sopraLaPagina = Fascia || avvisoSopraLaPagina ? (
+    const sopraLaPagina = avvisoSopraLaPagina && (
         <div className="zr-stack">
-            {Fascia && <Fascia lingua={lingua} assistenza={dati.assistenza!} onLogout={onLogout} />}
             {avvisoSopraLaPagina}
             <div />
         </div>
-    ) : null;
+    );
+    // La fascia di assistenza (dalla `v4.22.0`, #2909): quando lo staff è entrato con «Accedi come», chi è la persona assistita e
+    // che cosa valgono le modifiche, col pulsante che termina l'assistenza uscendo, come «Esci». Non si chiude, e resta anche
+    // nella cornice ridotta. Dalla `v4.34.0` (#3723) è la barra citrus del design di admin: a tutta larghezza, sopra l'`AppShell`
+    // e fuori dal contenuto, su ogni pagina e a ogni larghezza (resources/css/assistenza.css). L'`AppShell` sta in un contenitore
+    // che c'è da quando i dati dicono `assistenza`, prima ancora che il pezzo con la barra sia arrivato: la barra compare al suo
+    // posto, e l'`AppShell` non si rimonta. Senza assistenza nessun contenitore: il DOM della cornice è quello di sempre. Il
+    // corpo non ha una classe: il CSS lo trova come il figlio che non è la barra (un attributo in meno nell'ingresso).
+    const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
     // Serve solo con l'avviso, e con l'avviso i testi ci sono.
     const spenta = (daAccettare ? a?.acceptanceOff : a?.downOff)!;
 
-    return (
+    const cornice = (
         <AppShell
             // Ciò che può non esserci arriva all'`AppShell` solo col suo valore, mai come chiave che vale `undefined`. In un
             // oggetto solo, la pagina per prima: ciò che decide la cornice copre una prop con lo stesso nome anche quando la
@@ -1083,4 +1085,11 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             onAccount={suAccount}
         />
     );
+
+    return dati.assistenza ? (
+        <div className="zr-assist">
+            {Fascia && <Fascia lingua={lingua} assistenza={dati.assistenza} onLogout={onLogout} />}
+            <div>{cornice}</div>
+        </div>
+    ) : cornice;
 }

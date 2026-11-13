@@ -30,7 +30,9 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   tutti ha `font-src 'self'`. Dalla `v4.0.0` Google è fuori dalla CSP di tutti (#2946, maggiore: stringe). Dalla `v4.32.0` (#3534) i due importano, sotto i
   font, anche `resources/css/movimento.css`, scritto a mano: con `prefers-reduced-motion: reduce` nessuna transizione (righe MV di
   `uat-cornice`). Dalla `v4.33.0` (#3535) anche `resources/css/avanzamento.css`, la barra d'avanzamento di Inertia coi token
-  (`includeCSS: false` nel modulo; righe AV di `uat-cornice` con `--barra`).
+  (`includeCSS: false` nel modulo; righe AV di `uat-cornice` con `--barra`). Dalla `v4.34.0` (#3723) anche
+  `resources/css/assistenza.css`, la fascia di assistenza come nel design di admin: una barra citrus sopra l'`AppShell`, fuori dal
+  contenuto (la cornice mette l'`AppShell` in un contenitore solo in assistenza; il pulsante «Termina e torna al backoffice»).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.

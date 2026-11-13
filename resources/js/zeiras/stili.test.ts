@@ -17,8 +17,8 @@ const NOMI = STILI_A_PARTE;
 /** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
-/** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534 e #3535). */
-const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"] as const;
+/** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3723). */
+const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './assistenza.css';"] as const;
 
 describe('gli stili dei componenti a parte escono dal CSS del primo carico (sprint 75 · T1.1, T1.2)', () => {
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
@@ -97,11 +97,11 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         const delBundle = bundleCss.split('\n');
 
         expect(intero).toBe(bundleIntero(bundleCss));
-        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css, e dalla #3535 quella di avanzamento.css: le altre sono
+        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css, dalla #3535 quella di avanzamento.css e dalla #3723 quella di assistenza.css: le altre sono
         // le righe del bundle, nel loro ordine.
-        expect(righe).toHaveLength(delBundle.length + 2);
-        expect(righe.slice(0, 3)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
-        expect(righe.slice(3)).toStrictEqual(delBundle.slice(1));
+        expect(righe).toHaveLength(delBundle.length + 3);
+        expect(righe.slice(0, 4)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
+        expect(righe.slice(4)).toStrictEqual(delBundle.slice(1));
     });
 
     it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
@@ -206,7 +206,7 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
 
     it('bundle.css e zeiras.css importano movimento.css subito dopo i font, prima di ogni regola del bundle (T4)', () => {
         for (const percorso of ['resources/css/bundle.css', 'resources/css/zeiras.css']) {
-            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 3);
+            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 4);
 
             expect(prime).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
         }
@@ -236,7 +236,7 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
 describe('la barra d\'avanzamento di Inertia dal CSS del pacchetto (voce 3535)', () => {
     const avanzamento = readFileSync(delRepo('resources/css/avanzamento.css'), 'utf8');
     const regole = avanzamento.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
-    const blocco = (selettore: string) => new RegExp(`(?:^|\\} )${selettore.replace(/[.*]/g, '\\$&')} \\{([^}]*)\\}`).exec(regole)?.[1]?.trim() ?? '';
+    const blocco = (selettore: string) => new RegExp(`(?:^|\\} )${selettore.replace(/[.*()]/g, '\\$&')} \\{([^}]*)\\}`).exec(regole)?.[1]?.trim() ?? '';
 
     it('bundle.css e zeiras.css importano avanzamento.css sotto movimento.css, una volta sola (AC 5)', () => {
         for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
@@ -257,5 +257,45 @@ describe('la barra d\'avanzamento di Inertia dal CSS del pacchetto (voce 3535)',
         expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
         expect(regole).not.toMatch(/z-index: *\d/);
         expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['2px']);
+    });
+});
+
+// Voce #3723 (sì di zr-pm-97, 13/11). La fascia di assistenza come nel design di admin (`sa-imp`): una barra citrus a tutta
+// larghezza sopra l'AppShell. Gli stili stanno in resources/css/assistenza.css, scritto a mano, che bundle.css e zeiras.css
+// importano sotto avanzamento.css; ogni misura dai token, per nome.
+describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
+    const assistenza = readFileSync(delRepo('resources/css/assistenza.css'), 'utf8');
+    const regole = assistenza.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+    const blocco = (selettore: string) => new RegExp(`(?:^|\\} )${selettore.replace(/[.*()]/g, '\\$&')} \\{([^}]*)\\}`).exec(regole)?.[1]?.trim() ?? '';
+
+    it('bundle.css e zeiras.css importano assistenza.css sotto avanzamento.css, una volta sola (AC 1)', () => {
+        for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
+            const righe = css.split('\n');
+
+            expect(righe.filter((riga) => riga === "@import './assistenza.css';")).toHaveLength(1);
+            expect(righe.indexOf("@import './assistenza.css';")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
+        }
+    });
+
+    it('la barra: citrus, a tutta larghezza, che va a capo; sopra anche ai dialoghi; con l\'AppShell sotto che prende il resto dell\'altezza (AC 1)', () => {
+        expect(blocco('.zr-assist')).toBe('display: flex; flex-direction: column; height: 100vh; height: 100dvh;');
+        expect(blocco('.zr-assist-bar')).toContain('flex: none; display: flex; flex-wrap: wrap; align-items: center;');
+        expect(blocco('.zr-assist-bar')).toContain('background: var(--citrus); color: var(--on-citrus);');
+        expect(blocco('.zr-assist-bar')).toContain('position: relative; z-index: calc(var(--z-dialog) + 3);');
+        expect(blocco('.zr-assist-bar')).toContain('padding-left: max(var(--space-4), env(safe-area-inset-left, 0px)); padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));');
+        expect(blocco('.zr-assist > :not(.zr-assist-bar)')).toBe('flex: 1; min-height: 0; position: relative;');
+        expect(blocco('.zr-assist > :not(.zr-assist-bar) .zr-shell')).toBe('height: 100%; min-height: 0;');
+    });
+
+    it('il nome in grassetto, la riga piccola (l\'ultimo figlio del testo), il pulsante chiaro col bordo scuro (AC 2)', () => {
+        expect(blocco('.zr-assist-bar strong')).toBe('font-weight: 650;');
+        expect(blocco('.zr-assist-bar > span > :last-child')).toBe('font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight);');
+        expect(blocco('.zr-assist-bar .zr-btn')).toBe('background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus);');
+    });
+
+    it('nessun colore e nessuna misura scritti: tutto dai token (AC 1)', () => {
+        expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
+        expect(regole).not.toMatch(/z-index: *\d/);
+        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px']);
     });
 });

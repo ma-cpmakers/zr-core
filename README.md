@@ -195,7 +195,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 54,9 KB | 19,1 KB | 67,7 KB | 14,5 KB |
 | la cornice e due componenti per nome | 63,9 KB | 21,9 KB | 67,7 KB | 14,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 211,0 KB | 68,5 KB | 67,2 KB | 14,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -333,8 +333,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 106,5 KB | 17,5 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 103,3 KB | 17,1 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 107,5 KB | 17,5 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 104,3 KB | 17,1 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -516,6 +516,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.32.0` | meno movimento dal pacchetto (#3534): con `prefers-reduced-motion: reduce` nessuna transizione in una pagina che carica `bundle.css` o `zeiras.css`, su ogni elemento e sui suoi `::before` e `::after`, anche delle pagine del modulo; la regola sta in `resources/css/movimento.css`, che i due importano subito dopo i font («Meno movimento»). Le animazioni del design system restano com'erano; e `Cornice::dopoLUscita($altrimenti)`, dove mandare il browser dopo l'uscita: dopo un'assistenza la radice del pannello dello staff con `?assistenza=chiusa` (da `zr-auth.admin`), altrimenti la destinazione del modulo (F4.5 di #2942: «Termina l'assistenza» portava all'accesso); e il menu Moduli dell'ospite (#3686): con il ruolo `ospite` i dati portano `ospite: true` (il ruolo resta sul server), e il menu ha i soli moduli che il backoffice gli dà `attivo`, più il modulo aperto: niente «Presto» e niente Dashboard, che Home non gli apre (decisione di zr-pm-97, 12/11). Per gli altri ruoli la chiave manca e il menu è quello di prima | niente; un modulo che ha la stessa regola nel suo CSS (board, crm, bookings, cashflow) la può togliere; nella rotta di uscita, prima di chiudere la sessione, `return redirect()->away(Cornice::dopoLUscita($accedi))` al posto del rimando di prima | niente; un caso che conta le chiavi dei dati di un ospite ne conta una in più, `ospite`, dopo `non_lette` | `layout.html` con `reducedMotion: 'reduce'`: il cassetto della sidebar e la freccia del selettore senza transizione; senza la preferenza, come prima |
 | `v4.32.1` | `Cornice::dopoLUscita()` non lancia più: con una sessione senza il gettone del workspace (`LogicException`) o col gettone rifiutato (401, `GettoneRifiutato`) restituisce la destinazione del modulo, come col backoffice che non risponde; nella `v4.32.0` la rotta di uscita rispondeva 500 (rilievo di zr-crm) | `composer update zeiras/zr-core`, al posto della `v4.32.0`; un `try/catch` attorno a `dopoLUscita` non serve più | niente | `scripts/uat-cornice.mjs` sulle pagine di prova, come per la `v4.32.0` |
 | `v4.33.0` | la barra d'avanzamento di Inertia dal pacchetto (#3535): `resources/css/avanzamento.css`, che `bundle.css` e `zeiras.css` importano sotto i font, le dà gli stili coi token — in alto, alta 2 px, `--pine`, a `--z-toast`, senza prendere i clic — e un modulo con `progress: { includeCSS: false }` la vede senza regole sue e senza allargare la CSP («La barra d'avanzamento di Inertia») | niente; un modulo che ha le regole di `#nprogress` nel suo CSS (board, crm, bookings, cashflow, superadmin) le può togliere, e `color` da `progress` | niente | una navigazione lenta del modulo: la barra in alto nel colore di Zeiras, nessuna violazione della CSP in console |
+| `v4.34.0` | la fascia di assistenza come nel design di admin (#3723): una barra citrus a tutta larghezza sopra l'`AppShell`, fuori dal contenuto e sempre in vista, con «Stai usando Zeiras come **nome** · email», in piccolo che cosa valgono le modifiche e il pulsante «Termina e torna al backoffice» (`onLogout`); gli stili sono in `resources/css/assistenza.css`, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`. Prima era un `Alert` nel contenuto. In assistenza l'`AppShell` sta in un contenitore (`zr-assist`); senza, il DOM è quello di prima | niente | un caso che cerca la fascia di assistenza dentro `main` (`.zr-alert`) la cerca sopra l'`AppShell`, in `.zr-assist-bar`; il testo del pulsante è «Termina e torna al backoffice» | `layout.html?assistenza=1` (e `?assistenza=lettura`): la barra citrus in cima, a 1.280 e a 390 px, il contenuto sotto |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1991,12 +1992,17 @@ cornice === null ? pagina : (
   `await act(() => vi.dynamicImportSettled())`. Una lingua nuova porta anche il suo file degli avvisi; senza, gli avvisi
   sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».
-- **L'assistenza** (dalla `v4.22.0`, #2909): coi dati che portano `assistenza`, sopra la pagina c'è la fascia di assistenza,
-  l'`Alert` giallo (`warning`) del design system: «Stai usando Zeiras come Anna Bianchi», sotto l'email e «Le modifiche che fai
-  valgono come fatte da Anna» (o, di sola lettura, «Sola lettura: puoi guardare, non modificare»), e il pulsante «Termina
-  l'assistenza», che chiama `onLogout` come «Esci»: l'uscita di zr-auth chiude anche l'assistenza. La fascia non si chiude, e
-  resta anche nella cornice ridotta, sopra l'avviso. Il prototipo dello staff la mette sopra la barra in alto: l'`AppShell` non
-  ha quel posto, e la fascia sta dove sta l'avviso (Decisione 22312). Testi e fascia stanno nel pezzo degli avvisi, che la
+- **L'assistenza** (dalla `v4.22.0`, #2909): coi dati che portano `assistenza`, sopra la cornice c'è la fascia di assistenza.
+  Dalla `v4.34.0` (#3723) è come nel design di admin: una barra citrus a tutta larghezza **sopra l'`AppShell`**, fuori dal
+  contenuto, su ogni pagina e a ogni larghezza (anche sotto i 1.024 px, col cassetto chiuso), sempre in vista: l'icona della
+  persona, «Stai usando Zeiras come **Anna Bianchi** · anna@example.com», sotto, in piccolo, «Le modifiche che fai valgono
+  come fatte da Anna» (o, di sola lettura, «Sola lettura: puoi guardare, non modificare»), e il pulsante «Termina e torna al
+  backoffice», che chiama `onLogout` come «Esci»: l'uscita di zr-auth chiude anche l'assistenza. La fascia non si chiude, e
+  resta anche nella cornice ridotta, dove l'avviso resta nel contenuto, sotto. Gli stili stanno in
+  `resources/css/assistenza.css`, scritto a mano, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`: una pagina
+  che li carica non scrive niente. L'`AppShell` sta in un contenitore (`zr-assist`) che c'è solo in assistenza: senza, nessuna
+  barra e nessun elemento in più, e il DOM della cornice è quello di sempre. Prima della `v4.34.0` la fascia era un `Alert`
+  `warning` dentro il contenuto, sopra la pagina (Decisione 22312). Testi e fascia stanno nel pezzo degli avvisi, che la
   cornice chiede anche in assistenza. In assistenza la campanella mostra e non scrive: il pannello non ha «Segna tutte come
   lette», e una notifica aperta si apre senza segnarla letta, col numero com'era. Una pagina aperta prima che i dati dicessero
   l'assistenza, che chiede la lettura e riceve il 403 `azione_non_consentita_in_assistenza`, apre lo stesso la risorsa: per la

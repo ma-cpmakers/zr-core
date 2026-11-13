@@ -7,9 +7,9 @@
     "downText": "Modules, notifications and search come back when Zeiras responds. Try again shortly.",
     "downOff": "Not available until Zeiras responds.",
     "assistTitle": "You're using Zeiras as {name}",
-    "assistText": "{email} · Changes you make count as made by {firstName}",
-    "assistReadOnly": "{email} · Read only: you can look, not change",
-    "assistEnd": "End assistance",
+    "assistText": "Changes you make count as made by {firstName}",
+    "assistReadOnly": "Read only: you can look, not change",
+    "assistEnd": "End and return to the backoffice",
     "personal": "My space",
     "personalGroup": "As a customer"
 }

@@ -1,0 +1,34 @@
+/*
+ * La fascia di assistenza (dalla v4.34.0, voce #3723): quando lo staff è entrato con «Accedi come», una barra citrus a tutta
+ * larghezza sopra l'AppShell, fuori dal contenuto, sempre in vista — chi è la persona assistita, che cosa valgono le modifiche e
+ * il pulsante «Termina e torna al backoffice». Sono le regole del design di admin (`sa-imp`) coi token e coi nomi del pacchetto:
+ * `.zr-assist` tiene la barra sopra e l'AppShell sotto, alto quanto la pagina (come l'AppShell da solo), e la barra va sopra anche
+ * al cassetto e ai dialoghi. Fuori dall'assistenza la cornice non ha né il contenitore né la barra. Dei figli del contenitore solo
+ * la barra ha una classe: il corpo, con l'AppShell, è l'altro (`:not(.zr-assist-bar)`), e dentro la barra il testo è il suo
+ * `span` e la riga piccola l'ultimo figlio di quello: ogni classe in meno è un attributo in meno nel pezzo degli avvisi e
+ * nell'ingresso, che hanno un tetto (voce #3723).
+ * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, sotto i font, movimento.css e avanzamento.css.
+ */
+.zr-assist { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.zr-assist-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-2);
+  padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
+  background: var(--citrus);
+  color: var(--on-citrus);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+  position: relative;
+  z-index: calc(var(--z-dialog) + 3);
+}
+.zr-assist-bar strong { font-weight: 650; }
+.zr-assist-bar > span { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); flex: 1 1 320px; min-width: 0; }
+.zr-assist-bar > span > :last-child { font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight); }
+.zr-assist-bar .zr-btn { background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus); }
+.zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; }
+.zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
