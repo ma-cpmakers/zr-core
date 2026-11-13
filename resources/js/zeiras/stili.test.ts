@@ -191,6 +191,9 @@ describe('al tocco il Button si prende su 44 px (v4.31.0, zr-pm-07 10/11)', () =
             expect(css).not.toBe(zeirasCss);
             expect(Math.min(areaDelButton(css).alta, areaDelButton(css).larga)).toBeLessThan(44);
         }
+    });
+});
+
 // Voce #3534 (Decisione 23090 di zr-pm-07). Chi chiede al sistema meno movimento non ha transizioni in nessuna pagina che carica il
 // CSS del pacchetto: la regola sta in resources/css/movimento.css, scritto a mano, e bundle.css e zeiras.css la importano subito
 // dopo i font. Non è nella parte copiata dal bundle, che la CI confronta riga per riga col design system.
