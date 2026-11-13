@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellNotification } from '../zeiras/index';
 import { chiama, mostra } from './chiamate';
-import { nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
+import { nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, vocePrivacy, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
 import { campanella, chiediLaCampanella, DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, nomePulito, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, prodottoDelRegistro, registro } from './registro';
 import type { NotificaDellaCornice } from './servizi';
@@ -219,6 +219,8 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
     const menu: MenuItem[] = [
         { icon: 'user', label: t.profile, onClick: account('profile') },
         { icon: 'settings', label: t.accountSettings, onClick: account('settings') },
+        // L'informativa privacy, come nel menu della `Cornice` (dalla `v4.35.0`, #3753).
+        vocePrivacy(t),
         { sep: true },
         { icon: 'arrow', label: t.logout, onClick: onLogout },
     ];

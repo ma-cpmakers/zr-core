@@ -193,8 +193,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,5 KB | 19,1 KB | 67,7 KB | 14,5 KB |
-| la cornice e due componenti per nome | 64,5 KB | 21,9 KB | 67,7 KB | 14,5 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 67,7 KB | 14,5 KB |
+| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 67,7 KB | 14,5 KB |
 | la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
@@ -222,7 +222,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.840 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -291,6 +291,9 @@ sì di zr-pm-97 del 13/11).
 Dalla `v4.34.0` sale di 121, alla misura più 20: il codice che carica il CSS di un pezzo a richiesta prima di eseguirlo, che
 Vite mette nell'ingresso da quando un pezzo ha un CSS; gli stili della fascia di assistenza arrivano col pezzo degli avvisi e
 non stanno più nel CSS di ogni pagina, che perde più di quanto l'ingresso prende (#3723, sì di zr-pm-74 del 14/11).
+Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la verifica Google, la voce
+«Informativa privacy» nel menu del profilo (#3753, Decisione di zr-pm-cc del 13/11). I file dell'inglese e dello spagnolo
+salgono a 977 e 1.103 byte, la misura più 20.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
@@ -522,6 +525,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.33.0` | la barra d'avanzamento di Inertia dal pacchetto (#3535): `resources/css/avanzamento.css`, che `bundle.css` e `zeiras.css` importano sotto i font, le dà gli stili coi token — in alto, alta 2 px, `--pine`, a `--z-toast`, senza prendere i clic — e un modulo con `progress: { includeCSS: false }` la vede senza regole sue e senza allargare la CSP («La barra d'avanzamento di Inertia») | niente; un modulo che ha le regole di `#nprogress` nel suo CSS (board, crm, bookings, cashflow, superadmin) le può togliere, e `color` da `progress` | niente | una navigazione lenta del modulo: la barra in alto nel colore di Zeiras, nessuna violazione della CSP in console |
 | `v4.34.0` | la fascia di assistenza come nel design di admin (#3723): una barra citrus a tutta larghezza sopra l'`AppShell`, fuori dal contenuto e sempre in vista, con «Stai usando Zeiras come **nome** · email», in piccolo che cosa valgono le modifiche e il pulsante «Termina e torna al backoffice» (`onLogout`); gli stili sono in `resources/css/assistenza.css`, che arriva col pezzo degli avvisi, solo in assistenza: il CSS di ogni pagina non cresce. Prima era un `Alert` nel contenuto. In assistenza l'`AppShell` sta in un contenitore (`zr-assist`); senza, il DOM è quello di prima | niente | un caso che cerca la fascia di assistenza dentro `main` (`.zr-alert`) la cerca sopra l'`AppShell`, in `.zr-assist-bar`; il testo del pulsante è «Termina e torna al backoffice» | `layout.html?assistenza=1` (e `?assistenza=lettura`): la barra citrus in cima, a 1.280 e a 390 px, il contenuto sotto |
 | `v4.34.1` | le correzioni della fascia di assistenza dalla revisione della `v4.34.0`: un dialogo sta sopra la barra a ogni larghezza (sopra i 720 px la barra ne copriva titolo e ✕); se il CSS del pezzo degli avvisi non arriva al primo tentativo, il pezzo lo richiede una volta quando arriva (pezzo degli avvisi a 1.859 byte, la misura più 20); il separatore « · » e il posto dell'email stanno nel titolo di ogni lingua (`{email}`), e lo spessore del nome viene da un token. Nessun cambio per chi installa |
+| `v4.35.0` | «Informativa privacy» nel menu del profilo (#3753): una voce prima della linea, nella `Cornice` (con o senza `piano`) e nella `CorniceDelCliente`, che apre in una scheda nuova l'informativa di Zeiras nella lingua della pagina, per la verifica di Google; il menu del profilo lo dà sempre la cornice. Il JS d'ingresso sale di 109 byte, alla misura più 20 (Decisione di zr-pm-cc del 13/11). Il modulo aggiorna e basta; il link alla privacy che un modulo ha messo nelle sue pagine si può togliere. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1948,6 +1952,12 @@ cornice === null ? pagina : (
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
   la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
   (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
+  Dalla `v4.35.0` (#3753) prima della linea c'è sempre anche «Informativa privacy», con o senza `piano`: apre in una scheda
+  nuova l'informativa di Zeiras nella lingua della pagina (`https://zeiras.com/privacy/`, `/en/privacy/`, `/es/privacidad/`;
+  una lingua nuova dà la sua pagina, o quella inglese, nel suo file in `resources/lingue/`, chiave `privacyUrl`). Serve alla
+  verifica di Google, che vuole il link all'informativa ben visibile nell'app (Decisione di zr-pm-cc del 13/11). Il design
+  system non ha la voce: la aggiunge la cornice, coi suoi pezzi (icona `lock`), e il menu lo dà sempre la cornice
+  all'`AppShell`: un modulo non ha bisogno di mettere il link nelle sue pagine.
 - **«Il mio spazio»** (dalla `v4.25.0`, #3417): a chi è membro di un workspace e anche cliente di un'azienda con lo spazio
   acceso, il frontend dà la prop `spazio` (`<Cornice spazio={{ href: '/spazio' }} … />`, o sul layout della cornice), e il
   selettore dei workspace ha in cima il gruppo «Come cliente» con «Il mio spazio» (design dcc4, schermata 13): la voce porta
@@ -2836,7 +2846,8 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   percorso (`crumbs`, `onCrumb`), `actions` e `flush` come nella `Cornice`. In fondo l'`AppShell` mette da sé «Impostazioni», che
   arriva a `onNavigate` come `settings`, come nella `Cornice`.
 - **Il menu del profilo del cliente** è Profilo, Impostazioni, una linea ed «Esci»: Profilo e Impostazioni sono le pagine di account della
-  Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo).
+  Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo). Dalla `v4.35.0` (#3753) prima della
+  linea c'è anche «Informativa privacy», come nella `Cornice`.
 - **La ricerca non si vede**: per chi è solo cliente il backoffice non ne ha una, e una ricerca finta non si mostra (zr-pm,
   06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
   build la porterebbe nel CSS di ogni app; dalla `v4.13.1` lo stesso file tiene campanella e profilo a destra della barra in alto,

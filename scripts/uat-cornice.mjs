@@ -23,6 +23,7 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
+ * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753).
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
@@ -1440,6 +1441,8 @@ async function uat(page, apri) {
         await tornaAllaPagina();
         await percorso(page);
         await tornaAllaPagina();
+        await informativaPrivacy(page);
+        await tornaAllaPagina();
         await ilCliente(page, 1280);
         return a390(page, apri, diGoogle, errori, csp);
     }
@@ -1482,6 +1485,8 @@ async function uat(page, apri) {
     await nomiDaiTesti(page);
     await selettore(page);
     await tornaAllaPagina();
+    await informativaPrivacy(page);
+    await tornaAllaPagina();
     if (colloSpazio) {
         await ilMioSpazio(page);
         await tornaAllaPagina();
@@ -1500,9 +1505,44 @@ async function uat(page, apri) {
     await a390(page, apri, diGoogle, errori, csp);
 }
 
+// PV (dalla v4.35.0, #3753): l'informativa privacy nel menu del profilo, per la verifica di Google. PV.1 aperto il menu, prima
+// della linea c'è la voce col testo della lingua della pagina (dal parametro `lingua`, o da `lang` del documento; una lingua
+// senza file suo ha quello inglese); PV.2 il clic apre una scheda nuova sull'indirizzo della stessa lingua, su zeiras.com, e la
+// pagina resta dov'è.
+async function informativaPrivacy(page) {
+    const qui = page.url();
+    const lingua = (new URL(qui).searchParams.get('lingua') || (await page.evaluate(() => document.documentElement.lang)) || 'it').slice(0, 2);
+    const dalFile = (codice) => {
+        try {
+            return JSON.parse(readFileSync(fileURLToPath(new URL(`../resources/lingue/${codice}.json`, import.meta.url)), 'utf8'));
+        } catch {
+            return undefined;
+        }
+    };
+    const testi = dalFile(lingua) ?? dalFile('en');
+    await page.click('.zr-shell .zr-avatar-btn');
+    await pausa(300);
+    const voci = await page.evaluate(() => [...document.querySelectorAll('.zr-profile-menu > [role="menuitem"], .zr-profile-menu > .zr-menu-sep')].map((voce) => (voce.matches('.zr-menu-sep') ? '—' : voce.textContent?.trim())));
+    const dove = voci.indexOf(testi.privacy);
+    scrivi(dove >= 0 && voci[dove + 1] === '—' ? '✅' : '❌', 'PV.1', `nel menu del profilo «${testi.privacy}» prima della linea (${lingua})`, voci.join(' | '));
+    if (dove < 0) {
+        await page.keyboard.press('Escape');
+        return;
+    }
+    const [scheda] = await Promise.all([
+        page.waitForEvent('popup', { timeout: 5000 }).catch(() => undefined),
+        page.locator('.zr-profile-menu [role="menuitem"]').nth(voci.slice(0, dove).filter((voce) => voce !== '—').length).click(),
+    ]);
+    await scheda?.waitForURL(testi.privacyUrl, { timeout: 10000, waitUntil: 'commit' }).catch(() => undefined);
+    const aperta = scheda?.url() ?? 'nessuna scheda';
+    await scheda?.close();
+    scrivi(aperta === testi.privacyUrl && page.url() === qui ? '✅' : '❌', 'PV.2', `il clic apre ${testi.privacyUrl} in una scheda nuova, e la pagina resta dov'è`, `scheda: ${aperta}; pagina: ${page.url() === qui ? 'la stessa' : page.url()}`);
+}
+
 // CL (dalla v4.13.0, #3319): la cornice del cliente. CL.1 il campo della ricerca non si vede e Ctrl+K non porta il fuoco da nessuna
 // parte che non si veda; CL.2 il selettore dice «Come cliente › Il mio spazio» e non c'è il riquadro del piano; CL.3 il menu del
-// profilo è Profilo, Impostazioni, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova scrive in `#uat-ultima`); CL.4
+// profilo è Profilo, Impostazioni, (dalla v4.35.0) Informativa privacy, una linea, Esci, e «Esci» chiama il modulo (la pagina di prova
+// scrive in `#uat-ultima`); CL.4
 // (dalla v4.13.1) campanella e profilo stanno a destra della barra in alto, a 1280 e a 390 px.
 // SP (dalla v4.25.0, #3417): «Il mio spazio» nella cornice dei membri, con `--spazio`. SP.1 aperto il selettore, il primo gruppo è
 // «Come cliente» nella lingua della pagina (dal parametro `lingua`, o da `lang` del documento), con «Il mio spazio» che porta a un
@@ -1707,13 +1747,13 @@ async function ilCliente(page, larghezza) {
     // lo script, e il giro a 390 px non entrerebbe più (giro di zr-bookings-f6 su app.zeiras.com, 07/11/2026): lì non si clicca.
     if (!(await page.locator('#uat-ultima').count())) {
         await page.keyboard.press('Escape');
-        scrivi(voci.length === 4 && voci[2] === '—' ? '➖' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; «Esci» non cliccato: la pagina non è quella di prova`);
+        scrivi(voci.length === 5 && voci[3] === '—' ? '➖' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, Informativa privacy, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; «Esci» non cliccato: la pagina non è quella di prova`);
         return;
     }
     await page.locator('.zr-profile-menu [role="menuitem"]').last().click();
     await pausa(300);
     const uscito = await page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');
-    scrivi(voci.length === 4 && voci[2] === '—' && uscito === 'esci' ? '✅' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; dopo Esci: «${uscito}»`);
+    scrivi(voci.length === 5 && voci[3] === '—' && uscito === 'esci' ? '✅' : '❌', 'CL.3', 'il menu del profilo è Profilo, Impostazioni, Informativa privacy, una linea, Esci; «Esci» chiama il modulo', `${voci.join(' | ')}; dopo Esci: «${uscito}»`);
 }
 
 /** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font, la CSP e la console. */

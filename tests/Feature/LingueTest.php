@@ -2076,3 +2076,20 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         '«notificationTitleWhatWhen.com.zeiras.board.scheda.creata» ha {what} {when} {who} invece di {what} {when}',
     ])->and(problemiDelleFrasiConChi($giuste))->toBe([]);
 });
+
+// Voce #3753 (dalla `v4.35.0`, Decisione di zr-pm-cc del 13/11): il menu del profilo apre l'informativa privacy, per la verifica
+// di Google. Ogni lingua della cornice ha la voce e la pagina su zeiras.com: le tre di oggi la loro, una lingua nuova la sua o
+// quella inglese, mai un indirizzo che non sia del sito.
+it('ogni lingua della cornice ha la voce dell\'informativa privacy e la sua pagina su zeiras.com (voce 3753)', function () {
+    $lingue = fileDelleLingue('');
+    $pagine = array_map(fn (array $testi): ?string => $testi['privacyUrl'] ?? null, $lingue);
+
+    expect(array_keys($lingue))->toContain('it', 'es', 'en')
+        ->and(array_filter($lingue, fn (array $testi): bool => trim((string) ($testi['privacy'] ?? '')) === ''))->toBe([])
+        ->and(array_filter($pagine, fn (?string $pagina): bool => ! is_string($pagina) || preg_match('~^https://zeiras\.com/(?:[a-z]{2}/)?[a-z]+/$~', $pagina) !== 1))->toBe([])
+        ->and(array_intersect_key($pagine, array_flip(['it', 'es', 'en'])))->toEqual([
+            'it' => 'https://zeiras.com/privacy/',
+            'es' => 'https://zeiras.com/es/privacidad/',
+            'en' => 'https://zeiras.com/en/privacy/',
+        ]);
+});
