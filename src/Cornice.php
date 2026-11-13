@@ -521,6 +521,36 @@ final class Cornice
     }
 
     /**
+     * Dove mandare il browser dopo l'uscita (dalla `v4.32.0`): la rotta di uscita del modulo lo chiede prima di chiudere la sessione,
+     * perché dopo la sessione non sa più se era un'assistenza. Se lo era (lo staff è entrato con «Accedi come»), la radice del
+     * pannello dello staff con `?assistenza=chiusa`, dall'indirizzo che zr-auth conosce (`zr-auth.admin`, `ZR_ADMIN_URL`): «Termina
+     * l'assistenza» riporta lo staff da dove è partito (decisione di zr-pm-97, 12/11). Altrimenti `$altrimenti`, la destinazione di
+     * sempre del modulo. L'indirizzo dello staff resta sul server: al browser arriva solo nel rimando.
+     *
+     * L'assistenza è quella tenuta nella sessione, o letta da accessi.corrente.mostra se la sessione non l'ha ancora. Un'uscita non
+     * si ferma: se il backoffice non risponde, o l'indirizzo dello staff non è un indirizzo, vale `$altrimenti`.
+     */
+    public static function dopoLUscita(string $altrimenti): string
+    {
+        if (Sessione::utente() === null) {
+            return $altrimenti;
+        }
+
+        try {
+            $assistenza = self::assistenza(true);
+        } catch (BackofficeNonRisponde|ErroreApi) {
+            return $altrimenti;
+        }
+
+        $admin = config('zr-auth.admin');
+        if ($assistenza === [] || ! is_string($admin) || ! str_starts_with($admin, 'https://')) {
+            return $altrimenti;
+        }
+
+        return rtrim($admin, '/').'/?assistenza=chiusa';
+    }
+
+    /**
      * Il precarico dei testi della cornice nella lingua della pagina (dalla `v4.4.0`), da mettere nella testa del documento
      * prima di `@vite`: `{{ \Zeiras\Core\Cornice::precaricoDellaLingua() }}`. Nel JS d'ingresso c'è solo l'italiano; le altre
      * lingue sono file `.json` della build che la cornice chiede con `fetch` (resources/js/lingue.ts): fino alla `v4.30.0` il suo e

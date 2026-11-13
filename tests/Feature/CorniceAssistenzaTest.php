@@ -241,3 +241,45 @@ it('un altro 403 del backoffice sulle letture resta com\'era: il codice dell\'as
 
     expect($risposta->json('errore'))->not->toBe('azione_non_consentita_in_assistenza');
 });
+
+// v4.32.0 (decisione di zr-pm-97, 12/11; difetto F4.5 di #2942). «Termina l'assistenza» su un modulo portava all'accesso di
+// app.zeiras.com: la rotta di uscita del modulo chiede a Cornice::dopoLUscita() dove mandare il browser, prima di chiudere la sessione.
+it('dopoLUscita(): dopo un\'assistenza la radice del pannello dello staff con ?assistenza=chiusa, dall\'indirizzo di zr-auth; per ogni altra sessione la destinazione del modulo (v4.32.0)', function (?array $impersonificazione, string $atteso) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/accessi/corrente' => accessoCorrente($impersonificazione)]);
+    config(['zr-auth.admin' => 'https://admin.example.test/']);
+
+    expect(Cornice::dopoLUscita('https://app.example.test/it/accedi'))->toBe($atteso)
+        ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
+})->with([
+    'assistenza' => [fn () => annaAssistita(), 'https://admin.example.test/?assistenza=chiusa'],
+    'sola lettura' => [fn () => annaAssistita(true), 'https://admin.example.test/?assistenza=chiusa'],
+    'non è un\'assistenza' => [null, 'https://app.example.test/it/accedi'],
+]);
+
+it('dopoLUscita() usa l\'assistenza già letta senza richiamare il backoffice, e senza sessione non chiama (v4.32.0)', function () {
+    sessioneAMano(marketing());
+    backoffice(['/v1/accessi/corrente' => accessoCorrente(annaAssistita())]);
+    config(['zr-auth.admin' => 'https://admin.example.test']);
+
+    Cornice::dati();
+    expect(Cornice::dopoLUscita('/accedi'))->toBe('https://admin.example.test/?assistenza=chiusa')
+        ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
+
+    session()->flush();
+    expect(Cornice::dopoLUscita('/accedi'))->toBe('/accedi')
+        ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
+});
+
+it('dopoLUscita() non ferma l\'uscita: col backoffice che non risponde, o con un indirizzo dello staff che non è https, la destinazione del modulo (v4.32.0)', function (mixed $admin, bool $risponde) {
+    sessioneAMano(marketing());
+    backoffice(['/v1/accessi/corrente' => $risponde ? accessoCorrente(annaAssistita()) : nonRisponde(503, null)]);
+    config(['zr-auth.admin' => $admin]);
+
+    expect(Cornice::dopoLUscita('/accedi'))->toBe('/accedi');
+})->with([
+    'backoffice giù' => ['https://admin.example.test', false],
+    'http' => ['http://admin.example.test', true],
+    'vuoto' => ['', true],
+    'null' => [null, true],
+]);
