@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco] [--scuro]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -23,6 +23,8 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
+ * Dalla v4.36.0 con `--scuro` tutta la UAT gira col tema scuro scelto (`data-theme="dark"` su `<html>` e il sistema chiaro),
+ * axe compreso, e le righe TS guardano i quattro casi del tema (#3757).
  * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
  * e dalla v4.35.1 anche nella cornice dello staff.
  * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293).
@@ -66,6 +68,10 @@ const conLaBarra = argomenti.includes('--barra') && argomenti.splice(argomenti.i
 const colDito = argomenti.includes('--tocco') && argomenti.splice(argomenti.indexOf('--tocco'), 1).length > 0;
 /** Col Chromium della UAT, il telefono delle righe TC in un contesto suo; col browser condiviso (UAT_PAGE) non c'è. */
 let telefonoNuovo;
+// --scuro (dalla v4.36.0, #3757): la pagina si apre col tema scuro scelto dalla persona — `data-theme="dark"` su `<html>` prima
+// che la pagina si disegni, come lo scrive il modulo, e il sistema chiaro —, e tutte le righe, axe compreso, girano così; le righe
+// TS guardano i quattro casi del tema. Prima del tag zr-core la lancia su `layout.html`, `staff.html` e `cliente.html` (con `--cliente`).
+const colTemaScuro = argomenti.includes('--scuro') && argomenti.splice(argomenti.indexOf('--scuro'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1413,6 +1419,18 @@ async function uat(page, apri) {
     page.on('request', (richiesta) => /^https?:\/\/fonts\.(googleapis|gstatic)\.com\//.test(richiesta.url()) && diGoogle.push(new URL(richiesta.url()).host));
 
     await page.setViewportSize({ width: 1280, height: 800 });
+    if (colTemaScuro) {
+        await page.emulateMedia({ colorScheme: 'light' });
+        // Lo script parte prima che ci sia `<html>`: l'attributo va sull'elemento appena il parser lo crea, prima di ogni stile.
+        await page.addInitScript(() => {
+            const metti = () => document.documentElement?.setAttribute('data-theme', 'dark');
+            if (document.documentElement) {
+                metti();
+            } else {
+                new MutationObserver((_, osservatore) => document.documentElement && (metti(), osservatore.disconnect())).observe(document, { childList: true });
+            }
+        });
+    }
     const registrata = await registraLaLingua(page);
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
@@ -1429,6 +1447,9 @@ async function uat(page, apri) {
     };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
+    if (colTemaScuro) {
+        await temaScuro(page);
+    }
     if (conLaBarra) {
         await barraDiInertia(page, csp);
         await tornaAllaPagina();
@@ -1812,6 +1833,55 @@ async function barraDiInertia(page, csp) {
     }));
     const inConsole = csp.blocchi.filter((blocco) => /style-src/.test(blocco));
     scrivi(dopo.violazioni.length === 0 && dopo.stili === 0 && inConsole.length === 0 ? '✅' : '❌', 'AV.2', 'nessun <style> della barra nella pagina e nessuna violazione di style-src', `violazioni durante la visita ${dopo.violazioni.length}${dopo.violazioni.length ? `: ${dopo.violazioni.slice(0, 3).join(' | ')}` : ''}; in console ${inConsole.length}; <style> della barra ${dopo.stili}`);
+}
+
+// TS (dalla v4.36.0, #3757): il tema scuro dal CSS del pacchetto, con `--scuro`. Un fondo è scuro quando la sua luminanza è sotto
+// 0,1 e chiaro quando è sopra 0,5; l'inchiostro all'opposto. TS.1 con `data-theme="dark"` e il sistema chiaro la pagina e la barra
+// laterale sono scure; TS.2 senza `data-theme` e il sistema scuro, scure; TS.3 con `data-theme="light"` e il sistema scuro, chiare;
+// TS.4 senza `data-theme` e il sistema chiaro, chiare. Poi la pagina torna come l'ha aperta la UAT: scura scelta, sistema chiaro.
+async function temaScuro(page) {
+    const leggi = () => page.evaluate(() => {
+        const rgb = (testo) => (testo.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const luce = ([r, g, b]) => {
+            const lineare = (c) => (c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+            return 0.2126 * lineare(r) + 0.7152 * lineare(g) + 0.0722 * lineare(b);
+        };
+        const corpo = getComputedStyle(document.body);
+        const laterale = document.querySelector('.zr-shell .zr-side');
+        return {
+            tema: document.documentElement.getAttribute('data-theme'),
+            schema: getComputedStyle(document.documentElement).colorScheme,
+            fondo: luce(rgb(corpo.backgroundColor)),
+            inchiostro: luce(rgb(corpo.color)),
+            laterale: laterale ? luce(rgb(getComputedStyle(laterale).backgroundColor)) : null,
+        };
+    });
+    const scuro = (l) => l.fondo < 0.1 && l.inchiostro > 0.5 && l.schema === 'dark';
+    const chiaro = (l) => l.fondo > 0.5 && l.inchiostro < 0.1 && l.schema !== 'dark';
+    const prova = (l) => `data-theme ${l.tema ?? 'assente'}, color-scheme ${l.schema}, luminanza del fondo ${l.fondo.toFixed(3)}, dell'inchiostro ${l.inchiostro.toFixed(3)}${l.laterale === null ? '' : `, della barra laterale ${l.laterale.toFixed(3)}`}`;
+    const metti = (tema) => page.evaluate((valore) => (valore === null ? document.documentElement.removeAttribute('data-theme') : document.documentElement.setAttribute('data-theme', valore)), tema);
+
+    const primo = await leggi();
+    // La barra laterale (`.zr-side`, col fondo `surface-raised`) conta quando la pagina ce l'ha.
+    scrivi(scuro(primo) && (primo.laterale === null || primo.laterale < 0.1) ? '✅' : '❌', 'TS.1', 'con data-theme="dark" e il sistema chiaro la pagina e la barra laterale sono scure', prova(primo));
+    await page.screenshot({ path: join(cartella, 'tema-scuro-1280.png') });
+    await metti(null);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await pausa(200);
+    const secondo = await leggi();
+    scrivi(scuro(secondo) ? '✅' : '❌', 'TS.2', 'senza data-theme e col sistema scuro la pagina è scura', prova(secondo));
+    await metti('light');
+    await pausa(200);
+    const terzo = await leggi();
+    scrivi(chiaro(terzo) ? '✅' : '❌', 'TS.3', 'con data-theme="light" e il sistema scuro la pagina è chiara', prova(terzo));
+    await page.screenshot({ path: join(cartella, 'tema-chiaro-scelto-1280.png') });
+    await metti(null);
+    await page.emulateMedia({ colorScheme: 'light' });
+    await pausa(200);
+    const quarto = await leggi();
+    scrivi(chiaro(quarto) ? '✅' : '❌', 'TS.4', 'senza data-theme e col sistema chiaro la pagina è chiara', prova(quarto));
+    await metti('dark');
+    await pausa(200);
 }
 
 // MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna

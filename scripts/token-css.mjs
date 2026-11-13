@@ -1,7 +1,10 @@
 // Genera resources/css/zeiras-token.css dai token del design system di Zeiras (resources/zeiras/tokens.json, copia derivata):
 // ogni token diventa una variabile CSS col suo nome — `--surface`, `--space-4`, `--radius-md`, `--shadow-card`, `--z-dialog`, e
-// `--font-display` e `--font-sans` per le famiglie —, che sono i nomi che usa bundle.css. Di colori e ombre vale il tema chiaro;
-// un valore che rimanda a un altro token (`{pine}`) diventa `var(--pine)`. Dalla v3.13.0 (voce #2828) anche gli stili di testo,
+// `--font-display` e `--font-sans` per le famiglie —, che sono i nomi che usa bundle.css. Di colori e ombre il `:root` ha il tema
+// chiaro; un valore che rimanda a un altro token (`{pine}`) diventa `var(--pine)`. Dalla v4.36.0 (voce #3757, Decisione di zr-pm-cc
+// del 13/11) anche il tema scuro di tokens.json: i colori e le ombre il cui valore scuro è diverso dal chiaro, una volta con
+// `:root[data-theme="dark"]` (la persona ha scelto «Scuro») e una dentro `@media (prefers-color-scheme: dark)` con
+// `:root:not([data-theme="light"])` (nessuna scelta, o «Come il sistema», e il sistema è scuro); con `data-theme="light"` resta il chiaro. Dalla v3.13.0 (voce #2828) anche gli stili di testo,
 // coi nomi del tema di Tailwind 4: `--text-heading-1`, `--text-heading-1--line-height`, `--text-heading-1--font-weight` e, dove
 // c'è, `--text-heading-1--letter-spacing`; dalla v4.2.0 anche gli spessori di bordo (`--border-strong`, richiesta 139). È un
 // file statico, non uno stile iniettato da JS: con una CSP senza 'unsafe-inline' lo stile iniettato è bloccato. Si lancia con
@@ -27,10 +30,30 @@ const variabili = [
     ]),
 ];
 
+// Il tema scuro: solo i colori e le ombre che nel tema scuro cambiano (`{pine}` resta `var(--pine)`, che cambia da sé).
+const scure = [token.color, token.shadow]
+    .flatMap((gruppo) => gruppo.tokens)
+    .filter(({ value }) => value.dark !== undefined && value.dark !== value.light)
+    .map(({ name, value }) => [`--${name}`, valore(value.dark)]);
+
+const blocco = (rientro, righe) => righe.map(([nome, testo]) => `${rientro}${nome}: ${testo};`).join('\n');
+
 const css = `/* Generato da scripts/token-css.mjs da resources/zeiras/tokens.json: non si modifica a mano, si rigenera con
-   \`npm run token\` a ogni riallineamento al design system. Tema chiaro. Si carica dopo bundle.css. */
+   \`npm run token\` a ogni riallineamento al design system. Il tema chiaro, e dalla v4.36.0 il tema scuro: con
+   data-theme="dark" su <html>, o senza data-theme (né "light") quando il sistema è scuro. Si carica dopo bundle.css. */
 :root {
-${variabili.map(([nome, testo]) => `    ${nome}: ${testo};`).join('\n')}
+    color-scheme: light;
+${blocco('    ', variabili)}
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+${blocco('    ', scure)}
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+${blocco('        ', scure)}
+    }
 }
 `;
 
@@ -48,8 +71,8 @@ if (process.argv.includes('--controlla')) {
         console.error(`${percorso} non è quello che resources/zeiras/tokens.json genera${scritto === null ? ' (il file non c\'è)' : ''}.\nEsce solo da \`npm run token\`: non si ritocca a mano, e si rigenera quando i token cambiano.`);
         process.exit(1);
     }
-    console.log(`${percorso}: è quello che resources/zeiras/tokens.json genera (${variabili.length} variabili)`);
+    console.log(`${percorso}: è quello che resources/zeiras/tokens.json genera (${variabili.length} variabili, ${scure.length} nel tema scuro)`);
 } else {
     writeFileSync(file, css);
-    console.log(`scritto ${percorso} (${variabili.length} variabili)`);
+    console.log(`scritto ${percorso} (${variabili.length} variabili, ${scure.length} nel tema scuro)`);
 }

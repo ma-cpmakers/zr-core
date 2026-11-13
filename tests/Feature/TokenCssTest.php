@@ -165,8 +165,83 @@ it('ogni variabile che bundle.css usa è definita una volta sola nel :root di ze
     expect($usate)->toContain('--surface', '--font-sans', '--font-display', '--space-4', '--radius-md', '--shadow-card', '--z-dialog')
         ->and(problemiDeiToken($css, array_values(array_unique([...$usate, ...array_keys(valoriDeiToken())]))))->toBe([])
         ->and(array_keys(variabiliDiRoot($css)))->toEqualCanonicalizing(array_keys(valoriDeiToken()))
-        // Un blocco :root e nient'altro: niente tema scuro, niente @import, niente @font-face.
-        ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}$/');
+        // Il :root col tema chiaro, poi i due blocchi del tema scuro (dalla v4.36.0, voce 3757), e nient'altro: niente @import, niente
+        // @font-face.
+        ->and(trim(cssSenzaCommenti($css)))->toMatch('/^:root\s*\{[^{}]*\}\s*:root\[data-theme="dark"\]\s*\{[^{}]*\}\s*@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{[^{}]*\}\s*\}$/');
+});
+
+/**
+ * Voce 3757 (dalla `v4.36.0`, Decisione di zr-pm-cc del 13/11): il valore scuro di ogni colore e di ogni ombra di tokens.json che
+ * nel tema scuro cambia, per nome della variabile. È l'oracolo del tema scuro, calcolato qui dalla copia derivata.
+ *
+ * @return array<string, string>
+ */
+function valoriScuriDeiToken(): array
+{
+    $token = json_decode(File::get(__DIR__.'/../../resources/zeiras/tokens.json'), true, flags: JSON_THROW_ON_ERROR);
+    $valore = fn (string $testo) => (string) preg_replace('/^\{([a-z0-9-]+)\}$/', 'var(--$1)', $testo);
+
+    $valori = [];
+    foreach ([...$token['color']['tokens'], ...$token['shadow']['tokens']] as $voce) {
+        if (isset($voce['value']['dark']) && $voce['value']['dark'] !== $voce['value']['light']) {
+            $valori["--{$voce['name']}"] = $valore($voce['value']['dark']);
+        }
+    }
+
+    return $valori;
+}
+
+/**
+ * Le dichiarazioni del primo blocco di un CSS col selettore dato, anche dentro un `@media`: nome → valore, `color-scheme` compreso.
+ *
+ * @return array<string, string>|null null se il blocco non c'è
+ */
+function dichiarazioniDelBlocco(string $css, string $selettore): ?array
+{
+    if (preg_match('/'.preg_quote($selettore, '/').'\s*\{([^{}]*)\}/', cssSenzaCommenti($css), $blocco) !== 1) {
+        return null;
+    }
+    $dichiarazioni = [];
+    foreach (explode(';', $blocco[1]) as $dichiarazione) {
+        if (str_contains($dichiarazione, ':')) {
+            [$nome, $valore] = explode(':', trim($dichiarazione), 2);
+            $dichiarazioni[trim($nome)] = trim($valore);
+        }
+    }
+
+    return $dichiarazioni;
+}
+
+it('il tema scuro di tokens.json c\'è due volte, uguale: con data-theme="dark" e, quando il sistema è scuro, senza data-theme="light"; il :root dice il tema chiaro (voce 3757)', function () {
+    $css = File::get(__DIR__.'/../../resources/css/zeiras-token.css');
+    $scuri = valoriScuriDeiToken();
+    $attesi = ['color-scheme' => 'dark', ...$scuri];
+
+    // Il tema scuro cambia i fondi, l'inchiostro e le ombre; un token che rimanda a un altro (`success` → `{pine}`) non c'è: cambia da sé.
+    expect(array_keys($scuri))->toContain('--surface', '--ink', '--pine', '--shadow-card')
+        ->and($scuri)->not->toHaveKey('--success')
+        ->and(dichiarazioniDelBlocco($css, ':root[data-theme="dark"]'))->toBe($attesi)
+        ->and(dichiarazioniDelBlocco($css, ':root:not([data-theme="light"])'))->toBe($attesi)
+        ->and(preg_match('/@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/', $css))->toBe(1)
+        ->and(dichiarazioniDelBlocco($css, ':root')['color-scheme'] ?? null)->toBe('light')
+        // Nessun selettore per il tema chiaro scelto: con data-theme="light" vale il :root, e il blocco del sistema scuro lo esclude.
+        ->and(str_contains($css, 'data-theme="light"] {'))->toBe(false);
+});
+
+it('il controllo del tema scuro trova il valore chiaro al posto dello scuro, il token che manca e quello in più (voce 3757)', function () {
+    $scuri = valoriScuriDeiToken();
+    $chiari = valoriDeiToken();
+    $sbagliato = $scuri;
+    $sbagliato['--surface'] = $chiari['--surface'];
+    unset($sbagliato['--ink']);
+    $sbagliato['--success'] = 'var(--pine)';
+    $righe = implode(' ', array_map(fn (string $nome, string $valore) => "$nome: $valore;", array_keys($sbagliato), $sbagliato));
+    $css = ":root { color-scheme: light; } :root[data-theme=\"dark\"] { color-scheme: dark; $righe }";
+
+    expect(dichiarazioniDelBlocco($css, ':root[data-theme="dark"]'))->not->toBe(['color-scheme' => 'dark', ...$scuri])
+        ->and(array_keys(array_diff_assoc($sbagliato, $scuri)))->toEqualCanonicalizing(['--surface', '--success'])
+        ->and(array_keys(array_diff_key($scuri, $sbagliato)))->toBe(['--ink'])
+        ->and(dichiarazioniDelBlocco($css, ':root:not([data-theme="light"])'))->toBeNull();
 });
 
 it('zeiras-token.css porta i dodici stili di testo di tokens.json, coi nomi del tema di Tailwind 4 e i loro valori (sprint 86 · T1.1; label dalla v4.2.0; wordmark e micro dal secondo lotto del 05/11)', function () {

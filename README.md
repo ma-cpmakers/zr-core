@@ -29,7 +29,7 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 ```
 
 **Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
-dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
+dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro e, dalla `v4.36.0`, nel tema scuro.
 
 ```css
 @import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
@@ -44,6 +44,15 @@ licenze OFL accanto. La build del frontend copia i woff2 fra i suoi file, e il b
 pagina usa. La CSP di tutti li ammette (`font-src 'self'`), e dalla `v4.0.0` non ammette più Google: chi importa ancora
 `resources/zeiras/bundle.css` resta senza i due font, perché il browser ferma l'`@import` di Google, e va su
 `resources/css/bundle.css` («Passare alla v3.15», «Passare alla v4»).
+
+**Il tema scuro** (dalla `v4.36.0`, #3757): `zeiras-token.css` porta anche i valori scuri di `tokens.json`, per i colori e le
+ombre che nel tema scuro cambiano, e la cornice e ogni componente li prendono da sé, perché leggono solo le variabili. Vale la
+scelta della persona, che il modulo scrive su `<html>`: con `data-theme="dark"` il tema scuro, con `data-theme="light"` il
+chiaro, qualunque sia quello del sistema; senza `data-theme` (la persona non ha scelto, o ha scelto «Come il sistema») segue
+il sistema, `prefers-color-scheme`. Il file dice anche `color-scheme`, così barre di scorrimento e campi del browser seguono il
+tema. Con il sistema scuro una pagina senza `data-theme` diventa scura: ciò che il modulo colora coi token segue, un colore
+scritto a mano no. Un modulo che si era scritto i valori scuri nel suo CSS li toglie: arrivano dal pacchetto, senza un import
+in più. I valori sono quelli che il design system ha già (Decisione di zr-pm-cc del 13/11, prima che il suo CSS li porti).
 
 **Meno movimento** (dalla `v4.32.0`, #3534): chi chiede al sistema meno movimento (`prefers-reduced-motion: reduce`) non ha
 transizioni in nessuna pagina che carica il CSS del pacchetto. La regola sta in `resources/css/movimento.css`, che `bundle.css`
@@ -367,8 +376,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 106,5 KB | 17,5 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 103,3 KB | 17,1 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 108,1 KB | 17,8 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 104,9 KB | 17,4 KB | 4,8 KB | 1,7 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -558,6 +567,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.2` | le carte della `DealPipeline` si trascinano anche col dito (richiesta 293, sì di zr-pm-74 del 16/11, su richiesta di Luciano): una pressione di 250 ms prende la carta, una copia segue il dito, la lavagna scorre da sola vicino ai bordi, e al rilascio la carta passa alla colonna sotto il dito con lo stesso `onMove` del mouse; lo scorrimento col dito, il mouse, la tastiera e «Sposta in…» restano come sono. Un rimedio provvisorio: il pezzo del tocco (1.240 byte con gzip) arriva solo dove c'è una lavagna, e il JS d'ingresso non cambia; il pezzo dei rimedi sale a 1.640 | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: righe TC in un telefono emulato |
 | `v4.35.3` | le correzioni del trascinamento col dito dalla revisione della `v4.35.2` (sì di zr-pm-74 del 16/11): la carta tenuta non ha il drag del browser, che su Safari iOS e Chrome Android dopo mezzo secondo si prendeva il dito e fermava il trascinamento; se la lavagna si aggiorna mentre il dito tiene una carta, la pagina non scorre e alla fine la carta non resta presa né la colonna accesa. Il pezzo del tocco sale a 1.359 byte, la misura più 20; il JS d'ingresso non cambia | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: TC.1 guarda anche il drag del browser |
 | `v4.35.4` | il trascinamento col dito della `DealPipeline` quando la lavagna non arriva al bordo dello schermo (zr-crm e zr-pm-74, 16/11): il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo, e la carta lasciata lì va alla colonna che si vede sul bordo invece di tornare indietro. Pezzo del tocco 1.370 byte, tetto 1.390 (la misura più 20); JS d'ingresso invariato. Niente da fare per i moduli: aggiornare. |
+| `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o, senza `data-theme`, col sistema scuro; `data-theme="light"` tiene il chiaro anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; una pagina senza `data-theme` col sistema scuro diventa scura. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). Cosa fare: chi ha scritto i valori scuri nel suo CSS li toglie; chi scrive `data-theme` su `<html>` non ha altro da fare. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
