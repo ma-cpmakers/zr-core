@@ -283,3 +283,11 @@ it('dopoLUscita() non ferma l\'uscita: col backoffice che non risponde, o con un
     'vuoto' => ['', true],
     'null' => [null, true],
 ]);
+
+it('dopoLUscita() non lancia nemmeno con una sessione senza il gettone del workspace, né col gettone rifiutato (401): la destinazione del modulo (v4.32.1, rilievo di zr-crm)', function (bool $conWorkspace) {
+    sessioneAMano($conWorkspace ? marketing() : null);
+    backoffice(['/v1/accessi/corrente' => nonRisponde(401, null)]);
+    config(['zr-auth.admin' => 'https://admin.example.test']);
+
+    expect(Cornice::dopoLUscita('/accedi'))->toBe('/accedi');
+})->with(['senza workspace' => [false], 'gettone rifiutato' => [true]]);

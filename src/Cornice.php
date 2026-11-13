@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\HtmlString;
+use LogicException;
+use RuntimeException;
 use Throwable;
 use Zeiras\Auth\Api;
 use Zeiras\Auth\Errori\BackofficeNonRisponde;
@@ -537,9 +539,12 @@ final class Cornice
             return $altrimenti;
         }
 
+        // Ogni errore della lettura: il backoffice che non risponde (BackofficeNonRisponde, ErroreApi), il gettone rifiutato
+        // (GettoneRifiutato) o una sessione senza il gettone del workspace (LogicException di `Api::workspace()`). Dalla `v4.32.1`:
+        // nella `v4.32.0` gli ultimi due arrivavano alla rotta di uscita, che rispondeva 500 (rilievo di zr-crm, 13/11).
         try {
             $assistenza = self::assistenza(true);
-        } catch (BackofficeNonRisponde|ErroreApi) {
+        } catch (RuntimeException|LogicException) {
             return $altrimenti;
         }
 
