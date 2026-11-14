@@ -154,6 +154,8 @@ function alTocco(css: string, selettore: string): Record<string, string> {
             while (profondita > 0 && fine < testo.length) { if (testo[fine] === '{') profondita++; else if (testo[fine] === '}') profondita--; fine++; }
             const dentro = testo.slice(graffa + 1, fine - 1);
             if (preludio.startsWith('@media')) { if (vale(preludio.slice(6).trim())) leggiBlocco(dentro); }
+            // Dalla v5.0.0 (voce #3538) le regole del design system stanno in `@layer zeiras`: si leggono come il telefono le legge.
+            else if (preludio.startsWith('@layer')) leggiBlocco(dentro);
             else if (!preludio.startsWith('@')) {
                 const selettori = preludio.split(',').map((s) => s.replace(/:where\(([^)]*)\)/g, '$1').trim());
                 if (selettori.includes(selettore)) {
