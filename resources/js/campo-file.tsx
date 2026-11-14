@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type DragEvent } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent } from 'react';
 import { fileDelleLingue } from './lingue';
 import { Button, Icon } from './zeiras/componenti';
 import inglese from '../lingue/campo-file/en.json';
@@ -37,20 +37,24 @@ export type CampoFileProps = {
 /** I testi del campo per lingua: un file loro (`resources/lingue/campo-file/`), solo nella build di chi lo usa. */
 const file = import.meta.glob<EtichetteDelCampoFile>('../lingue/campo-file/*.json', { eager: true, import: 'default' });
 
-/** I testi nella lingua della pagina (`<html lang>`): in inglese in una lingua che zr-core non ha. */
-function testiNellaLingua(): EtichetteDelCampoFile {
-    const { perCodice, fileDi } = fileDelleLingue(file);
+// I file si leggono dentro le funzioni, non in cima al modulo: una chiamata qui entrerebbe nell'ingresso di ogni app, anche di
+// chi il campo non lo usa.
 
-    return perCodice.get(fileDi(document.documentElement.lang) ?? '') ?? inglese;
-}
+/**
+ * La lingua dei testi: quella della pagina (`<html lang>`) se zr-core ha il suo file, altrimenti l'inglese. Sul server, dove la
+ * pagina non c'è, l'inglese; nel browser React passa alla lingua della pagina dopo l'idratazione, senza errori.
+ */
+const linguaDellaPagina = () => fileDelleLingue(file).fileDi(document.documentElement.lang) ?? 'en';
+const linguaSulServer = () => 'en';
+const nessunAscolto = () => () => undefined;
 
 const sostituisci = (testo: string, valori: Record<string, string>) => testo.replace(/\{(\w+)\}/g, (tutto, chiave: string) => valori[chiave] ?? tutto);
 
-/** Una dimensione in byte, nella lingua della pagina: byte sotto il migliaio, kB sotto il milione, MB da lì (unità decimali, come i sistemi). */
-function dimensione(byte: number): string {
+/** Una dimensione in byte, nella lingua dei testi: byte sotto il migliaio, kB sotto il milione, MB da lì (unità decimali, come i sistemi). */
+function dimensione(byte: number, lingua: string): string {
     const [unita, divisore] = byte >= 1_000_000 ? ['megabyte', 1_000_000] : byte >= 1_000 ? ['kilobyte', 1_000] : ['byte', 1];
 
-    return new Intl.NumberFormat(document.documentElement.lang || 'en', { style: 'unit', unit: unita, maximumFractionDigits: 1 }).format(byte / divisore);
+    return new Intl.NumberFormat(lingua, { style: 'unit', unit: unita, maximumFractionDigits: 1 }).format(byte / divisore);
 }
 
 /** Il file è di un tipo ammesso? L'estensione senza guardare le maiuscole, il tipo MIME anche intero (`image/*`). */
@@ -68,9 +72,44 @@ function ammesso(scelto: File, accept: string[]): boolean {
     });
 }
 
-/** Come i tipi ammessi si leggono nell'errore: le estensioni in maiuscolo, l'ultima parte dei tipi MIME. */
+/**
+ * Come i tipi ammessi si leggono nell'errore: le estensioni in maiuscolo (`.csv` → CSV), un tipo MIME corto per la sua ultima parte
+ * (`application/pdf` → PDF), gli altri come sono scritti (`image/*`, i nomi lunghi dei formati di Office).
+ */
 const tipiDaLeggere = (accept: string[]) =>
-    [...new Set(accept.map((v) => (v.trim().startsWith('.') ? v.trim().slice(1) : v.trim().split('/').pop()!).toUpperCase()))].join(', ');
+    [
+        ...new Set(
+            accept.map((voce) => {
+                const v = voce.trim();
+                const ultima = v.split('/').pop() ?? v;
+
+                return v.startsWith('.') ? v.slice(1).toUpperCase() : /^[a-z0-9]{1,5}$/i.test(ultima) ? ultima.toUpperCase() : v;
+            }),
+        ),
+    ].join(', ');
+
+/** Il campo del form tiene il file scelto, o nessuno: anche quello trascinato, o quello che il modulo passa con `value`. */
+function nelCampo(campo: HTMLInputElement | null, scelto: File | null): void {
+    if (!campo || campo.files?.[0] === scelto || (!scelto && !campo.files?.length)) {
+        return;
+    }
+    if (!scelto) {
+        campo.value = '';
+
+        return;
+    }
+    try {
+        const dati = new DataTransfer();
+        dati.items.add(scelto);
+        campo.files = dati.files;
+    } catch {
+        // Un browser che non lo permette: il file arriva comunque a `onChange`, e il campo si vuota per non mandarne un altro.
+        campo.value = '';
+    }
+}
+
+/** Un trascinamento che porta dei file (non un testo o un collegamento). */
+const portaFile = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
 
 /** La zona: bordo tratteggiato, coi token; trascinando un file sopra porta l'anello di fuoco del design system. */
 const stileDellaZona = (sopra: boolean, sbagliato: boolean): CSSProperties => ({
@@ -81,7 +120,7 @@ const stileDellaZona = (sopra: boolean, sbagliato: boolean): CSSProperties => ({
     minHeight: '44px',
     padding: 'var(--space-3)',
     boxSizing: 'border-box',
-    borderWidth: '1px',
+    borderWidth: 'var(--border-strong)',
     borderStyle: 'dashed',
     borderColor: sbagliato ? 'var(--danger)' : 'var(--line-strong)',
     borderRadius: 'var(--radius-md)',
@@ -100,7 +139,12 @@ const stileDellaZona = (sopra: boolean, sbagliato: boolean): CSSProperties => ({
  */
 export function CampoFile({ label, value, onChange, accept, maxSize, hint, error, name, required, disabled, labels }: CampoFileProps) {
     const id = useId();
-    const t = { ...testiNellaLingua(), ...labels };
+    const lingua = useSyncExternalStore(nessunAscolto, linguaDellaPagina, linguaSulServer);
+    // I testi di `labels` vincono chiave per chiave; una chiave vuota o assente lascia quello della lingua.
+    const t: EtichetteDelCampoFile = {
+        ...(fileDelleLingue(file).perCodice.get(lingua) ?? inglese),
+        ...Object.fromEntries(Object.entries(labels ?? {}).filter(([, testo]) => typeof testo === 'string' && testo.trim() !== '')),
+    };
     const [mio, mettiMio] = useState<File | null>(null);
     const scelto = value === undefined ? mio : value;
     const [sbaglio, mettiSbaglio] = useState<string>();
@@ -109,6 +153,9 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
     const campo = useRef<HTMLInputElement>(null);
     const zona = useRef<HTMLDivElement>(null);
     const mostrato = error || sbaglio;
+
+    // Il campo del form segue il file scelto: dopo un clic, un rilascio, «Togli», o un `value` che il modulo cambia.
+    useEffect(() => nelCampo(campo.current, scelto), [scelto]);
 
     const annuncia = (testo: string) => mettiAnnuncio(({ n }) => ({ n: n + 1, testo }));
 
@@ -131,29 +178,26 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
                 : accept?.length && !ammesso(primo, accept)
                   ? sostituisci(t.wrongType, { name: primo.name, types: tipiDaLeggere(accept) })
                   : maxSize !== undefined && primo.size > maxSize
-                    ? sostituisci(t.tooBig, { name: primo.name, size: dimensione(maxSize) })
+                    ? sostituisci(t.tooBig, { name: primo.name, size: dimensione(maxSize, lingua) })
                     : undefined;
         if (motivo) {
             mettiSbaglio(motivo);
             annuncia(motivo);
-            if (campo.current) {
-                campo.current.value = '';
-            }
+            // Il file rifiutato non resta nel campo del form: torna quello scelto prima, o nessuno.
+            nelCampo(campo.current, scelto);
 
-            return false;
+            return;
         }
         mettiSbaglio(undefined);
         mettiMio(primo);
         annuncia(sostituisci(t.chosen, { name: primo.name }));
+        nelCampo(campo.current, primo);
         onChange?.(primo);
-
-        return true;
     };
 
     const togli = () => {
-        if (campo.current) {
-            campo.current.value = '';
-        }
+        // Il campo si vuota subito: così lo stesso file, scelto di nuovo, manda ancora `change`.
+        nelCampo(campo.current, null);
         mettiMio(null);
         mettiSbaglio(undefined);
         annuncia(t.removed);
@@ -164,16 +208,21 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
 
     // Il trascinamento: `dragenter` e `dragleave` arrivano anche dagli elementi dentro la zona, e si contano; l'anello si spegne
     // quando il conto torna a zero, o al rilascio.
+    // Solo un trascinamento di file accende l'anello: un testo o un collegamento no.
     const entra = (e: DragEvent) => {
         e.preventDefault();
-        if (!disabled) {
+        if (!disabled && portaFile(e)) {
             mettiSopra((n) => n + 1);
         }
     };
-    const esce = () => mettiSopra((n) => Math.max(0, n - 1));
+    const esce = (e: DragEvent) => {
+        if (portaFile(e)) {
+            mettiSopra((n) => Math.max(0, n - 1));
+        }
+    };
     const passa = (e: DragEvent) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = disabled ? 'none' : 'copy';
+        e.dataTransfer.dropEffect = disabled || !portaFile(e) ? 'none' : 'copy';
     };
     const rilascia = (e: DragEvent) => {
         e.preventDefault();
@@ -181,15 +230,7 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
         if (disabled) {
             return;
         }
-        const arrivati = e.dataTransfer.files;
-        // Il file rilasciato va anche nel campo del form, perché viaggi col form come quello scelto col clic.
-        if (prendi(arrivati) && name && campo.current) {
-            try {
-                campo.current.files = arrivati;
-            } catch {
-                // Un browser che non lo permette: il file arriva comunque a `onChange`.
-            }
-        }
+        prendi(e.dataTransfer.files);
     };
 
     const idEtichetta = `${id}-l`;
@@ -200,9 +241,13 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
             <span id={idEtichetta} className="zr-field-label">
                 {label}
                 {required ? (
-                    <span className="zr-req" aria-hidden>
-                        {' *'}
-                    </span>
+                    <>
+                        <span className="zr-req" aria-hidden>
+                            {' *'}
+                        </span>
+                        {/* L'asterisco non si legge: chi usa un lettore di schermo sente «obbligatorio» nel nome del gruppo. */}
+                        <span className="zr-visually-hidden">{` ${t.required}`}</span>
+                    </>
                 ) : null}
             </span>
             <div
@@ -223,6 +268,14 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
                     aria-hidden
                     name={name}
                     required={required}
+                    // Un form inviato senza il file: il browser non porta il fuoco sul campo nascosto; lo dice il campo, e il fuoco va su
+                    // «Scegli un file».
+                    onInvalid={(e) => {
+                        e.preventDefault();
+                        mettiSbaglio(t.missing);
+                        annuncia(t.missing);
+                        zona.current?.querySelector<HTMLButtonElement>('button')?.focus();
+                    }}
                     disabled={disabled}
                     accept={accept?.join(',')}
                     onChange={(e) => prendi(e.currentTarget.files)}
@@ -242,7 +295,7 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
                         <Icon name="file" size={16} />
                         <span style={{ overflowWrap: 'anywhere' }}>{scelto.name}</span>
-                        <span style={{ color: 'var(--ink-muted)' }}>{dimensione(scelto.size)}</span>
+                        <span style={{ color: 'var(--ink-muted)' }}>{dimensione(scelto.size, lingua)}</span>
                         <Button
                             data-togli-file=""
                             type="button"

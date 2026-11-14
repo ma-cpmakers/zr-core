@@ -1583,10 +1583,10 @@ async function campoFile(page, apri) {
     const erroreDiTipo = sostituisci(testi.wrongType, { name: 'uat-foto.png', types: 'CSV, PDF' });
     const erroreDiPeso = sostituisci(testi.tooBig, { name: 'uat-grande.csv', size: unMega });
     scrivi(
-        tipo.errore === erroreDiTipo && tipo.live === erroreDiTipo && tipo.invalido === 'true' && tipo.bordoDiErrore && tipo.alModulo === 'uat-estratto.pdf 3' && grande.errore === erroreDiPeso && grande.live === erroreDiPeso && grande.alModulo === 'uat-estratto.pdf 3' ? '✅' : '❌',
+        tipo.errore === erroreDiTipo && tipo.live === erroreDiTipo && tipo.invalido === 'true' && tipo.bordoDiErrore && tipo.alModulo === 'uat-estratto.pdf 3' && grande.errore === erroreDiPeso && grande.live === erroreDiPeso && grande.alModulo === 'uat-estratto.pdf 3' && tipo.nelForm === 'uat-estratto.pdf' && grande.nelForm === 'uat-estratto.pdf' ? '✅' : '❌',
         'CF.3',
-        'un PNG e un CSV di 1 MB + 1 byte non si scelgono: l\'errore dice i tipi ammessi e la dimensione massima, e la regione live lo annuncia',
-        `«${tipo.errore}» · «${grande.errore}», aria-invalid ${tipo.invalido}, bordo ${tipo.bordoDiErrore}, al modulo «${grande.alModulo}»`,
+        'un PNG e un CSV di 1 MB + 1 byte non si scelgono: l\'errore dice i tipi ammessi e la dimensione massima, la regione live lo annuncia, e nel form resta il file di prima',
+        `«${tipo.errore}» · «${grande.errore}», aria-invalid ${tipo.invalido}, bordo ${tipo.bordoDiErrore}, al modulo «${grande.alModulo}», nel form «${tipo.nelForm}»/«${grande.nelForm}»`,
     );
 
     await dallaFinestra('uat-estratto.csv', 2048, 'text/csv');
@@ -1597,7 +1597,7 @@ async function campoFile(page, apri) {
     await dallaFinestra('uat-estratto.csv', 2048, 'text/csv');
     const dinuovo = await stato();
     scrivi(
-        tolto.fuocoSuScegli && tolto.alModulo === 'nessuno' && !tolto.zona.includes('uat-estratto.csv') && tolto.live === testi.removed && tolto.errore === null && dinuovo.alModulo === 'uat-estratto.csv 2048' ? '✅' : '❌',
+        tolto.fuocoSuScegli && tolto.alModulo === 'nessuno' && tolto.nelForm === null && !tolto.zona.includes('uat-estratto.csv') && tolto.live === testi.removed && tolto.errore === null && dinuovo.alModulo === 'uat-estratto.csv 2048' ? '✅' : '❌',
         'CF.4',
         `«${testi.remove}» da tastiera toglie il file, il fuoco torna su «${testi.choose}», la regione live lo dice, e lo stesso file si sceglie di nuovo`,
         `fuoco su «${testi.choose}» ${tolto.fuocoSuScegli}, al modulo «${tolto.alModulo}» poi «${dinuovo.alModulo}», live «${tolto.live}»`,

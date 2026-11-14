@@ -7,5 +7,7 @@
     "removed": "File tolto",
     "wrongType": "{name} non è di un tipo ammesso. Sono ammessi: {types}.",
     "tooBig": "{name} è troppo grande: al massimo {size}.",
-    "onlyOne": "Trascina un file alla volta."
+    "onlyOne": "Trascina un file alla volta.",
+    "required": "obbligatorio",
+    "missing": "Manca il file: è obbligatorio."
 }

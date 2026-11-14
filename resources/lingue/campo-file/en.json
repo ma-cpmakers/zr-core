@@ -7,5 +7,7 @@
     "removed": "File removed",
     "wrongType": "{name} is not an accepted file type. Accepted: {types}.",
     "tooBig": "{name} is too large: {size} at most.",
-    "onlyOne": "Drag one file at a time."
+    "onlyOne": "Drag one file at a time.",
+    "required": "required",
+    "missing": "The file is missing: it is required."
 }

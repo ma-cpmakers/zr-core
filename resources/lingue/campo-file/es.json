@@ -7,5 +7,7 @@
     "removed": "Archivo quitado",
     "wrongType": "{name} no es de un tipo admitido. Se admiten: {types}.",
     "tooBig": "{name} es demasiado grande: como máximo {size}.",
-    "onlyOne": "Arrastra un archivo cada vez."
+    "onlyOne": "Arrastra un archivo cada vez.",
+    "required": "obligatorio",
+    "missing": "Falta el archivo: es obligatorio."
 }

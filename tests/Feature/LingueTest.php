@@ -1588,7 +1588,7 @@ it('«Annulla» del Toast di turno sta in resources/lingue/toast, un file per og
 
 it('i testi del campo file stanno in resources/lingue/campo-file, un file per ogni lingua dei testi con le stesse chiavi e nessun testo vuoto, e non nelle lingue della cornice (voce #3813 · T5.4)', function () {
     $campo = fileDelleLingue('campo-file/');
-    $chiavi = ['choose', 'drop', 'remove', 'removeFile', 'chosen', 'removed', 'wrongType', 'tooBig', 'onlyOne'];
+    $chiavi = ['choose', 'drop', 'remove', 'removeFile', 'chosen', 'removed', 'wrongType', 'tooBig', 'onlyOne', 'required', 'missing'];
 
     expect(array_keys($campo))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
         ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $campo))->toBe(array_fill_keys(array_keys($campo), $chiavi))
