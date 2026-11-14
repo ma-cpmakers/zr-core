@@ -26,6 +26,17 @@ it('lo zip del pacchetto porta assistenza.css, che importa il pezzo degli avvisi
     expect(File::get("$radice/resources/js/avvisi.ts"))->toContain("\nimport '../css/assistenza.css';\n");
 });
 
+// Voce #3538 (revisione della v5.0.0): dalla `v5.0.0` le regole del design system stanno in `@layer zeiras` e assistenza.css no, quindi
+// `.zr-assist-bar .zr-btn` vince anche su `.zr-btn-secondary:hover`: senza una sua regola al passaggio del mouse il pulsante della
+// fascia non cambierebbe più sfondo.
+it('il pulsante della fascia cambia sfondo al passaggio del mouse anche con il design system nello strato (voce 3538)', function () {
+    $css = File::get(dirname(__DIR__, 2).'/resources/css/assistenza.css');
+
+    expect($css)->toContain('.zr-assist-bar .zr-btn { background: var(--surface-raised);')
+        ->and($css)->toContain('.zr-assist-bar .zr-btn:hover { background: var(--surface-sunken); }')
+        ->and(File::get(dirname(__DIR__, 2).'/resources/zeiras/bundle.css'))->toContain('.zr-btn-secondary:hover { background: var(--surface-sunken); }');
+});
+
 it('il pulsante della fascia dice «Termina e torna al backoffice» nelle tre lingue degli avvisi, e la riga piccola non ripete più l\'email (voce 3723 · AC 2)', function (string $lingua, string $pulsante, string $modifiche, string $solaLettura) {
     $testi = json_decode((string) File::get(dirname(__DIR__, 2)."/resources/lingue/avvisi/$lingua.json"), true);
 
