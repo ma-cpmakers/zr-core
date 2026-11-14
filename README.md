@@ -3136,7 +3136,7 @@ import { CampoFile } from '../../vendor/zeiras/zr-core/resources/js/app';
 <CampoFile label="Estratto conto" name="estratto" accept={['.csv', '.pdf']} maxSize={5_000_000} onChange={setEstratto} />
 ```
 
-- **Le props**: `label`, `onChange(file)` (il `File`, o `null` quando si toglie), `value` (se il file lo tiene il modulo),
+- **Che cosa prende**: `label`, `onChange(file)` (il `File`, o `null` quando si toglie), `value` (se il file lo tiene il modulo),
   `accept` (estensioni come `.csv` o tipi MIME, anche `image/*`), `maxSize` (in byte), `hint`, `error`, `name`, `required`,
   `disabled`, `labels`. Il tipo è `CampoFileProps`.
 - **La zona**: «Scegli un file» apre la scelta del sistema; un file trascinato sopra la zona le accende l'anello di fuoco del
@@ -3147,14 +3147,14 @@ import { CampoFile } from '../../vendor/zeiras/zr-core/resources/js/app';
   usa (il server, per esempio) e si mostra al suo posto.
 - **L'annuncio**: scelta, «Togli» ed errori si dicono al lettore di schermo in una regione `aria-live` che c'è da subito; con
   `required` il nome del campo dice «obbligatorio». Solo un trascinamento di file accende l'anello, non un testo o un collegamento.
-- **La lingua** è quella di `<html lang>`, come per il Toast di turno (sul server, nel disegno di Inertia SSR, l'inglese, finché la
+- **In che lingua**: quella di `<html lang>`, come per il Toast di turno (sul server, nel disegno di Inertia SSR, l'inglese, finché la
   pagina non c'è): i testi stanno in `resources/lingue/campo-file/` (in
   inglese per una lingua che zr-core non ha), e `labels` li sostituisce chiave per chiave (`choose`, `drop`, `remove`,
   `removeFile`, `chosen`, `removed`, `wrongType`, `tooBig`, `onlyOne`, `required`, `missing`); una chiave vuota lascia il testo della lingua.
 - **Nel form**: il campo del form tiene sempre il file che la zona mostra — scelto, trascinato o passato con `value` —, e con
   `name` viaggia col form. Con `required`, un form inviato senza file non apre il fumetto del browser: l'errore lo dice sotto la
   zona e il fuoco va su «Scegli un file». Con Inertia il file si manda da `onChange` (`useForm`).
-- **L'aspetto** non ha un CSS del pacchetto: lo stile della zona sta sull'elemento, coi token, e al tocco la zona è alta
+- **Lo stile** non ha un CSS del pacchetto: lo stile della zona sta sull'elemento, coi token, e al tocco la zona è alta
   almeno 44 px.
 - La pagina di prova è `campo-file.html` (`?lingua=es`, `?lingua=en`), e `scripts/uat-cornice.mjs --campo-file` la misura
   (righe CF.1-CF.5): la scelta, il trascinamento con l'anello, gli errori, «Togli» col fuoco, la larghezza di 390 px.
