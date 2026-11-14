@@ -1,5 +1,5 @@
 {
-    "area": "Backoffice di Zeiras",
+    "area": "admin.zeiras.com",
     "settings": "Configurazione",
     "planTitle": "Staff di Zeiras",
     "planText": "Ogni azione va nel registro.",
@@ -7,7 +7,7 @@
     "planUntil": "Sessione al più tardi fino alle {ora}. Ogni azione va nel registro.",
     "planUntilTomorrow": "Sessione al più tardi fino a domani alle {ora}. Ogni azione va nel registro.",
     "planUntilDay": "Sessione al più tardi fino a {giorno} {data} alle {ora}. Ogni azione va nel registro.",
-    "searchPlaceholder": "Cerca persone e workspace…",
+    "searchPlaceholder": "Cerca utenti per nome o email, workspace…",
     "searchHint": "Cerca fra persone e workspace: scrivi almeno 2 caratteri.",
     "searchSubmitHint": "Cerca fra persone e workspace: scrivi almeno 2 caratteri e premi Invio.",
     "searchPressEnter": "Premi Invio per cercare",
