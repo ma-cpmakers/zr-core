@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente | --campo-file] [--spazio] [--barra] [--tocco] [--scuro]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente | --campo-file | --ripiego] [--spazio] [--barra] [--tocco] [--scuro]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -76,6 +76,10 @@ const colTemaScuro = argomenti.includes('--scuro') && argomenti.splice(argomenti
 // --campo-file (dalla v5.1.0, #3813): la pagina è quella del campo file con la zona di rilascio, senza la cornice: girano axe e le
 // righe CF, la CSP ed E.1. Prima del tag zr-core la lancia su `campo-file.html`, in italiano, spagnolo e inglese (`?lingua=`).
 const colCampoFile = argomenti.includes('--campo-file') && argomenti.splice(argomenti.indexOf('--campo-file'), 1).length > 0;
+// --ripiego (dalla v5.2.0, #3847): la pagina è quella senza i dati della cornice, con sopra la barra di ripiego (`barra.tsx`):
+// girano axe e le righe RP, la CSP ed E.1. Prima del tag zr-core la lancia su `layout.html?pagina=senza-dati`, in italiano,
+// spagnolo e inglese (`&lingua=`).
+const colRipiego = argomenti.includes('--ripiego') && argomenti.splice(argomenti.indexOf('--ripiego'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1612,6 +1616,80 @@ async function campoFile(page, apri) {
     await controllaAxe(page, 'A.3', 'campo file a 390 px');
 }
 
+/**
+ * RP (dalla v5.2.0, voce #3847): la barra di ripiego, quella della pagina senza i dati della cornice, a 1280 e 390 px e a 320 px
+ * col testo al 200% (WCAG 1.4.10 e 1.4.4). RP.1 niente scorrimento di lato: né la pagina, né la barra, né la sua nav, e ogni voce
+ * sta dentro la barra; RP.2 nessuna voce coperta: al centro e in quattro punti interni di ogni pulsante della barra il pulsante è
+ * il primo elemento; RP.3 a 1280 px la barra è una riga alta quanto la topbar, come prima. Il testo al 200% raddoppia il corpo di
+ * ogni elemento e le interlinee in px (i font del pacchetto sono in px: la radice a 32 px non cambierebbe niente), come
+ * `testi390.cjs` di zr-crm, da cui viene la misura della voce.
+ */
+async function barraDiRipiego(page, apri) {
+    for (const [larghezza, doppio] of [[1280, false], [390, false], [320, true]]) {
+        await page.setViewportSize({ width: larghezza, height: 800 });
+        await apri(indirizzo);
+        await page.waitForSelector('header nav button', { timeout: 15000 });
+        await pausa(300);
+        if (doppio) {
+            await page.evaluate(() => {
+                const elementi = [document.documentElement, ...document.body.querySelectorAll('*')];
+                const letti = elementi.map((el) => {
+                    const stile = getComputedStyle(el);
+                    return [parseFloat(stile.fontSize), /px$/.test(stile.lineHeight) ? parseFloat(stile.lineHeight) : null];
+                });
+                elementi.forEach((el, i) => {
+                    el.style.setProperty('font-size', `${letti[i][0] * 2}px`, 'important');
+                    if (letti[i][1] !== null) el.style.setProperty('line-height', `${letti[i][1] * 2}px`, 'important');
+                });
+            });
+            await pausa(200);
+        }
+        const vista = `${larghezza} px${doppio ? ' col testo al 200%' : ''}`;
+        const misura = await page.evaluate(() => {
+            const barra = document.querySelector('header');
+            const nav = barra.querySelector('nav');
+            const b = barra.getBoundingClientRect();
+            const pulsanti = [...barra.querySelectorAll('button')];
+            const fuori = pulsanti.filter((p) => { const r = p.getBoundingClientRect(); return r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1; });
+            const coperti = pulsanti.flatMap((p) => {
+                const r = p.getBoundingClientRect();
+                const sopra = [[0.5, 0.5], [0.25, 0.5], [0.75, 0.5], [0.5, 0.25], [0.5, 0.75]]
+                    .map(([x, y]) => document.elementFromPoint(r.left + r.width * x, r.top + r.height * y))
+                    .filter((el) => !el || !(el === p || p.contains(el)));
+                return sopra.length ? [`${p.textContent.trim()} sotto ${sopra[0]?.className || sopra[0]?.tagName || 'niente'} (${sopra.length}/5)`] : [];
+            });
+            const prova = document.createElement('div');
+            prova.style.height = 'var(--topbar-height)';
+            document.body.append(prova);
+            const topbar = prova.getBoundingClientRect().height;
+            prova.remove();
+            const righe = new Set(pulsanti.map((p) => Math.round(p.getBoundingClientRect().top))).size;
+            return {
+                pagina: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+                barra: [barra.scrollWidth, barra.clientWidth],
+                nav: [nav.scrollWidth, nav.clientWidth],
+                fuori: fuori.map((p) => p.textContent.trim()),
+                coperti,
+                voci: pulsanti.length,
+                altezza: b.height,
+                topbar,
+                righe,
+            };
+        });
+        const largo = ([serve, ha]) => serve > ha + 1;
+        scrivi(!largo(misura.pagina) && !largo(misura.barra) && !largo(misura.nav) && misura.fuori.length === 0 ? '✅' : '❌', 'RP.1', `a ${vista} la barra di ripiego non scorre di lato e ogni voce sta dentro la barra (#3847)`, `pagina ${misura.pagina.join('/')}, barra ${misura.barra.join('/')}, nav ${misura.nav.join('/')}${misura.fuori.length ? `, fuori: ${misura.fuori.join(', ')}` : ''}`);
+        scrivi(misura.voci > 1 && misura.coperti.length === 0 ? '✅' : '❌', 'RP.2', `a ${vista} nessuna voce della barra di ripiego è coperta (#3847)`, misura.coperti.length ? misura.coperti.join('; ') : `${misura.voci} pulsanti, 5 punti l'uno`);
+        if (larghezza === 1280) {
+            scrivi(misura.righe === 1 && Math.abs(misura.altezza - misura.topbar - 1) <= 1 ? '✅' : '❌', 'RP.3', 'a 1280 px la barra di ripiego è una riga alta quanto la topbar (#3847)', `righe ${misura.righe}, altezza ${misura.altezza} (topbar ${misura.topbar} + il bordo)`);
+            // Solo la barra: la pagina sotto è del modulo (quella di prova non ha un `main`, e ogni suo paragrafo sarebbe «region»).
+            await page.evaluate(axe);
+            const dellaBarra = await page.evaluate(async () => (await window.axe.run({ include: [['header']] }, { resultTypes: ['violations'], preload: false })).violations.flatMap((regola) => regola.nodes.map((nodo) => `${regola.id}(${regola.impact}) ${nodo.target.join(' ')}`)));
+            scrivi(dellaBarra.length ? '❌' : '✅', 'RP.A', 'axe a 1280 px sulla barra di ripiego: nessuna violazione', dellaBarra.join(', ') || '0 violazioni');
+        }
+        await page.screenshot({ path: join(cartella, `ripiego-${larghezza}${doppio ? '-200' : ''}.png`) });
+    }
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -1640,6 +1718,12 @@ async function uat(page, apri) {
                 new MutationObserver((_, osservatore) => document.documentElement && (metti(), osservatore.disconnect())).observe(document, { childList: true });
             }
         });
+    }
+    if (colRipiego) {
+        await barraDiRipiego(page, apri);
+        cspSenzaBlocchi(csp.politica, csp.blocchi);
+        scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
+        return;
     }
     if (colCampoFile) {
         await campoFile(page, apri);

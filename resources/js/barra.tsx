@@ -28,16 +28,21 @@ export interface BarraProps {
 
 // Gli stili sono in linea, coi soli token del design system per nome: il design system non ha una classe per questa barra, e il
 // pacchetto non aggiunge un foglio di stile per un pezzo provvisorio.
+// Dalla `v5.2.0` (#3847) la barra va a capo invece di scorrere di lato: a 320 px col testo al 200% (WCAG 1.4.10 e 1.4.4) la nav
+// stretta fra il logo ed «Esci» scorreva (zr-crm: 1.027 px di voci in 96) e le voci finivano sotto il marchio. Le voci vanno a capo
+// dentro la nav, e la nav, che non scende sotto la sua voce più larga (`min-content`), va sulla riga dopo quando accanto al logo non
+// ci sta. L'altezza è almeno quella della topbar: quando le voci ci stanno su una riga, la barra è quella di prima.
 export default function Barra({ h, Button, Logo, t, nav, active, onNavigate, onLogout }: BarraProps) {
     return h(
         'header',
         {
             style: {
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
-                gap: 'var(--space-3)',
-                height: 'var(--topbar-height)',
-                padding: '0 var(--space-4)',
+                gap: 'var(--space-2) var(--space-3)',
+                minHeight: 'calc(var(--topbar-height) - 2 * var(--space-2))',
+                padding: 'var(--space-2) var(--space-4)',
                 background: 'var(--surface-raised)',
                 borderBottom: '1px solid var(--line)',
             },
@@ -45,7 +50,7 @@ export default function Barra({ h, Button, Logo, t, nav, active, onNavigate, onL
         h(Logo),
         h(
             'nav',
-            { 'aria-label': t.nav, style: { display: 'flex', flexGrow: 1, gap: 'var(--space-1)', minWidth: 0, overflowX: 'auto' } },
+            { 'aria-label': t.nav, style: { display: 'flex', flexWrap: 'wrap', flex: 1, gap: 'var(--space-1)', minWidth: 'min-content' } },
             nav
                 ?.flatMap((gruppo) => gruppo.items)
                 .map((voce) =>
