@@ -291,14 +291,63 @@ describe('CampoFile (voce 3813)', () => {
         expect(campo().files).toHaveLength(1);
     });
 
-    it('T5.6 un form inviato senza il file: niente fumetto del browser sul campo nascosto, l\'errore lo dice e il fuoco va su «Scegli un file»', () => {
-        disegna({ required: true });
+    it('T5.6 un file rilasciato senza name sta lo stesso nel campo: lo stesso file, scelto poi col clic, cambia la scelta', () => {
+        disegna();
+        const file = unFile('estratto.csv');
+        trascina('drop', zona(), [file]);
+        expect(campo().files?.[0]).toBe(file);
+    });
+
+    /** Il campo in un form con un pulsante d'invio e, prima, un altro campo obbligatorio se `prima` è vero. */
+    const nelForm = (prima = false) =>
+        act(() =>
+            radice.render(
+                <form onSubmit={(e) => e.preventDefault()}>
+                    {prima ? <input data-prima="" required /> : null}
+                    <CampoFile label="Estratto conto" required />
+                    <button type="submit">Invia</button>
+                </form>,
+            ),
+        );
+    /** Un clic su «Invia» e, nello stesso giro, l'evento `invalid` che il browser manda al campo vuoto. */
+    const invia = () => {
         const invalido = new Event('invalid', { cancelable: true });
-        act(() => void campo().dispatchEvent(invalido));
-        expect(invalido.defaultPrevented).toBe(true);
+        act(() => {
+            pagina.querySelector<HTMLButtonElement>('button[type="submit"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            campo().dispatchEvent(invalido);
+        });
+
+        return invalido;
+    };
+
+    it('T5.6 un form inviato senza il file: niente fumetto del browser sul campo nascosto, l\'errore lo dice e il fuoco va su «Scegli un file»', () => {
+        nelForm();
+        expect(invia().defaultPrevented).toBe(true);
         expect(errore()?.textContent).toBe(italiano.missing);
         expect(regione().textContent).toBe(italiano.missing);
         expect(document.activeElement).toBe(scegli());
+        // Un file che arriva toglie l'errore.
+        dallaFinestra(unFile('estratto.csv'));
+        expect(errore()).toBeNull();
+    });
+
+    it('T5.6 checkValidity() del modulo, senza un invio, non mostra l\'errore e non sposta il fuoco', () => {
+        nelForm();
+        const invalido = new Event('invalid', { cancelable: true });
+        act(() => void campo().dispatchEvent(invalido));
+        expect(invalido.defaultPrevented).toBe(false);
+        expect(errore()).toBeNull();
+    });
+
+    it('T5.6 se un altro campo prima è da correggere, il fuoco lo porta il browser lì, e il campo file dice comunque «Manca il file»', () => {
+        nelForm(true);
+        const fuori = document.createElement('button');
+        document.body.append(fuori);
+        act(() => fuori.focus());
+        invia();
+        expect(errore()?.textContent).toBe(italiano.missing);
+        expect(document.activeElement).toBe(fuori);
+        fuori.remove();
     });
 
     it('T5.6 etichetta, aiuto ed errore di chi lo usa sono quelli del Field del design system', () => {

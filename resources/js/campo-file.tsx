@@ -155,7 +155,41 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
     const mostrato = error || sbaglio;
 
     // Il campo del form segue il file scelto: dopo un clic, un rilascio, «Togli», o un `value` che il modulo cambia.
-    useEffect(() => nelCampo(campo.current, scelto), [scelto]);
+    // Un file che arriva, anche dal modulo, toglie «Manca il file».
+    useEffect(() => {
+        nelCampo(campo.current, scelto);
+        if (scelto) {
+            mettiSbaglio(undefined);
+        }
+    }, [scelto]);
+
+    // Chi invia il form: un clic su un pulsante d'invio o Invio in un campo. Solo allora il campo vuoto e obbligatorio dice «Manca il
+    // file»; `checkValidity()` e `reportValidity()` del modulo restano del browser, senza errori prima del tempo.
+    const inviando = useRef(false);
+    useEffect(() => {
+        const form = campo.current?.form;
+        if (!form) {
+            return;
+        }
+        const segna = (e: Event) => {
+            const dove = e.target instanceof Element ? e.target : null;
+            const invio =
+                e instanceof KeyboardEvent
+                    ? e.key === 'Enter' && dove instanceof HTMLInputElement
+                    : Boolean(dove?.closest('button[type="submit"], button:not([type]), input[type="submit"]'));
+            if (invio) {
+                inviando.current = true;
+                setTimeout(() => (inviando.current = false), 0);
+            }
+        };
+        form.addEventListener('click', segna, true);
+        form.addEventListener('keydown', segna, true);
+
+        return () => {
+            form.removeEventListener('click', segna, true);
+            form.removeEventListener('keydown', segna, true);
+        };
+    }, []);
 
     const annuncia = (testo: string) => mettiAnnuncio(({ n }) => ({ n: n + 1, testo }));
 
@@ -191,7 +225,7 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
         mettiSbaglio(undefined);
         mettiMio(primo);
         annuncia(sostituisci(t.chosen, { name: primo.name }));
-        nelCampo(campo.current, primo);
+        // Il campo del form lo prende l'effetto su `scelto`: con `value`, quando il modulo lo accetta.
         onChange?.(primo);
     };
 
@@ -271,10 +305,17 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
                     // Un form inviato senza il file: il browser non porta il fuoco sul campo nascosto; lo dice il campo, e il fuoco va su
                     // «Scegli un file».
                     onInvalid={(e) => {
+                        if (!inviando.current) {
+                            return;
+                        }
                         e.preventDefault();
                         mettiSbaglio(t.missing);
-                        annuncia(t.missing);
-                        zona.current?.querySelector<HTMLButtonElement>('button')?.focus();
+                        annuncia(error || t.missing);
+                        // Il fuoco va su «Scegli un file» se il campo è il primo da correggere; altrimenti lo porta il browser al primo.
+                        const primo = Array.from(e.currentTarget.form?.elements ?? []).find((uno) => 'validity' in uno && !(uno as HTMLInputElement).validity.valid);
+                        if (!primo || primo === e.currentTarget) {
+                            zona.current?.querySelector<HTMLButtonElement>('button')?.focus();
+                        }
                     }}
                     disabled={disabled}
                     accept={accept?.join(',')}
