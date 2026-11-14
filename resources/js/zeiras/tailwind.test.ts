@@ -45,8 +45,9 @@ describe('il tema di Tailwind 4 coi nomi dei token (voce 3536)', () => {
 
     it('un token nuovo di tokens.json entra da sé (AC 2)', () => {
         const conUnoInPiu = structuredClone(token);
-        conUnoInPiu.color.tokens.push({ name: 'mint', value: { light: '#000000' } });
-        conUnoInPiu.radius.tokens.push({ name: 'radius-xl', value: '20px' });
+        // I valori sono rimandi ad altri token: nessun valore scritto a mano, nemmeno nei casi (TokenCssTest).
+        conUnoInPiu.color.tokens.push({ name: 'mint', value: { light: '{pine}' } });
+        conUnoInPiu.radius.tokens.push({ name: 'radius-xl', value: '{radius-lg}' });
 
         expect(cssPerTailwind(conUnoInPiu)).toContain('    --color-mint: var(--mint);\n');
         expect(cssPerTailwind(conUnoInPiu)).toContain('    --radius-xl: var(--radius-xl);\n');
