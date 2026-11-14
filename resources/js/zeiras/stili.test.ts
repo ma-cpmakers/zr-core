@@ -283,7 +283,7 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
         expect(blocco('.zr-assist-bar')).toContain('background: var(--citrus); color: var(--on-citrus);');
         expect(blocco('.zr-assist-bar')).toContain('position: relative; z-index: calc(var(--z-dialog) + 3);');
         expect(blocco('.zr-assist-bar')).toContain('padding-left: max(var(--space-4), env(safe-area-inset-left, 0px)); padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));');
-        expect(blocco('.zr-assist > :not(.zr-assist-bar)')).toBe('flex: 1; min-height: 0; position: relative;');
+        expect(blocco('.zr-assist > :not(.zr-assist-bar)')).toBe('flex: 1; min-height: 0; position: relative; container-type: size;');
         expect(blocco('.zr-assist > :not(.zr-assist-bar) .zr-shell')).toBe('height: 100%; min-height: 0;');
     });
 
@@ -296,7 +296,20 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
     it('nessun colore e nessuna misura scritti: tutto dai token (AC 1)', () => {
         expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
         expect(regole).not.toMatch(/z-index: *\d/);
-        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px', '1023px']);
+        expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px', '1023px', '720px', '0px']);
+    });
+
+    it('il pannello di dettaglio e, sotto i 721 px, ricerca, notifiche e profilo cominciano sotto la barra in alto: contati dal corpo, con `100cqh`, senza spostare i `fixed` (voce 3723, UAT del 14/11)', () => {
+        const delDesignSystem = bundleCss.replace(/\s+/g, ' ');
+
+        // Ciò che le regole del pacchetto spostano: nel design system si contano dalla cima della finestra.
+        expect(delDesignSystem).toContain('.zr-detail { position: fixed; z-index: calc(var(--z-dropdown) - 1); top: var(--topbar-height);');
+        expect(delDesignSystem).toContain('.zr-search-panel { position: fixed; top: calc(var(--topbar-height) +');
+        expect(delDesignSystem).toContain('.zr-pop, .zr-top-actions .zr-profile-menu { position: fixed; left: var(--space-2); right: var(--space-2); width: auto; top: calc(var(--topbar-height) +');
+        expect(blocco('.zr-assist .zr-detail:not(.is-inline)')).toBe('position: absolute;');
+        expect(regole).toContain('@media (max-width: 720px) { .zr-assist :is(.zr-search-panel, .zr-pop, .zr-top-actions .zr-profile-menu) { top: calc(100dvh - 100cqh + var(--topbar-height) + var(--space-1)); }');
+        expect(regole).toContain('.zr-assist .zr-search-panel { max-height: calc(100cqh - var(--topbar-height) - var(--space-4)); }');
+        expect(regole).toContain('.zr-assist :is(.zr-pop, .zr-top-actions .zr-profile-menu) { max-height: calc(100cqh - var(--topbar-height) - var(--space-4) - env(safe-area-inset-bottom, 0px)); }');
     });
 
     it('sotto i 1024 px il cassetto e il suo velo si ancorano al corpo, sotto la barra: `absolute` solo in assistenza, allo stesso punto di rottura dell\'AppShell, senza `contain` che sposti menu e dialoghi (scostamento dal design di admin, decisione di zr-pm-97 del 13/11)', () => {

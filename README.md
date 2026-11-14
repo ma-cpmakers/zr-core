@@ -333,8 +333,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 107,5 KB | 17,5 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 104,3 KB | 17,1 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 108,0 KB | 17,5 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 104,8 KB | 17,1 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -2005,9 +2005,12 @@ cornice === null ? pagina : (
   `warning` dentro il contenuto, sopra la pagina (Decisione 22312). Sotto i 1.024 px, col cassetto aperto, il cassetto parte
   **sotto** la barra, e il logo e il selettore «Azienda › workspace» si vedono interi: è uno scostamento dichiarato dal design
   di admin, dove la barra copre la cima del cassetto (decisione di zr-pm-97 del 13/11); lo fa `assistenza.css`, ancorando
-  cassetto e velo al corpo, senza toccare i componenti del design system. Testi e fascia stanno nel pezzo degli avvisi, che la
-  cornice chiede anche in assistenza. In assistenza la campanella mostra e non scrive: il pannello non ha «Segna tutte come
-  lette», e una notifica aperta si apre senza segnarla letta, col numero com'era. Una pagina aperta prima che i dati dicessero
+  cassetto e velo al corpo, senza toccare i componenti del design system. Allo stesso modo il pannello di dettaglio
+  comincia sotto la barra in alto e non copre campanella e profilo, e sul telefono i pannelli della ricerca e delle
+  notifiche e il menu del profilo si aprono sotto la barra in alto, interi (si contano dal corpo, con `100cqh`).
+  Testi e fascia stanno nel pezzo degli avvisi, che la cornice chiede anche in assistenza.
+  In assistenza la campanella mostra e non scrive: il pannello non ha «Segna tutte come lette», e una notifica aperta si apre
+  senza segnarla letta, col numero com'era. Una pagina aperta prima che i dati dicessero
   l'assistenza, che chiede la lettura e riceve il 403 `azione_non_consentita_in_assistenza`, apre lo stesso la risorsa: per la
   cornice è un divieto, non un guasto. Le scritture del modulo in assistenza le gestisce il modulo (vedi `MODULO-NUOVO.md`).
   Dalla `v4.32.0` la rotta di uscita del modulo chiede dove mandare il browser a `Cornice::dopoLUscita($altrimenti)`, **prima**

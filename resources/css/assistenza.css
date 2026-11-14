@@ -30,7 +30,7 @@
 .zr-assist-bar > span { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); flex: 1 1 320px; min-width: 0; }
 .zr-assist-bar > span > :last-child { font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight); }
 .zr-assist-bar .zr-btn { background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus); }
-.zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; }
+.zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; container-type: size; }
 .zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
 /*
  * Il cassetto sotto la barra (scostamento dal design di admin, decisione di zr-pm-97 del 13/11): sotto i 1024 px il design
@@ -42,4 +42,21 @@
  */
 @media (max-width: 1023px) {
   .zr-assist .zr-side, .zr-assist .zr-side-scrim { position: absolute; }
+}
+/*
+ * Il resto della cornice sotto la barra (voce #3723, dalla UAT del 14/11), sempre senza `contain`, `transform` o `filter` sul
+ * corpo, che sposterebbero i `fixed` di menu e dialoghi che si posizionano sulla finestra. Il pannello di dettaglio, in `fixed`
+ * da `top: var(--topbar-height)` contato dalla finestra, coprirebbe la parte di destra della barra in alto, che in assistenza
+ * comincia sotto la barra di assistenza: campanella e profilo non si cliccherebbero (riga D.1 di uat-cornice). Si ancora al
+ * corpo come il cassetto. Sotto i 721 px il pannello della ricerca, quello delle notifiche e il menu del profilo restano `fixed`
+ * (i loro antenati posizionati sono la barra in alto e il campo della ricerca), ma il design li conta dalla cima della finestra e
+ * la barra di assistenza ne coprirebbe la cima: qui si contano dalla cima del corpo, che è la finestra meno la barra di
+ * assistenza. L'altezza del corpo la dà `100cqh`: il corpo è un contenitore delle query (`container-type: size`, che non lo fa
+ * blocco contenitore dei `fixed`), e la barra di assistenza è alta `100dvh - 100cqh`, quale che sia il numero delle sue righe.
+ */
+.zr-assist .zr-detail:not(.is-inline) { position: absolute; }
+@media (max-width: 720px) {
+  .zr-assist :is(.zr-search-panel, .zr-pop, .zr-top-actions .zr-profile-menu) { top: calc(100dvh - 100cqh + var(--topbar-height) + var(--space-1)); }
+  .zr-assist .zr-search-panel { max-height: calc(100cqh - var(--topbar-height) - var(--space-4)); }
+  .zr-assist :is(.zr-pop, .zr-top-actions .zr-profile-menu) { max-height: calc(100cqh - var(--topbar-height) - var(--space-4) - env(safe-area-inset-bottom, 0px)); }
 }
