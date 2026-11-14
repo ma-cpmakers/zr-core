@@ -208,6 +208,13 @@ describe('CampoFile (voce 3813)', () => {
         expect(togli().getAttribute('aria-label')).toBe(attesi.removeFile.replace('{name}', 'estratto.csv'));
     });
 
+    it('T5.4 con una lingua che zr-core non ha anche i numeri sono in inglese, come i testi', () => {
+        document.documentElement.lang = 'de';
+        disegna();
+        dallaFinestra(unFile('estratto.csv', 1_500_000));
+        expect(zona().textContent).toContain(new Intl.NumberFormat('en', { style: 'unit', unit: 'megabyte' }).format(1.5));
+    });
+
     it.each([
         ['es', spagnolo, '1 MB'],
         ['en', inglese, '1 MB'],

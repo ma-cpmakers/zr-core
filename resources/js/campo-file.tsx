@@ -44,14 +44,16 @@ const file = import.meta.glob<EtichetteDelCampoFile>('../lingue/campo-file/*.jso
  * La lingua dei testi: quella della pagina (`<html lang>`) se zr-core ha il suo file, altrimenti l'inglese. Sul server, dove la
  * pagina non c'è, l'inglese; nel browser React passa alla lingua della pagina dopo l'idratazione, senza errori.
  */
-const linguaDellaPagina = () => fileDelleLingue(file).fileDi(document.documentElement.lang) ?? 'en';
-const linguaSulServer = () => 'en';
+/** Il codice del file inglese, dal file stesso: le lingue non si scrivono nel codice. */
+const codiceDellInglese = () => [...fileDelleLingue(file).perCodice].find(([, testi]) => testi === inglese)?.[0];
+const linguaDellaPagina = () => fileDelleLingue(file).fileDi(document.documentElement.lang) ?? codiceDellInglese();
+const linguaSulServer = codiceDellInglese;
 const nessunAscolto = () => () => undefined;
 
 const sostituisci = (testo: string, valori: Record<string, string>) => testo.replace(/\{(\w+)\}/g, (tutto, chiave: string) => valori[chiave] ?? tutto);
 
 /** Una dimensione in byte, nella lingua dei testi: byte sotto il migliaio, kB sotto il milione, MB da lì (unità decimali, come i sistemi). */
-function dimensione(byte: number, lingua: string): string {
+function dimensione(byte: number, lingua: string | undefined): string {
     const [unita, divisore] = byte >= 1_000_000 ? ['megabyte', 1_000_000] : byte >= 1_000 ? ['kilobyte', 1_000] : ['byte', 1];
 
     return new Intl.NumberFormat(lingua, { style: 'unit', unit: unita, maximumFractionDigits: 1 }).format(byte / divisore);
@@ -142,7 +144,7 @@ export function CampoFile({ label, value, onChange, accept, maxSize, hint, error
     const lingua = useSyncExternalStore(nessunAscolto, linguaDellaPagina, linguaSulServer);
     // I testi di `labels` vincono chiave per chiave; una chiave vuota o assente lascia quello della lingua.
     const t: EtichetteDelCampoFile = {
-        ...(fileDelleLingue(file).perCodice.get(lingua) ?? inglese),
+        ...(fileDelleLingue(file).perCodice.get(lingua ?? '') ?? inglese),
         ...Object.fromEntries(Object.entries(labels ?? {}).filter(([, testo]) => typeof testo === 'string' && testo.trim() !== '')),
     };
     const [mio, mettiMio] = useState<File | null>(null);
