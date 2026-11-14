@@ -176,7 +176,7 @@ const ALTEZZA_DEL_CAMPO = /^\.zr-input input, \.zr-select select \{ height: ([^;
 function difettiDellaForma(testo: string, conGliImport: boolean) {
     const { diPrimoLivello, regole } = leggiIlCss(testo);
     const attese = conGliImport
-        ? [ORDINE_DEGLI_STRATI, "@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './assistenza.css';", '@layer zeiras {']
+        ? [ORDINE_DEGLI_STRATI, "@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", '@layer zeiras {']
         : [ORDINE_DEGLI_STRATI, '@layer zeiras {'];
     const difetti: string[] = [];
     if (testo.split('\n')[0] !== ORDINE_DEGLI_STRATI) difetti.push(`la prima riga non è quella dell'ordine: «${testo.split('\n')[0]}»`);
