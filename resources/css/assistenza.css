@@ -7,7 +7,8 @@
  * la barra ha una classe: il corpo, con l'AppShell, è l'altro (`:not(.zr-assist-bar)`), e dentro la barra il testo è il suo
  * `span` e la riga piccola l'ultimo figlio di quello: ogni classe in meno è un attributo in meno nel pezzo degli avvisi e
  * nell'ingresso, che hanno un tetto (voce #3723).
- * Scritto a mano: lo importano resources/css/bundle.css e resources/css/zeiras.css, sotto i font, movimento.css e avanzamento.css.
+ * Scritto a mano: lo importa il pezzo degli avvisi (resources/js/avvisi.ts), che la cornice chiede in assistenza: il CSS di ogni pagina
+ * (bundle.css, zeiras.css) non lo porta, e la fascia pesa solo dove c'è (zr-pm-74, 14/11).
  */
 .zr-assist { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 .zr-assist-bar {

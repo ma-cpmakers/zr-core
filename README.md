@@ -193,8 +193,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 54,9 KB | 19,1 KB | 67,7 KB | 14,5 KB |
-| la cornice e due componenti per nome | 63,9 KB | 21,9 KB | 67,7 KB | 14,5 KB |
+| solo la cornice, dall'ingresso per le app | 55,5 KB | 19,1 KB | 67,7 KB | 14,5 KB |
+| la cornice e due componenti per nome | 64,5 KB | 21,9 KB | 67,7 KB | 14,5 KB |
 | la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
@@ -222,7 +222,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.719 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.840 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -288,6 +288,9 @@ il solo file della lingua della persona, senza l'inglese (#3530, 8 in meno), e i
 suoi due testi. I file dell'inglese e dello spagnolo hanno un tetto di 938 e 1.059 byte, la misura più 20.
 Dalla `v4.32.0` sale di 28, alla misura più 20: il menu Moduli dell'ospite, coi soli moduli che il backoffice gli dà (#3686,
 sì di zr-pm-97 del 13/11).
+Dalla `v4.34.0` sale di 121, alla misura più 20: il codice che carica il CSS di un pezzo a richiesta prima di eseguirlo, che
+Vite mette nell'ingresso da quando un pezzo ha un CSS; gli stili della fascia di assistenza arrivano col pezzo degli avvisi e
+non stanno più nel CSS di ogni pagina, che perde più di quanto l'ingresso prende (#3723, sì di zr-pm-74 del 14/11).
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
@@ -333,11 +336,12 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 108,0 KB | 17,5 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 104,8 KB | 17,1 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 106,5 KB | 17,5 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 103,3 KB | 17,1 KB | 4,8 KB | 1,7 KB |
 
-Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
-arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
+Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
+arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
+di assistenza, che arriva col pezzo degli avvisi (#3723: il CSS d'ingresso scende di 0,4 KB con gzip). Con `bundle.css` gli stili dei due campi stanno anche nel
 CSS d'ingresso. Dalla `v3.15.0` il CSS d'ingresso porta le cinque `@font-face` dei font del pacchetto al posto dell'`@import`
 di Google (1,6 KB, 0,4 KB con gzip); i woff2 sono file a parte, e il browser ne scarica solo quelli che servono.
 
@@ -516,7 +520,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.32.0` | meno movimento dal pacchetto (#3534): con `prefers-reduced-motion: reduce` nessuna transizione in una pagina che carica `bundle.css` o `zeiras.css`, su ogni elemento e sui suoi `::before` e `::after`, anche delle pagine del modulo; la regola sta in `resources/css/movimento.css`, che i due importano subito dopo i font («Meno movimento»). Le animazioni del design system restano com'erano; e `Cornice::dopoLUscita($altrimenti)`, dove mandare il browser dopo l'uscita: dopo un'assistenza la radice del pannello dello staff con `?assistenza=chiusa` (da `zr-auth.admin`), altrimenti la destinazione del modulo (F4.5 di #2942: «Termina l'assistenza» portava all'accesso); e il menu Moduli dell'ospite (#3686): con il ruolo `ospite` i dati portano `ospite: true` (il ruolo resta sul server), e il menu ha i soli moduli che il backoffice gli dà `attivo`, più il modulo aperto: niente «Presto» e niente Dashboard, che Home non gli apre (decisione di zr-pm-97, 12/11). Per gli altri ruoli la chiave manca e il menu è quello di prima | niente; un modulo che ha la stessa regola nel suo CSS (board, crm, bookings, cashflow) la può togliere; nella rotta di uscita, prima di chiudere la sessione, `return redirect()->away(Cornice::dopoLUscita($accedi))` al posto del rimando di prima | niente; un caso che conta le chiavi dei dati di un ospite ne conta una in più, `ospite`, dopo `non_lette` | `layout.html` con `reducedMotion: 'reduce'`: il cassetto della sidebar e la freccia del selettore senza transizione; senza la preferenza, come prima |
 | `v4.32.1` | `Cornice::dopoLUscita()` non lancia più: con una sessione senza il gettone del workspace (`LogicException`) o col gettone rifiutato (401, `GettoneRifiutato`) restituisce la destinazione del modulo, come col backoffice che non risponde; nella `v4.32.0` la rotta di uscita rispondeva 500 (rilievo di zr-crm) | `composer update zeiras/zr-core`, al posto della `v4.32.0`; un `try/catch` attorno a `dopoLUscita` non serve più | niente | `scripts/uat-cornice.mjs` sulle pagine di prova, come per la `v4.32.0` |
 | `v4.33.0` | la barra d'avanzamento di Inertia dal pacchetto (#3535): `resources/css/avanzamento.css`, che `bundle.css` e `zeiras.css` importano sotto i font, le dà gli stili coi token — in alto, alta 2 px, `--pine`, a `--z-toast`, senza prendere i clic — e un modulo con `progress: { includeCSS: false }` la vede senza regole sue e senza allargare la CSP («La barra d'avanzamento di Inertia») | niente; un modulo che ha le regole di `#nprogress` nel suo CSS (board, crm, bookings, cashflow, superadmin) le può togliere, e `color` da `progress` | niente | una navigazione lenta del modulo: la barra in alto nel colore di Zeiras, nessuna violazione della CSP in console |
-| `v4.34.0` | la fascia di assistenza come nel design di admin (#3723): una barra citrus a tutta larghezza sopra l'`AppShell`, fuori dal contenuto e sempre in vista, con «Stai usando Zeiras come **nome** · email», in piccolo che cosa valgono le modifiche e il pulsante «Termina e torna al backoffice» (`onLogout`); gli stili sono in `resources/css/assistenza.css`, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`. Prima era un `Alert` nel contenuto. In assistenza l'`AppShell` sta in un contenitore (`zr-assist`); senza, il DOM è quello di prima | niente | un caso che cerca la fascia di assistenza dentro `main` (`.zr-alert`) la cerca sopra l'`AppShell`, in `.zr-assist-bar`; il testo del pulsante è «Termina e torna al backoffice» | `layout.html?assistenza=1` (e `?assistenza=lettura`): la barra citrus in cima, a 1.280 e a 390 px, il contenuto sotto |
+| `v4.34.0` | la fascia di assistenza come nel design di admin (#3723): una barra citrus a tutta larghezza sopra l'`AppShell`, fuori dal contenuto e sempre in vista, con «Stai usando Zeiras come **nome** · email», in piccolo che cosa valgono le modifiche e il pulsante «Termina e torna al backoffice» (`onLogout`); gli stili sono in `resources/css/assistenza.css`, che arriva col pezzo degli avvisi, solo in assistenza: il CSS di ogni pagina non cresce. Prima era un `Alert` nel contenuto. In assistenza l'`AppShell` sta in un contenitore (`zr-assist`); senza, il DOM è quello di prima | niente | un caso che cerca la fascia di assistenza dentro `main` (`.zr-alert`) la cerca sopra l'`AppShell`, in `.zr-assist-bar`; il testo del pulsante è «Termina e torna al backoffice» | `layout.html?assistenza=1` (e `?assistenza=lettura`): la barra citrus in cima, a 1.280 e a 390 px, il contenuto sotto |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1999,8 +2003,9 @@ cornice === null ? pagina : (
   come fatte da Anna» (o, di sola lettura, «Sola lettura: puoi guardare, non modificare»), e il pulsante «Termina e torna al
   backoffice», che chiama `onLogout` come «Esci»: l'uscita di zr-auth chiude anche l'assistenza. La fascia non si chiude, e
   resta anche nella cornice ridotta, dove l'avviso resta nel contenuto, sotto. Gli stili stanno in
-  `resources/css/assistenza.css`, scritto a mano, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`: una pagina
-  che li carica non scrive niente. L'`AppShell` sta in un contenitore (`zr-assist`) che c'è solo in assistenza: senza, nessuna
+  `resources/css/assistenza.css`, scritto a mano, che il pezzo degli avvisi importa: arriva solo in assistenza
+  (zr-pm-74, 14/11), col pezzo, e il CSS di ogni pagina (`bundle.css`, `zeiras.css`) non lo porta. La build del modulo ne fa il
+  CSS del pezzo, che arriva prima che il pezzo giri; una pagina che lo carica non scrive niente. L'`AppShell` sta in un contenitore (`zr-assist`) che c'è solo in assistenza: senza, nessuna
   barra e nessun elemento in più, e il DOM della cornice è quello di sempre. Prima della `v4.34.0` la fascia era un `Alert`
   `warning` dentro il contenuto, sopra la pagina (Decisione 22312). Sotto i 1.024 px, col cassetto aperto, il cassetto parte
   **sotto** la barra, e il logo e il selettore «Azienda › workspace» si vedono interi: è uno scostamento dichiarato dal design

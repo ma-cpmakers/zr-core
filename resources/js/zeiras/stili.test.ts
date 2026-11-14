@@ -18,7 +18,7 @@ const NOMI = STILI_A_PARTE;
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
 /** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3723). */
-const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './assistenza.css';"] as const;
+const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"] as const;
 
 describe('gli stili dei componenti a parte escono dal CSS del primo carico (sprint 75 · T1.1, T1.2)', () => {
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
@@ -97,11 +97,11 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         const delBundle = bundleCss.split('\n');
 
         expect(intero).toBe(bundleIntero(bundleCss));
-        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css, dalla #3535 quella di avanzamento.css e dalla #3723 quella di assistenza.css: le altre sono
+        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css e dalla #3535 quella di avanzamento.css (assistenza.css no: arriva col pezzo degli avvisi): le altre sono
         // le righe del bundle, nel loro ordine.
-        expect(righe).toHaveLength(delBundle.length + 3);
-        expect(righe.slice(0, 4)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
-        expect(righe.slice(4)).toStrictEqual(delBundle.slice(1));
+        expect(righe).toHaveLength(delBundle.length + 2);
+        expect(righe.slice(0, 3)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
+        expect(righe.slice(3)).toStrictEqual(delBundle.slice(1));
     });
 
     it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
@@ -206,7 +206,7 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
 
     it('bundle.css e zeiras.css importano movimento.css subito dopo i font, prima di ogni regola del bundle (T4)', () => {
         for (const percorso of ['resources/css/bundle.css', 'resources/css/zeiras.css']) {
-            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 4);
+            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 3);
 
             expect(prime).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
         }
@@ -261,19 +261,23 @@ describe('la barra d\'avanzamento di Inertia dal CSS del pacchetto (voce 3535)',
 });
 
 // Voce #3723 (sì di zr-pm-97, 13/11). La fascia di assistenza come nel design di admin (`sa-imp`): una barra citrus a tutta
-// larghezza sopra l'AppShell. Gli stili stanno in resources/css/assistenza.css, scritto a mano, che bundle.css e zeiras.css
-// importano sotto avanzamento.css; ogni misura dai token, per nome.
+// larghezza sopra l'AppShell. Gli stili stanno in resources/css/assistenza.css, scritto a mano, che importa il pezzo degli avvisi
+// (resources/js/avvisi.ts) e non il CSS di ogni pagina (zr-pm-74, 14/11); ogni misura dai token, per nome.
 describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
     const assistenza = readFileSync(delRepo('resources/css/assistenza.css'), 'utf8');
     const regole = assistenza.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
     const blocco = (selettore: string) => new RegExp(`(?:^|\\} )${selettore.replace(/[.*()]/g, '\\$&')} \\{([^}]*)\\}`).exec(regole)?.[1]?.trim() ?? '';
 
-    it('bundle.css e zeiras.css importano assistenza.css sotto avanzamento.css, una volta sola (AC 1)', () => {
-        for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
-            const righe = css.split('\n');
+    it('assistenza.css lo importa il pezzo degli avvisi, una volta sola, e non il CSS di ogni pagina: bundle.css e zeiras.css non lo nominano (AC 1, zr-pm-74 14/11)', () => {
+        for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras, readFileSync(delRepo('resources/css/bundle.css'), 'utf8'), readFileSync(delRepo('resources/css/zeiras.css'), 'utf8')]) {
+            expect(css).not.toContain('assistenza.css');
+            expect(css).not.toContain('.zr-assist');
+        }
+        const avvisi = readFileSync(delRepo('resources/js/avvisi.ts'), 'utf8');
 
-            expect(righe.filter((riga) => riga === "@import './assistenza.css';")).toHaveLength(1);
-            expect(righe.indexOf("@import './assistenza.css';")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
+        expect(avvisi.match(/^import '\.\.\/css\/assistenza\.css';$/gm)).toHaveLength(1);
+        for (const ingresso of ['resources/js/index.ts', 'resources/js/app.ts', 'resources/js/cornice.tsx', 'resources/js/layout.tsx']) {
+            expect(readFileSync(delRepo(ingresso), 'utf8')).not.toMatch(/^import .*assistenza\.css/m);
         }
     });
 

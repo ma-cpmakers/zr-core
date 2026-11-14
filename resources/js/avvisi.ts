@@ -7,8 +7,11 @@
 // anche i testi della fascia di assistenza, che la cornice mette sopra la pagina quando lo staff è entrato con «Accedi come»: la
 // cornice chiede il pezzo anche quando i dati hanno `assistenza`; dalla `v4.34.0` (#3723) la fascia è la barra citrus del design di
 // admin, sopra l'`AppShell` e non più un Alert nel contenuto. Dalla `v4.25.0` (#3417) porta anche «Il mio spazio» per il selettore
-// della cornice dei membri, i due testi e il clic: la cornice chiede il pezzo anche quando il frontend le dà `spazio`.
+// della cornice dei membri, i due testi e il clic: la cornice chiede il pezzo anche quando il frontend le dà `spazio`. Dalla
+// `v4.34.0` porta anche gli stili della fascia (resources/css/assistenza.css): servono solo in assistenza, e il CSS di ogni pagina
+// non li porta (zr-pm-74, 14/11). La build di chi installa ne fa il CSS di questo pezzo, che arriva prima che il pezzo giri.
 
+import '../css/assistenza.css';
 import { createElement as h, type MouseEvent } from 'react';
 import inglesi from '../lingue/avvisi/en.json';
 import type { DatiDellaCornice } from './cornice';
@@ -109,7 +112,7 @@ export function ilMioSpazio(lingua: string, href: string, naviga: (indirizzo: st
  * La fascia di assistenza in una lingua (dalla `v4.34.0`, #3723: come nel design di admin): la barra citrus a tutta larghezza che
  * la cornice mette sopra l'`AppShell`, fuori dal contenuto — l'icona della persona, «Stai usando Zeiras come **Nome Cognome** ·
  * email», sotto in piccolo che cosa valgono le modifiche (o che è sola lettura), e il pulsante che termina l'assistenza chiamando
- * `onLogout`. Gli stili stanno in `resources/css/assistenza.css`. Sta qui e non nella cornice perché serve solo in assistenza.
+ * `onLogout`. Gli stili stanno in `resources/css/assistenza.css`, importato in cima a questo pezzo. Sta qui e non nella cornice perché serve solo in assistenza.
  */
 export function FasciaDiAssistenza({ lingua, assistenza: { persona: { nome, cognome, email }, sola_lettura }, onLogout }: { lingua: string; assistenza: NonNullable<DatiDellaCornice['assistenza']>; onLogout: () => void }) {
     const t = testiDegliAvvisi(lingua);
