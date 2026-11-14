@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -23,6 +23,7 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
+ * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
@@ -52,6 +53,10 @@ const colCliente = argomenti.includes('--cliente') && argomenti.splice(argomenti
 // --spazio (dalla v4.25.0, #3417): la cornice dei membri ha la prop `spazio`, e girano le righe SP. Prima del tag zr-core la lancia
 // su `layout.html?spazio=1` in italiano, spagnolo e inglese.
 const colloSpazio = argomenti.includes('--spazio') && argomenti.splice(argomenti.indexOf('--spazio'), 1).length > 0;
+// --barra (dalla v4.33.0, #3535): la pagina ha la barra d'avanzamento di Inertia con `includeCSS: false`, e girano le righe AV.
+// Prima del tag zr-core la lancia su `layout.html?barra=1`, che ha la visita lenta («UAT alla Corta lenta»); su una pagina del
+// modulo con `--barra` si clicca il primo collegamento interno della pagina, e la barra si vede solo se la risposta tarda.
+const conLaBarra = argomenti.includes('--barra') && argomenti.splice(argomenti.indexOf('--barra'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1413,6 +1418,10 @@ async function uat(page, apri) {
     };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
+    if (conLaBarra) {
+        await barraDiInertia(page, csp);
+        await tornaAllaPagina();
+    }
     if (colCliente) {
         await fuoriDaiMenu(page);
         await tornaAllaPagina();
@@ -1535,6 +1544,66 @@ async function ilMioSpazio(page) {
     await pausa(800);
     const dopo = await page.evaluate(() => ({ segno: window.__uatSpazio === 1, dove: location.href }));
     scrivi(dopo.segno ? '✅' : '❌', 'SP.2', 'un clic semplice sulla voce non ricarica la pagina', `segno nella finestra dopo il clic: ${dopo.segno}; indirizzo ${dopo.dove}`);
+}
+
+// AV (dalla v4.33.0, #3535): la barra d'avanzamento di Inertia dal pacchetto, con `--barra`. Durante una visita lenta: AV.1 la barra
+// c'è, in alto, a tutta larghezza, alta 2 px, nel colore di `--pine` (non il #29d di Inertia) e a `--z-toast`, e il suo contenitore
+// non prende i clic; AV.2 nessun `<style>` della barra nella pagina e nessuna violazione di `style-src`, nemmeno in console.
+async function barraDiInertia(page, csp) {
+    await page.evaluate(() => {
+        window.__uatViolazioni = [];
+        document.addEventListener('securitypolicyviolation', (evento) => window.__uatViolazioni.push(`${evento.violatedDirective} ${evento.blockedURI}`));
+    });
+    const lenta = page.locator('[data-uat="vai-corta-lenta"]').first();
+    // Sulla pagina di prova la visita lenta tiene la barra sei secondi; su una pagina del modulo la barra si vede solo se la
+    // risposta tarda più del ritardo di Inertia (250 ms): lì una barra che non compare è ➖, non ❌.
+    const diProva = (await lenta.count()) > 0;
+    if (diProva) {
+        await lenta.click();
+    } else {
+        const interno = page.locator(`main a[href^="/"], main a[href^="${new URL(page.url()).origin}"]`).first();
+        if (!(await interno.count())) {
+            scrivi('➖', 'AV.1', 'durante una visita la barra d\'avanzamento è in alto, alta 2 px, nel colore --pine, a --z-toast, e non prende i clic', 'nessun collegamento interno da cliccare');
+            return;
+        }
+        await interno.click();
+    }
+    await pausa(700);
+    const barra = await page.evaluate(() => {
+        const contenitore = document.querySelector('#nprogress');
+        const linea = contenitore?.querySelector('.bar');
+        if (!linea) return null;
+        const dove = linea.getBoundingClientRect();
+        const prova = document.createElement('span');
+        prova.style.color = 'var(--pine)';
+        document.body.appendChild(prova);
+        const pine = getComputedStyle(prova).color;
+        prova.remove();
+        return {
+            alto: Math.round(dove.top),
+            spessore: Math.round(dove.height * 10) / 10,
+            largo: Math.round(dove.width) === document.documentElement.clientWidth,
+            colore: getComputedStyle(linea).backgroundColor,
+            pine,
+            livello: getComputedStyle(linea).zIndex,
+            toast: getComputedStyle(document.documentElement).getPropertyValue('--z-toast').trim(),
+            clic: getComputedStyle(contenitore).pointerEvents,
+            sopra: contenitore.matches(':popover-open'),
+        };
+    }).catch(() => null);
+    await page.screenshot({ path: join(cartella, 'barra-di-inertia.png'), clip: { x: 0, y: 0, width: page.viewportSize().width, height: 120 } });
+    // In Chromium Inertia mette la barra in un popover, nello strato in cima: è quello che la tiene sopra la barra in alto e i dialoghi.
+    const ok = barra && barra.alto === 0 && barra.spessore === 2 && barra.largo && barra.colore === barra.pine && barra.livello === barra.toast && barra.clic === 'none' && barra.sopra;
+    scrivi(ok ? '✅' : !barra && !diProva ? '➖' : '❌', 'AV.1', 'durante una visita la barra d\'avanzamento è in alto, alta 2 px, nel colore --pine, a --z-toast, e non prende i clic', barra ? `in alto a ${barra.alto} px, alta ${barra.spessore} px, a tutta larghezza: ${barra.largo}; colore ${barra.colore} (--pine ${barra.pine}); z-index ${barra.livello} (--z-toast ${barra.toast}); pointer-events ${barra.clic}; nello strato in cima: ${barra.sopra}` : diProva ? 'la barra non c\'è' : 'la barra non è comparsa: la risposta è arrivata prima del ritardo di Inertia, o il collegamento ha ricaricato la pagina');
+    await page.waitForFunction(() => !document.querySelector('#nprogress .bar'), null, { timeout: 15000 }).catch(() => undefined);
+    // Lo `<style>` di Inertia lo aggiunge `createInertiaApp`, al caricamento: si cerca nella pagina, e le violazioni di `style-src` si
+    // leggono anche in console, da quando la pagina si è aperta.
+    const dopo = await page.evaluate(() => ({
+        violazioni: window.__uatViolazioni ?? [],
+        stili: [...document.querySelectorAll('style')].filter((stile) => stile.textContent?.includes('nprogress')).length,
+    }));
+    const inConsole = csp.blocchi.filter((blocco) => /style-src/.test(blocco));
+    scrivi(dopo.violazioni.length === 0 && dopo.stili === 0 && inConsole.length === 0 ? '✅' : '❌', 'AV.2', 'nessun <style> della barra nella pagina e nessuna violazione di style-src', `violazioni durante la visita ${dopo.violazioni.length}${dopo.violazioni.length ? `: ${dopo.violazioni.slice(0, 3).join(' | ')}` : ''}; in console ${inConsole.length}; <style> della barra ${dopo.stili}`);
 }
 
 // MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna

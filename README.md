@@ -333,8 +333,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 105,9 KB | 17,4 KB | 3,2 KB | 1,1 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 102,7 KB | 16,9 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 106,5 KB | 17,5 KB | 3,2 KB | 1,1 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 103,3 KB | 17,1 KB | 3,2 KB | 1,1 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i due file CSS che
 arrivano coi due pezzi, ognuno una volta, gli stessi nelle due righe. Con `bundle.css` gli stili dei due campi stanno anche nel
@@ -515,6 +515,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.31.0` | i testi della cornice nella sola lingua della pagina (#3530): una pagina in spagnolo chiede, e precarica con `Cornice::precaricoDellaLingua()`, il solo `es.json`, senza l'inglese; in inglese o in una lingua che zr-core non ha il solo `en.json`, in italiano niente. La riga del Blade non cambia. Ogni file di `resources/lingue` ha ogni testo dell'italiano, non vuoto e nessuno in più, anche una lingua aggiunta: lo controlla la CI. Con lei il design system `ds-1794303038-bf89`, il lotto 0527 (richieste 236, 238 e 239): `EmptyState` col titolo al livello che si sceglie, anche 1 (`headingLevel`, per zr-home #3484), l'icona `lock`, e la voce di navigazione (`NavItem`) con lo stato `inactive` e il suo testo «Non attivo», che la cornice ha nelle tre lingue. E un caso che diventa rosso se al tocco il `Button` perde l'area di 44 px. E la cornice dei membri non ha più il riquadro del piano in fondo alla barra («Piano Personale», «Gratis, senza limiti per i progetti personali»): nei moduli non si parla di prezzo (regola di Luciano del 10/11, zr-pm-97), e il piano lo mostrerà Home nelle sue pagine, con un dato vero; `planTitle` e `planText` escono dalle lingue della cornice, e la cornice dello staff tiene il suo riquadro. Il JS d'ingresso della sola cornice sale di 92 byte, alla misura più 20 (19.691: −8 per la lingua, il resto il lotto), e i file dell'inglese e dello spagnolo hanno un tetto di 938 e 1.059 byte | niente: chi aggiorna non tocca il codice; zr-home può dare `headingLevel={1}` all'`EmptyState` di una pagina senza altro titolo, zr-cashflow `inactive` e `lock`; un `plan` passato alla `Cornice` non vale più: è sempre `false` | un caso del modulo che conta i precarichi di una pagina in spagnolo si aspetta il solo `es`; uno che cerca il riquadro del piano (`.zr-plan`) o il suo testo nella cornice dei membri non lo trova | una pagina in spagnolo chiede e precarica il solo `es.json`, mai `en.json`; una pagina in italiano nessun file dei testi |
 | `v4.32.0` | meno movimento dal pacchetto (#3534): con `prefers-reduced-motion: reduce` nessuna transizione in una pagina che carica `bundle.css` o `zeiras.css`, su ogni elemento e sui suoi `::before` e `::after`, anche delle pagine del modulo; la regola sta in `resources/css/movimento.css`, che i due importano subito dopo i font («Meno movimento»). Le animazioni del design system restano com'erano; e `Cornice::dopoLUscita($altrimenti)`, dove mandare il browser dopo l'uscita: dopo un'assistenza la radice del pannello dello staff con `?assistenza=chiusa` (da `zr-auth.admin`), altrimenti la destinazione del modulo (F4.5 di #2942: «Termina l'assistenza» portava all'accesso); e il menu Moduli dell'ospite (#3686): con il ruolo `ospite` i dati portano `ospite: true` (il ruolo resta sul server), e il menu ha i soli moduli che il backoffice gli dà `attivo`, più il modulo aperto: niente «Presto» e niente Dashboard, che Home non gli apre (decisione di zr-pm-97, 12/11). Per gli altri ruoli la chiave manca e il menu è quello di prima | niente; un modulo che ha la stessa regola nel suo CSS (board, crm, bookings, cashflow) la può togliere; nella rotta di uscita, prima di chiudere la sessione, `return redirect()->away(Cornice::dopoLUscita($accedi))` al posto del rimando di prima | niente; un caso che conta le chiavi dei dati di un ospite ne conta una in più, `ospite`, dopo `non_lette` | `layout.html` con `reducedMotion: 'reduce'`: il cassetto della sidebar e la freccia del selettore senza transizione; senza la preferenza, come prima |
 | `v4.32.1` | `Cornice::dopoLUscita()` non lancia più: con una sessione senza il gettone del workspace (`LogicException`) o col gettone rifiutato (401, `GettoneRifiutato`) restituisce la destinazione del modulo, come col backoffice che non risponde; nella `v4.32.0` la rotta di uscita rispondeva 500 (rilievo di zr-crm) | `composer update zeiras/zr-core`, al posto della `v4.32.0`; un `try/catch` attorno a `dopoLUscita` non serve più | niente | `scripts/uat-cornice.mjs` sulle pagine di prova, come per la `v4.32.0` |
+| `v4.33.0` | la barra d'avanzamento di Inertia dal pacchetto (#3535): `resources/css/avanzamento.css`, che `bundle.css` e `zeiras.css` importano sotto i font, le dà gli stili coi token — in alto, alta 2 px, `--pine`, a `--z-toast`, senza prendere i clic — e un modulo con `progress: { includeCSS: false }` la vede senza regole sue e senza allargare la CSP («La barra d'avanzamento di Inertia») | niente; un modulo che ha le regole di `#nprogress` nel suo CSS (board, crm, bookings, cashflow, superadmin) le può togliere, e `color` da `progress` | niente | una navigazione lenta del modulo: la barra in alto nel colore di Zeiras, nessuna violazione della CSP in console |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -3130,8 +3131,21 @@ con l'annuncio ai frontend; uno che le stringe, in una maggiore.
 ### La barra d'avanzamento di Inertia
 
 La CSP di tutti non ammette stili in linea, e la barra d'avanzamento di Inertia, di suo, aggiunge alla pagina un `<style>`.
-Un modulo la tiene senza `<style>` — `progress: { includeCSS: false }` in `createInertiaApp`, con gli stili della barra in
-un suo file CSS — oppure la spegne (`progress: false`).
+Un modulo la tiene senza `<style>` — `progress: { includeCSS: false }` in `createInertiaApp` — oppure la spegne (`progress: false`).
+
+Dalla `v4.33.0` (#3535) gli stili della barra arrivano dal pacchetto: `resources/css/avanzamento.css`, che `bundle.css` e
+`zeiras.css` importano sotto i font. La barra sta in alto, a tutta larghezza, alta 2 px, nel colore `--pine` e a `--z-toast`,
+e non prende i clic; la punta luminosa e la rotella di Inertia non ci sono. Il modulo non passa `color`, che non serve più:
+
+```js
+createInertiaApp({
+    // …
+    progress: { includeCSS: false },
+});
+```
+
+Un modulo che ha scritto nel suo CSS le regole di `#nprogress` le può togliere; uno che passa `color` lo può togliere. Nessuna
+sorgente in più nella CSP: niente `'unsafe-inline'`, niente hash.
 
 ### Che cosa resta al server web
 
