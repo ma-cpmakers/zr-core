@@ -1586,6 +1586,20 @@ it('«Annulla» del Toast di turno sta in resources/lingue/toast, un file per og
         ->and(array_filter(array_map(fn (array $delCodice): bool => array_key_exists('undo', $delCodice), fileDelleLingue(''))))->toBe([]);
 });
 
+it('i testi del campo file stanno in resources/lingue/campo-file, un file per ogni lingua dei testi con le stesse chiavi e nessun testo vuoto, e non nelle lingue della cornice (voce #3813 · T5.4)', function () {
+    $campo = fileDelleLingue('campo-file/');
+    $chiavi = ['choose', 'drop', 'remove', 'removeFile', 'chosen', 'removed', 'wrongType', 'tooBig', 'onlyOne'];
+
+    expect(array_keys($campo))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
+        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $campo))->toBe(array_fill_keys(array_keys($campo), $chiavi))
+        ->and(array_map(fn (array $delCodice): bool => count(array_filter($delCodice, fn ($testo) => is_string($testo) && trim($testo) !== '')) === count($chiavi), $campo))->each->toBeTrue()
+        ->and(['it' => $campo['it']['choose'] ?? null, 'es' => $campo['es']['choose'] ?? null, 'en' => $campo['en']['choose'] ?? null])->toBe(['it' => 'Scegli un file', 'es' => 'Elige un archivo', 'en' => 'Choose a file'])
+        // I segnaposto sono gli stessi in ogni lingua: il campo sostituisce {name}, {types} e {size}.
+        ->and(array_map(fn (array $delCodice): array => array_map(fn (string $testo): array => (preg_match_all('/\{(\w+)\}/', $testo, $trovati) ? $trovati[1] : []), $delCodice), $campo))->each->toBe(array_map(fn (string $testo): array => (preg_match_all('/\{(\w+)\}/', $testo, $trovati) ? $trovati[1] : []), $campo['en']))
+        // Nelle lingue della cornice, che stanno nell'ingresso di ogni app, non ci sono: entrano solo nella build di chi usa il campo.
+        ->and(array_filter(array_map(fn (array $delCodice): bool => array_key_exists('choose', $delCodice), fileDelleLingue(''))))->toBe([]);
+});
+
 it('il controllo dei due file trova una lingua con un file solo, una frase rimasta fra i testi e un testo finito fra le frasi (sprint 30 · T1.9)', function () {
     $testi = [
         'it' => ['dashboard' => 'Dashboard', 'notificationTitle' => 'Novità nel workspace', 'notificationTitleWho.board.scheda.assegnata' => '{who} ti ha assegnato una scheda'],
@@ -1721,8 +1735,9 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
     // elenco inglese delle prenotazioni è «bookings», come l'id di Bookings, che il tipo `IdDiProdotto` di registro.ts elenca.
     // Revisione dello sprint 74 (R4): anche i testi della ricerca, che stanno in resources/lingue/ricerca. Revisione dello sprint 93
     // (R1): e quelli della cornice dello staff, in resources/lingue/staff. Sprint 110 · T2.5: e quelli della cornice del cliente.
-    // Voce #3537 · AC 4: e «Annulla» del Toast di turno, in resources/lingue/toast.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/')), ...array_values(fileDelleLingue('toast/'))])))), idDeiProdotti()));
+    // Voce #3537 · AC 4: e «Annulla» del Toast di turno, in resources/lingue/toast. Voce #3813 · T5.4: e i testi del campo file, in
+    // resources/lingue/campo-file.
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/')), ...array_values(fileDelleLingue('toast/')), ...array_values(fileDelleLingue('campo-file/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1731,7 +1746,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office', 'Annulla', 'Deshacer', 'Undo')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office', 'Annulla', 'Deshacer', 'Undo', 'Scegli un file', 'Elige un archivo', 'Choose a file')
         ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);

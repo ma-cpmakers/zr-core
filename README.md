@@ -3123,6 +3123,38 @@ mostraToast({ children: 'Non salvato', tone: 'danger' });
 - La pagina di prova è `staff.html?turno=1`, e `scripts/uat-cornice.mjs --staff` lo misura (righe TT.1-TT.4): la durata,
   il Tab su «Annulla» oltre i 10 secondi, uno alla volta, «Annulla» nella lingua di `?lingua`.
 
+## Il campo file
+
+Dalla `v5.1.0` (#3813) il pacchetto ha `CampoFile`, un campo per scegliere un file col clic o trascinandolo sulla sua zona. Il
+design system non ne ha uno (richiesta 264, per «Carica estratto» di Finanze): questo è **provvisorio**, fatto coi soli pezzi
+del design system — il `Button`, l'`Icon`, le classi del `Field`, i token —, e si toglie quando il design system porta il suo.
+Si prende dai due ingressi, e un'app che non lo usa non lo porta nella build:
+
+```tsx
+import { CampoFile } from '../../vendor/zeiras/zr-core/resources/js/app';
+
+<CampoFile label="Estratto conto" name="estratto" accept={['.csv', '.pdf']} maxSize={5_000_000} onChange={setEstratto} />
+```
+
+- **Le props**: `label`, `onChange(file)` (il `File`, o `null` quando si toglie), `value` (se il file lo tiene il modulo),
+  `accept` (estensioni come `.csv` o tipi MIME, anche `image/*`), `maxSize` (in byte), `hint`, `error`, `name`, `required`,
+  `disabled`, `labels`. Il tipo è `CampoFileProps`.
+- **La zona**: «Scegli un file» apre la scelta del sistema; un file trascinato sopra la zona le accende l'anello di fuoco del
+  design system, e al rilascio è scelto come col clic. Il file scelto si vede col nome, la dimensione e «Togli», che riporta il
+  fuoco su «Scegli un file». Un file alla volta.
+- **Gli errori**: un file fuori da `accept`, oltre `maxSize` o insieme ad altri non arriva a `onChange`, e sotto la zona l'errore
+  dice quali tipi sono ammessi o la dimensione massima. `error` è l'errore di chi lo usa (il server, per esempio) e si mostra al
+  suo posto.
+- **L'annuncio**: scelta, «Togli» ed errori si dicono al lettore di schermo in una regione `aria-live` che c'è da subito.
+- **La lingua** è quella di `<html lang>`, come per il Toast di turno: i testi stanno in `resources/lingue/campo-file/` (in
+  inglese per una lingua che zr-core non ha), e `labels` li sostituisce chiave per chiave (`choose`, `drop`, `remove`,
+  `removeFile`, `chosen`, `removed`, `wrongType`, `tooBig`, `onlyOne`).
+- **Nel form**: con `name` il file viaggia col form, anche quello trascinato. Con Inertia lo si manda da `onChange` (`useForm`).
+- **L'aspetto** non ha un CSS del pacchetto: lo stile della zona sta sull'elemento, coi token, e al tocco la zona è alta
+  almeno 44 px.
+- La pagina di prova è `campo-file.html` (`?lingua=es`, `?lingua=en`), e `scripts/uat-cornice.mjs --campo-file` la misura
+  (righe CF.1-CF.5): la scelta, il trascinamento con l'anello, gli errori, «Togli» col fuoco, la larghezza di 390 px.
+
 ## Il logo
 
 I cinque file del logo di Zeiras stanno nel pacchetto, in `resources/zeiras/logos/`: sono copie del gruppo Logos del design

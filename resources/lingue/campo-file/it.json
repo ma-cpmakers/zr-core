@@ -1,0 +1,11 @@
+{
+    "choose": "Scegli un file",
+    "drop": "o trascinalo qui",
+    "remove": "Togli",
+    "removeFile": "Togli {name}",
+    "chosen": "File scelto: {name}",
+    "removed": "File tolto",
+    "wrongType": "{name} non è di un tipo ammesso. Sono ammessi: {types}.",
+    "tooBig": "{name} è troppo grande: al massimo {size}.",
+    "onlyOne": "Trascina un file alla volta."
+}

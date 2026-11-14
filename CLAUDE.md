@@ -17,7 +17,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   selettore «Azienda › workspace», la ricerca (Ctrl/Cmd+K), la campanella delle notifiche, il menu del profilo, il menu
   «+». Sono una copia **derivata** dal design system: non si modificano a mano, si riallineano. Accanto alla `Cornice`, la
   cornice dello staff (`CorniceDelloStaff`, dalla `v3.16.0`) e, dalla `v4.13.0`, quella di chi è solo cliente (`CorniceDelCliente`,
-  coi dati di `Cornice::datiDelCliente()`, per «Il mio spazio» di zr-home).
+  coi dati di `Cornice::datiDelCliente()`, per «Il mio spazio» di zr-home). Dalla `v5.1.0` (#3813) anche `CampoFile`, il campo file con la zona di
+  rilascio: provvisorio, coi soli pezzi del design system, finché la richiesta 264 non porta il suo.
 - **Il design system nella build**, una copia sola per app (quella di zr-core: il frontend non ne tiene una sua). I
   componenti sono un modulo ES generato dal `bundle.js` del design system (`resources/js/zeiras/componenti.js`, vedi «Stack
   e CI»): il bundle non si importa più. Gli ingressi sono due: quello di sempre (`resources/js`) dà `Zeiras`, il design
