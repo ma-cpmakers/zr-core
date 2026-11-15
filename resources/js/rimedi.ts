@@ -237,7 +237,7 @@ function cassetto(): void {
  * quando l'`AppShell` lo fa da sé.
  */
 function nomiDaiTesti(): void {
-    document.querySelectorAll('.zr-shell :is(.zr-ws-switch,.zr-avatar-btn,.zr-top-menu)').forEach((pulsante) => {
+    document.querySelectorAll('.zr-shell :is(.zr-top-menu,.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
         const nome = pulsante.getAttribute('aria-label');
         if (nome && pulsante.textContent) {
             pulsante.removeAttribute('aria-label');
