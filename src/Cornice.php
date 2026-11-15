@@ -406,6 +406,7 @@ final class Cornice
             'aziende' => $letti['aziende'] ?? [],
             ...($letti === null ? [] : ['non_lette' => $letti['non_lette']]),
             'aggiornati_il' => $segno,
+            ...(Sessione::accesso() === null && Sessione::workspace() !== null ? self::assistenza($letti !== null) : []),
             ...($letti === null ? ['accettazione_richiesta' => true] : []),
         ];
     }

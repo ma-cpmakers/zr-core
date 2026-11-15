@@ -62,7 +62,7 @@ const finoA = async (fatto: () => boolean) => {
     }
 };
 
-describe('la fascia di assistenza nella cornice del cliente (voce #3878)', () => {
+describe('la fascia di assistenza nella cornice del cliente (voce 3878)', () => {
     it('senza `assistenza` il pezzo degli avvisi non si chiede, e non c\'è né barra né contenitore: la cornice del cliente è quella di sempre (T1.4)', async () => {
         await mostra(<CorniceDelCliente dati={dati} onLogout={() => {}} />);
         await finoA(() => false);
