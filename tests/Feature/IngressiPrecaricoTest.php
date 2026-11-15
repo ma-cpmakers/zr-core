@@ -13,7 +13,7 @@ use Zeiras\Core\Http\PrecaricoDegliIngressi;
 
 // Sprint 28 · T2 (voce #1811). Il precarico dei file d'ingresso: la risposta intera di una pagina dice in `Link` i file che
 // `@vite` ha messo nel documento, perché il browser cominci a scaricarli prima di leggere la pagina. È pensato per il solo
-// header: per Zeiras Early Hints su Cloudflare resta spento. Era un middleware di zr-board (`PrecaricoDellaBoard`): dalla
+// header: per Zeiras Early Hints è acceso dal pannello di Cloudflare (zr-pm 15/11, solo file statici nel 103). Era un middleware di zr-board (`PrecaricoDellaBoard`): dalla
 // `v1.18.0` è del pacchetto, e lo registra il frontend. Un modulo va come `preload; as=script; crossorigin` (senza `crossorigin`
 // il browser lo scaricherebbe due volte: la richiesta di un modulo è CORS), mai `modulepreload`: chi accendesse Early Hints
 // troverebbe nel 103 solo `preload` e `preconnect`.

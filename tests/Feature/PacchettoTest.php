@@ -5803,7 +5803,7 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'un Link di prima resta' => ['Un `Link` che la risposta porta già resta: il middleware aggiunge il suo accanto'],
     // Lettura della PR #61, R1, R2 e R6-R8 (`Decisione:` 11432 di zr-pm).
     'niente della persona' => ['col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua della persona, e nessun host che venga dalla richiesta'],
-    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento'],
+    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints è acceso dal pannello di Cloudflare, verificato da zr-devops il 15/11; zr-pm 15/11: acceso, solo file statici nel 103'],
     'di chi è la misura' => ['zr-pm dichiara che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente'],
     'il rischio di chi accende Early Hints' => ['Chi lo accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce o indovina un indirizzo, che la pagina esiste ed è stata aperta da poco'],
     'lo slug è un nome' => ['lo slug di un workspace è il nome di un\'azienda'],
@@ -5830,7 +5830,7 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
 ]);
 
-it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né che Early Hints è acceso (lettura della PR #61, R1 e R2)', function (string $diPrima) {
+it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né la frase di prima su Early Hints «acceso sulla zona», che dal 15/11 è acceso dal pannello di Cloudflare (lettura della PR #61, R1 e R2)', function (string $diPrima) {
     $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
 
     expect($sezione)->not->toBe('')
