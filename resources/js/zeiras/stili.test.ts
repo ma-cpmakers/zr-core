@@ -276,11 +276,12 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voce 3887, richiesta 290; v4.35.2, richiesta 293)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887 e 3888; v4.35.2, richiesta 293)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
+            '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }',
         ].join(' '));
     });
 
@@ -301,6 +302,16 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         // Il design system di oggi trascina le carte solo col drag HTML5: quando la 293 arriva, questo caso diventa rosso e il
         // rimedio si toglie, con resources/js/tocco.ts.
         expect(readFileSync(delRepo('resources/js/zeiras/DealPipeline.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
+    });
+
+    // Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il comando portato in vista dentro un contenitore che scorre si
+    // ferma a 4 px dal bordo, lo spazio dell'anello del fuoco (2 px più 2). Solo scroll-padding, che fuori dallo scorrimento
+    // non sposta niente; la prova in Chromium (0 px senza, 4 con, la forma della pagina uguale) è nella voce.
+    it('i contenitori che scorrono lasciano 4 px all\'anello del fuoco: scroll-padding var(--space-1), un token (voce 3888 · AC 1 e 3, richiesta 278)', () => {
+        expect(readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8')).toContain('--space-1:');
+        // Il bundle di oggi non lo fa da sé: quando la 278 arriva, questo caso diventa rosso e il rimedio si toglie.
+        expect(bundleCss).not.toMatch(/scroll-padding/);
+        expect(bundleIntero(bundleCss)).not.toMatch(/scroll-padding/);
     });
 });
 

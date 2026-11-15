@@ -69,6 +69,10 @@ si corregge nel pacchetto finché il design system non porta la richiesta che lo
 rimedio esce dal file. Il primo: il titolo della `SectionCard` (`.zr-section-card-title`) con una parola senza spazi, un nome o
 un codice, va a capo anche dentro la parola (`overflow-wrap: anywhere`), e a 390 px la pagina non scorre di lato (richiesta
 290, da zr-cashflow). Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto.
+Il secondo (#3888, richiesta 278, da zr-crm): i contenitori che scorrono (il corpo del `DetailPanel`, la tabella, le
+linguette sottolineate che a 390 px scorrono di lato, l'area della pagina) hanno `scroll-padding: var(--space-1)`, e il
+comando che il browser porta in vista col fuoco si ferma a 4 px dal bordo invece che a filo: l'anello del fuoco si vede per
+intero. Fuori dallo scorrimento la pagina non cambia.
 
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:

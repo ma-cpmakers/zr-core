@@ -17,3 +17,10 @@
  */
 .zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }
+
+/*
+ * Richiesta 278 (zr-crm-14, zr-pm-74 15/11; voce #3888): l'anello del fuoco (2 px più 2 di scostamento) non è tagliato quando il
+ * browser porta in vista un comando dentro un contenitore che scorre: il comando si ferma a 4 px dal bordo, non a filo. Solo
+ * scroll-padding: fuori dallo scorrimento la pagina non cambia.
+ */
+.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }

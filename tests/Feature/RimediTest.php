@@ -30,3 +30,15 @@ it('il README dice il rimedio, la richiesta che lo toglie e che un modulo può t
     'la riga della versione' => ['va a capo, e a 390 px la pagina non scorre di lato (#3887)'],
     'il modulo toglie la regola' => ['Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto.'],
 ]);
+
+// Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il secondo rimedio, lo scroll-padding dei contenitori che scorrono,
+// che lascia all'anello del fuoco i suoi 4 px; sta nello stesso file, e il README lo dice.
+it('rimedi.css porta lo scroll-padding dei contenitori che scorrono, e il README lo dice (voce 3888 · AC 3)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il secondo (#3888, richiesta 278, da zr-crm)')
+        ->toContain('si ferma a 4 px dal bordo invece che a filo');
+});
