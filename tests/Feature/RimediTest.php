@@ -55,3 +55,15 @@ it('rimedi.css porta i contorni coi colori forzati e quello del campo Cerca, e i
         ->toContain('Il terzo e il quarto (#3889, richieste 288 e 279')
         ->toContain('4,04:1 sulla barra, e coi colori forzati un contorno vero');
 });
+
+// Voce #3890 (richiesta 283; zr-pm-74 15/11): sotto i 720 px, con la ricerca aperta, le azioni della barra si stringono sotto il
+// campo e non allargano la pagina; restano nel giro del Tab (#2805).
+it('rimedi.css stringe le azioni della barra sotto la ricerca aperta, e il README lo dice (voce 3890 · AC 3)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il quinto (#3890, richiesta 283')
+        ->toContain('A ricerca chiusa la barra aspetta la richiesta.');
+});

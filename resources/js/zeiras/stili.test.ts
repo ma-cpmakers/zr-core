@@ -276,7 +276,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887 e 3888; v4.35.2, richiesta 293)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889 e 3890; v4.35.2, richiesta 293)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
@@ -286,6 +286,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             '@media (width > 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }',
             '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',
             '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
+            '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
         ].join(' '));
     });
 
@@ -346,6 +347,19 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
             expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
         }
+    });
+
+    // Voce #3890 (richiesta 283; zr-pm-74 15/11). Sotto i 720 px il campo della ricerca aperto copre la barra; le azioni restano
+    // sotto e, a 320 px col testo al 200%, allargavano la pagina a 338 px. La prova in Chromium (338 senza, 320 con; R390.9 di
+    // uat-cornice, il Tab dalla ricerca a campanella e profilo della #2805, ancora ✅) è nella voce.
+    it('con la ricerca aperta sotto i 720 px le azioni della barra si stringono e non allargano la pagina, e restano nel DOM (voce 3890, richiesta 283)', () => {
+        // Il bundle di oggi dà a .zr-top-actions solo display, allineamento, spazio e posizione: quando la 283 arriva, questo caso
+        // diventa rosso e il rimedio si toglie.
+        const regole = [...bundleCss.matchAll(/\.zr-top-actions \{([^}]*)\}/g)].map((m) => m[1]).join(' ');
+        expect(regole).toContain('display: flex');
+        expect(regole).not.toMatch(/min-width|overflow|flex-wrap/);
+        // Non `display: none` né `visibility: hidden`: campanella e profilo restano nel giro del Tab dopo la ricerca (#2805).
+        expect(readFileSync(delRepo('resources/css/rimedi.css'), 'utf8')).not.toMatch(/zr-top-actions \{[^}]*(?:display|visibility)/);
     });
 });
 

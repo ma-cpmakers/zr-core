@@ -48,3 +48,14 @@
 @media (forced-colors: active) {
   .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; }
 }
+
+/*
+ * Richiesta 283 (zr-core, giro B del 14/11; zr-pm-74 15/11; voce #3890): sotto i 720 px il campo della ricerca aperto copre la
+ * barra, ma le azioni del modulo, la campanella e il profilo restano sotto di lui e, a 320 px col testo al 200%, allargano la
+ * pagina (338 px su 320). Mentre la ricerca è aperta, a quella larghezza, il loro contenitore si stringe e taglia ciò che esce:
+ * sono già coperte, e restano nel giro del Tab dopo la ricerca (#2805), che si chiude quando il fuoco arriva a loro. A ricerca
+ * chiusa la barra resta com'è (386 px su 320 con un'azione del modulo): quello aspetta la 283.
+ */
+@media (max-width: 720px) {
+  .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; }
+}
