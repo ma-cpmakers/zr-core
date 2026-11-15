@@ -27,10 +27,18 @@
   position: relative;
   z-index: calc(var(--z-dialog) + 3);
 }
-.zr-assist-bar strong { font-weight: 650; }
+.zr-assist-bar strong { font-weight: var(--text-heading-1--font-weight); }
 .zr-assist-bar > span { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); flex: 1 1 320px; min-width: 0; }
 .zr-assist-bar > span > :last-child { font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight); }
 .zr-assist-bar .zr-btn { background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus); }
+/*
+ * Un dialogo sta sopra la barra (revisione della v4.34.0, R1): il suo velo, in `fixed` su tutta la finestra, ha uno strato più alto
+ * di quello della barra, che resta sopra il cassetto. Sopra i 720 px il velo del design system ha `--z-dialog`, sotto la barra: un
+ * dialogo alto, che arriva a 16 px dalla cima, avrebbe titolo e ✕ coperti. Sotto i 721 px era già sopra, per l'ordine.
+ * `!important` perché il pezzo dei rimedi scrive sul velo di un dialogo aperto `--z-dialog` + 2 nello stile dell'elemento
+ * (`dialogoSopraIlPannello`), che una regola senza vincerebbe: in Chromium la barra restava sopra (UAT della v4.34.1).
+ */
+.zr-assist .zr-scrim:not(.is-inline) { z-index: calc(var(--z-dialog) + 4) !important; }
 .zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; container-type: size; }
 .zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
 /*

@@ -31,6 +31,8 @@ it('il pulsante della fascia dice «Termina e torna al backoffice» nelle tre li
         ->and($testi['assistText'])->toBe($modifiche)
         ->and($testi['assistReadOnly'])->toBe($solaLettura)
         ->and($testi['assistTitle'])->toContain('{name}')
+        // Revisione della v4.34.0, R5: il separatore e il posto dell'email sono del titolo, non del codice.
+        ->and($testi['assistTitle'])->toContain('{email}')
         ->and($testi['assistText'].$testi['assistReadOnly'])->not->toContain('{email}');
 })->with([
     'italiano' => ['it', 'Termina e torna al backoffice', 'Le modifiche che fai valgono come fatte da {firstName}', 'Sola lettura: puoi guardare, non modificare'],

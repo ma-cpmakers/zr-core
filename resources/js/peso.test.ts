@@ -794,15 +794,16 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // e non nel JS d'ingresso. Il pezzo ha un tetto suo: la misura più 20. Dalla v4.8.1 (voce 3055 · T1.2) porta anche l'Alert: 1.088 misurati. Dalla v4.22.0
     // (#2909, Decisione 22312) anche la fascia di assistenza coi suoi testi in tre lingue: 1.534 misurati. Dalla v4.25.0 (#3417,
     // Decisione 22468) anche «Il mio spazio», coi suoi testi in tre lingue e il clic: 1.756 misurati. Dalla v4.30.0 (3511), coi
-    // moduli per componente, l'Alert non porta più le righe del bundle che non usa: 1.710 misurati.
-    it('i testi dei due avvisi della cornice ridotta non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo degli avvisi, che non è un altro pezzo, e pesa con gzip al più 1.730 byte, con l\'Alert, la fascia di assistenza e «Il mio spazio» (v3.7.0: 778; v4.8.1: 1.108; v4.22.0: 1.554; v4.25.0: 1.776; v4.30.0)', () => {
+    // moduli per componente, l'Alert non porta più le righe del bundle che non usa: 1.710 misurati. Dalla v4.34.1 (revisione della
+    // v4.34.0, R2; sì di zr-pm-74 15/11) il pezzo richiede una volta il foglio di stile che non è arrivato: 1.839 misurati.
+    it('i testi dei due avvisi della cornice ridotta non stanno nel JS d\'ingresso, in nessuna lingua: stanno nel pezzo degli avvisi, che non è un altro pezzo, e pesa con gzip al più 1.859 byte, con l\'Alert, la fascia di assistenza e «Il mio spazio» (v3.7.0: 778; v4.8.1: 1.108; v4.22.0: 1.554; v4.25.0: 1.776; v4.30.0: 1.730; v4.34.1)', () => {
         const titoli = [avvisiItaliani.downTitle, avvisiSpagnoli.downTitle, avvisiInglesi.downTitle, avvisiItaliani.acceptanceText];
         const [avvisi = '', ...altri] = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEGLI_AVVISI));
 
         expect([soloCornice.js, perNome.js, diSempre.js].map((js) => titoli.filter((titolo) => js.includes(titolo)))).toStrictEqual([[], [], []]);
         expect([altri, titoli.filter((titolo) => !avvisi.includes(titolo))]).toStrictEqual([[], []]);
         expect([DELLA_CAMPANELLA, DELLA_RICERCA, DEI_RIMEDI].filter((segno) => avvisi.includes(segno))).toStrictEqual([]);
-        expect(gzip(avvisi)).toBeLessThanOrEqual(1_730);
+        expect(gzip(avvisi)).toBeLessThanOrEqual(1_859);
     });
 
     // Sprint 115 · T3.4 (voce #2909): i testi della fascia di assistenza stanno nel pezzo degli avvisi, in tre lingue, e non nel

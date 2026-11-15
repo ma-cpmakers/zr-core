@@ -6,7 +6,7 @@
     "downTitle": "Zeiras non risponde",
     "downText": "Moduli, notifiche e ricerca tornano quando Zeiras risponde. Riprova fra poco.",
     "downOff": "Non disponibile finché Zeiras non risponde.",
-    "assistTitle": "Stai usando Zeiras come {name}",
+    "assistTitle": "Stai usando Zeiras come {name} · {email}",
     "assistText": "Le modifiche che fai valgono come fatte da {firstName}",
     "assistReadOnly": "Sola lettura: puoi guardare, non modificare",
     "assistEnd": "Termina e torna al backoffice",
