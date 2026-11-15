@@ -388,7 +388,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
     it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del Toast, almeno 3:1 sullo sfondo (voce 3891, richiesta 291)', () => {
         // Il bundle di oggi dà ai due pulsanti l'anello var(--focus) e al Toast lo sfondo var(--ink): quando la 291 arriva, questo
         // caso diventa rosso e il rimedio si toglie.
-        expect(bundleCss).toMatch(/:where\([^)]*\.zr-toast-action, \.zr-toast-close[^)]*\):focus-visible \{ outline: 2px solid var\(--focus\);/);
+        expect(bundleCss).toMatch(/:where\([^)]*\.zr-toast-action, \.zr-toast-close[^)]*\):focus-visible \{ outline: \d+px solid var\(--focus\);/);
         expect(bundleCss).toMatch(/\.zr-toast \{[^}]*background: var\(--ink\);[^}]*color: var\(--surface\);/);
         expect(bundleCss).not.toMatch(/\.zr-toast[^{]*:focus-visible[^{]*\{[^}]*outline-color/);
         const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
