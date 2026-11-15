@@ -391,7 +391,7 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
 }
 
 /** Il pezzo dei testi degli avvisi: chi lo chiede di nuovo dopo un fallimento lo chiede come gli altri pezzi a richiesta. */
-const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
+export const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
 
 /**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice

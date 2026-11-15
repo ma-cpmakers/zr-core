@@ -29,6 +29,8 @@ function backofficeDelCliente(array $risposte = []): void
         '/v1/io' => ioDelCliente(),
         '/v1/io/aziende' => ['data' => [], 'successivo' => null],
         '/v1/io/workspace' => ['data' => [], 'successivo' => null],
+        // Letto solo in una sessione col solo gettone del workspace (voce #3878): lì un accesso qualunque non è un'assistenza.
+        '/v1/accessi/corrente' => accessoCorrente(),
     ];
 
     Http::fake(function (Request $richiesta) use ($risposte) {
@@ -369,4 +371,77 @@ it('datiDelCliente() prende una lingua con la forma di una lingua anche se Zeira
     backofficeDelCliente();
 
     expect(Cornice::datiDelCliente('pt-BR')['lingua'])->toBe('pt-BR');
+});
+
+// Voce #3878 (R3 della revisione della v4.34.0, zr-pm-74 15/11): la fascia di assistenza anche nella cornice del cliente. Il
+// backoffice apre un'assistenza solo in un workspace della persona, e dalla 0.12.141 di zr-auth la sessione di un'assistenza ha il
+// solo gettone del workspace (`Sessione::entraInAssistenza`): lo staff che assiste un membro che è anche cliente e apre «Il mio
+// spazio» ha quella sessione. Lì `datiDelCliente()` legge accessi.corrente.mostra col gettone del workspace, come `dati()`; con il
+// gettone dell'accesso nella sessione non è mai un'assistenza, e non chiama. accessoCorrente() e annaAssistita() vengono da
+// CorniceAssistenzaTest.php.
+
+/** La sessione di un'assistenza: il solo gettone del workspace, senza l'accesso, come la lascia `Sessione::entraInAssistenza`. */
+function sessioneDiAssistenza(): string
+{
+    $utente = ['id' => 'uat-ada', 'nome' => 'UAT Ada', 'email' => 'uat-ada@example.com', 'email_verificata_il' => now()->toIso8601String(), 'lingua' => 'it', 'fuso_orario' => 'Europe/Rome'];
+    Sessione::entraInAssistenza(['gettone' => 'zr_uat_assistenza', 'scade_il' => now()->addHours(4)->toIso8601String(), 'utente' => $utente, 'workspace' => ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'], 'ruolo' => 'membro']);
+
+    return 'zr_uat_assistenza';
+}
+
+it('in una sessione col solo gettone del workspace i dati del cliente portano `assistenza`, in fondo, letta col gettone del workspace: la persona assistita e se è di sola lettura (voce #3878 · T1.1)', function (bool $solaLettura) {
+    $gettone = sessioneDiAssistenza();
+    backofficeDelCliente(['/v1/accessi/corrente' => accessoCorrente(annaAssistita($solaLettura))]);
+
+    $dati = Cornice::datiDelCliente();
+
+    expect(array_keys($dati))->toBe(['lingua', 'persona', 'aziende', 'non_lette', 'aggiornati_il', 'assistenza'])
+        ->and($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => 'Bianchi', 'email' => 'anna@example.com'], 'sola_lettura' => $solaLettura])
+        ->and(Http::recorded()->filter(fn (array $coppia) => parse_url($coppia[0]->url(), PHP_URL_PATH) === '/v1/accessi/corrente')->every(fn (array $coppia) => $coppia[0]->hasHeader('Authorization', 'Bearer '.$gettone)))->toBeTrue()
+        ->and(array_count_values(chiamateDelCliente())['/v1/accessi/corrente'] ?? 0)->toBe(1);
+})->with(['si scrive' => [false], 'sola lettura' => [true]]);
+
+it('in una sessione col solo gettone del workspace che non è un\'assistenza la chiave `assistenza` non c\'è, nemmeno null; la lettura resta nella sessione (voce #3878 · T1.1)', function () {
+    sessioneDiAssistenza();
+    backofficeDelCliente();
+
+    $prima = Cornice::datiDelCliente();
+    $dopo = Cornice::datiDelCliente();
+
+    expect($prima)->not->toHaveKey('assistenza')
+        ->and($dopo)->not->toHaveKey('assistenza')
+        ->and(array_count_values(chiamateDelCliente())['/v1/accessi/corrente'] ?? 0)->toBe(1);
+});
+
+it('con il gettone dell\'accesso nella sessione, con o senza workspace, i dati del cliente non chiamano accessi.corrente.mostra e non hanno `assistenza` (voce #3878 · T1.2)', function (bool $conWorkspace) {
+    sessioneAMano($conWorkspace ? ['id' => 'uat-ws', 'nome' => 'UAT Marketing', 'slug' => 'uat-marketing'] : null);
+    backofficeDelCliente(['/v1/accessi/corrente' => accessoCorrente(annaAssistita())]);
+
+    expect(Cornice::datiDelCliente())->not->toHaveKey('assistenza')
+        ->and(chiamateDelCliente())->not->toContain('/v1/accessi/corrente');
+})->with(['senza workspace' => [false], 'con un workspace' => [true]]);
+
+it('col 403 accettazione_richiesta i dati ridotti del cliente portano l\'assistenza già letta, prima di `accettazione_richiesta`, senza leggerla; mai letta, non la leggono (voce #3878 · T1.3)', function () {
+    sessioneDiAssistenza();
+    $io = ioDelCliente();
+    backofficeDelCliente([
+        '/v1/accessi/corrente' => accessoCorrente(annaAssistita()),
+        '/v1/io' => function () use (&$io) {
+            return is_array($io) ? Http::response($io) : $io;
+        },
+    ]);
+    $io = accettazioneRichiesta();
+
+    $mai = Cornice::datiDelCliente();
+    expect($mai)->not->toHaveKey('assistenza')
+        ->and(chiamateDelCliente())->not->toContain('/v1/accessi/corrente');
+
+    $io = ioDelCliente();
+    Cornice::datiDelCliente();
+    $io = accettazioneRichiesta();
+    $ridotti = Cornice::datiDelCliente();
+
+    expect(array_slice(array_keys($ridotti), -3))->toBe(['aggiornati_il', 'assistenza', 'accettazione_richiesta'])
+        ->and($ridotti['assistenza']['persona']['nome'])->toBe('Anna')
+        ->and(array_count_values(chiamateDelCliente())['/v1/accessi/corrente'] ?? 0)->toBe(1);
 });

@@ -352,7 +352,7 @@ final class Cornice
      * quelle della sessione dopo `Sessione::aggiorna` con io.mostra, letto col gettone dell'accesso (Api::persona), che a
      * workspace, ruolo e non lette risponde null; la foto come in `dati()`; le aziende in cui la persona è membro, coi loro
      * workspace, come in `dati()` (la persona che è anche membro sceglie lì un suo workspace: schermata 13). Un workspace nella
-     * sessione non conta: qui non si legge niente col suo gettone, e nei dati non c'è. Le aziende di cui la persona è cliente non
+     * sessione non conta, e nei dati non c'è: col suo gettone si legge solo l'assistenza, sotto. Le aziende di cui la persona è cliente non
      * ci sono ancora: aspettano zr-backoffice #3320. Dalla `v4.23.0` (#3398) `non_lette` è il numero delle sue notifiche da cliente
      * non lette, `notifiche_non_lette` della stessa lettura di io.mostra: un intero da 0 in su, e 0 quando il backoffice dà null,
      * non lo dà o dà altro (prima del #3323 a quel gettone dava null). Dalla `v4.14.0` (#3335), dopo una
@@ -366,7 +366,14 @@ final class Cornice
      * `dati()`: la persona della sessione senza foto, nessuna azienda, senza `non_lette` e con `accettazione_richiesta`. Ogni altro errore arriva a chi
      * chiama com'è, e una risposta di io.mostra senza la persona è BackofficeNonRisponde.
      *
-     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette?: int<0, max>, aggiornati_il: string, accettazione_richiesta?: true}|null
+     * Dalla `v4.35.0` (voce #3878, R3 della revisione della `v4.34.0`) in una sessione col solo gettone del workspace — quella di
+     * un'assistenza: da zr-auth 0.12.141 `Sessione::entraInAssistenza` toglie l'accesso — dopo il segno c'è `assistenza`, come in
+     * `dati()` e letta allo stesso modo (accessi.corrente.mostra col gettone del workspace, una volta per sessione, tenuta nella
+     * sessione: `assistenza()`): lo staff che assiste un membro che è anche cliente e apre «Il mio spazio» vede la fascia. Il
+     * backoffice apre un'assistenza solo in un workspace della persona: chi è solo cliente non si assiste. Con il gettone
+     * dell'accesso nella sessione non è un'assistenza, e non si chiama. Coi dati ridotti l'assistenza c'è solo se già letta.
+     *
+     * @return array{lingua: string, persona: array{nome: string, email: string, impronta: string|null, foto?: string}, aziende: list<array{id: string, nome: string, workspace: list<array{id: string, nome: string, slug: string, colore?: string}>, nuovo_workspace: bool}>, non_lette?: int<0, max>, aggiornati_il: string, assistenza?: array{persona: array{nome: string, cognome: string|null, email: string}, sola_lettura: bool}, accettazione_richiesta?: true}|null
      */
     public static function datiDelCliente(?string $lingua = null): ?array
     {
