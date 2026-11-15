@@ -282,6 +282,10 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
             '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }',
+            '@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } }',
+            '@media (width > 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }',
+            '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',
+            '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
         ].join(' '));
     });
 
@@ -312,6 +316,31 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         // Il bundle di oggi non lo fa da sé: quando la 278 arriva, questo caso diventa rosso e il rimedio si toglie.
         expect(bundleCss).not.toMatch(/scroll-padding/);
         expect(bundleIntero(bundleCss)).not.toMatch(/scroll-padding/);
+    });
+
+    // Voce #3889 (richieste 288 e 279; zr-pm-74 15/11). Coi colori forzati la voce attiva del menu e il segmento scelto hanno un
+    // contorno; il campo Cerca chiuso, sopra i 720 px, ha il contorno che il design system gli dà da aperto, e coi colori forzati
+    // un contorno vero. La prova in Chromium (prima e dopo, coi colori forzati e senza, 1280 e 390 px) è nella voce.
+    it('coi colori forzati la voce attiva e il segmento scelto non restano col solo grassetto (voce 3889 · AC 1 e 4, richiesta 288)', () => {
+        // Il bundle di oggi segna coi colori forzati solo .zr-radio-card e .zr-color: quando la 288 arriva, questo caso diventa rosso.
+        const forzati = [...bundleCss.matchAll(/@media \(forced-colors: active\) \{([^\n]*)\}/g)].map((m) => m[1]).join(' ');
+        expect(forzati).toContain('.zr-radio-card');
+        expect(forzati).not.toMatch(/zr-nav-item|zr-seg-item/);
+    });
+
+    it('il campo Cerca chiuso sopra i 720 px ha il contorno del campo aperto, line-strong a 4,04:1 sul bianco della barra (voce 3889 · AC 2 e 4, richiesta 279)', () => {
+        expect(bundleCss).toContain('.zr-search.is-open { box-shadow: inset 0 0 0 1px var(--line-strong); }');
+        expect(bundleCss).toMatch(/\.zr-top \{[^}]*background: var\(--surface-raised\)/);
+        // Il bundle di oggi non dà al campo chiuso né bordo né ombra: quando la 279 arriva, questo caso diventa rosso.
+        for (const [, regola] of bundleCss.matchAll(/(?:^|\n|\} ?|\s)\.zr-search \{([^}]*)\}/g)) expect(regola).not.toMatch(/(?:^|;)\s*(?:border(?:-(?:top|right|bottom|left|width|style|color))?|box-shadow|outline)\s*:/);
+        // Il contrasto si calcola dai token del pacchetto, non da colori scritti qui: almeno 3:1 (WCAG 1.4.11).
+        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
+        const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(token)?.[1] ?? '';
+        const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
+            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+            .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
+        const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
+        expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
     });
 });
 

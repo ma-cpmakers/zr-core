@@ -42,3 +42,16 @@ it('rimedi.css porta lo scroll-padding dei contenitori che scorrono, e il README
         ->toContain('Il secondo (#3888, richiesta 278, da zr-crm)')
         ->toContain('si ferma a 4 px dal bordo invece che a filo');
 });
+
+// Voce #3889 (richieste 288 e 279; zr-pm-74 15/11): coi colori forzati la voce attiva del menu e il segmento scelto hanno un
+// contorno, e il campo Cerca chiuso si distingue dalla barra; nello stesso file, e il README lo dice.
+it('rimedi.css porta i contorni coi colori forzati e quello del campo Cerca, e il README lo dice (voce 3889 · AC 4)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); }')
+        ->toContain('.zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il terzo e il quarto (#3889, richieste 288 e 279')
+        ->toContain('4,04:1 sulla barra, e coi colori forzati un contorno vero');
+});

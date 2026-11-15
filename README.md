@@ -73,6 +73,10 @@ Il secondo (#3888, richiesta 278, da zr-crm): i contenitori che scorrono (il cor
 linguette sottolineate che a 390 px scorrono di lato, l'area della pagina) hanno `scroll-padding: var(--space-1)`, e il
 comando che il browser porta in vista col fuoco si ferma a 4 px dal bordo invece che a filo: l'anello del fuoco si vede per
 intero. Fuori dallo scorrimento la pagina non cambia.
+Il terzo e il quarto (#3889, richieste 288 e 279, da zr-crm, zr-bookings e zr-superadmin): coi colori forzati (il
+Contrasto elevato di Windows) la voce attiva del menu e il segmento scelto hanno un contorno (`--border-ring`), e non restano col solo
+grassetto; sopra i 720 px il campo Cerca chiuso ha il contorno che il design system gli dà già da aperto, `var(--line-strong)`,
+4,04:1 sulla barra, e coi colori forzati un contorno vero. Sotto i 720 px, chiuso, resta l'icona.
 
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
@@ -381,8 +385,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 108,1 KB | 17,8 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 104,9 KB | 17,4 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 108,7 KB | 17,8 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 105,5 KB | 17,4 KB | 4,8 KB | 1,7 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia

@@ -24,3 +24,27 @@
  * scroll-padding: fuori dallo scorrimento la pagina non cambia.
  */
 .zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }
+
+/*
+ * Richiesta 288 (zr-crm-35, zr-pm-74 15/11; voce #3889): coi colori forzati (Contrasto elevato di Windows) sfondo e ombra della
+ * voce attiva del menu e del segmento scelto si azzerano, e resta solo il grassetto: un contorno, che i colori forzati tengono,
+ * come il design system fa già per .zr-radio-card e .zr-color. Col fuoco sopra vale l'anello del fuoco.
+ */
+@media (forced-colors: active) {
+  .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); }
+}
+
+/*
+ * Richiesta 279 (zr-crm-14, zr-bookings, zr-superadmin; zr-pm-74 15/11; voce #3889): il campo Cerca chiuso non si distingue dalla
+ * barra (1,18:1). Sopra i 720 px prende il contorno che il design system gli dà già da aperto (.zr-search.is-open), 4,04:1 sulla
+ * barra; sotto, chiuso, resta l'icona. Coi colori forzati l'ombra sparisce: un contorno vero, sopra i 720 px e da aperto.
+ */
+@media (width > 720px) {
+  .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); }
+}
+@media (forced-colors: active) and (width > 720px) {
+  .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; }
+}
+@media (forced-colors: active) {
+  .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; }
+}
