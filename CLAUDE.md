@@ -35,7 +35,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   `resources/css/assistenza.css`, la fascia di assistenza come nel design di admin: una barra citrus sopra l'`AppShell`, fuori dal
   contenuto (la cornice mette l'`AppShell` in un contenitore solo in assistenza; il pulsante «Termina e torna al backoffice»). Non
   lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11). Dalla `v5.0.0` (#3538) le regole del design system in quei CSS stanno in `@layer zeiras`, sotto la riga
-  dell'ordine degli strati in testa (`ORDINE_DEGLI_STRATI` di `scripts/componenti-genera.mjs`, provata in vitest con una build vera di Tailwind 4).
+  dell'ordine degli strati in testa (`ORDINE_DEGLI_STRATI` di `scripts/componenti-genera.mjs`, provata in vitest con una build vera di Tailwind 4), e i rimedi
+  con loro (`@import './rimedi.css' layer(zeiras);`).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.

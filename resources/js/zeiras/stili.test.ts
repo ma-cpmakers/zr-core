@@ -25,7 +25,7 @@ const corpo = (css: string) => css
     .replace(/\}\n$/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
 /** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3887). */
-const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"] as const;
+const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css' layer(zeiras);"] as const;
 
 describe('gli stili dei componenti a parte escono dal CSS del primo carico (sprint 75 · T1.1, T1.2)', () => {
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
@@ -279,8 +279,8 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
     it('bundle.css e zeiras.css importano rimedi.css sotto avanzamento.css, una volta sola, e la regola non sta nella parte copiata dal bundle (AC 2)', () => {
         for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
             const righe = css.split('\n');
-            expect(righe.filter((riga) => riga === "@import './rimedi.css';")).toHaveLength(1);
-            expect(righe.indexOf("@import './rimedi.css';")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
+            expect(righe.filter((riga) => riga === "@import './rimedi.css' layer(zeiras);")).toHaveLength(1);
+            expect(righe.indexOf("@import './rimedi.css' layer(zeiras);")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
             expect(css).not.toMatch(/\.zr-section-card-title \{[^}]*overflow-wrap/);
         }
     });

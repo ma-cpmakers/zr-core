@@ -17,7 +17,10 @@ it('lo zip del pacchetto porta rimedi.css, e bundle.css e zeiras.css lo importan
     foreach (['bundle.css', 'zeiras.css'] as $css) {
         $righe = explode("\n", File::get("$radice/resources/css/$css"));
 
-        expect(array_slice($righe, 1, 4))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"]);
+        // Dalla `v5.0.0` (voce #3538) la prima riga è quella dell'ordine degli strati, la seconda il commento che dice il file generato;
+        // i rimedi entrano nello strato del design system, e una classe di utilità del modulo li supera come supera le sue regole.
+        expect($righe[0])->toBe('@layer theme, base, zeiras, components, utilities;')
+            ->and(array_slice($righe, 2, 4))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css' layer(zeiras);"]);
     }
 });
 
