@@ -1765,12 +1765,24 @@ const MISURE_DELLA_CORNICE = () => {
         && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
         && /hidden|clip/.test(getComputedStyle(el).overflowX) && el.scrollWidth > el.clientWidth + 1)
         .map((el) => `${nome(el)} ${el.scrollWidth}/${el.clientWidth}`);
+    // Se la pagina scorre di lato senza comandi fuori, chi la allarga: gli elementi della cornice più esterni che escono a destra
+    // (non dentro un contenitore che scorre o taglia: lì l'uscita non allarga la pagina), anche se coperti o `inert`, come le azioni
+    // della barra sotto il campo della ricerca aperto: la pagina la allargano lo stesso.
+    const esce = (el) => el.getBoundingClientRect().right + scrollX > larghezza + 1;
+    const contenuto = (el) => { for (let su = el.parentElement; su && su !== document.body; su = su.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(su).overflowX)) return true; return false; };
+    // Un elemento `fixed` (o dentro uno) sta nella finestra, non nella pagina: non la allarga, e coi conti della pagina sembrerebbe
+    // spostato di quanto la pagina è già scorsa.
+    const fisso = (el) => { for (let su = el; su && su !== document.body; su = su.parentElement) if (getComputedStyle(su).position === 'fixed') return true; return false; };
+    const larghi = [...document.querySelectorAll('body *')].filter((el) => !dellaPagina(el) && el.checkVisibility() && el.getBoundingClientRect().width > 0 && !fisso(el) && esce(el) && !contenuto(el)
+        && !(el.parentElement && el.parentElement !== document.body && esce(el.parentElement) && el.parentElement.checkVisibility()))
+        .map((el) => { const r = el.getBoundingClientRect(); return `${nome(el)} ${Math.round(r.left + scrollX)}→${Math.round(r.right + scrollX)}`; });
     return {
         pagina: [document.documentElement.scrollWidth, larghezza],
         comandi: comandi.length,
         fuori,
         tagliati,
         puntini,
+        larghi,
     };
 };
 
@@ -1809,6 +1821,14 @@ const CONTRASTI_DELLA_CORNICE = () => {
                     const r = rapporto(sopra(proprio, dietro), dietro);
                     if (r > migliore) { migliore = r; dove = `fondo di ${nome(su)}`; }
                 }
+                // Un'ombra interna netta (sfocatura 0, almeno 1 px) disegna il bordo come lo fa `border`: il campo Cerca chiuso sopra
+                // i 720 px dalla v4.36.0 (#3889, richiesta 279), `inset 0 0 0 1px var(--line-strong)`.
+                for (const [, colore, sfocatura, allargo] of s.boxShadow.matchAll(/(rgba?\([^)]*\))\s+-?[\d.]+px\s+-?[\d.]+px\s+([\d.]+)px\s+([\d.]+)px\s+inset/g)) {
+                    const linea = rgba(colore);
+                    if (parseFloat(sfocatura) > 0 || parseFloat(allargo) < 1 || linea[3] === 0) continue;
+                    const r = rapporto(sopra(linea, dietro), dietro);
+                    if (r > migliore) { migliore = r; dove = `ombra interna di ${nome(su)}`; }
+                }
             }
             return { campo: nome(el), rapporto: Math.round(migliore * 100) / 100, dove: dove || 'né bordo né fondo' };
         });
@@ -1838,7 +1858,7 @@ const ANELLO = () => {
 };
 
 /** Le richieste al design system già aperte per un difetto: il numero accanto al ❌, perché chi legge non ne apra un doppione. */
-const RICHIESTE_NOTE = [[/zr-search/, 279], [/zr-nav-label/, 276], [/zr-dialog/, 280], [/zr-alert/, 274], [/zr-bell|zr-avatar-btn|zr-top-actions|zr-menu-item/, 283]];
+const RICHIESTE_NOTE = [[/zr-search(?![\w-])/, 279], [/zr-nav-label/, 276], [/zr-dialog/, 280], [/zr-alert/, 274], [/zr-bell|zr-avatar-btn|zr-top-actions|zr-menu-item/, 283]];
 const conLaRichiesta = (righe) => righe.map((riga) => { const nota = RICHIESTE_NOTE.find(([chi]) => chi.test(riga)); return nota ? `${riga} [richiesta ${nota[1]}]` : riga; });
 
 /**
@@ -1874,7 +1894,7 @@ async function accessibilitaDellaCornice(page, apri) {
             }
             const m = await page.evaluate(MISURE_DELLA_CORNICE);
             const scorre = m.pagina[0] > m.pagina[1] + 1;
-            const difetti = conLaRichiesta([...m.fuori.map((f) => `fuori dalla finestra: ${f}`), ...m.tagliati.map((t) => `tagliato: ${t}`)]);
+            const difetti = conLaRichiesta([...m.fuori.map((f) => `fuori dalla finestra: ${f}`), ...m.tagliati.map((t) => `tagliato: ${t}`), ...(scorre && !m.fuori.length ? m.larghi.slice(0, 3).map((l) => `allarga la pagina: ${l}`) : [])]);
             if (larghezza === 320) {
                 scrivi(!scorre && difetti.length === 0 ? '✅' : '❌', `AC.1 ${quale}`, `${vista}, pannello «${quale}»: la pagina non scorre di lato e ogni comando della cornice sta nella finestra`, `pagina ${m.pagina.join('/')}, ${m.comandi} comandi${difetti.length ? `; ${difetti.slice(0, 8).join('; ')}${difetti.length > 8 ? ` (e altri ${difetti.length - 8})` : ''}` : ''}`);
             }
@@ -1891,7 +1911,7 @@ async function accessibilitaDellaCornice(page, apri) {
     await pausa(800);
     const { campi } = await page.evaluate(CONTRASTI_DELLA_CORNICE);
     for (const campo of campi) {
-        scrivi(campo.rapporto >= 3 ? '✅' : '❌', `AC.3 ${campo.campo}`, 'a 1280 px il campo della cornice si distingue dal fondo: bordo o fondo almeno a 3:1', conLaRichiesta([`${campo.rapporto}:1, ${campo.dove}`])[0] + (campo.campo.includes('zr-search') && !/279/.test(campo.dove) && campo.rapporto < 3 ? ' [richiesta 279]' : ''));
+        scrivi(campo.rapporto >= 3 ? '✅' : '❌', `AC.3 ${campo.campo}`, 'a 1280 px il campo della cornice si distingue dal fondo: bordo o fondo almeno a 3:1', campo.rapporto >= 3 ? `${campo.rapporto}:1, ${campo.dove}` : conLaRichiesta([`${campo.rapporto}:1, ${campo.dove}`])[0] + (campo.campo.includes('zr-search') && !/richiesta 279/.test(conLaRichiesta([campo.dove])[0]) ? ' [richiesta 279]' : ''));
     }
     if (!campi.length) scrivi('➖', 'AC.3', 'a 1280 px i campi della cornice', 'nessun campo visibile');
     await page.locator('body').focus();
