@@ -181,11 +181,11 @@ export function coiFontDelPacchetto(css) {
 
 // Voce #3534 (Decisione 23090 di zr-pm-07): sotto i font, gli `@import` dei file del pacchetto scritti a mano, nell'ordine:
 // movimento.css, la regola che spegne le transizioni per chi chiede meno movimento, e dalla voce #3535 avanzamento.css, la barra
-// d'avanzamento di Inertia coi token. Nei CSS generati c'è solo la riga che importa ognuno. La fascia di assistenza
+// d'avanzamento di Inertia coi token, e dalla voce #3887 rimedi.css, i rimedi provvisori al CSS del design system. Nei CSS generati c'è solo la riga che importa ognuno. La fascia di assistenza
 // (resources/css/assistenza.css, voce #3723) non sta qui: la importa il pezzo degli avvisi, e arriva solo in assistenza (zr-pm-74, 14/11).
-const CSS_DEL_PACCHETTO = ["@import './movimento.css';", "@import './avanzamento.css';"];
+const CSS_DEL_PACCHETTO = ["@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"];
 
-/** Il CSS del bundle coi file del pacchetto: i font al posto di Google e, nelle righe sotto, movimento.css e avanzamento.css. */
+/** Il CSS del bundle coi file del pacchetto: i font al posto di Google e, nelle righe sotto, movimento.css, avanzamento.css e rimedi.css. */
 export function coiCssDelPacchetto(css) {
     const righe = coiFontDelPacchetto(css).split('\n');
     righe.splice(righe.indexOf(FONT_DEL_PACCHETTO) + 1, 0, ...CSS_DEL_PACCHETTO);
@@ -193,9 +193,9 @@ export function coiCssDelPacchetto(css) {
     return righe.join('\n');
 }
 
-/** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, i font del pacchetto, movimento.css e avanzamento.css. */
+/** resources/css/bundle.css: il bundle intero, con gli stili di tutti i componenti, i font del pacchetto, movimento.css, avanzamento.css e rimedi.css. */
 export function bundleIntero(css) {
-    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) e la barra d\'avanzamento di Inertia (resources/css/avanzamento.css).'), coiCssDelPacchetto(css)].join('\n');
+    return [GENERATO_DAL_CSS('È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) la barra d\'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css).'), coiCssDelPacchetto(css)].join('\n');
 }
 
 /**
@@ -242,7 +242,7 @@ export function dividiIlCss(css) {
     const nomi = STILI_A_PARTE;
 
     return {
-        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) e la barra d'avanzamento di Inertia (resources/css/avanzamento.css).`), ...resto].join('\n'),
+        zeiras: [GENERATO_DAL_CSS(`È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di ${nomi.join(' e di ')}, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css) la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css).`), ...resto].join('\n'),
         stili: Object.fromEntries(nomi.map((nome) => [nome, [GENERATO_DAL_CSS(`Sono gli stili di ${nome} di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/${nome}.js.`), ...blocchi[nome], ''].join('\n')])),
         proprie,
     };

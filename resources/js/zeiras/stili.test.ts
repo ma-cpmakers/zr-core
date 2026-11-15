@@ -17,8 +17,8 @@ const NOMI = STILI_A_PARTE;
 /** Un CSS generato senza il commento che lo dice generato: le righe che vengono dal bundle. */
 const corpo = (css: string) => css.replace(/^\/\* Generato da scripts\/componenti\.mjs[\s\S]*?\*\/\n/, '');
 const piene = (css: string) => css.split('\n').filter((riga) => riga.trim() !== '');
-/** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3723). */
-const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"] as const;
+/** Le prime righe di bundle.css e zeiras.css, sotto il commento: i file del pacchetto scritti a mano (voci #3534, #3535 e #3887). */
+const IMPORT_DEL_PACCHETTO = ["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"] as const;
 
 describe('gli stili dei componenti a parte escono dal CSS del primo carico (sprint 75 · T1.1, T1.2)', () => {
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
@@ -97,11 +97,11 @@ describe('i font del pacchetto al posto di Google Fonts nel CSS generato (sprint
         const delBundle = bundleCss.split('\n');
 
         expect(intero).toBe(bundleIntero(bundleCss));
-        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css e dalla #3535 quella di avanzamento.css (assistenza.css no: arriva col pezzo degli avvisi): le altre sono
-        // le righe del bundle, nel loro ordine.
-        expect(righe).toHaveLength(delBundle.length + 2);
-        expect(righe.slice(0, 3)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
-        expect(righe.slice(3)).toStrictEqual(delBundle.slice(1));
+        // Dalla voce #3534 sotto la riga dei font c'è quella di movimento.css, dalla #3535 quella di avanzamento.css e dalla #3887 quella di rimedi.css
+        // (assistenza.css no: arriva col pezzo degli avvisi): le altre sono le righe del bundle, nel loro ordine.
+        expect(righe).toHaveLength(delBundle.length + 3);
+        expect(righe.slice(0, 4)).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
+        expect(righe.slice(4)).toStrictEqual(delBundle.slice(1));
     });
 
     it('un bundle che chiede a Google altri font, o in un\'altra forma, ferma lo script; uno senza `@import` di Google prende i font del pacchetto in testa (T2.3)', () => {
@@ -206,7 +206,7 @@ describe('meno movimento dal CSS del pacchetto (voce 3534)', () => {
 
     it('bundle.css e zeiras.css importano movimento.css subito dopo i font, prima di ogni regola del bundle (T4)', () => {
         for (const percorso of ['resources/css/bundle.css', 'resources/css/zeiras.css']) {
-            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 3);
+            const prime = corpo(readFileSync(delRepo(percorso), 'utf8')).split('\n').slice(0, 4);
 
             expect(prime).toStrictEqual([...IMPORT_DEL_PACCHETTO]);
         }
@@ -257,6 +257,29 @@ describe('la barra d\'avanzamento di Inertia dal CSS del pacchetto (voce 3535)',
         expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
         expect(regole).not.toMatch(/z-index: *\d/);
         expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['2px']);
+    });
+});
+
+// Voce #3887 (Decisione 25420 di zr-pm-74, da zr-cashflow). I rimedi provvisori al CSS del design system, finché il design system
+// non porta la richiesta che li toglie: stanno in resources/css/rimedi.css, scritto a mano, che bundle.css e zeiras.css importano
+// sotto avanzamento.css. Il primo: il titolo della SectionCard con una parola senza spazi va a capo (richiesta 290).
+describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
+    const rimedi = readFileSync(delRepo('resources/css/rimedi.css'), 'utf8');
+    const regole = rimedi.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+
+    it('bundle.css e zeiras.css importano rimedi.css sotto avanzamento.css, una volta sola, e la regola non sta nella parte copiata dal bundle (AC 2)', () => {
+        for (const css of [bundleIntero(bundleCss), dividiIlCss(bundleCss).zeiras]) {
+            const righe = css.split('\n');
+            expect(righe.filter((riga) => riga === "@import './rimedi.css';")).toHaveLength(1);
+            expect(righe.indexOf("@import './rimedi.css';")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
+            expect(css).not.toMatch(/\.zr-section-card-title \{[^}]*overflow-wrap/);
+        }
+    });
+
+    it('il titolo della SectionCard va a capo anche dentro una parola: overflow-wrap anywhere, e nient\'altro (AC 1, richiesta 290)', () => {
+        expect(regole).toBe('.zr-section-card-title { overflow-wrap: anywhere; }');
+        // Il bundle di oggi non lo fa da sé: quando la 290 arriva, questo caso diventa rosso e il rimedio si toglie.
+        expect(bundleCss).toMatch(/\.zr-section-card-title \{(?![^}]*overflow-wrap)[^}]*\}/);
     });
 });
 

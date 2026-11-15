@@ -30,7 +30,8 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   tutti ha `font-src 'self'`. Dalla `v4.0.0` Google è fuori dalla CSP di tutti (#2946, maggiore: stringe). Dalla `v4.32.0` (#3534) i due importano, sotto i
   font, anche `resources/css/movimento.css`, scritto a mano: con `prefers-reduced-motion: reduce` nessuna transizione (righe MV di
   `uat-cornice`). Dalla `v4.33.0` (#3535) anche `resources/css/avanzamento.css`, la barra d'avanzamento di Inertia coi token
-  (`includeCSS: false` nel modulo; righe AV di `uat-cornice` con `--barra`). Dalla `v4.34.0` (#3723) c'è anche
+  (`includeCSS: false` nel modulo; righe AV di `uat-cornice` con `--barra`). Dalla `v4.35.0` (#3887) anche `resources/css/rimedi.css`, i rimedi provvisori al CSS del design system finché il
+  design system non porta la richiesta che li toglie (il primo: il titolo della SectionCard che va a capo, richiesta 290). Dalla `v4.34.0` (#3723) c'è anche
   `resources/css/assistenza.css`, la fascia di assistenza come nel design di admin: una barra citrus sopra l'`AppShell`, fuori dal
   contenuto (la cornice mette l'`AppShell` in un contenitore solo in assistenza; il pulsante «Termina e torna al backoffice»). Non
   lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11).
