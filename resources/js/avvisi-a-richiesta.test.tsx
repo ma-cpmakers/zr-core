@@ -89,62 +89,82 @@ describe('i testi degli avvisi arrivano con un pezzo a richiesta, chiesto solo n
     });
 });
 
-// Sprint 115 · T3 (voce #2909, Decisione 22312): quando lo staff è entrato con «Accedi come», sopra la pagina la fascia di
-// assistenza — l'Alert del design system, tono `warning` — dice chi è la persona assistita, la sua email, che cosa valgono le
-// modifiche, e ha il pulsante che termina l'assistenza. I testi stanno nel pezzo degli avvisi, che allora si chiede.
-describe('la fascia di assistenza (sprint 115 · T3)', () => {
+
+// Sprint 115 · T3 (voce #2909, Decisione 22312): quando lo staff è entrato con «Accedi come», la fascia di assistenza dice chi è
+// la persona assistita, la sua email, che cosa valgono le modifiche, e ha il pulsante che termina l'assistenza. I testi stanno
+// nel pezzo degli avvisi, che allora si chiede. Dalla voce #3723 (v4.34.0) è la barra citrus del design di admin: a tutta
+// larghezza SOPRA l'`AppShell`, fuori dal contenuto (non più un Alert dentro `main`), in un contenitore che c'è solo in assistenza.
+describe('la fascia di assistenza (sprint 115 · T3; voce 3723)', () => {
     const anna = { persona: { nome: 'Anna', cognome: 'Bianchi', email: 'anna@example.com' }, sola_lettura: false };
-    const avvisiSopra = () => [...contenitore.querySelectorAll('main .zr-alert')].map((avviso) => [avviso.className, avviso.querySelector('strong')?.textContent, avviso.querySelector('.zr-alert-body > div')?.textContent, [...avviso.querySelectorAll('button')].map((pulsante) => pulsante.textContent)]);
-    const fascia = (titolo: string, testo: string, pulsante: string) => ['zr-alert zr-alert-warning', titolo, testo, [pulsante]];
-    const finoAllaFascia = async () => {
-        for (let giri = 0; giri < 200 && contenitore.querySelector('main .zr-alert') === null; giri++) {
+    const barra = () => contenitore.querySelector('.zr-assist-bar');
+    /** Ciò che la barra dice: il nome in grassetto, la prima riga intera, la riga piccola e i pulsanti. */
+    const fascia = () => [barra()?.querySelector('strong')?.textContent, barra()?.querySelector(':scope > span > span:first-child')?.textContent, barra()?.querySelector(':scope > span > span:last-child')?.textContent, [...(barra()?.querySelectorAll('button') ?? [])].map((pulsante) => pulsante.textContent)];
+    const finoA = async (fatto: () => boolean) => {
+        for (let giri = 0; giri < 200 && !fatto(); giri++) {
             await act(async () => {
                 await vi.dynamicImportSettled();
-                await new Promise((fatto) => setTimeout(fatto, 10));
+                await new Promise((passato) => setTimeout(passato, 10));
             });
         }
     };
+    const finoAllaFascia = () => finoA(() => barra() !== null);
 
-    it('in italiano, spagnolo e inglese: il nome e il cognome nel titolo, l\'email e che cosa valgono le modifiche nel testo, il pulsante che termina; con la sola lettura il testo della sola lettura (T3.1)', async () => {
+    it('in italiano, spagnolo e inglese: il nome e il cognome in grassetto con l\'email, che cosa valgono le modifiche in piccolo, il pulsante «Termina e torna al backoffice»; con la sola lettura la riga della sola lettura (T3.1; AC 2)', async () => {
         await mostra({ ...dati, assistenza: anna });
         await finoAllaFascia();
-        expect(avvisiSopra()).toStrictEqual([fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Le modifiche che fai valgono come fatte da Anna', "Termina l'assistenza")]);
+        expect(fascia()).toStrictEqual(['Anna Bianchi', 'Stai usando Zeiras come Anna Bianchi · anna@example.com', 'Le modifiche che fai valgono come fatte da Anna', ['Termina e torna al backoffice']]);
 
         await mostra({ ...dati, lingua: 'es', assistenza: { ...anna, sola_lettura: true } });
-        expect(avvisiSopra()).toStrictEqual([fascia('Estás usando Zeiras como Anna Bianchi', 'anna@example.com · Solo lectura: puedes mirar, no modificar', 'Terminar la asistencia')]);
+        expect(fascia()).toStrictEqual(['Anna Bianchi', 'Estás usando Zeiras como Anna Bianchi · anna@example.com', 'Solo lectura: puedes mirar, no modificar', ['Terminar y volver al backoffice']]);
 
         await mostra({ ...dati, lingua: 'en', assistenza: { persona: { nome: 'Bob', cognome: null, email: 'bob@example.com' }, sola_lettura: false } });
-        expect(avvisiSopra()).toStrictEqual([fascia("You're using Zeiras as Bob", 'bob@example.com · Changes you make count as made by Bob', 'End assistance')]);
+        expect(fascia()).toStrictEqual(['Bob', "You're using Zeiras as Bob · bob@example.com", 'Changes you make count as made by Bob', ['End and return to the backoffice']]);
 
         await mostra({ ...dati, assistenza: { ...anna, sola_lettura: true } });
-        expect(avvisiSopra()).toStrictEqual([fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Sola lettura: puoi guardare, non modificare', "Termina l'assistenza")]);
+        expect(fascia()).toStrictEqual(['Anna Bianchi', 'Stai usando Zeiras come Anna Bianchi · anna@example.com', 'Sola lettura: puoi guardare, non modificare', ['Termina e torna al backoffice']]);
     });
 
-    it('«Termina l\'assistenza» chiama `onLogout`, come «Esci» (T3.2)', async () => {
+    it('la barra sta sopra l\'AppShell, fuori dal contenuto: figlia del contenitore prima del corpo che ha l\'AppShell, con `role="status"` e l\'icona della persona, e nessun Alert (AC 1; T3.1)', async () => {
+        await mostra({ ...dati, assistenza: anna });
+        await finoAllaFascia();
+
+        const contenitoreDellaFascia = contenitore.firstElementChild;
+        expect([contenitoreDellaFascia?.className, [...(contenitoreDellaFascia?.children ?? [])].map((figlio) => figlio.className)]).toStrictEqual(['zr-assist', ['zr-assist-bar', '']]);
+        expect(contenitoreDellaFascia?.lastElementChild?.firstElementChild?.classList.contains('zr-shell')).toBe(true);
+        expect(barra()?.getAttribute('role')).toBe('status');
+        expect(barra()?.firstElementChild?.classList.contains('zr-icon')).toBe(true);
+        expect(contenitore.querySelector('.zr-shell')?.contains(barra())).toBe(false);
+        expect(contenitore.querySelectorAll('.zr-alert')).toHaveLength(0);
+    });
+
+    it('«Termina e torna al backoffice» chiama `onLogout`, come «Esci» (T3.2; AC 2)', async () => {
         const esci = vi.fn();
         await mostra({ ...dati, assistenza: anna }, esci);
         await finoAllaFascia();
 
-        await act(async () => contenitore.querySelector<HTMLButtonElement>('main .zr-alert button')?.click());
+        await act(async () => barra()?.querySelector('button')?.click());
         expect(esci).toHaveBeenCalledTimes(1);
     });
 
-    it('la fascia non si chiude e resta nella cornice ridotta, sopra l\'avviso; senza `assistenza` nessuna fascia (T3.3; che la cornice di sempre non chieda il pezzo lo prova il primo caso del file)', async () => {
-        await mostra({ ...dati, non_letti: true, assistenza: anna });
+    it('la fascia non si chiude e resta nella cornice ridotta, sopra l\'AppShell, e l\'avviso resta nel contenuto senza rimontare l\'AppShell; senza `assistenza` né barra né contenitore: la cornice è quella di sempre (T3.3; AC 1, 3)', async () => {
+        await mostra({ ...dati, assistenza: anna });
         await finoAllaFascia();
-        expect(avvisiSopra()).toStrictEqual([
-            fascia('Stai usando Zeiras come Anna Bianchi', 'anna@example.com · Le modifiche che fai valgono come fatte da Anna', "Termina l'assistenza"),
-            ['zr-alert zr-alert-warning', italiani.downTitle, italiani.downText, []],
-        ]);
+        const shell = contenitore.querySelector('.zr-shell');
+
+        await mostra({ ...dati, non_letti: true, assistenza: anna });
+        await finoA(() => contenitore.querySelector('main .zr-alert') !== null);
+        expect(fascia()[1]).toBe('Stai usando Zeiras come Anna Bianchi · anna@example.com');
+        expect([...contenitore.querySelectorAll('.zr-alert')].map((avviso) => [avviso.textContent, avviso.closest('main') !== null])).toStrictEqual([[italiani.downTitle + italiani.downText, true]]);
+        expect(contenitore.querySelector('.zr-shell')).toBe(shell);
 
         await mostra(dati);
-        expect(avvisiSopra()).toStrictEqual([]);
+        expect([barra(), contenitore.querySelector('.zr-assist'), contenitore.querySelector('.zr-assist > div'), contenitore.firstElementChild?.classList.contains('zr-shell')]).toStrictEqual([null, null, null, true]);
     });
 
     it('in una lingua che non ha il suo file la fascia è in inglese (T3.4)', async () => {
         await mostra({ ...dati, lingua: 'pt-BR', assistenza: anna });
         await finoAllaFascia();
-        expect(avvisiSopra()).toStrictEqual([fascia("You're using Zeiras as Anna Bianchi", 'anna@example.com · Changes you make count as made by Anna', 'End assistance')]);
+        expect(fascia()).toStrictEqual(['Anna Bianchi', "You're using Zeiras as Anna Bianchi · anna@example.com", 'Changes you make count as made by Anna', ['End and return to the backoffice']]);
         expect([inglesi, spagnoli, italiani].map((file) => Object.keys(file).filter((chiave) => chiave.startsWith('assist')))).toStrictEqual(Array(3).fill(['assistTitle', 'assistText', 'assistReadOnly', 'assistEnd']));
     });
 });

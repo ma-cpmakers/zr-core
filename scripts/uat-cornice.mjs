@@ -590,7 +590,8 @@ async function sopraIlPannello(page) {
         const pannello = document.createElement('aside');
         pannello.className = 'zr-detail';
         pannello.dataset.uat = '';
-        document.body.append(pannello);
+        // Dove lo mette un modulo: nel contenuto dell'AppShell (in assistenza, sotto la fascia: voce #3723).
+        (document.querySelector('.zr-shell .zr-main') ?? document.body).append(pannello);
         return true;
     });
     const pannello = await page.evaluate(() => {
@@ -767,7 +768,8 @@ async function cassetto(page) {
         pannello.className = 'zr-detail';
         pannello.dataset.uat = '';
         pannello.append(Object.assign(document.createElement('button'), { type: 'button', textContent: 'UAT' }));
-        document.body.append(pannello);
+        // Dove lo mette un modulo: nel contenuto dell'AppShell (in assistenza, sotto la fascia: voce #3723).
+        (document.querySelector('.zr-shell .zr-main') ?? document.body).append(pannello);
         return true;
     });
     await page.evaluate(() => [...document.querySelectorAll('.zr-detail:not(.is-inline) :is(button, a[href], input)')].pop()?.focus());

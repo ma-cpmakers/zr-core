@@ -181,7 +181,8 @@ export function coiFontDelPacchetto(css) {
 
 // Voce #3534 (Decisione 23090 di zr-pm-07): sotto i font, gli `@import` dei file del pacchetto scritti a mano, nell'ordine:
 // movimento.css, la regola che spegne le transizioni per chi chiede meno movimento, e dalla voce #3535 avanzamento.css, la barra
-// d'avanzamento di Inertia coi token. Nei CSS generati c'è solo la riga che importa ognuno.
+// d'avanzamento di Inertia coi token. Nei CSS generati c'è solo la riga che importa ognuno. La fascia di assistenza
+// (resources/css/assistenza.css, voce #3723) non sta qui: la importa il pezzo degli avvisi, e arriva solo in assistenza (zr-pm-74, 14/11).
 const CSS_DEL_PACCHETTO = ["@import './movimento.css';", "@import './avanzamento.css';"];
 
 /** Il CSS del bundle coi file del pacchetto: i font al posto di Google e, nelle righe sotto, movimento.css e avanzamento.css. */

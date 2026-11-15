@@ -5,15 +5,19 @@
 // riesporta niente da qui. Dalla `v4.8.1` (#3055, Decisione 21220) il pezzo porta anche l'Alert del design system, dal suo
 // modulo: l'avviso è il solo posto della cornice che lo usa, e il JS d'ingresso non lo porta più. Dalla `v4.22.0` (#2909) porta
 // anche i testi della fascia di assistenza, che la cornice mette sopra la pagina quando lo staff è entrato con «Accedi come»: la
-// cornice chiede il pezzo anche quando i dati hanno `assistenza`. Dalla `v4.25.0` (#3417) porta anche «Il mio spazio» per il selettore
-// della cornice dei membri, i due testi e il clic: la cornice chiede il pezzo anche quando il frontend le dà `spazio`.
+// cornice chiede il pezzo anche quando i dati hanno `assistenza`; dalla `v4.34.0` (#3723) la fascia è la barra citrus del design di
+// admin, sopra l'`AppShell` e non più un Alert nel contenuto. Dalla `v4.25.0` (#3417) porta anche «Il mio spazio» per il selettore
+// della cornice dei membri, i due testi e il clic: la cornice chiede il pezzo anche quando il frontend le dà `spazio`. Dalla
+// `v4.34.0` porta anche gli stili della fascia (resources/css/assistenza.css): servono solo in assistenza, e il CSS di ogni pagina
+// non li porta (zr-pm-74, 14/11). La build di chi installa ne fa il CSS di questo pezzo, che arriva prima che il pezzo giri.
 
+import '../css/assistenza.css';
 import { createElement as h, type MouseEvent } from 'react';
 import inglesi from '../lingue/avvisi/en.json';
 import type { DatiDellaCornice } from './cornice';
 import { linguaDeiTesti } from './lingue';
 import { Alert } from './zeiras/Alert';
-import { Button } from './zeiras/componenti';
+import { Button, Icon } from './zeiras/componenti';
 
 export { Alert };
 
@@ -50,15 +54,16 @@ export interface TestiDegliAvvisi {
     /** Ciò che campanella e ricerca dicono in quello stato, al posto dei tre testi dell'`AppShell`, come `acceptanceOff`. */
     downOff: string;
     /**
-     * Il titolo della fascia di assistenza (dalla `v4.22.0`, #2909): chi è la persona assistita, `{name}` col nome e il cognome.
-     * La fascia non si chiude: resta finché dura l'assistenza, anche nella cornice ridotta, sopra l'avviso.
+     * La prima riga della fascia di assistenza (dalla `v4.22.0`, #2909): chi è la persona assistita, `{name}` col nome e il cognome,
+     * che la fascia mette in grassetto; dalla `v4.34.0` (#3723) l'email le segue, dopo « · ». La fascia non si chiude: resta finché
+     * dura l'assistenza, anche nella cornice ridotta, sopra l'`AppShell`.
      */
     assistTitle: string;
-    /** Il testo della stessa fascia: `{email}` della persona, e che le modifiche valgono come fatte da lei, `{firstName}` col nome. */
+    /** La riga piccola della stessa fascia: che le modifiche valgono come fatte dalla persona, `{firstName}` col nome (dalla `v4.34.0` senza l'email, che sta nella prima riga). */
     assistText: string;
     /** Il testo della stessa fascia quando l'assistenza è di sola lettura, al posto di `assistText`. */
     assistReadOnly: string;
-    /** Il pulsante della stessa fascia: termina l'assistenza uscendo, come «Esci» (`onLogout`). */
+    /** Il pulsante della stessa fascia: «Termina e torna al backoffice», dal design di admin (dalla `v4.34.0`); esce come «Esci» (`onLogout`). */
     assistEnd: string;
     /**
      * La voce dello spazio del cliente nel selettore dei workspace (dalla `v4.25.0`, #3417): la cornice dei membri la mostra in
@@ -104,12 +109,20 @@ export function ilMioSpazio(lingua: string, href: string, naviga: (indirizzo: st
 }
 
 /**
- * La fascia di assistenza in una lingua: l'Alert del design system, tono `warning`, coi nomi e l'email della persona assistita, e il
- * pulsante che termina l'assistenza chiamando `onLogout`. Sta qui e non nella cornice perché serve solo in assistenza.
+ * La fascia di assistenza in una lingua (dalla `v4.34.0`, #3723: come nel design di admin): la barra citrus a tutta larghezza che
+ * la cornice mette sopra l'`AppShell`, fuori dal contenuto — l'icona della persona, «Stai usando Zeiras come **Nome Cognome** ·
+ * email», sotto in piccolo che cosa valgono le modifiche (o che è sola lettura), e il pulsante che termina l'assistenza chiamando
+ * `onLogout`. Gli stili stanno in `resources/css/assistenza.css`, importato in cima a questo pezzo. Sta qui e non nella cornice perché serve solo in assistenza.
  */
 export function FasciaDiAssistenza({ lingua, assistenza: { persona: { nome, cognome, email }, sola_lettura }, onLogout }: { lingua: string; assistenza: NonNullable<DatiDellaCornice['assistenza']>; onLogout: () => void }) {
     const t = testiDegliAvvisi(lingua);
-    const con = (frase: string) => frase.replace(/\{(name|email|firstName)\}/g, (_posto, chi: string) => (chi === 'name' ? [nome, cognome].filter(Boolean).join(' ') : chi === 'email' ? email : nome));
+    // Il nome intero va in grassetto dove il titolo lo dice (`{name}`); il resto del titolo, e l'email dopo, restano com'è.
+    const [prima, dopo] = t.assistTitle.split('{name}');
 
-    return h(Alert, { tone: 'warning', title: con(t.assistTitle), action: h(Button, { variant: 'secondary', size: 'sm', onClick: onLogout }, t.assistEnd) }, con(sola_lettura ? t.assistReadOnly : t.assistText));
+    return h('div', { className: 'zr-assist-bar', role: 'status' },
+        h(Icon, { name: 'user', size: 18 }),
+        h('span', null,
+            h('span', null, prima, h('strong', null, [nome, cognome].filter(Boolean).join(' ')), `${dopo} · ${email}`),
+            h('span', null, (sola_lettura ? t.assistReadOnly : t.assistText).replace('{firstName}', nome))),
+        h(Button, { variant: 'secondary', size: 'sm', icon: 'close', onClick: onLogout }, t.assistEnd));
 }

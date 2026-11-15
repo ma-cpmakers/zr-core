@@ -1,0 +1,63 @@
+/*
+ * La fascia di assistenza (dalla v4.34.0, voce #3723): quando lo staff è entrato con «Accedi come», una barra citrus a tutta
+ * larghezza sopra l'AppShell, fuori dal contenuto, sempre in vista — chi è la persona assistita, che cosa valgono le modifiche e
+ * il pulsante «Termina e torna al backoffice». Sono le regole del design di admin (`sa-imp`) coi token e coi nomi del pacchetto:
+ * `.zr-assist` tiene la barra sopra e l'AppShell sotto, alto quanto la pagina (come l'AppShell da solo), e la barra va sopra anche
+ * al cassetto e ai dialoghi. Fuori dall'assistenza la cornice non ha né il contenitore né la barra. Dei figli del contenitore solo
+ * la barra ha una classe: il corpo, con l'AppShell, è l'altro (`:not(.zr-assist-bar)`), e dentro la barra il testo è il suo
+ * `span` e la riga piccola l'ultimo figlio di quello: ogni classe in meno è un attributo in meno nel pezzo degli avvisi e
+ * nell'ingresso, che hanno un tetto (voce #3723).
+ * Scritto a mano: lo importa il pezzo degli avvisi (resources/js/avvisi.ts), che la cornice chiede in assistenza: il CSS di ogni pagina
+ * (bundle.css, zeiras.css) non lo porta, e la fascia pesa solo dove c'è (zr-pm-74, 14/11).
+ */
+.zr-assist { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.zr-assist-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-2);
+  padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
+  background: var(--citrus);
+  color: var(--on-citrus);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+  position: relative;
+  z-index: calc(var(--z-dialog) + 3);
+}
+.zr-assist-bar strong { font-weight: 650; }
+.zr-assist-bar > span { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); flex: 1 1 320px; min-width: 0; }
+.zr-assist-bar > span > :last-child { font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight); }
+.zr-assist-bar .zr-btn { background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus); }
+.zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; container-type: size; }
+.zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
+/*
+ * Il cassetto sotto la barra (scostamento dal design di admin, decisione di zr-pm-97 del 13/11): sotto i 1024 px il design
+ * dell'AppShell mette il cassetto e il suo velo in `position: fixed` da `top: 0`, e la barra, che ha uno strato più alto, ne
+ * coprirebbe la cima: il logo e il selettore «Azienda › workspace» non si vedrebbero. Nel prototipo di admin è così; nel
+ * pacchetto il cassetto e il velo si ancorano al corpo (`position: absolute`, il corpo è `relative`), che comincia sotto la
+ * barra, quale che sia la sua altezza — va a capo su due o tre righe sul telefono. Il velo scuro copre il corpo e non la barra,
+ * che resta in vista. Solo qui, solo in assistenza, e senza `contain` sul corpo: menu e dialoghi restano in `fixed` sulla finestra.
+ */
+@media (max-width: 1023px) {
+  .zr-assist .zr-side, .zr-assist .zr-side-scrim { position: absolute; }
+}
+/*
+ * Il resto della cornice sotto la barra (voce #3723, dalla UAT del 14/11), sempre senza `contain`, `transform` o `filter` sul
+ * corpo, che sposterebbero i `fixed` di menu e dialoghi che si posizionano sulla finestra. Il pannello di dettaglio, in `fixed`
+ * da `top: var(--topbar-height)` contato dalla finestra, coprirebbe la parte di destra della barra in alto, che in assistenza
+ * comincia sotto la barra di assistenza: campanella e profilo non si cliccherebbero (riga D.1 di uat-cornice). Si ancora al
+ * corpo come il cassetto. Sotto i 721 px il pannello della ricerca, quello delle notifiche e il menu del profilo restano `fixed`
+ * (i loro antenati posizionati sono la barra in alto e il campo della ricerca), ma il design li conta dalla cima della finestra e
+ * la barra di assistenza ne coprirebbe la cima: qui si contano dalla cima del corpo, che è la finestra meno la barra di
+ * assistenza. L'altezza del corpo la dà `100cqh`: il corpo è un contenitore delle query (`container-type: size`, che non lo fa
+ * blocco contenitore dei `fixed`), e la barra di assistenza è alta `100dvh - 100cqh`, quale che sia il numero delle sue righe.
+ */
+.zr-assist .zr-detail:not(.is-inline) { position: absolute; }
+@media (max-width: 720px) {
+  .zr-assist :is(.zr-search-panel, .zr-pop, .zr-top-actions .zr-profile-menu) { top: calc(100dvh - 100cqh + var(--topbar-height) + var(--space-1)); }
+  .zr-assist .zr-search-panel { max-height: calc(100cqh - var(--topbar-height) - var(--space-4)); }
+  .zr-assist :is(.zr-pop, .zr-top-actions .zr-profile-menu) { max-height: calc(100cqh - var(--topbar-height) - var(--space-4) - env(safe-area-inset-bottom, 0px)); }
+}
