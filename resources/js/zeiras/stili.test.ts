@@ -334,13 +334,18 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         // Il bundle di oggi non dà al campo chiuso né bordo né ombra: quando la 279 arriva, questo caso diventa rosso.
         for (const [, regola] of bundleCss.matchAll(/(?:^|\n|\} ?|\s)\.zr-search \{([^}]*)\}/g)) expect(regola).not.toMatch(/(?:^|;)\s*(?:border(?:-(?:top|right|bottom|left|width|style|color))?|box-shadow|outline)\s*:/);
         // Il contrasto si calcola dai token del pacchetto, non da colori scritti qui: almeno 3:1 (WCAG 1.4.11).
+        // Nel tema chiaro (il primo :root) e nello scuro (data-theme="dark", dalla #3757).
         const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
-        const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(token)?.[1] ?? '';
+        const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
         const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
             .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
             .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
-        const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
-        expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
+        for (const tema of temi) {
+            const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(tema)?.[1] ?? '';
+            expect(colore('line-strong')).toMatch(/^#/);
+            const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
+            expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
+        }
     });
 });
 
