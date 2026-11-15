@@ -70,3 +70,15 @@ it('rimedi.css stringe le azioni della barra sotto la ricerca aperta, e il READM
         ->toContain('Il quinto (#3890, richiesta 283')
         ->toContain('A ricerca chiusa la barra aspetta la richiesta.');
 });
+
+// Voce #3891 (richiesta 291; zr-pm-74 15/11): l'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del
+// Toast, che sullo sfondo del Toast passa i 3:1 in tutti e due i temi.
+it('rimedi.css dà all\'anello del fuoco nel Toast il colore del suo testo, e il README lo dice (voce 3891)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il sesto (#3891, richiesta 291')
+        ->toContain('il colore del testo del Toast');
+});

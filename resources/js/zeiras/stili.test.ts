@@ -285,7 +285,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889 e 3890; v4.35.2, richiesta 293; v4.36.0, richiesta 294)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890 e 3891; v4.35.2, richiesta 293; v4.36.0, richiesta 294)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
@@ -296,6 +296,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',
             '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
             '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
+            '.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }',
         ].join(' '));
     });
 
@@ -379,6 +380,29 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         expect(regole).not.toMatch(/min-width|overflow|flex-wrap/);
         // Non `display: none` né `visibility: hidden`: campanella e profilo restano nel giro del Tab dopo la ricerca (#2805).
         expect(readFileSync(delRepo('resources/css/rimedi.css'), 'utf8')).not.toMatch(/zr-top-actions \{[^}]*(?:display|visibility)/);
+    });
+
+    // Voce #3891 (richiesta 291; zr-pm-74 15/11, Decisione 25442). Il Toast ha lo sfondo var(--ink) e l'anello del fuoco del design
+    // system su «Annulla» e sulla ✕ è var(--focus): sotto 3:1 in tutti e due i temi (WCAG 1.4.11). Il rimedio gli dà il colore del
+    // testo del Toast, var(--surface). La prova in Chromium (uat-cornice --accessibilita, AC.4 su staff.html) è nella voce.
+    it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del Toast, almeno 3:1 sullo sfondo (voce 3891, richiesta 291)', () => {
+        // Il bundle di oggi dà ai due pulsanti l'anello var(--focus) e al Toast lo sfondo var(--ink): quando la 291 arriva, questo
+        // caso diventa rosso e il rimedio si toglie.
+        expect(bundleCss).toMatch(/:where\([^)]*\.zr-toast-action, \.zr-toast-close[^)]*\):focus-visible \{ outline: 2px solid var\(--focus\);/);
+        expect(bundleCss).toMatch(/\.zr-toast \{[^}]*background: var\(--ink\);[^}]*color: var\(--surface\);/);
+        expect(bundleCss).not.toMatch(/\.zr-toast[^{]*:focus-visible[^{]*\{[^}]*outline-color/);
+        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
+        const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
+        const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
+            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+            .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
+        const rapporto = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        for (const tema of temi) {
+            const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(tema)?.[1] ?? '';
+            for (const nome of ['ink', 'focus', 'surface']) expect(colore(nome)).toMatch(/^#/);
+            expect(rapporto(luce(colore('focus')), luce(colore('ink')))).toBeLessThan(3);
+            expect(rapporto(luce(colore('surface')), luce(colore('ink')))).toBeGreaterThanOrEqual(3);
+        }
     });
 });
 
