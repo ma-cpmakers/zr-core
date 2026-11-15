@@ -19,6 +19,22 @@ import { linguaDeiTesti } from './lingue';
 import { Alert } from './zeiras/Alert';
 import { Button, Icon } from './zeiras/componenti';
 
+// Il CSS di questo pezzo lo chiede il caricatore della build insieme al pezzo, e se non arriva il pezzo non arriva: la cornice lo
+// richiede (`pezzoARichiesta`), ma dal secondo tentativo importa il solo JS, e il caricatore non richiede più un CSS che ha già
+// visto. Quando questo modulo gira, un foglio di stile della pagina che non si è caricato si richiede una volta,
+// accanto al suo, con `?r=1` come il JS: senza, la fascia di assistenza resterebbe senza stili (revisione della v4.34.0, R2). Al
+// primo tentativo riuscito non ce n'è nessuno, e non succede niente. Quello vecchio resta: uno ancora in arrivo, di un altro
+// pezzo, arriva lo stesso, e il caricatore che lo aspetta non resta fermo. Uno spento (`disabled`) non si tocca. Non caricato
+// vuol dire senza `sheet`, o con uno di cui non si leggono le regole: Chromium, a un foglio che non è arrivato, ne dà uno vuoto
+// che alla lettura lancia `SecurityError` (provato nella UAT della v4.34.1).
+document.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]:not([disabled])').forEach((link) => {
+    try {
+        void link.sheet!.cssRules;
+    } catch {
+        link.after(Object.assign(link.cloneNode(), { href: `${link.href}?r=1` }));
+    }
+});
+
 export { Alert };
 
 /**
@@ -55,7 +71,7 @@ export interface TestiDegliAvvisi {
     downOff: string;
     /**
      * La prima riga della fascia di assistenza (dalla `v4.22.0`, #2909): chi è la persona assistita, `{name}` col nome e il cognome,
-     * che la fascia mette in grassetto; dalla `v4.34.0` (#3723) l'email le segue, dopo « · ». La fascia non si chiude: resta finché
+     * che la fascia mette in grassetto; dalla `v4.34.0` (#3723) l'email le segue, e dalla `v4.34.1` sta dove il titolo dice `{email}`. La fascia non si chiude: resta finché
      * dura l'assistenza, anche nella cornice ridotta, sopra l'`AppShell`.
      */
     assistTitle: string;
@@ -116,13 +132,14 @@ export function ilMioSpazio(lingua: string, href: string, naviga: (indirizzo: st
  */
 export function FasciaDiAssistenza({ lingua, assistenza: { persona: { nome, cognome, email }, sola_lettura }, onLogout }: { lingua: string; assistenza: NonNullable<DatiDellaCornice['assistenza']>; onLogout: () => void }) {
     const t = testiDegliAvvisi(lingua);
-    // Il nome intero va in grassetto dove il titolo lo dice (`{name}`); il resto del titolo, e l'email dopo, restano com'è.
-    const [prima, dopo] = t.assistTitle.split('{name}');
+    // Il nome intero va in grassetto dove il titolo lo dice (`{name}`), e l'email dove dice `{email}`: il separatore e l'ordine sono
+    // del testo, non del codice (revisione della v4.34.0, R5). Un titolo senza `{name}` si mostra com'è, senza il nome.
+    const [prima, dopo = ''] = t.assistTitle.split('{name}');
 
     return h('div', { className: 'zr-assist-bar', role: 'status' },
         h(Icon, { name: 'user', size: 18 }),
         h('span', null,
-            h('span', null, prima, h('strong', null, [nome, cognome].filter(Boolean).join(' ')), `${dopo} · ${email}`),
+            h('span', null, prima, h('strong', null, [nome, cognome].filter(Boolean).join(' ')), dopo.replace('{email}', email)),
             h('span', null, (sola_lettura ? t.assistReadOnly : t.assistText).replace('{firstName}', nome))),
         h(Button, { variant: 'secondary', size: 'sm', icon: 'close', onClick: onLogout }, t.assistEnd));
 }

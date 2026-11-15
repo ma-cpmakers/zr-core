@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -166,5 +168,11 @@ describe('la fascia di assistenza (sprint 115 · T3; voce 3723)', () => {
         await finoAllaFascia();
         expect(fascia()).toStrictEqual(['Anna Bianchi', "You're using Zeiras as Anna Bianchi · anna@example.com", 'Changes you make count as made by Anna', ['End and return to the backoffice']]);
         expect([inglesi, spagnoli, italiani].map((file) => Object.keys(file).filter((chiave) => chiave.startsWith('assist')))).toStrictEqual(Array(3).fill(['assistTitle', 'assistText', 'assistReadOnly', 'assistEnd']));
+    });
+
+    it('il separatore e il posto dell\'email stanno nel titolo di ogni lingua (`{name}`, `{email}`), non nel codice del pezzo (revisione della v4.34.0, R5)', () => {
+        expect([inglesi, spagnoli, italiani].map((file) => [file.assistTitle.split('{name}').length, file.assistTitle.split('{email}').length, file.assistTitle.indexOf('{name}') < file.assistTitle.indexOf('{email}')])).toStrictEqual(Array(3).fill([2, 2, true]));
+        const codice = readFileSync(resolve(process.cwd(), 'resources/js/avvisi.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+        expect(codice).not.toContain('·');
     });
 });

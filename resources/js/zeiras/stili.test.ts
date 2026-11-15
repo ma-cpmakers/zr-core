@@ -292,7 +292,7 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
     });
 
     it('il nome in grassetto, la riga piccola (l\'ultimo figlio del testo), il pulsante chiaro col bordo scuro (AC 2)', () => {
-        expect(blocco('.zr-assist-bar strong')).toBe('font-weight: 650;');
+        expect(blocco('.zr-assist-bar strong')).toBe('font-weight: var(--text-heading-1--font-weight);');
         expect(blocco('.zr-assist-bar > span > :last-child')).toBe('font-size: var(--text-caption); line-height: var(--text-caption--line-height); font-weight: var(--text-caption--font-weight);');
         expect(blocco('.zr-assist-bar .zr-btn')).toBe('background: var(--surface-raised); color: var(--ink); border-color: var(--on-citrus);');
     });
@@ -300,6 +300,8 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
     it('nessun colore e nessuna misura scritti: tutto dai token (AC 1)', () => {
         expect(regole).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i);
         expect(regole).not.toMatch(/z-index: *\d/);
+        // Anche lo spessore del testo viene da un token (revisione della v4.34.0, R4).
+        expect(regole).not.toMatch(/font-weight: *\d/);
         expect(regole.match(/\b\d+(?:\.\d+)?(?:px|rem|em|ms|s|deg)\b/g)).toStrictEqual(['0px', '0px', '320px', '1023px', '720px', '0px']);
     });
 
@@ -314,6 +316,19 @@ describe('la fascia di assistenza dal CSS del pacchetto (voce 3723)', () => {
         expect(regole).toContain('@media (max-width: 720px) { .zr-assist :is(.zr-search-panel, .zr-pop, .zr-top-actions .zr-profile-menu) { top: calc(100dvh - 100cqh + var(--topbar-height) + var(--space-1)); }');
         expect(regole).toContain('.zr-assist .zr-search-panel { max-height: calc(100cqh - var(--topbar-height) - var(--space-4)); }');
         expect(regole).toContain('.zr-assist :is(.zr-pop, .zr-top-actions .zr-profile-menu) { max-height: calc(100cqh - var(--topbar-height) - var(--space-4) - env(safe-area-inset-bottom, 0px)); }');
+    });
+
+    it('un dialogo sta sopra la barra a ogni larghezza: il velo del dialogo ha uno strato più alto di quello della barra, che sopra i 720 px il design system mette sotto (revisione della v4.34.0, R1)', () => {
+        const delDesignSystem = bundleCss.replace(/\s+/g, ' ');
+        const strato = (dichiarazioni: string) => Number(/z-index: calc\(var\(--z-dialog\) \+ (\d)\)/.exec(dichiarazioni)?.[1]);
+
+        // Nel design system il velo ha `--z-dialog`, e solo sotto i 721 px uno strato in più.
+        expect(delDesignSystem).toContain('.zr-scrim { position: fixed; inset: 0; z-index: var(--z-dialog);');
+        // Con `!important`: il pezzo dei rimedi scrive sul velo di un dialogo aperto `--z-dialog` + 2 nello stile dell'elemento.
+        expect(blocco('.zr-assist .zr-scrim:not(.is-inline)')).toBe('z-index: calc(var(--z-dialog) + 4) !important;');
+        expect(readFileSync(delRepo('resources/js/rimedi.ts'), 'utf8')).toContain("dialogo.parentElement?.style.setProperty('z-index', 'calc(var(--z-dialog) + 2)');");
+        expect(strato(blocco('.zr-assist .zr-scrim:not(.is-inline)'))).toBeGreaterThan(strato(blocco('.zr-assist-bar')));
+        expect(regole).not.toMatch(/@media[^{]*\{ *\.zr-assist \.zr-scrim/);
     });
 
     it('sotto i 1024 px il cassetto e il suo velo si ancorano al corpo, sotto la barra: `absolute` solo in assistenza, allo stesso punto di rottura dell\'AppShell, senza `contain` che sposti menu e dialoghi (scostamento dal design di admin, decisione di zr-pm-97 del 13/11)', () => {
