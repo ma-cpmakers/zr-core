@@ -13,8 +13,11 @@
  * Il mouse resta del browser; la tastiera e «Sposta in…» non passano di qui.
  */
 
-/** Le carte che si prendono col dito: quelle della `DealPipeline` che si possono trascinare (non una in attesa del modulo). */
-const CARTA = '.zr-lanes [data-deal-id][draggable="true"]';
+/**
+ * Le carte che si prendono col dito: quelle della `DealPipeline` e, dalla `v4.36.0` (richiesta 294), le schede della `KanbanBoard`,
+ * che si possono trascinare (non una in attesa del modulo).
+ */
+const CARTA = '.zr-lanes .zr-card[draggable="true"]';
 /** Quanto la pressione resta ferma prima che la carta si prenda, e quanto il dito si può muovere prima che sia uno scorrimento. */
 const ATTESA = 250;
 const SOGLIA = 8;
@@ -86,17 +89,26 @@ export function premi(giu: PointerEvent): void {
     carta.style.setProperty('-webkit-user-drag', 'none');
 
     const dito = giu.pointerId;
-    const id = carta.getAttribute('data-deal-id') ?? '';
+    /**
+     * Una carta della `DealPipeline` (`data-deal-id`) o una scheda della `KanbanBoard` (il suo `id`). La board scorre di lato da
+     * sé, col dito come col mouse, quando il `dragover` le dice che il dito va verso il bordo (v4.36.0, richiesta 294): di lato
+     * il pezzo scorre solo la `DealPipeline`, o i due scorrimenti si sommerebbero.
+     */
+    const delCrm = carta.hasAttribute('data-deal-id');
+    const chiave = delCrm ? 'data-deal-id' : 'id';
+    const id = carta.getAttribute(chiave) ?? '';
     /**
      * La carta com'è adesso (v4.35.3, R2): se la lavagna si aggiorna mentre il dito la tiene (la DealPipeline rilegge le fasi
      * ogni 20 s), quella toccata può essere uscita dal documento, e la sua al suo posto ha lo stesso `data-deal-id`.
      */
-    const viva = (): Element => (carta.isConnected ? carta : [...lavagna.querySelectorAll('[data-deal-id]')].find((questa) => questa.getAttribute('data-deal-id') === id) ?? carta);
+    const viva = (): Element => (carta.isConnected ? carta : [...lavagna.querySelectorAll(`[${chiave}]`)].find((questa) => questa.getAttribute(chiave) === id) ?? carta);
     let [x, y] = [giu.clientX, giu.clientY];
     let preso = false;
     let ombra: HTMLElement | undefined;
     let [dx, dy] = [0, 0];
     let giro = 0;
+    /** Dove stava la lavagna, di lato, al fotogramma di prima. */
+    let diLa = lavagna.scrollLeft;
 
     /**
      * Chi sta sotto il dito. Nel margine accanto alla lavagna, alla sua altezza, il dito conta come sul bordo (v4.35.4, zr-crm):
@@ -124,11 +136,16 @@ export function premi(giu: PointerEvent): void {
         const bordi = lavagna.getBoundingClientRect();
         const colonna = cheScorre(sotto());
         const alta = colonna === document.scrollingElement ? { top: 0, bottom: innerHeight } : colonna.getBoundingClientRect();
-        const [diLato, inVerticale] = [velocita(x, bordi.left, bordi.right), velocita(y, alta.top, alta.bottom)];
+        const [diLato, inVerticale] = [delCrm ? velocita(x, bordi.left, bordi.right) : 0, velocita(y, alta.top, alta.bottom)];
+        const scorsa = lavagna.scrollLeft !== diLa;
 
-        lavagna.scrollLeft += diLato;
+        if (diLato) {
+            lavagna.scrollLeft += diLato;
+        }
         colonna.scrollTop += inVerticale;
-        if (diLato || inVerticale) {
+        diLa = lavagna.scrollLeft;
+        // Anche quando a scorrere, dal fotogramma di prima, è stata la board: sotto il dito fermo è arrivata un'altra lista.
+        if (diLato || inVerticale || scorsa) {
             sopra();
         }
         giro = requestAnimationFrame(scorri);
@@ -141,7 +158,7 @@ export function premi(giu: PointerEvent): void {
         }
         const posto = carta.getBoundingClientRect();
         ombra = carta.cloneNode(true) as HTMLElement;
-        ombra.removeAttribute('data-deal-id');
+        ombra.removeAttribute(chiave);
         ombra.setAttribute('aria-hidden', 'true');
         ombra.inert = true;
         ombra.classList.add('zr-tocco-ombra');

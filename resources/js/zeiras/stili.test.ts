@@ -276,10 +276,10 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889 e 3890; v4.35.2, richiesta 293)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889 e 3890; v4.35.2, richiesta 293; v4.36.0, richiesta 294)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
-            '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
+            '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
             '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }',
             '@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } }',
@@ -307,6 +307,16 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         // Il design system di oggi trascina le carte solo col drag HTML5: quando la 293 arriva, questo caso diventa rosso e il
         // rimedio si toglie, con resources/js/tocco.ts.
         expect(readFileSync(delRepo('resources/js/zeiras/DealPipeline.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
+    });
+
+    // v4.36.0 (richiesta 294, voce 3913; zr-pm-74 16/11): lo stesso per le schede della KanbanBoard (K.6). La regola prende ogni
+    // `.zr-card` che si trascina dentro una lavagna, quindi anche le schede della board, che non hanno la classe della DealPipeline.
+    it('anche le schede della KanbanBoard lasciano scorrere il dito: la regola è su .zr-card (v4.36.0, richiesta 294 · K.6)', () => {
+        expect(regole).toContain('.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation;');
+        expect(regole).not.toContain('.zr-deal[draggable');
+        // Il design system di oggi trascina le schede della board solo col drag HTML5: quando la 294 arriva, questo caso diventa
+        // rosso e il rimedio si toglie (le maniglie delle liste usano già il puntatore, e restano fuori: sono della board).
+        expect(readFileSync(delRepo('resources/js/zeiras/KanbanCard.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
     });
 
     // Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il comando portato in vista dentro un contenitore che scorre si

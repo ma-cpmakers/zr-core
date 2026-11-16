@@ -27,7 +27,8 @@
  * axe compreso, e le righe TS guardano i quattro casi del tema (#3757).
  * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
  * e dalla v4.35.1 anche nella cornice dello staff.
- * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293).
+ * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293),
+ * e dalla v4.36.0 le righe TK le schede della `KanbanBoard`, su `layout.html?lavagna=board` (richiesta 294).
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
@@ -1456,6 +1457,7 @@ async function uat(page, apri) {
     }
     if (colDito) {
         await carteColDito();
+        await schedeColDito();
     }
     if (colCliente) {
         await fuoriDaiMenu(page);
@@ -1639,7 +1641,13 @@ async function carteColDito() {
     const page = await telefonoNuovo();
     const cdp = await page.context().newCDPSession(page);
     await page.goto(indirizzo, { waitUntil: 'networkidle' });
-    await page.waitForSelector('.zr-lanes [data-deal-id]', { timeout: 15000 });
+    await page.waitForSelector('.zr-lanes .zr-card', { timeout: 15000 });
+    // Dalla v4.36.0 la pagina può avere una KanbanBoard al posto della DealPipeline: lì girano le righe TK (schedeColDito).
+    if (!(await page.locator('.zr-lanes [data-deal-id]').count())) {
+        scrivi('➖', 'TC', 'la pagina non ha una DealPipeline: le righe TC girano su layout.html?lavagna=1', '');
+        await page.context().close();
+        return;
+    }
     // La lavagna in cima allo schermo: il dito tocca ciò che si vede.
     await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }));
     await pausa(800);
@@ -1772,6 +1780,179 @@ async function carteColDito() {
     await pausa(600);
     const toccata = await stato();
     scrivi(!toccata.ombra && !toccata.presa && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è', `presa: ${toccata.presa}${toccata.aperta ? `, onOpen: ${toccata.aperta}` : ''}`);
+    await page.context().close();
+}
+
+// TK (dalla v4.36.0, richiesta 294, voce 3913): le schede della `KanbanBoard` col dito, con `--tocco`, nello stesso telefono delle
+// righe TC, sulla pagina con una board (`layout.html?lavagna=board`): TK.1 una pressione di 250 ms prende la scheda, una copia segue
+// il dito e al rilascio sulla seconda lista la scheda ci passa (`onMove` senza «prima di»); TK.2 rilasciata sopra una scheda di
+// un'altra lista ci va prima («prima di» quella scheda); TK.3 col dito fermo al bordo destro la board scorre da sola, una volta
+// sola (lo scorrimento è della board, il pezzo non ci somma il suo), e la scheda arriva a una lista che prima era fuori vista;
+// TK.4 un dito che scorre subito fa scorrere la board e non prende niente, e un tocco breve apre la scheda (`onOpenCard`);
+// TK.5 una lista che rifiuta la scheda non la riceve, e `onRefuse` arriva; TK.6 sulle schede `touch-action: manipulation` e,
+// col dito sulla scheda, niente drag del browser.
+async function schedeColDito() {
+    if (!telefonoNuovo) {
+        scrivi('➖', 'TK', 'col browser condiviso (UAT_PAGE) niente telefono: le righe TK girano col Chromium della UAT', '');
+        return;
+    }
+    const page = await telefonoNuovo();
+    const cdp = await page.context().newCDPSession(page);
+    await page.goto(indirizzo, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.zr-lanes .zr-card', { timeout: 15000 });
+    if (!(await page.locator('.zr-lanes [data-list-id] .zr-card').count())) {
+        scrivi('➖', 'TK', 'la pagina non ha una KanbanBoard: le righe TK girano su layout.html?lavagna=board', '');
+        await page.context().close();
+        return;
+    }
+    await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await pausa(800);
+    const foto = async (nome) => writeFileSync(join(cartella, nome), Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const tocca = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }] });
+    const striscia = async (da, a, passi, ogni) => {
+        for (let passo = 1; passo <= passi; passo++) {
+            await tocca('touchMove', da.x + ((a.x - da.x) * passo) / passi, da.y + ((a.y - da.y) * passo) / passi);
+            await pausa(ogni);
+        }
+    };
+    const aSinistra = async (lista) => {
+        await page.evaluate((quale) => {
+            const lavagna = document.querySelector('.zr-lanes');
+            const colonna = lavagna?.querySelectorAll('[data-list-id]')[quale];
+            if (lavagna && colonna) {
+                lavagna.scrollTo({ left: lavagna.scrollLeft + colonna.getBoundingClientRect().left - lavagna.getBoundingClientRect().left - 8, behavior: 'instant' });
+            }
+        }, lista);
+        await pausa(300);
+    };
+    const stato = () => page.evaluate(() => {
+        const lavagna = document.querySelector('.zr-lanes');
+        const liste = [...document.querySelectorAll('.zr-lanes [data-list-id]')];
+        const schede = [...document.querySelectorAll('.zr-lanes [data-list-id] .zr-card')].map((scheda) => {
+            const posto = scheda.getBoundingClientRect();
+            return { id: scheda.id, lista: liste.indexOf(scheda.closest('[data-list-id]')), x: posto.x + Math.min(posto.width / 2, 120), xl: Math.max(posto.x, 0) + 24, y: posto.y + posto.height / 2 };
+        });
+        const destra = lavagna?.getBoundingClientRect();
+        // Il pezzo che si vede di ogni lista, fuori dalla striscia del bordo dove la board scorre da sola (un quinto della board),
+        // all'altezza della sua testata: sopra nessuna scheda, e anche una lista vuota è alta fin lì.
+        const pezzi = liste.map((lista) => { const posto = lista.getBoundingClientRect(); return { x: posto.x + 12, y: posto.top + 24, visibile: posto.x + 12 < innerWidth * 0.8 - 8 }; });
+        const ombra = document.querySelector('.zr-tocco-ombra');
+        return {
+            schede,
+            pezzi,
+            scorso: lavagna?.scrollLeft ?? 0,
+            destra: destra ? { x: destra.right - 6, y: (liste[0]?.getBoundingClientRect().top ?? destra.top) + 24 } : null,
+            ombra: !!ombra,
+            presa: !!document.querySelector('.zr-lanes .zr-card.is-dragging'),
+            azione: [...new Set([...document.querySelectorAll('.zr-lanes [data-list-id] .zr-card[draggable="true"]')].map((scheda) => getComputedStyle(scheda).touchAction))].join(', '),
+            spostata: document.querySelector('[data-uat="spostata"]')?.textContent ?? '',
+            aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
+            rifiutata: document.querySelector('[data-uat="rifiutata"]')?.textContent ?? '',
+        };
+    });
+    const tieni = async (scheda) => {
+        await tocca('touchStart', scheda.x, scheda.y);
+        await pausa(350);
+        await tocca('touchMove', scheda.x + 2, scheda.y + 2);
+        await pausa(100);
+    };
+    const prima = await stato();
+    const uno = prima.schede.find((questa) => questa.lista === 0);
+    if (!uno || !prima.pezzi[1]) {
+        scrivi('❌', 'TK.1', 'la pagina ha una KanbanBoard con una scheda nella prima lista', `schede: ${prima.schede.length}`);
+        await page.context().close();
+        return;
+    }
+    const delBrowser = async (id) => page.evaluate((quale) => getComputedStyle(document.getElementById(quale)).getPropertyValue('-webkit-user-drag'), id);
+
+    // TK.4: un dito che scorre subito, poi un tocco breve.
+    await tocca('touchStart', uno.x, uno.y);
+    await striscia(uno, { x: uno.x - 180, y: uno.y }, 6, 16);
+    await tocca('touchEnd');
+    await pausa(600);
+    const scorsa = await stato();
+    await aSinistra(0);
+    const breve = (await stato()).schede.find((questa) => questa.id === uno.id);
+    await tocca('touchStart', breve.x, breve.y);
+    await pausa(60);
+    await tocca('touchEnd');
+    await pausa(600);
+    const toccata = await stato();
+    scrivi(scorsa.scorso > prima.scorso + 40 && !scorsa.presa && !scorsa.ombra && scorsa.schede.find((questa) => questa.id === uno.id)?.lista === 0 && toccata.aperta === uno.id && !toccata.presa && !toccata.spostata ? '✅' : '❌', 'TK.4', 'un dito che scorre subito fa scorrere la board e non prende la scheda; un tocco breve la apre', `scorrimento ${prima.scorso} → ${scorsa.scorso}, presa: ${scorsa.presa}, aperta: ${toccata.aperta || '-'}, spostata: ${toccata.spostata || '-'}`);
+
+    // TK.1 e TK.6: pressione, il dito alla seconda lista, rilascio.
+    const ferma = await stato();
+    const presa = ferma.schede.find((questa) => questa.id === uno.id);
+    await tieni(presa);
+    const tenuta = await stato();
+    const drag = await delBrowser(uno.id);
+    await striscia({ x: presa.x + 2, y: presa.y + 2 }, ferma.pezzi[1], 10, 30);
+    await foto('tocco-board.png');
+    await tocca('touchEnd');
+    await pausa(600);
+    const lasciata = await stato();
+    const dove = lasciata.schede.find((questa) => questa.id === uno.id)?.lista;
+    scrivi(tenuta.ombra && tenuta.presa && dove === 1 && lasciata.spostata === `${uno.id} l1 l2 -` && !lasciata.ombra && !lasciata.presa ? '✅' : '❌', 'TK.1', 'una pressione di 250 ms prende la scheda, una copia segue il dito, e al rilascio sulla seconda lista la scheda ci passa', `presa: ${tenuta.presa}, copia: ${tenuta.ombra}, lista dopo: ${dove}, onMove: ${lasciata.spostata || '-'}`);
+    scrivi(prima.azione === 'manipulation' && drag === 'none' ? '✅' : '❌', 'TK.6', 'sulle schede touch-action: manipulation, e col dito sulla scheda niente drag del browser', `${prima.azione}, drag del browser: ${drag}`);
+
+    // TK.2: l'altra scheda della prima lista, lasciata sopra la prima scheda della seconda lista.
+    const ora = await stato();
+    const due = ora.schede.find((questa) => questa.lista === 0);
+    const bersaglio = ora.schede.find((questa) => questa.lista === 1);
+    if (due && bersaglio && ora.pezzi[1]) {
+        await tieni(due);
+        const sopraLei = { x: ora.pezzi[1].x, y: bersaglio.y };
+        await striscia({ x: due.x + 2, y: due.y + 2 }, sopraLei, 10, 30);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const ordine = dopo.schede.filter((questa) => questa.lista === 1).map((questa) => questa.id);
+        scrivi(dopo.spostata === `${due.id} l1 l2 ${bersaglio.id}` && ordine.indexOf(due.id) === ordine.indexOf(bersaglio.id) - 1 ? '✅' : '❌', 'TK.2', 'rilasciata sopra una scheda di un\'altra lista, la scheda va prima di quella', `onMove: ${dopo.spostata || '-'}, seconda lista: ${ordine.join(' ')}`);
+    } else {
+        scrivi('❌', 'TK.2', 'una scheda nella prima lista e una nella seconda', '');
+    }
+
+    // TK.5: dalla seconda lista alla terza, che rifiuta.
+    await aSinistra(1);
+    const rifiuto = await stato();
+    const tre = rifiuto.schede.find((questa) => questa.lista === 1);
+    if (tre && rifiuto.pezzi[2]?.visibile) {
+        await tieni(tre);
+        await striscia({ x: tre.x + 2, y: tre.y + 2 }, rifiuto.pezzi[2], 10, 30);
+        await pausa(300);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        scrivi(dopo.schede.find((questa) => questa.id === tre.id)?.lista === 1 && dopo.rifiutata.startsWith(`${tre.id} l3 `) && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TK.5', 'una lista che rifiuta la scheda non la riceve, e onRefuse arriva', `lista dopo: ${dopo.schede.find((questa) => questa.id === tre.id)?.lista}, onRefuse: ${dopo.rifiutata || '-'}`);
+    } else {
+        scrivi('❌', 'TK.5', 'una scheda nella seconda lista e la terza lista in vista', '');
+    }
+
+    // TK.3: dal principio, una scheda tenuta e il dito fermo al bordo destro.
+    await aSinistra(0);
+    const bordo = await stato();
+    const quattro = bordo.schede.find((questa) => questa.lista === 1) ?? bordo.schede.find((questa) => questa.lista === 0);
+    if (quattro && bordo.destra) {
+        // Il dito sulla parte che si vede della scheda, a sinistra: la seconda lista a 390 px esce di lato.
+        await tieni({ ...quattro, x: quattro.xl });
+        await striscia({ x: quattro.xl, y: quattro.y }, bordo.destra, 8, 30);
+        const scorrimenti = [];
+        for (let volta = 0; volta < 6; volta++) {
+            await pausa(250);
+            scorrimenti.push((await stato()).scorso);
+        }
+        await foto('tocco-board-bordo.png');
+        await striscia(bordo.destra, { x: bordo.destra.x - 110, y: bordo.destra.y }, 4, 30);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const lista = dopo.schede.find((questa) => questa.id === quattro.id)?.lista ?? -1;
+        // Una volta sola: lo scorrimento della board va sempre avanti, senza i salti all'indietro di due scorrimenti che litigano.
+        const avanti = scorrimenti.every((valore, volta) => volta === 0 || valore >= scorrimenti[volta - 1]);
+        scrivi(scorrimenti.at(-1) > bordo.scorso + 150 && avanti && lista >= 3 ? '✅' : '❌', 'TK.3', 'col dito fermo al bordo destro la board scorre da sola, sempre avanti, e la scheda arriva a una lista che prima era fuori vista (dalla quarta in là)', `scorrimento ${bordo.scorso} → ${scorrimenti.join(', ')}, lista dopo: ${lista}`);
+    } else {
+        scrivi('❌', 'TK.3', 'una scheda per il bordo', '');
+    }
     await page.context().close();
 }
 
