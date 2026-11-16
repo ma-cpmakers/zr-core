@@ -73,7 +73,10 @@ emulato. Dalla `v4.35.3` la carta tenuta col dito non ha il drag del browser (`-
 Chrome su Android avviano dopo mezzo secondo prendendosi il dito), e se la lavagna si aggiorna mentre il dito tiene una carta
 la pagina non scorre e alla fine niente resta preso. Un limite, finché il design system non porta la 293: la `DealPipeline` non
 sa quando la carta esce da una colonna, quindi col dito fuori dalla lavagna l'ultima colonna resta accesa, e al rilascio la
-carta torna dov'era (col mouse è lo stesso).
+carta torna dov'era (col mouse è lo stesso). Dalla `v4.35.4` il dito nel margine della pagina accanto alla lavagna, alla sua
+altezza, conta come sul bordo: lì la lavagna scorre da sola, e al rilascio la carta va alla colonna che si vede sul bordo (sul
+CRM la lavagna sta dentro il margine della pagina e la seconda fase, a 390 px, comincia fuori vista). Sopra o sotto la
+lavagna il rilascio resta senza effetto.
 
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
@@ -323,7 +326,7 @@ un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
-del tocco, 1.359 dalla `v4.35.3` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11). Quello dei rimedi era di
+del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
@@ -554,6 +557,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.1` | «Informativa privacy» anche nel menu del profilo della `CorniceDelloStaff` (#3753, R1 della revisione della `v4.35.0`), prima della linea, con o senza `menu`; e l'icona della voce, in tutte e tre le cornici, è `file` e non più `lock`, che nella cornice vuol dire una voce che non si apre. JS d'ingresso invariato | niente | un caso che conta le voci del menu del profilo dello staff ne trova una in più, «Informativa privacy», prima della linea | `staff.html` in it, es, en: righe PV |
 | `v4.35.2` | le carte della `DealPipeline` si trascinano anche col dito (richiesta 293, sì di zr-pm-74 del 16/11, su richiesta di Luciano): una pressione di 250 ms prende la carta, una copia segue il dito, la lavagna scorre da sola vicino ai bordi, e al rilascio la carta passa alla colonna sotto il dito con lo stesso `onMove` del mouse; lo scorrimento col dito, il mouse, la tastiera e «Sposta in…» restano come sono. Un rimedio provvisorio: il pezzo del tocco (1.240 byte con gzip) arriva solo dove c'è una lavagna, e il JS d'ingresso non cambia; il pezzo dei rimedi sale a 1.640 | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: righe TC in un telefono emulato |
 | `v4.35.3` | le correzioni del trascinamento col dito dalla revisione della `v4.35.2` (sì di zr-pm-74 del 16/11): la carta tenuta non ha il drag del browser, che su Safari iOS e Chrome Android dopo mezzo secondo si prendeva il dito e fermava il trascinamento; se la lavagna si aggiorna mentre il dito tiene una carta, la pagina non scorre e alla fine la carta non resta presa né la colonna accesa. Il pezzo del tocco sale a 1.359 byte, la misura più 20; il JS d'ingresso non cambia | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: TC.1 guarda anche il drag del browser |
+| `v4.35.4` | il trascinamento col dito della `DealPipeline` quando la lavagna non arriva al bordo dello schermo (zr-crm e zr-pm-74, 16/11): il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo, e la carta lasciata lì va alla colonna che si vede sul bordo invece di tornare indietro. Pezzo del tocco 1.370 byte, tetto 1.390 (la misura più 20); JS d'ingresso invariato. Niente da fare per i moduli: aggiornare. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

@@ -98,7 +98,16 @@ export function premi(giu: PointerEvent): void {
     let [dx, dy] = [0, 0];
     let giro = 0;
 
-    const sotto = (): Element | null => document.elementFromPoint(x, y);
+    /**
+     * Chi sta sotto il dito. Nel margine accanto alla lavagna, alla sua altezza, il dito conta come sul bordo (v4.35.4, zr-crm):
+     * lì la lavagna scorre da sola, e la colonna che si vede sul bordo è quella che il dito cerca. Sopra o sotto la lavagna no.
+     */
+    const sotto = (): Element | null => {
+        const bordi = lavagna.getBoundingClientRect();
+        const alLato = y >= bordi.top && y <= bordi.bottom ? Math.min(Math.max(x, bordi.left + 1), bordi.right - 1) : x;
+
+        return document.elementFromPoint(alLato, y);
+    };
     const sopra = (): void => {
         const qui = sotto();
 
