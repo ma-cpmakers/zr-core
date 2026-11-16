@@ -5647,7 +5647,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.840 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.26.0 (sì di zr-pm-07 del 07/11): +238 byte, i lotti 0522 e 0523 del design system, coi rimedi delle righe 4 e 136 tolti.
     'i pesi: i 238 byte della v4.26.0' => ['pesi', 'Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog`'],
     // v4.25.0 (Decisione 22468 di zr-pm): +40 byte, «Il mio spazio» nella cornice dei membri, coi testi nel pezzo degli avvisi.
@@ -5769,7 +5769,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Voce #3534: dalla `v4.32.0` la regola per chi chiede meno movimento, che bundle.css e zeiras.css importano.
     // Voce #3535: dalla `v4.33.0` gli stili della barra d'avanzamento di Inertia, che bundle.css e zeiras.css importano.
     // Voce #3723: dalla `v4.34.0` gli stili della fascia di assistenza, che bundle.css e zeiras.css importano.
-    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #3887: dalla `v4.35.0` i rimedi provvisori al CSS del design system, che bundle.css e zeiras.css importano.
+    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)
@@ -5803,7 +5804,7 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'un Link di prima resta' => ['Un `Link` che la risposta porta già resta: il middleware aggiunge il suo accanto'],
     // Lettura della PR #61, R1, R2 e R6-R8 (`Decisione:` 11432 di zr-pm).
     'niente della persona' => ['col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua della persona, e nessun host che venga dalla richiesta'],
-    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento'],
+    'pensato per il solo header' => ['È pensato per il solo header: per Zeiras Early Hints è acceso dal pannello di Cloudflare, verificato da zr-devops il 15/11; zr-pm 15/11: acceso, solo file statici nel 103'],
     'di chi è la misura' => ['zr-pm dichiara che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente'],
     'il rischio di chi accende Early Hints' => ['Chi lo accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell\'origine dice, a chi conosce o indovina un indirizzo, che la pagina esiste ed è stata aperta da poco'],
     'lo slug è un nome' => ['lo slug di un workspace è il nome di un\'azienda'],
@@ -5830,7 +5831,7 @@ it('il README ha la sezione «Il precarico dei file d\'ingresso», che dice come
     'i numeri sono di zr-board' => ['I numeri sono di zr-board, che lo ha avuto per primo e li dichiara: a freddo, su rete lenta, da 0,15 a 0,36 s in meno. zr-core non li ha misurati'],
 ]);
 
-it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né che Early Hints è acceso (lettura della PR #61, R1 e R2)', function (string $diPrima) {
+it('la sezione «Il precarico dei file d\'ingresso» del README non dice più che il `Link` è uguale per tutti, né che il rischio è solo di chi conosce già un indirizzo, né la frase di prima su Early Hints «acceso sulla zona», che dal 15/11 è acceso dal pannello di Cloudflare (lettura della PR #61, R1 e R2)', function (string $diPrima) {
     $sezione = sezioneDelReadme((string) file_get_contents(__DIR__.'/../../README.md'), 'Il precarico dei file d\'ingresso');
 
     expect($sezione)->not->toBe('')

@@ -106,13 +106,13 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-profile-head > span:last-child')?.textContent).toBe(persona.nome + persona.email);
     });
 
-    it('T2.1 il menu del profilo è Profilo, Impostazioni, una linea, Esci: le prime due alle pagine di app.zeiras.com, Esci a onLogout; niente Piano né Azienda', async () => {
+    it('T2.1 il menu del profilo è Profilo, Impostazioni, Informativa privacy, una linea, Esci: le prime due alle pagine di app.zeiras.com, la privacy su zeiras.com in una scheda nuova (dalla v4.35.0, voce 3753), Esci a onLogout; niente Piano né Azienda', async () => {
         const naviga = vi.fn();
         const onLogout = vi.fn();
         await mostra(<CorniceDelCliente dati={dati} nav={nav} naviga={naviga} onLogout={onLogout} />);
 
         await clic(uno('.zr-avatar-btn'));
-        expect(vociDelProfilo()).toEqual([testi('it').profile, testi('it').accountSettings, null, testi('it').logout]);
+        expect(vociDelProfilo()).toEqual([testi('it').profile, testi('it').accountSettings, testi('it').privacy, null, testi('it').logout]);
         await clic(tutti('.zr-profile-menu > [role="menuitem"]')[0]!);
         expect(naviga).toHaveBeenLastCalledWith(dashboard.indirizzo + '/impostazioni/profilo');
 
@@ -120,8 +120,14 @@ describe('la cornice del cliente', () => {
         await clic(tutti('.zr-profile-menu > [role="menuitem"]')[1]!);
         expect(naviga).toHaveBeenLastCalledWith(dashboard.indirizzo + '/impostazioni/preferenze');
 
+        const apri = vi.spyOn(window, 'open').mockReturnValue(null);
         await clic(uno('.zr-avatar-btn'));
         await clic(tutti('.zr-profile-menu > [role="menuitem"]')[2]!);
+        expect(apri.mock.calls).toStrictEqual([['https://zeiras.com/privacy/', '_blank', 'noopener']]);
+        expect(onLogout).not.toHaveBeenCalled();
+
+        await clic(uno('.zr-avatar-btn'));
+        await clic(tutti('.zr-profile-menu > [role="menuitem"]')[3]!);
         expect(onLogout).toHaveBeenCalledTimes(1);
         expect(naviga).toHaveBeenCalledTimes(2);
     });
@@ -266,7 +272,7 @@ describe('la cornice del cliente', () => {
         expect(uno('.zr-notif')?.textContent).toContain(delCliente.notificationsEmptyText);
 
         await clic(uno('.zr-avatar-btn'));
-        expect(vociDelProfilo()).toEqual([testi(base).profile, testi(base).accountSettings, null, testi(base).logout]);
+        expect(vociDelProfilo()).toEqual([testi(base).profile, testi(base).accountSettings, testi(base).privacy, null, testi(base).logout]);
     });
 
     it('T2.5 i file del cliente hanno le stesse chiavi in ogni lingua, tutte piene, e nessuna è scritta nelle lingue della cornice', () => {

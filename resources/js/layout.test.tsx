@@ -692,11 +692,11 @@ describe('la voce «Piano», sotto il layout', () => {
     it('con `piano` dato a LayoutDellaCornice il menu del profilo ha la voce «Piano»; alla visita dopo, senza, non l\'ha più (sprint 15 · T1.4)', async () => {
         await visita(dati, <PaginaA key="1" />, { piano: true });
         await clic(uno('.zr-avatar-btn'));
-        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Piano', 'Azienda', 'Esci']);
+        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Piano', 'Azienda', 'Informativa privacy', 'Esci']);
 
         // La cornice resta montata, col menu aperto: è la prop del layout a decidere, a ogni render.
         await visita(dati, <PaginaB key="2" />);
-        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', 'Esci']);
+        expect(nomiDelProfilo()).toStrictEqual(['Profilo', 'Impostazioni', 'Azienda', 'Informativa privacy', 'Esci']);
     });
 });
 

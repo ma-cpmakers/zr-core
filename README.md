@@ -53,6 +53,13 @@ modificatore che forza, `!`, che sta in un layer e vince lo stesso). Il design s
 componente per componente; le animazioni restano sue, che le rallenta invece di fermarle (lo spinner del `Button` gira a 2,4 s
 per giro). Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto, senza un import in più.
 
+**Rimedi provvisori al design system** (dalla `v4.35.0`, #3887): un difetto del CSS del design system che fa male a tutti i moduli
+si corregge nel pacchetto finché il design system non porta la richiesta che lo toglie. I rimedi stanno in
+`resources/css/rimedi.css`, che `bundle.css` e `zeiras.css` importano sotto `avanzamento.css`; quando la richiesta arriva, il
+rimedio esce dal file. Il primo: il titolo della `SectionCard` (`.zr-section-card-title`) con una parola senza spazi, un nome o
+un codice, va a capo anche dentro la parola (`overflow-wrap: anywhere`), e a 390 px la pagina non scorre di lato (richiesta
+290, da zr-cashflow). Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto.
+
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
 pulsante, il bordo di un campo), perché la classe non avrebbe effetto. Vale per le proprietà che il componente dichiara e per
@@ -193,8 +200,8 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,5 KB | 19,1 KB | 67,7 KB | 14,5 KB |
-| la cornice e due componenti per nome | 64,5 KB | 21,9 KB | 67,7 KB | 14,5 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 67,7 KB | 14,5 KB |
+| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 67,7 KB | 14,5 KB |
 | la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 67,2 KB | 14,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
@@ -222,7 +229,7 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.840 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -291,6 +298,9 @@ sì di zr-pm-97 del 13/11).
 Dalla `v4.34.0` sale di 121, alla misura più 20: il codice che carica il CSS di un pezzo a richiesta prima di eseguirlo, che
 Vite mette nell'ingresso da quando un pezzo ha un CSS; gli stili della fascia di assistenza arrivano col pezzo degli avvisi e
 non stanno più nel CSS di ogni pagina, che perde più di quanto l'ingresso prende (#3723, sì di zr-pm-74 del 14/11).
+Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la verifica Google, la voce
+«Informativa privacy» nel menu del profilo (#3753, Decisione di zr-pm-cc del 13/11). I file dell'inglese e dello spagnolo
+salgono a 977 e 1.103 byte, la misura più 20.
 Hanno
 un tetto anche i cinque pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.472 i rimedi, 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
@@ -522,6 +532,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.33.0` | la barra d'avanzamento di Inertia dal pacchetto (#3535): `resources/css/avanzamento.css`, che `bundle.css` e `zeiras.css` importano sotto i font, le dà gli stili coi token — in alto, alta 2 px, `--pine`, a `--z-toast`, senza prendere i clic — e un modulo con `progress: { includeCSS: false }` la vede senza regole sue e senza allargare la CSP («La barra d'avanzamento di Inertia») | niente; un modulo che ha le regole di `#nprogress` nel suo CSS (board, crm, bookings, cashflow, superadmin) le può togliere, e `color` da `progress` | niente | una navigazione lenta del modulo: la barra in alto nel colore di Zeiras, nessuna violazione della CSP in console |
 | `v4.34.0` | la fascia di assistenza come nel design di admin (#3723): una barra citrus a tutta larghezza sopra l'`AppShell`, fuori dal contenuto e sempre in vista, con «Stai usando Zeiras come **nome** · email», in piccolo che cosa valgono le modifiche e il pulsante «Termina e torna al backoffice» (`onLogout`); gli stili sono in `resources/css/assistenza.css`, che arriva col pezzo degli avvisi, solo in assistenza: il CSS di ogni pagina non cresce. Prima era un `Alert` nel contenuto. In assistenza l'`AppShell` sta in un contenitore (`zr-assist`); senza, il DOM è quello di prima | niente | un caso che cerca la fascia di assistenza dentro `main` (`.zr-alert`) la cerca sopra l'`AppShell`, in `.zr-assist-bar`; il testo del pulsante è «Termina e torna al backoffice» | `layout.html?assistenza=1` (e `?assistenza=lettura`): la barra citrus in cima, a 1.280 e a 390 px, il contenuto sotto |
 | `v4.34.1` | le correzioni della fascia di assistenza dalla revisione della `v4.34.0`: un dialogo sta sopra la barra a ogni larghezza (sopra i 720 px la barra ne copriva titolo e ✕); se il CSS del pezzo degli avvisi non arriva al primo tentativo, il pezzo lo richiede una volta quando arriva (pezzo degli avvisi a 1.859 byte, la misura più 20); il separatore « · » e il posto dell'email stanno nel titolo di ogni lingua (`{email}`), e lo spessore del nome viene da un token. Nessun cambio per chi installa |
+| `v4.35.0` | «Informativa privacy» nel menu del profilo (#3753): una voce prima della linea, nella `Cornice` (con o senza `piano`) e nella `CorniceDelCliente`, che apre in una scheda nuova l'informativa di Zeiras nella lingua della pagina, per la verifica di Google; il menu del profilo lo dà sempre la cornice. Il JS d'ingresso sale di 109 byte, alla misura più 20 (Decisione di zr-pm-cc del 13/11). Il modulo aggiorna e basta; il link alla privacy che un modulo ha messo nelle sue pagine si può togliere. | Nella `CorniceDelloStaff`, come nel design di superadmin (#3769): in cima «admin.zeiras.com» al posto di «Backoffice di Zeiras», e nella ricerca «Cerca utenti per nome o email, workspace…» (in spagnolo e in inglese allo stesso modo). E la fascia di assistenza anche nella cornice del cliente (#3878, R3 della revisione della `v4.34.0`): in una sessione di assistenza `Cornice::datiDelCliente()` porta `assistenza` come `Cornice::dati()`, e la `CorniceDelCliente` mostra sopra l'`AppShell` la barra con «Termina e torna al backoffice» (che chiama `onLogout`), senza «Segna tutte come lette»; con il gettone dell'accesso nessuna chiamata in più. Per la fascia nessuna modifica nei moduli: zr-home la riceve aggiornando. E il precarico dei file d'ingresso dice che Early Hints è acceso dal pannello di Cloudflare (zr-pm, 15/11). E il titolo della `SectionCard` con una parola senza spazi va a capo, e a 390 px la pagina non scorre di lato (#3887): un rimedio provvisorio in `resources/css/rimedi.css`, finché il design system non porta la richiesta 290; un modulo che ha scritto la regola nel suo CSS la può togliere |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1948,6 +1959,12 @@ cornice === null ? pagina : (
   «Piano» è spenta di default: i piani non esistono ancora, e la voce porterebbe a una pagina che non c'è. Si accende con
   la prop `piano` (`<Cornice piano … />`, o sul layout della cornice) quando la pagina del piano esiste su app.zeiras.com
   (`/azienda/impostazioni/piano`): allora il menu è quello del design system, con «Piano» fra Impostazioni e Azienda.
+  Dalla `v4.35.0` (#3753) prima della linea c'è sempre anche «Informativa privacy», con o senza `piano`: apre in una scheda
+  nuova l'informativa di Zeiras nella lingua della pagina (`https://zeiras.com/privacy/`, `/en/privacy/`, `/es/privacidad/`;
+  una lingua nuova dà la sua pagina, o quella inglese, nel suo file in `resources/lingue/`, chiave `privacyUrl`). Serve alla
+  verifica di Google, che vuole il link all'informativa ben visibile nell'app (Decisione di zr-pm-cc del 13/11). Il design
+  system non ha la voce: la aggiunge la cornice, coi suoi pezzi (icona `lock`), e il menu lo dà sempre la cornice
+  all'`AppShell`: un modulo non ha bisogno di mettere il link nelle sue pagine.
 - **«Il mio spazio»** (dalla `v4.25.0`, #3417): a chi è membro di un workspace e anche cliente di un'azienda con lo spazio
   acceso, il frontend dà la prop `spazio` (`<Cornice spazio={{ href: '/spazio' }} … />`, o sul layout della cornice), e il
   selettore dei workspace ha in cima il gruppo «Come cliente» con «Il mio spazio» (design dcc4, schermata 13): la voce porta
@@ -1998,6 +2015,8 @@ cornice === null ? pagina : (
   sono in inglese. Campanella e ricerca si spengono con ciò che l'`AppShell` ha oggi per un errore: il design system non
   ha ancora uno stato «non disponibile».
 - **L'assistenza** (dalla `v4.22.0`, #2909): coi dati che portano `assistenza`, sopra la cornice c'è la fascia di assistenza.
+  Dalla `v4.35.0` (#3878) anche sopra la cornice del cliente, coi dati di `Cornice::datiDelCliente()` (vedi «La cornice del
+  cliente»).
   Dalla `v4.34.0` (#3723) è come nel design di admin: una barra citrus a tutta larghezza **sopra l'`AppShell`**, fuori dal
   contenuto, su ogni pagina e a ogni larghezza (anche sotto i 1.024 px, col cassetto chiuso), sempre in vista: l'icona della
   persona, «Stai usando Zeiras come **Anna Bianchi** · anna@example.com», sotto, in piccolo, «Le modifiche che fai valgono
@@ -2724,7 +2743,7 @@ import { CorniceDelloStaff } from '../../vendor/zeiras/zr-core/resources/js/app'
 - **Chi è entrato**: `persona` nell'avatar e in cima al menu del profilo. Il menu del profilo è `menu`, una linea e «Esci dal
   backoffice», che chiama `onLogout`: la sessione la chiude il modulo.
 - **La barra**: solo le voci di `nav` (coi gruppi, `active`, `onNavigate`), il percorso (`crumbs`, `onCrumb`), `actions` e `flush`
-  come nella `Cornice`; con `active={null}` nessuna voce è attiva. In cima «Backoffice di Zeiras» al posto del workspace; in
+  come nella `Cornice`; con `active={null}` nessuna voce è attiva. In cima «admin.zeiras.com» al posto del workspace (dalla `v4.35.0`, prima «Backoffice di Zeiras»); in
   fondo «Configurazione», che arriva a `onNavigate` come `settings`, e il riquadro «Staff di Zeiras». Dalla `v4.3.0` (#2954) con
   `configurazione={false}` «Configurazione» non c'è, né nella barra né nel cassetto: per chi non è Superadmin; senza la prop
   c'è, come prima. Una voce di `nav` con
@@ -2789,7 +2808,14 @@ return [...parent::share($request), 'cornice' => fn () => Cornice::datiDelClient
   aziende in cui la persona è anche membro, coi loro workspace e `nuovo_workspace`, vuota per chi è solo cliente —,
   `non_lette` (dalla `v4.23.0`, #3398: le notifiche da cliente non lette, `notifiche_non_lette` della stessa lettura di io.mostra,
   senza chiamate in più; un intero da 0 in su, e 0 quando il backoffice non lo dà o
-  in una sessione col solo gettone di un workspace) e `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone non legge niente. Senza sessione dà `null`, senza
+  in una sessione col solo gettone di un workspace) e `aggiornati_il`. Un workspace nella sessione non conta: col suo gettone legge
+  solo l'assistenza, sotto. Dalla `v4.35.0` (#3878), in una sessione col solo gettone di un workspace — quella di un'assistenza,
+  che zr-auth apre senza l'accesso —, dopo `aggiornati_il` c'è `assistenza`, come in `Cornice::dati()` e letta allo stesso
+  modo: lo staff entrato con «Accedi come» in un membro che è anche cliente, che apre «Il mio spazio», vede la fascia di
+  assistenza sopra la cornice del cliente, e la campanella senza «Segna tutte come lette». Il backoffice apre un'assistenza
+  solo in un workspace della persona: chi è solo cliente non si assiste. Con il gettone dell'accesso nella sessione la chiave
+  non c'è, e la cornice non chiama `accessi.corrente.mostra`. «Termina e torna al backoffice» chiama `onLogout`, come nella
+  `Cornice`: l'uscita del modulo va a `Cornice::dopoLUscita()`. Senza sessione dà `null`, senza
   chiamare il backoffice. Col 403 `accettazione_richiesta` i dati escono ridotti, come in `Cornice::dati()`: la persona senza
   foto, nessuna azienda e `accettazione_richiesta: true`, e la pagina la decide il modulo. Ogni altro errore arriva a chi chiama
   com'è. La lingua di `dati.lingua` è quella del profilo appena letto; dalla `v4.15.0` (#3341) `Cornice::datiDelCliente($lingua)`
@@ -2836,7 +2862,8 @@ import '../../vendor/zeiras/zr-core/resources/css/cliente.css';    // vuoto dall
   percorso (`crumbs`, `onCrumb`), `actions` e `flush` come nella `Cornice`. In fondo l'`AppShell` mette da sé «Impostazioni», che
   arriva a `onNavigate` come `settings`, come nella `Cornice`.
 - **Il menu del profilo del cliente** è Profilo, Impostazioni, una linea ed «Esci»: Profilo e Impostazioni sono le pagine di account della
-  Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo).
+  Dashboard, «Esci» chiama `onLogout` (obbligatoria: la sessione la chiude il modulo). Dalla `v4.35.0` (#3753) prima della
+  linea c'è anche «Informativa privacy», come nella `Cornice`.
 - **La ricerca non si vede**: per chi è solo cliente il backoffice non ne ha una, e una ricerca finta non si mostra (zr-pm,
   06/11). La nasconde `resources/css/cliente.css`, che il modulo importa dopo il CSS del design system: dal componente la
   build la porterebbe nel CSS di ogni app; dalla `v4.13.1` lo stesso file tiene campanella e profilo a destra della barra in alto,
@@ -3267,7 +3294,7 @@ rifiutata non apre una sessione e non lascia un cookie.
 Dalla `v1.18.0` il pacchetto ha un middleware, `Zeiras\Core\Http\PrecaricoDegliIngressi`, che sulla risposta intera di una
 pagina scrive nell'header `Link` i file che `@vite` ha messo nel documento: l'ingresso, i pezzi che importa staticamente e
 i CSS, non i pezzi dinamici. Il browser comincia a scaricarli quando arrivano le intestazioni, prima di leggere il
-documento. È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento (più sotto, «Che cosa dice di chi
+documento. È pensato per il solo header: per Zeiras Early Hints è acceso dal pannello di Cloudflare, verificato da zr-devops il 15/11; zr-pm 15/11: acceso, solo file statici nel 103 (più sotto, «Che cosa dice di chi
 guarda»). zr-core non lo registra da sé, e installare il pacchetto non precarica niente: lo registra il frontend, in uno dei
 due modi. Sul gruppo `web`, per ogni pagina, nel suo
 `bootstrap/app.php`:
@@ -3312,8 +3339,8 @@ dice `@vite` nel documento, e il middleware non legge il manifest.
   `Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets`, non accanto: con tutti e due ogni file uscirebbe due
   volte, come `modulepreload` e come `preload`.
 - **Che cosa dice di chi guarda**: col solo header, niente. Ripete ciò che il documento dice già: nessun dato, id o lingua
-  della persona, e nessun host che venga dalla richiesta. Per Zeiras Early Hints su Cloudflare resta spento: zr-pm dichiara
-  che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente. Chi lo accende accetta un rischio, e lo
+  della persona, e nessun host che venga dalla richiesta. Per Zeiras Early Hints è acceso dal pannello di Cloudflare, verificato da zr-devops il 15/11; zr-pm 15/11: acceso, solo file statici nel 103.
+  Fino ad allora era spento: zr-pm dichiara che il guadagno misurato era del solo header, e che il 103 non aggiungeva niente. Chi lo accende accetta un rischio, e lo
   decide zr-pm: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce o indovina un indirizzo, che la pagina
   esiste ed è stata aperta da poco — e lo slug di un workspace è il nome di un'azienda. Per questo un modulo con uno slug
   o un id nel percorso registra il middleware sulle sole rotte che accetta di esporre.

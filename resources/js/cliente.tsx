@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellNotification } from '../zeiras/index';
 import { chiama, mostra } from './chiamate';
-import { nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
+import { ilPezzoDegliAvvisi, nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, vocePrivacy, type DatiDellaCornice, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
 import { campanella, chiediLaCampanella, DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, nomePulito, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, prodottoDelRegistro, registro } from './registro';
 import type { NotificaDellaCornice } from './servizi';
@@ -49,6 +49,13 @@ export interface DatiDelCliente {
     aggiornati_il?: string | undefined;
     /** Quante notifiche da cliente la persona non ha letto (dalla `v4.23.0`): il numero sulla campanella. Senza, nessun numero. */
     non_lette?: number | undefined;
+    /**
+     * L'assistenza (dalla `v4.35.0`, voce #3878): c'è solo quando lo staff è entrato con «Accedi come» in una persona che è membro
+     * di un workspace e apre «Il mio spazio», e dice chi è la persona assistita e se l'assistenza è di sola lettura, come nella
+     * `Cornice`: sopra la cornice la fascia di assistenza, e la campanella non ha «Segna tutte come lette». Mai vuota: senza, non
+     * è un'assistenza.
+     */
+    assistenza?: DatiDellaCornice['assistenza'];
     /**
      * I documenti legali in vigore non sono accettati: i dati sono ridotti (nessuna azienda, nessuna foto, nessun numero sulla
      * campanella, che non si apre), e la pagina la decide il modulo.
@@ -212,6 +219,25 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
             }, () => undefined)
             .finally(() => (segnando.current = false));
     };
+    // La fascia di assistenza (dalla `v4.35.0`, voce #3878, R3 della revisione della `v4.34.0`): la stessa della `Cornice`, dal
+    // pezzo degli avvisi, che si chiede solo in assistenza, e si richiede ogni 5 secondi finché non arriva, a scheda in primo piano.
+    // L'`AppShell` sta nel contenitore `zr-assist` da quando i dati dicono `assistenza`, prima che la barra arrivi: non si rimonta.
+    // Senza assistenza nessun contenitore e nessun pezzo: la cornice del cliente è quella di sempre.
+    const [avvisi, setAvvisi] = useState<typeof import('./avvisi')>();
+    const inAssistenza = !!dati.assistenza;
+    useLayoutEffect(() => {
+        if (inAssistenza && !avvisi) {
+            const chiedi = () => document.hidden || void ilPezzoDegliAvvisi().then(setAvvisi, () => undefined);
+            const ogni = setInterval(chiedi, 5e3);
+
+            chiedi();
+
+            return () => clearInterval(ogni);
+        }
+
+        return undefined;
+    }, [inAssistenza, avvisi]);
+    const Fascia = dati.assistenza && avvisi?.FasciaDiAssistenza;
     // Se la lingua non è arrivata la cornice è in italiano, la lingua dell'ingresso: anche i testi del cliente, come per lo staff.
     const dello = testiDelCliente(linguaPronta(lingua) ? lingua : DELL_INGRESSO);
     const account = (pagina: keyof typeof pagineDiApp) => () => naviga(dashboard.indirizzo + pagineDiApp[pagina]);
@@ -219,11 +245,13 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
     const menu: MenuItem[] = [
         { icon: 'user', label: t.profile, onClick: account('profile') },
         { icon: 'settings', label: t.accountSettings, onClick: account('settings') },
+        // L'informativa privacy, come nel menu della `Cornice` (dalla `v4.35.0`, #3753).
+        vocePrivacy(t),
         { sep: true },
         { icon: 'arrow', label: t.logout, onClick: onLogout },
     ];
 
-    return (
+    const cornice = (
         <AppShell
             {...Object.fromEntries(Object.entries(pagina).filter(([, valore]) => valore !== undefined))}
             // Con `null` nessuna voce.
@@ -247,11 +275,19 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
             unreadCount={nonLette}
             notifications={righe}
             notificationsState={senzaFrasi ? 'loading' : notifiche.stato}
-            // Coi dati ridotti la campanella non si apre su niente: le rotte risponderebbero 403.
-            {...(dati.accettazione_richiesta ? {} : { onNotificationsOpen: carica, onRetryNotifications: carica, onOpenNotification: apri, ...(finoA && { onMarkAllRead: segnaTutte }) })}
+            // Coi dati ridotti la campanella non si apre su niente: le rotte risponderebbero 403. In assistenza mostra e non scrive:
+            // niente «Segna tutte come lette», come nella `Cornice` (voce #3878).
+            {...(dati.accettazione_richiesta ? {} : { onNotificationsOpen: carica, onRetryNotifications: carica, onOpenNotification: apri, ...(finoA && !dati.assistenza && { onMarkAllRead: segnaTutte }) })}
             labels={{ ...t, ...dello }}
         >
             {children}
         </AppShell>
     );
+
+    return dati.assistenza ? (
+        <div className="zr-assist">
+            {Fascia && <Fascia lingua={lingua} assistenza={dati.assistenza} onLogout={onLogout} />}
+            <div>{cornice}</div>
+        </div>
+    ) : cornice;
 }

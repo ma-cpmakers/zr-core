@@ -219,6 +219,11 @@ it('col finto di zr-auth: lo staff crea l\'«Accedi come», il ricevitore entra 
 
     expect($dati['assistenza'])->toBe(['persona' => ['nome' => 'Anna', 'cognome' => $anna['cognome'], 'email' => 'uat+anna@castroandpartners.com'], 'sola_lettura' => true])
         ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
+
+    // Voce #3878: nella stessa sessione la cornice del cliente («Il mio spazio» di un membro che è anche cliente) porta la stessa
+    // assistenza, già letta, e con il finto le letture del cliente passano col gettone di assistenza.
+    expect(Cornice::datiDelCliente()['assistenza'] ?? null)->toBe($dati['assistenza'])
+        ->and(richiesteA('/v1/accessi/corrente'))->toHaveCount(1);
 })->with(['senza una sessione di prima' => [false], 'con la sessione della persona già aperta' => [true]]);
 
 it('in assistenza il backoffice nega le letture con 403 `azione_non_consentita_in_assistenza`: le due rotte che segnano lette rispondono 403 con quel codice, non un guasto (sprint 115 · T2.3)', function (string $metodo, string $indirizzo, array $corpo) {

@@ -1,0 +1,10 @@
+/*
+ * Rimedi provvisori al CSS del design system (dalla v4.35.0, voce #3887): ognuno resta finché il design system non porta la
+ * richiesta che lo toglie, e allora si toglie anche da qui. Scritto a mano: lo importano resources/css/bundle.css e
+ * resources/css/zeiras.css sotto avanzamento.css, quindi prima delle regole del bundle; un rimedio che cambia una proprietà
+ * che il bundle già scrive deve vincere con un selettore più forte, non con !important.
+ *
+ * Richiesta 290 (zr-cashflow, zr-pm-74 15/11): il titolo della SectionCard con una parola senza spazi va a capo, e a 390 px la
+ * pagina non scorre di lato.
+ */
+.zr-section-card-title { overflow-wrap: anywhere; }

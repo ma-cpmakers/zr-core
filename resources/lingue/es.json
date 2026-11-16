@@ -69,5 +69,7 @@
     "searchSource.crm.crm.organizzazione": "empresas",
     "searchSource.crm.crm.trattativa": "oportunidades",
     "searchSource.bookings.bookings.prenotazione": "reservas",
-    "searchSource.bookings.bookings.calendario": "calendarios"
+    "searchSource.bookings.bookings.calendario": "calendarios",
+    "privacy": "Política de privacidad",
+    "privacyUrl": "https://zeiras.com/es/privacidad/"
 }

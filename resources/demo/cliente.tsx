@@ -64,6 +64,9 @@ function Pagina() {
         aziende: scelti.get('aziende') === '1' ? [{ id: 'uat-a1', nome: 'UAT Acme', workspace: [{ id: 'uat-w1', nome: 'UAT Vendite', slug: 'uat-vendite' }, { id: 'uat-w2', nome: 'UAT Ricerca', slug: 'uat-ricerca' }], nuovo_workspace: false }] : [],
         aggiornati_il: '2026-11-06T21:00:00.000000Z',
         non_lette: notifiche.filter((una) => !una.letta).length,
+        // Voce #3878: con `?assistenza=1` lo staff è entrato con «Accedi come» e ha aperto «Il mio spazio», con `?assistenza=lettura`
+        // di sola lettura: sopra la cornice del cliente la fascia di assistenza, e la campanella senza «Segna tutte come lette».
+        ...(scelti.has('assistenza') && { assistenza: { persona: { nome: 'UAT Anna', cognome: 'Bianchi', email: 'uat-anna@example.com' }, sola_lettura: scelti.get('assistenza') === 'lettura' } }),
     };
     const [attiva, setAttiva] = useState('home');
     const [ultima, setUltima] = useState('');

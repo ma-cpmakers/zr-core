@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  * CORS: senza, il browser scaricherebbe il file due volte): è la sola forma che Cloudflare ripeterebbe in un 103.
  *
  * Il `Link` ripete ciò che il documento dice già, senza dati, id o lingua della persona, e senza un host che venga dalla
- * richiesta (`indirizzoDellaVoce`). È pensato per il solo header: per Zeiras Early Hints su Cloudflare resta spento. Chi lo
+ * richiesta (`indirizzoDellaVoce`). È pensato per il solo header: per Zeiras Early Hints è acceso dal pannello di Cloudflare, verificato da zr-devops il 15/11; zr-pm 15/11: acceso, solo file statici nel 103. Chi lo
  * accende accetta un rischio, e lo decide zr-pm: il 103 che Cloudflare manda prima dell'origine dice, a chi conosce o indovina
  * un indirizzo (lo slug di un workspace è il nome di un'azienda), che la pagina esiste ed è stata aperta da poco. Per questo
  * un modulo con uno slug o un id nel percorso lo registra sulle sole rotte che accetta di esporre.

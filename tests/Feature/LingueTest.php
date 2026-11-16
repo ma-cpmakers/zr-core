@@ -889,6 +889,8 @@ function problemiDelleLingue(array $lingue, ?array $prodotti = null): array
         // `unreadOne` e `mainContent` erano testi di zr-core; dalla `v4.17.0` sono anche dell'`AppShell` (righe 13 e 30), e vengono da lì.
         ...array_diff(chiaviDiAppShellLabels(), testiDellAppShellCheLaCorniceNonUsa()), 'products', 'dashboard', 'notificationTitle', 'markingAllRead', 'markRestRead', 'unreadNone',
         ...chiaviDegliAvvisi(), 'skipToContent',
+        // Voce 3753 (dalla `v4.35.0`): la voce del menu del profilo che apre l'informativa privacy, e la sua pagina su zeiras.com.
+        'privacy', 'privacyUrl',
         // Sprint 25 · T4: i due testi della ricerca dei workspace con le fonti, e il nome da elenco di ogni tipo di risorsa.
         // Dalla `v1.17.0` le fonti le nomina il solo invito: il segnaposto è uno, e la sua chiave resta.
         'searchPlaceholderSources', 'searchHintSources',
@@ -1329,20 +1331,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 118 tipi della versione 6b369c95 e l\'elenco 78, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings e la fattura del CRM (sprint 79 · T2.1, T2.2, T2.3; 06/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 119 tipi della versione 27d335ea e l\'elenco 79, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings, la fattura del CRM e la cancellazione dei dati di Finanze (sprint 79 · T2.1, T2.2, T2.3; 16/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('6b369c95')
-        ->and($contratto['tipi'])->toHaveCount(118)
-        // L'impronta dei tipi di 6b369c95, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('27d335ea')
+        ->and($contratto['tipi'])->toHaveCount(119)
+        // L'impronta dei tipi di 27d335ea, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('5e38f1dab4989b6ac3ebfa3d3c1b62bb5c0d105e9b35685bdcabb5beecb038e6')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(118)
-        ->and($contratto['non_arrivano'])->toHaveCount(78)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('d3f27ca20d202b527af259e6e9f59ba3735ff7d35aea5efe3ac8c770f214924f')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(119)
+        ->and($contratto['non_arrivano'])->toHaveCount(79)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
@@ -1356,6 +1358,8 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.fattura.creata')
         // Gli eventi sui dati di Finanze sono per le app: nel Catalogo delle notifiche di flow ci sono solo i due flow.avviso.* (zr-backoffice-ea su 6b369c95).
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.flow.movimento.creato')
+        // La cancellazione dei dati di Finanze è una traccia col solo id del workspace, senza la persona: Cancellazione::EVENTO, e non è nel Catalogo (zr-backoffice su 27d335ea).
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.flow.dati.cancellati')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.flow.avviso.saldo_non_basta')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')
@@ -2075,4 +2079,21 @@ it('il controllo delle frasi vede un segnaposto perso, uno che non è suo, uno s
         '«notificationTitleWhoWhat.board.scheda.assegnata» ha {what} {when} {who} invece di {what} {who}',
         '«notificationTitleWhatWhen.com.zeiras.board.scheda.creata» ha {what} {when} {who} invece di {what} {when}',
     ])->and(problemiDelleFrasiConChi($giuste))->toBe([]);
+});
+
+// Voce #3753 (dalla `v4.35.0`, Decisione di zr-pm-cc del 13/11): il menu del profilo apre l'informativa privacy, per la verifica
+// di Google. Ogni lingua della cornice ha la voce e la pagina su zeiras.com: le tre di oggi la loro, una lingua nuova la sua o
+// quella inglese, mai un indirizzo che non sia del sito.
+it('ogni lingua della cornice ha la voce dell\'informativa privacy e la sua pagina su zeiras.com (voce 3753)', function () {
+    $lingue = fileDelleLingue('');
+    $pagine = array_map(fn (array $testi): ?string => $testi['privacyUrl'] ?? null, $lingue);
+
+    expect(array_keys($lingue))->toContain('it', 'es', 'en')
+        ->and(array_filter($lingue, fn (array $testi): bool => trim((string) ($testi['privacy'] ?? '')) === ''))->toBe([])
+        ->and(array_filter($pagine, fn (?string $pagina): bool => ! is_string($pagina) || preg_match('~^https://zeiras\.com/(?:[a-z]{2}/)?[a-z]+/$~', $pagina) !== 1))->toBe([])
+        ->and(array_intersect_key($pagine, array_flip(['it', 'es', 'en'])))->toEqual([
+            'it' => 'https://zeiras.com/privacy/',
+            'es' => 'https://zeiras.com/es/privacidad/',
+            'en' => 'https://zeiras.com/en/privacy/',
+        ]);
 });

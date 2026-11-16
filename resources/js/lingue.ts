@@ -78,6 +78,13 @@ export type TestiDellaCornice = Required<
     searchHintSources: string;
     /** Il titolo di ripiego di una notifica nel pannello: quello di un tipo che zr-core non conosce, o di una notifica senza tipo. */
     notificationTitle: string;
+    /**
+     * La voce del menu del profilo che apre l'informativa privacy di Zeiras (dalla `v4.35.0`, #3753: per la verifica di Google,
+     * Decisione di zr-pm-cc del 13/11). Il design system non ha la voce: la aggiunge la cornice, coi suoi pezzi (README, «La cornice»).
+     */
+    privacy: string;
+    /** La pagina dell'informativa nella lingua del file, su zeiras.com: una lingua senza pagina sua dà quella inglese. */
+    privacyUrl: string;
 };
 
 /**

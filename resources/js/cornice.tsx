@@ -208,15 +208,24 @@ const paginaNuovoWorkspace = '/nuovo-workspace';
 const paginaDellAccettazione = '/legale/accetta';
 
 /**
- * Il menu del profilo senza «Piano»: la lista che l'`AppShell` mette da sé, tolta quella voce. L'`AppShell` non ha un modo per
- * toglierne una sola e prende la lista intera (`accountItems`): icone, testi e ordine sono i suoi, e un test li confronta coi
- * suoi, perché il design system può cambiarli.
+ * La voce del menu del profilo che apre l'informativa privacy in una scheda nuova (dalla `v4.35.0`, #3753: per la verifica di
+ * Google, Decisione di zr-pm-cc del 13/11). Il design system non la ha: la cornice la mette prima della linea, con un'icona del
+ * set di Zeiras. Anche la `CorniceDelCliente` la prende da qui.
  */
-function menuDelProfiloSenzaPiano(t: TestiDellaCornice, suAccount: (azione: AccountAction) => void): MenuItem[] {
+export const vocePrivacy = (t: TestiDellaCornice): MenuItem => ({ icon: 'lock', label: t.privacy, onClick: () => open(t.privacyUrl, '_blank', 'noopener') });
+
+/**
+ * Il menu del profilo: la lista che l'`AppShell` mette da sé, con «Piano» solo con la prop `piano`, e l'informativa privacy prima
+ * della linea. L'`AppShell` non ha un modo per toglierne o aggiungerne una sola e prende la lista intera (`accountItems`): icone,
+ * testi e ordine delle sue voci sono i suoi, e un test li confronta coi suoi, perché il design system può cambiarli.
+ */
+function menuDelProfilo(t: TestiDellaCornice, suAccount: (azione: AccountAction) => void, piano: boolean): MenuItem[] {
     return [
         { icon: 'user', label: t.profile, onClick: () => suAccount('profile') },
         { icon: 'settings', label: t.accountSettings, onClick: () => suAccount('settings') },
+        ...(piano ? [{ icon: 'star', label: t.plan, onClick: () => suAccount('plan') }] : []),
         { icon: 'building', label: t.company, onClick: () => suAccount('company') },
+        vocePrivacy(t),
         { sep: true },
         { icon: 'arrow', label: t.logout, onClick: () => suAccount('logout') },
     ];
@@ -382,7 +391,7 @@ function nonPiuRecentiDeiDatiDi(dati: DatiDellaCornice, saputo: Saputo): boolean
 }
 
 /** Il pezzo dei testi degli avvisi: chi lo chiede di nuovo dopo un fallimento lo chiede come gli altri pezzi a richiesta. */
-const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
+export const ilPezzoDegliAvvisi = pezzoARichiesta<typeof import('./avvisi')>(() => import('./avvisi'), (daLi) => import(/* @vite-ignore */ daLi), import.meta.url);
 
 /**
  * Lo stato dei moduli per una notifica di un altro workspace: quello dei dati della pagina è di un altro workspace, e non dice
@@ -1018,7 +1027,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
                 // Niente riquadro del piano in fondo alla barra (dalla `v4.31.0`): nei moduli non si parla di prezzo, e il piano
                 // lo mostra Home nelle sue pagine, con un dato vero (regola di Luciano del 10/11, zr-pm-97).
                 plan: false,
-                accountItems: piano ? undefined : menuDelProfiloSenzaPiano(t, suAccount),
+                // Il menu del profilo è sempre della cornice (dalla `v4.35.0`): l'informativa privacy c'è anche con `piano`.
+                accountItems: menuDelProfilo(t, suAccount, piano),
                 // Ciò che si spegne per chi non ha accettato i documenti legali. Il menu Moduli resta esteso, con la sola
                 // Dashboard: col modulo aperto l'`AppShell` ne mostrerebbe il nome. La campanella non ha numero e nessuno dei suoi
                 // gestori, e la ricerca non ha il suo: senza, l'`AppShell` non chiede niente alla cornice, e la cornice non chiama

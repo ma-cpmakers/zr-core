@@ -55,6 +55,21 @@ function allaCornice(string $metodo, string $indirizzo, array $corpo = [], array
 }
 
 /**
+ * Dove un caso aspetta un rifiuto della regola (409, 422, 401), un 500 è un'eccezione che nessuno ha preso: esce lei, con la sua
+ * traccia, al posto di «500 is identical to 409», che non dice da dove viene (voce 3879: un giro di zr-test del 15/11 l'ha dato
+ * una volta su GET cornice/notifiche, e il giro dopo no). Non in allaCornice: dove la richiesta passa, il backoffice finto
+ * risponde un 200 vuoto e la rotta lancia, e quei casi contano solo che lo abbia chiamato.
+ */
+function senzaEccezione(TestResponse $avuta, string $dove): TestResponse
+{
+    if ($avuta->getStatusCode() === 500 && $avuta->exception instanceof Throwable) {
+        throw new RuntimeException("{$dove}: 500 dall'eccezione qui sotto", 0, $avuta->exception);
+    }
+
+    return $avuta;
+}
+
+/**
  * Le rotte della cornice che a quella richiesta non danno quella risposta, stato e corpo: `[]` quando la regola c'è su tutte.
  *
  * @param  array<string, mixed>  $corpo
@@ -65,7 +80,7 @@ function rotteCheNonRispondono(int $stato, string $risposta, array $corpo, array
 {
     $altre = [];
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
-        $avuta = allaCornice($metodo, $indirizzo, $corpo, $intestazioni);
+        $avuta = senzaEccezione(allaCornice($metodo, $indirizzo, $corpo, $intestazioni), "{$metodo} {$indirizzo}");
         if ($avuta->getStatusCode() !== $stato || $avuta->getContent() !== $risposta) {
             $altre[] = "{$metodo} {$indirizzo}";
         }
@@ -350,7 +365,7 @@ it('con la sessione che ha un\'impronta, un\'email che non è la sua e un\'impro
     }
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
-        $avuta = allaCornice($metodo, $indirizzo, [], ['Persona' => $email] + ($impronta === null ? [] : [Persona::INTESTAZIONE => $impronta]));
+        $avuta = senzaEccezione(allaCornice($metodo, $indirizzo, [], ['Persona' => $email] + ($impronta === null ? [] : [Persona::INTESTAZIONE => $impronta])), "{$metodo} {$indirizzo}");
 
         expect($avuta->getStatusCode())->toBe(409, "{$metodo} {$indirizzo}")
             ->and($avuta->getContent())->toBe('{"errore":"persona_diversa","persona":""}');
@@ -366,11 +381,24 @@ it('con la sessione che ha un\'impronta, un\'email che non è la sua e un\'impro
     'l\'email di prima con quella giusta e un\'altra insieme' => ['{sessione},{ada}', 'uat-ada%40example.com'],
 ]);
 
+it('dove un caso aspetta un rifiuto, una rotta che risponde 500 per un\'eccezione la fa uscire con la sua traccia e l\'indirizzo nel messaggio; un 500 senza eccezione resta una risposta (voce 3879)', function () {
+    Route::get('uat-guasto', fn () => throw new LogicException('uat-guasto: il segno'));
+
+    expect(fn () => senzaEccezione(allaCornice('GET', 'uat-guasto'), 'GET uat-guasto'))->toThrow(function (RuntimeException $uscita) {
+        expect($uscita->getMessage())->toBe("GET uat-guasto: 500 dall'eccezione qui sotto")
+            ->and($uscita->getPrevious())->toBeInstanceOf(LogicException::class)
+            ->and($uscita->getPrevious()?->getMessage())->toBe('uat-guasto: il segno');
+    });
+
+    Route::get('uat-cinquecento', fn () => response()->json(['errore' => 'uat-segno'], 500));
+    expect(senzaEccezione(allaCornice('GET', 'uat-cinquecento'), 'GET uat-cinquecento')->getContent())->toBe('{"errore":"uat-segno"}');
+});
+
 it('l\'impronta da sola non fa entrare nessuno: senza sessione la richiesta con un\'impronta di chi vuole e un\'email qualunque riceve il 401 da ogni rotta, e non arriva alla rotta (sprint 67 · T1.3)', function () {
     Http::fake();
 
     foreach (rotteDellaCorniceDalRouter() as [$metodo, $indirizzo]) {
-        $avuta = allaCornice($metodo, $indirizzo, ['persona' => 'uat-ada@example.com'], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => improntaDi('uat-ada')]);
+        $avuta = senzaEccezione(allaCornice($metodo, $indirizzo, ['persona' => 'uat-ada@example.com'], ['Persona' => 'uat-ada%40example.com', Persona::INTESTAZIONE => improntaDi('uat-ada')]), "{$metodo} {$indirizzo}");
 
         expect($avuta->getStatusCode())->toBe(401, "{$metodo} {$indirizzo}")->and($avuta->getContent())->not->toContain('persona_diversa');
     }
