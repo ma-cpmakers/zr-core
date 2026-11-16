@@ -1629,7 +1629,7 @@ async function ilMioSpazio(page) {
 // muove Chromium (`Input.dispatchTouchEvent`), come un dito vero: TC.1 una pressione di 250 ms prende la carta, una copia segue il
 // dito e al rilascio su un'altra colonna la carta ci passa; TC.2 un dito che scorre subito fa scorrere la lavagna e non prende
 // niente; TC.3 con la carta presa, il dito fermo vicino al bordo destro fa scorrere la lavagna, e la carta arriva a una colonna
-// che prima era fuori vista (a 390 px si vedono la prima e un pezzo della seconda); TC.4 un tocco breve resta un clic: nessuna presa, e la carta non si sposta; TC.5 sulle carte
+// che prima era fuori vista (a 390 px si vedono la prima e un pezzo della seconda); TC.4 un tocco breve resta un clic: nessuna presa, la carta non si sposta e si apre; TC.8 e TC.9 (dalla v4.36.0) il dito al bordo basso e una pressione di 700 ms; TC.5 sulle carte
 // `touch-action: manipulation`, che lascia scorrere e ingrandire.
 async function carteColDito() {
     // Il telefono è un contesto suo, 390 × 844 con `hasTouch` e `isMobile`. Il browser condiviso (UAT_PAGE) non ne ha uno: lì le
@@ -1682,6 +1682,18 @@ async function carteColDito() {
             spostata: document.querySelector('[data-uat="spostata"]')?.textContent ?? '',
             aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
         };
+    });
+    // La prima carta della lavagna portata in vista, di lato, a 16 px dal bordo sinistro (dalla v4.36.0, R8): il dito tocca ciò che si vede.
+    const inVista = () => page.evaluate(() => {
+        const lavagna = document.querySelector('.zr-lanes');
+        const colonne = [...document.querySelectorAll('.zr-lanes [data-stage]')];
+        const carta = document.querySelector('.zr-lanes [data-deal-id]');
+        if (!lavagna || !carta) {
+            return null;
+        }
+        lavagna.scrollLeft += carta.getBoundingClientRect().left - Math.max(lavagna.getBoundingClientRect().left, 0) - 16;
+        const posto = carta.getBoundingClientRect();
+        return { id: carta.getAttribute('data-deal-id'), fase: colonne.indexOf(carta.closest('[data-stage]')), x: posto.left + 24, y: posto.top + posto.height / 2, basso: innerHeight - 6 };
     });
     const prima = await stato();
     const carta = prima.carte.find((questa) => questa.fase === 0);
@@ -1748,6 +1760,34 @@ async function carteColDito() {
     } else {
         scrivi('❌', 'TC.3', 'una seconda carta nella prima colonna per il bordo', '');
     }
+
+    // TC.8 e TC.9 (dalla v4.36.0, R8 della revisione della v4.35.2): la prima carta che si vede, tenuta ferma 700 ms prima di
+    // muoversi (Safari su iOS e Chrome su Android, dopo mezzo secondo, avviano il loro drag e si prendono il dito: TC.9), poi il dito
+    // al bordo basso dello schermo, dove la pagina scorre da sola (TC.8); lasciata sotto la lavagna, la carta torna dov'era.
+    const nona = await inVista();
+    await pausa(300);
+    if (nona) {
+        const primaDiScorrere = await page.evaluate(() => scrollY + (document.querySelector('.zr-main')?.scrollTop ?? 0));
+        await tocca('touchStart', nona.x, nona.y);
+        await pausa(700);
+        await tocca('touchMove', nona.x + 2, nona.y + 2);
+        await pausa(100);
+        const tenuta = await stato();
+        await striscia({ x: nona.x + 2, y: nona.y + 2 }, { x: nona.x, y: nona.basso }, 8, 30);
+        await pausa(1200);
+        const giu = await page.evaluate(() => scrollY + (document.querySelector('.zr-main')?.scrollTop ?? 0));
+        await foto('tocco-verticale.png');
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === nona.id)?.fase ?? -1;
+        scrivi(tenuta.presa && tenuta.ombra ? '✅' : '❌', 'TC.9', 'una pressione ferma di 700 ms prima di muoversi tiene la carta presa (il drag del browser non si prende il dito)', `presa: ${tenuta.presa}, copia: ${tenuta.ombra}`);
+        scrivi(giu > primaDiScorrere + 100 && fase === nona.fase && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TC.8', 'con la carta presa il dito al bordo basso dello schermo fa scorrere la pagina da sola; lasciata sotto la lavagna, la carta torna dov\'era', `scorrimento ${primaDiScorrere} → ${giu}, colonna: ${nona.fase} → ${fase}`);
+        await page.evaluate(() => { scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('.zr-main')?.scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }); });
+        await pausa(300);
+    } else {
+        scrivi('❌', 'TC.8', 'una carta che si vede, per il bordo basso', '');
+    }
     }
 
     // TC.6 (dalla v4.35.4, solo con la lavagna dentro un margine, `?lavagna=margine`): una carta tenuta, il dito nel margine a
@@ -1797,13 +1837,15 @@ async function carteColDito() {
     }
 
     // TC.4: un tocco breve.
-    const breve = (await stato()).carte.find((questa) => questa.fase >= 0);
+    const breve = await inVista();
+    await pausa(300);
     await tocca('touchStart', breve.x, breve.y);
     await pausa(60);
     await tocca('touchEnd');
     await pausa(600);
     const toccata = await stato();
-    scrivi(!toccata.ombra && !toccata.presa && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è', `presa: ${toccata.presa}${toccata.aperta ? `, onOpen: ${toccata.aperta}` : ''}`);
+    // Dalla v4.36.0 (R8): il clic deve arrivare alla carta, cioè `onOpen` con la sua trattativa.
+    scrivi(!toccata.ombra && !toccata.presa && toccata.aperta === breve.id && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è e si apre (onOpen)', `presa: ${toccata.presa}, onOpen: ${toccata.aperta || '-'}`);
     await page.context().close();
 }
 

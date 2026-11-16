@@ -139,7 +139,8 @@ const lavagne = new WeakSet<Element>();
  */
 function lavagneColDito(): void {
     document.querySelectorAll('.zr-lanes').forEach((lavagna) => {
-        if (!lavagne.has(lavagna)) {
+        // Solo una lavagna con carte che si trascinano (v4.36.0, R4): una board in sola lettura non scarica il pezzo.
+        if (!lavagne.has(lavagna) && lavagna.querySelector('[draggable="true"]')) {
             void import('./tocco').then((arrivato) => (tocco = arrivato), () => undefined);
             lavagne.add(lavagna);
             lavagna.addEventListener('touchmove', (mosso) => tocco?.trattieni(mosso), { passive: false });
@@ -184,9 +185,10 @@ function primoTasto(tasto: KeyboardEvent): void {
 
 addEventListener('keydown', primoTasto);
 // Richiesta 293 (v4.35.2, zr-pm-74 16/11): le carte della `DealPipeline` col dito. Un tocco su una carta che si trascina passa
-// la pressione al pezzo del tocco (`tocco.ts`), chiesto quando la lavagna è entrata; il mouse resta del browser.
+// la pressione al pezzo del tocco (`tocco.ts`), chiesto quando la lavagna è entrata; la penna come il dito (v4.36.0, R7); il mouse
+// resta del browser.
 document.addEventListener('pointerdown', (giu) => {
-    if (giu.pointerType === 'touch' && giu.target instanceof Element && giu.target.closest('.zr-lanes [draggable="true"]')) {
+    if (/touch|pen/.test(giu.pointerType) && giu.target instanceof Element && giu.target.closest('.zr-lanes [draggable="true"]')) {
         tocco?.premi(giu);
     }
 }, true);

@@ -10,7 +10,7 @@
  * stesso `onMove` e lo stesso `onChange` del mouse. Vicino ai bordi la lavagna scorre da sola: di lato la `.zr-lanes`, in alto e
  * in basso il primo contenitore che scorre sotto il dito (la colonna, o la pagina). Un dito che si muove prima dei 250 ms fa
  * scorrere la pagina come sempre (sulle carte `touch-action: manipulation`, in `rimedi.css`), e un tocco breve resta un clic.
- * Il mouse resta del browser; la tastiera e «Sposta in…» non passano di qui.
+ * Il mouse resta del browser; la penna (Apple Pencil, dalla `v4.36.0`, R7) passa di qui come il dito; la tastiera e «Sposta in…» no.
  */
 
 /**
@@ -141,7 +141,12 @@ export function premi(giu: PointerEvent): void {
         const bordi = lavagna.getBoundingClientRect();
         const colonna = cheScorre(sotto());
         const alta = colonna === document.scrollingElement ? { top: 0, bottom: innerHeight } : colonna.getBoundingClientRect();
-        const [diLato, inVerticale] = [delCrm ? velocita(x, bordi.left, bordi.right) : 0, velocita(y, alta.top, alta.bottom)];
+        // I bordi che contano sono quelli che si vedono (v4.36.0, R5): una colonna o una lavagna che esce dallo schermo scorre
+        // quando il dito arriva al bordo dello schermo.
+        const [diLato, inVerticale] = [
+            delCrm ? velocita(x, Math.max(bordi.left, 0), Math.min(bordi.right, innerWidth)) : 0,
+            velocita(y, Math.max(alta.top, 0), Math.min(alta.bottom, innerHeight)),
+        ];
         const scorsa = lavagna.scrollLeft !== diLa;
 
         if (diLato) {
@@ -206,9 +211,11 @@ export function premi(giu: PointerEvent): void {
                 manda(qui, 'drop', x, y);
             }
             manda(viva(), 'dragend', x, y);
-            // Il clic che il browser manda dopo il dito alzato non apre la carta appena lasciata.
+            // Il clic che il browser manda dopo il dito alzato non apre la carta appena lasciata. Se il browser non lo manda, il
+            // clic che viene dopo una nuova pressione resta un clic (v4.36.0, R6).
             addEventListener('click', fermato, true);
-            setTimeout(() => removeEventListener('click', fermato, true), 400);
+            addEventListener('pointerdown', lascia, { capture: true, once: true });
+            setTimeout(lascia, 400);
         }
         fine();
     };
@@ -228,10 +235,11 @@ export function premi(giu: PointerEvent): void {
             evento.preventDefault();
         }
     };
+    const lascia = (): void => removeEventListener('click', fermato, true);
     const fermato = (clic: Event): void => {
         clic.preventDefault();
         clic.stopPropagation();
-        removeEventListener('click', fermato, true);
+        lascia();
     };
     const tempo = setTimeout(prendi, ATTESA);
     const ascolta = [
