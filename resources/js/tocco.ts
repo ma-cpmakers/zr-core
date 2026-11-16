@@ -113,12 +113,17 @@ export function premi(giu: PointerEvent): void {
     /**
      * Chi sta sotto il dito. Nel margine accanto alla lavagna, alla sua altezza, il dito conta come sul bordo (v4.35.4, zr-crm):
      * lì la lavagna scorre da sola, e la colonna che si vede sul bordo è quella che il dito cerca. Sopra o sotto la lavagna no.
+     * A fine corsa sul bordo c'è il padding della lavagna (v4.36.0, zr-crm): lì il dito conta come sulla colonna accanto.
      */
     const sotto = (): Element | null => {
         const bordi = lavagna.getBoundingClientRect();
-        const alLato = y >= bordi.top && y <= bordi.bottom ? Math.min(Math.max(x, bordi.left + 1), bordi.right - 1) : x;
+        const { paddingLeft, paddingRight } = getComputedStyle(lavagna);
+        const dentro = y >= bordi.top && y <= bordi.bottom;
+        const qui = document.elementFromPoint(dentro ? Math.min(Math.max(x, bordi.left + 1), bordi.right - 1) : x, y);
 
-        return document.elementFromPoint(alLato, y);
+        return dentro && qui === lavagna
+            ? document.elementFromPoint(Math.min(Math.max(x, bordi.left + parseFloat(paddingLeft) + 1), bordi.right - parseFloat(paddingRight) - 1), y)
+            : qui;
     };
     const sopra = (): void => {
         const qui = sotto();

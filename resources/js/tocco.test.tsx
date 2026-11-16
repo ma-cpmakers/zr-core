@@ -205,6 +205,23 @@ it('il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul b
     expect(Math.max(...dove)).toBeLessThan(358);
 });
 
+// v4.36.0 (zr-crm-35, 16/11, prova dal vivo della v4.35.4): col dito fermo nel margine la lavagna scorre fino in fondo, e lì
+// sul bordo c'è il suo padding, non una colonna. Lasciata lì, la carta deve andare all'ultima colonna, quella che si vede.
+it('a fine corsa, col dito nel margine, il padding della lavagna sul bordo non ferma la carta: va alla colonna accanto (v4.36.0)', async () => {
+    const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
+    lavagna.getBoundingClientRect = () => ({ left: 32, right: 358, top: 0, bottom: 400, width: 326, height: 400, x: 32, y: 0, toJSON: () => ({}) });
+    lavagna.style.padding = '0 23px';
+    document.elementFromPoint = (x: number) => (x > 358 || x < 32 ? document.body : x >= 335 || x <= 55 ? lavagna : colonna('prop'));
+
+    posa('d1', 100, 40);
+    await act(() => aspetta(300));
+    await act(async () => void dito('pointermove', document.body, 380, 40));
+    await act(async () => void dito('pointerup', document.body, 380, 40));
+
+    expect(onMove).toHaveBeenCalledTimes(1);
+    expect(onMove.mock.calls[0]?.slice(1)).toStrictEqual(['prop', 'new']);
+});
+
 it('sopra o sotto la lavagna, fuori dalla sua altezza, la carta lasciata torna dov\'era (v4.35.4)', async () => {
     const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
     lavagna.getBoundingClientRect = () => ({ left: 32, right: 358, top: 100, bottom: 400, width: 326, height: 300, x: 32, y: 100, toJSON: () => ({}) });
