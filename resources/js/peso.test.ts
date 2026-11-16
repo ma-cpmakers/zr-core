@@ -222,6 +222,8 @@ const DEGLI_AVVISI = 'Zeiras is not responding';
 const DEI_RIMEDI = 'calc(var(--z-dialog) + 2)';
 /** Ciò che nel codice costruito c'è solo nei rimedi della sola tastiera (dalla `v3.8.0`): l'ordine di due fermate del Tab. */
 const DELLA_TASTIERA = 'compareDocumentPosition';
+/** Il pezzo del trascinamento col dito (dalla v4.35.2, richiesta 293): la classe della copia della carta che segue il dito. */
+const DEL_TOCCO = 'zr-tocco-ombra';
 /** Ciò che nel codice costruito c'è solo nella barra minima di chi non ha i dati della cornice (sprint 68 · T1). */
 const DELLA_BARRA = 'var(--topbar-height)';
 
@@ -642,18 +644,18 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(costruita().fileDelleFrasi.map((nome) => nome.replace(/-[\w-]{8,}\.json$/, '-<impronta>.json'))).toStrictEqual(['assets/en-<impronta>.json', 'assets/es-<impronta>.json', 'assets/it-<impronta>.json']);
     });
 
-    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri cinque sono pezzi di codice, senza frasi: la campanella, la ricerca, i rimedi di tastiera, gli avvisi della cornice ridotta (dalla v3.7.0) e i rimedi della sola tastiera (dalla v3.8.0)', (_nome, costruita) => {
+    it.each(app)('«%s»: tre file a richiesta con le frasi, ognuno di una lingua sola; gli altri sei sono pezzi di codice, senza frasi: la campanella, la ricerca, i rimedi di tastiera, gli avvisi della cornice ridotta (dalla v3.7.0), i rimedi della sola tastiera (dalla v3.8.0) e il trascinamento col dito (dalla v4.35.2)', (_nome, costruita) => {
         const lingueDeiPezzi = costruita().aRichiesta.map((pezzo) => Object.entries(FRASI).flatMap(([lingua, frase]) => (pezzo.includes(frase) ? [lingua] : [])));
 
-        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], [], [], ['en'], ['es'], ['it']]);
-        expect(costruita().pezzi).toHaveLength(5);
+        expect(lingueDeiPezzi.sort()).toStrictEqual([[], [], [], [], [], [], ['en'], ['es'], ['it']]);
+        expect(costruita().pezzi).toHaveLength(6);
     });
 
     // Sprint 33 · T1.2 (voce #1915). Che il pezzo si chieda all'apertura della campanella, e non al montaggio, lo provano i casi
     // della cornice (`cornice.test.tsx`).
     it.each(app)('«%s»: ciò che compone la riga di una notifica non sta nel JS d\'ingresso ma in un pezzo a richiesta solo, che non è quello dei rimedi (sprint 33 · T1.2)', (_nome, costruita) => {
         expect(volte(costruita().js, DELLA_CAMPANELLA)).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, true], [true, false]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes(DEI_RIMEDI)]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, false], [false, true], [true, false]]);
     });
 
     // Sprint 42 · T2.1 (voce #2054). Che il pezzo si chieda al primo fuoco nel campo, o alla prima parola, e non al montaggio, lo
@@ -686,7 +688,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // Sprint 33 · T2.4 (voce #1890): il taglio del nome di chi ha fatto (`Intl.Segmenter`) sta nel pezzo della campanella.
     it.each(app)('«%s»: il taglio del nome di chi ha fatto non sta nel JS d\'ingresso ma nel pezzo della campanella (sprint 33 · T2.4)', (_nome, costruita) => {
         expect(volte(costruita().js, 'Segmenter')).toBe(0);
-        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, false], [true, true]]);
+        expect(costruita().pezzi.map((pezzo) => [pezzo.includes(DELLA_CAMPANELLA), pezzo.includes('Segmenter')]).sort()).toStrictEqual([[false, false], [false, false], [false, false], [false, false], [false, false], [true, true]]);
     });
 
     // Sprint 74 · T1.6 (voce 2548): il giorno e l'ora di una notifica (`weekday` è un'opzione che solo quel formattatore usa) li
@@ -898,7 +900,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_685);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.472 byte, il tetto della v4.26.1 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.640 byte, il tetto della v4.35.2 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -929,7 +931,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // il design system dal lotto 0522, e i loro rimedi sono tolti: 1.342 misurati, più 20. v4.26.1: il nome del selettore dei
         // workspace e del pulsante del profilo dal loro testo (axe `label-content-name-mismatch`, righe 240 e 241): 1.462 misurati;
         // tetto 1.472, per eccezione senza contropartita (sì di zr-pm-07 dell'08/11: accessibilità del selettore, si toglie con la 240).
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_472);
+        // v4.35.2 (richiesta 293, sì di zr-pm-74 del 16/11): il dito su una carta della DealPipeline chiede il pezzo del tocco
+        // (`tocco.ts`), chiesto quando entra una lavagna, e gli passa la pressione e i `touchmove` della lavagna: 1.620 misurati,
+        // tetto alla misura più 20; si toglie con la 293.
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_640);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
@@ -942,6 +947,17 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // del pezzo unificate (revisione della PR #150: in ascolto sulla radice, senza Alt); il tetto è il massimo della Decisione 18611.
         // v4.18.0 (Decisione 22074): le righe 47, 48, 131, 133 e 135 le fa l'`AppShell`, e i loro rimedi sono tolti: 1.556 misurati, più 20.
         expect(gzip(tastiera)).toBeLessThanOrEqual(1_576);
+    });
+
+    // v4.35.2 (richiesta 293, sì di zr-pm-74 del 16/11): le carte della DealPipeline col dito, in un pezzo che chiede solo il
+    // pezzo dei rimedi, quando entra una lavagna: nel JS d'ingresso niente, e nei rimedi solo ciò che lo chiede e gli passa il
+    // dito. 1.220 misurati, il tetto è la misura più 20.
+    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.240 byte, la misura della v4.35.2 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
+        const delTocco = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEL_TOCCO));
+
+        expect(volte(soloCornice.js, DEL_TOCCO)).toBe(0);
+        expect(delTocco.map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
+        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_240);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

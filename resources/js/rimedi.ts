@@ -126,6 +126,27 @@ function sceltoUnRisultato(evento: Event): void {
     }
 }
 
+/** Il pezzo del tocco, quando è arrivato (richiesta 293). */
+let tocco: typeof import('./tocco') | undefined;
+/** Le lavagne che hanno già chi ascolta il dito. */
+const lavagne = new WeakSet<Element>();
+
+/**
+ * Quando entra una lavagna (`.zr-lanes`) si chiede il pezzo del tocco, perché ci sia già al primo dito: la pressione che arriva
+ * prima di lui resta del browser. E su ogni lavagna un ascolto dei `touchmove` senza `passive`, prima del primo tocco: Chromium
+ * decide quando il dito si posa se i suoi `touchmove` si possono fermare, e il pezzo del tocco deve poterli fermare quando la
+ * carta è presa. Solo sulla lavagna: altrove lo scorrimento non aspetta nessuno.
+ */
+function lavagneColDito(): void {
+    document.querySelectorAll('.zr-lanes').forEach((lavagna) => {
+        if (!lavagne.has(lavagna)) {
+            void import('./tocco').then((arrivato) => (tocco = arrivato), () => undefined);
+            lavagne.add(lavagna);
+            lavagna.addEventListener('touchmove', (mosso) => tocco?.trattieni(mosso), { passive: false });
+        }
+    });
+}
+
 /** Il pezzo di tastiera, quando è arrivato. */
 let tastiera: typeof import('./tastiera') | undefined;
 /** I tasti premuti prima che arrivi, ognuno con «qualcun altro lo aveva già fermato» e «è il Tab che si è fermato qui». */
@@ -162,6 +183,13 @@ function primoTasto(tasto: KeyboardEvent): void {
 }
 
 addEventListener('keydown', primoTasto);
+// Richiesta 293 (v4.35.2, zr-pm-74 16/11): le carte della `DealPipeline` col dito. Un tocco su una carta che si trascina passa
+// la pressione al pezzo del tocco (`tocco.ts`), chiesto quando la lavagna è entrata; il mouse resta del browser.
+document.addEventListener('pointerdown', (giu) => {
+    if (giu.pointerType === 'touch' && giu.target instanceof Element && giu.target.closest('.zr-lanes [draggable="true"]')) {
+        tocco?.premi(giu);
+    }
+}, true);
 document.addEventListener('click', apertoIlCassetto);
 document.addEventListener('click', sceltoUnRisultato, true);
 document.addEventListener('keydown', sceltoUnRisultato, true);
@@ -231,12 +259,14 @@ new MutationObserver((cambi) => {
     cassetto();
     nomiDaiTesti();
     tastiera?.aOgniCambio();
+    lavagneColDito();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
     nomiDaiTesti();
+    lavagneColDito();
 }
 
 // Un modulo, anche senza niente da dare: la cornice lo chiede con `import()`.

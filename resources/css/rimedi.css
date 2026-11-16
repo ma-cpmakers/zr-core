@@ -8,3 +8,12 @@
  * pagina non scorre di lato.
  */
 .zr-section-card-title { overflow-wrap: anywhere; }
+
+/*
+ * Richiesta 293 (zr-pm-74 16/11, v4.35.2): le carte della DealPipeline si trascinano anche col dito (resources/js/tocco.ts). Sulla
+ * carta il dito fa scorrere la pagina e lo zoom come sempre, ma la pressione lunga non seleziona il testo né apre il menu del
+ * browser; la copia che segue il dito sta sopra tutto e non prende i tocchi (`.zr-card` nel selettore: la regola del bundle,
+ * che viene dopo, la farebbe `position: relative`).
+ */
+.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }
