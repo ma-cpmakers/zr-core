@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { AppShellLabels, MenuItem, ShellCrumb, ShellSearchResult } from '../zeiras/index';
-import type { GruppoDiVoci } from './cornice';
+import { vocePrivacy, type GruppoDiVoci } from './cornice';
 import { DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { AppShell } from './zeiras/componenti';
 import inglese from '../lingue/staff/en.json';
@@ -174,7 +174,9 @@ function NellaSuaLingua({ lingua, persona, ruolo, sessioneFinoA, nav = [], activ
             email={persona.email}
             workspace={area}
             settings={configurazione}
-            accountItems={menu.length > 0 ? [...menu, { sep: true }, esci] : [esci]}
+            // L'informativa privacy prima della linea, come nella `Cornice` e nella `CorniceDelCliente` (dalla `v4.35.1`, #3753, R1 della
+            // revisione della `v4.35.0`).
+            accountItems={[...menu, vocePrivacy(t), { sep: true }, esci]}
             notifications={[]}
             {...(cerca ? { onSearch: cercaParola } : {})}
             {...(cercaAllInvio ? { searchOn: 'submit' as const } : {})}

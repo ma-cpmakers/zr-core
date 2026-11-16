@@ -85,27 +85,35 @@ describe('la cornice dello staff', () => {
         expect(uno('.zr-profile-head > span:last-child')?.textContent).toBe(staff.nome + staff.email);
     });
 
-    it('T1.2 il menu del profilo è le voci del modulo, una linea e «Esci dal backoffice», che chiama onLogout una volta', async () => {
+    it('T1.2 il menu del profilo è le voci del modulo, l\'informativa privacy (dalla v4.35.1, voce 3753, R1 della revisione), una linea e «Esci dal backoffice», che chiama onLogout una volta', async () => {
         const onLogout = vi.fn();
         const voce = vi.fn();
         await mostra(<CorniceDelloStaff lingua="it" persona={staff} nav={nav} menu={[{ icon: 'user', label: 'Il mio accesso staff', onClick: voce }]} onLogout={onLogout} />);
 
         await clic(uno('.zr-avatar-btn'));
-        expect(vociDelProfilo()).toEqual(['Il mio accesso staff', null, 'Esci dal backoffice']);
+        expect(vociDelProfilo()).toEqual(['Il mio accesso staff', testi('it').privacy, null, 'Esci dal backoffice']);
         for (const diZrHome of [testi('it').profile, testi('it').accountSettings, testi('it').company, testi('it').plan]) {
             expect(vociDelProfilo()).not.toContain(diZrHome);
         }
 
+        // L'informativa si apre in una scheda nuova, nella lingua della pagina, e non chiude la sessione.
+        const apri = vi.spyOn(window, 'open').mockReturnValue(null);
+        await clic(tutti('.zr-profile-menu [role="menuitem"]')[1]!);
+        expect(apri.mock.calls).toStrictEqual([[testi('it').privacyUrl, '_blank', 'noopener']]);
+        expect(onLogout).not.toHaveBeenCalled();
+        apri.mockRestore();
+
+        await clic(uno('.zr-avatar-btn'));
         await clic(tutti('.zr-profile-menu [role="menuitem"]').at(-1)!);
         expect(onLogout).toHaveBeenCalledTimes(1);
         expect(voce).not.toHaveBeenCalled();
     });
 
-    it('T1.2 senza voci del modulo il menu del profilo ha solo «Esci», senza linea', async () => {
+    it('T1.2 senza voci del modulo il menu del profilo ha l\'informativa privacy, una linea e «Esci» (dalla v4.35.1; prima solo «Esci»)', async () => {
         await mostra(<CorniceDelloStaff lingua="it" persona={staff} onLogout={esci} />);
 
         await clic(uno('.zr-avatar-btn'));
-        expect(vociDelProfilo()).toEqual(['Esci dal backoffice']);
+        expect(vociDelProfilo()).toEqual([testi('it').privacy, null, 'Esci dal backoffice']);
     });
 
     it.each([
@@ -137,7 +145,13 @@ describe('la cornice dello staff', () => {
         expect(uno('.zr-notif')?.textContent).toContain(dellaLingua.notificationsEmptyText);
 
         await clic(uno('.zr-avatar-btn'));
-        expect(vociDelProfilo()).toEqual([dellaLingua.logout]);
+        expect(vociDelProfilo()).toEqual([testi(base).privacy, null, dellaLingua.logout]);
+
+        // L'indirizzo dell'informativa è quello della lingua della cornice.
+        const apri = vi.spyOn(window, 'open').mockReturnValue(null);
+        await clic(tutti('.zr-profile-menu [role="menuitem"]')[0]!);
+        expect(apri.mock.calls).toStrictEqual([[testi(base).privacyUrl, '_blank', 'noopener']]);
+        apri.mockRestore();
     });
 
     // Sprint 105 (voce #2954): «Configurazione» è solo del Superadmin, e il modulo la toglie a chi non lo è.

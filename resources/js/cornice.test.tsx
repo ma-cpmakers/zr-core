@@ -997,7 +997,7 @@ describe('la Cornice', () => {
         const delDesignSystem = vociDelProfilo();
         expect(delDesignSystem.filter((voce) => voce?.testo === t.plan)).toHaveLength(1);
         // La voce della cornice, che il design system non ha: col testo della lingua e l'icona `lock` del set di Zeiras.
-        const privacy = { testo: t.privacy, icona: tracciatoDi('lock'), pericolo: false, spenta: false, tasto: null };
+        const privacy = { testo: t.privacy, icona: tracciatoDi('file'), pericolo: false, spenta: false, tasto: null };
         const conLaPrivacy = (voci: typeof delDesignSystem) => [...voci.slice(0, voci.indexOf(null)), privacy, ...voci.slice(voci.indexOf(null))];
 
         await mostra(<Cornice dati={{ ...dati, lingua }} onLogout={esciSenzaEffetto} />);

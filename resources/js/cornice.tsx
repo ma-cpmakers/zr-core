@@ -210,9 +210,10 @@ const paginaDellAccettazione = '/legale/accetta';
 /**
  * La voce del menu del profilo che apre l'informativa privacy in una scheda nuova (dalla `v4.35.0`, #3753: per la verifica di
  * Google, Decisione di zr-pm-cc del 13/11). Il design system non la ha: la cornice la mette prima della linea, con un'icona del
- * set di Zeiras. Anche la `CorniceDelCliente` la prende da qui.
+ * set di Zeiras: `file` (dalla `v4.35.1`; prima `lock`, che nella cornice vuol dire una voce che non si apre: R3 della revisione).
+ * Anche la `CorniceDelCliente` e, dalla `v4.35.1`, la `CorniceDelloStaff` la prendono da qui.
  */
-export const vocePrivacy = (t: TestiDellaCornice): MenuItem => ({ icon: 'lock', label: t.privacy, onClick: () => open(t.privacyUrl, '_blank', 'noopener') });
+export const vocePrivacy = (t: TestiDellaCornice): MenuItem => ({ icon: 'file', label: t.privacy, onClick: () => open(t.privacyUrl, '_blank', 'noopener') });
 
 /**
  * Il menu del profilo: la lista che l'`AppShell` mette da sé, con «Piano» solo con la prop `piano`, e l'informativa privacy prima
