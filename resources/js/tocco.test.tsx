@@ -142,3 +142,46 @@ it('vicino al bordo destro della lavagna, con la carta presa, la lavagna scorre 
     // Deve fallire se: la lavagna resta ferma col dito sul bordo (la carta non arriva alle colonne fuori vista).
     expect(scorso).toBeGreaterThan(0);
 });
+
+// v4.35.3 (R1 della revisione della v4.35.2): dalla pressione alla fine niente drag del browser sulla carta. Safari su iOS e
+// Chrome su Android, col dito fermo più di mezzo secondo, avviano il loro su un elemento `draggable` e si prendono il dito. Il
+// DOM finto non conosce `-webkit-user-drag`: si guarda che il pezzo lo scriva e lo tolga (in Chromium lo guarda TC.1).
+it('dalla pressione la carta non ha il drag del browser (`-webkit-user-drag: none`), e alla fine lo riprende (R1)', async () => {
+    const stile = carta('d1').style;
+    const scritto = vi.spyOn(stile, 'setProperty');
+    const tolto = vi.spyOn(stile, 'removeProperty');
+    posa('d1');
+
+    // Deve fallire se: lo stile arriva solo con la presa (a 250 ms), quando il browser può aver già cominciato.
+    expect(scritto).toHaveBeenCalledWith('-webkit-user-drag', 'none');
+    expect(tolto).not.toHaveBeenCalledWith('-webkit-user-drag');
+    await act(() => aspetta(300));
+    await act(async () => void dito('pointerup', document.body, 20, 20));
+
+    expect(tolto).toHaveBeenCalledWith('-webkit-user-drag');
+});
+
+// v4.35.3 (R2): la lavagna si aggiorna mentre il dito tiene la carta (la DealPipeline rilegge le fasi ogni 20 s), e la carta
+// toccata esce dal documento: il dito non fa scorrere la pagina, e alla fine la carta nuova non resta presa né la colonna accesa.
+it('se la lavagna si aggiorna mentre il dito tiene la carta, il dito non fa scorrere la pagina e alla fine niente resta preso (R2)', async () => {
+    const toccata = carta('d1');
+    premi(dito('pointerdown', toccata, 20, 20));
+    await act(() => aspetta(300));
+    sottoIlDito = colonna('prop');
+    await act(async () => void dito('pointermove', document.body, 200, 40));
+
+    // Un collega ha spostato la trattativa: le fasi nuove la mettono in «Proposta», e React rifà la carta.
+    const nuove = [{ ...FASI[0]!, deals: [] }, { ...FASI[1]!, deals: [...FASI[1]!.deals, FASI[0]!.deals[0]!] }];
+    await act(async () => radice.render(<DealPipeline stages={nuove} onMove={onMove} onOpen={onOpen} />));
+    expect(toccata.isConnected).toBe(false);
+    expect(carta('d1').classList.contains('is-dragging')).toBe(true);
+
+    const scorrimento = new Event('touchmove', { bubbles: true, cancelable: true });
+    toccata.dispatchEvent(scorrimento);
+    sottoIlDito = document.body;
+    await act(async () => void dito('pointerup', document.body, 5, 5));
+
+    // Deve fallire se: il touchmove della carta uscita non arriva a nessuno, o il dragend va solo a lei.
+    expect(scorrimento.defaultPrevented).toBe(true);
+    expect(document.querySelector('.is-dragging, .is-over, .zr-tocco-ombra')).toBeNull();
+});

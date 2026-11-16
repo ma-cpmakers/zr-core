@@ -69,7 +69,11 @@ rilascio su un'altra colonna la carta ci passa con la stessa chiamata del mouse,
 si muove prima dei 250 ms fa scorrere la pagina come sempre (sulle carte `touch-action: manipulation`, che lascia anche lo
 zoom), e un tocco breve resta un clic. Il mouse, la tastiera e «Sposta in…» restano come sono. Un modulo non ha niente da fare:
 aggiorna, e la sua lavagna si trascina anche dal telefono. Le righe TC di `uat-cornice` (`--tocco`) lo provano in un telefono
-emulato.
+emulato. Dalla `v4.35.3` la carta tenuta col dito non ha il drag del browser (`-webkit-user-drag: none`, che Safari su iOS e
+Chrome su Android avviano dopo mezzo secondo prendendosi il dito), e se la lavagna si aggiorna mentre il dito tiene una carta
+la pagina non scorre e alla fine niente resta preso. Un limite, finché il design system non porta la 293: la `DealPipeline` non
+sa quando la carta esce da una colonna, quindi col dito fuori dalla lavagna l'ultima colonna resta accesa, e al rilascio la
+carta torna dov'era (col mouse è lo stesso).
 
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
@@ -211,9 +215,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 70,6 KB | 15,8 KB |
-| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 70,6 KB | 15,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 70,1 KB | 15,7 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 71,1 KB | 15,8 KB |
+| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 71,1 KB | 15,9 KB |
+| la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 70,6 KB | 15,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -319,7 +323,7 @@ un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
-del tocco (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11). Quello dei rimedi era di
+del tocco, 1.359 dalla `v4.35.3` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
@@ -549,6 +553,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.0` | «Informativa privacy» nel menu del profilo (#3753): una voce prima della linea, nella `Cornice` (con o senza `piano`) e nella `CorniceDelCliente`, che apre in una scheda nuova l'informativa di Zeiras nella lingua della pagina, per la verifica di Google; il menu del profilo lo dà sempre la cornice. Il JS d'ingresso sale di 109 byte, alla misura più 20 (Decisione di zr-pm-cc del 13/11). Il modulo aggiorna e basta; il link alla privacy che un modulo ha messo nelle sue pagine si può togliere. | Nella `CorniceDelloStaff`, come nel design di superadmin (#3769): in cima «admin.zeiras.com» al posto di «Backoffice di Zeiras», e nella ricerca «Cerca utenti per nome o email, workspace…» (in spagnolo e in inglese allo stesso modo). E la fascia di assistenza anche nella cornice del cliente (#3878, R3 della revisione della `v4.34.0`): in una sessione di assistenza `Cornice::datiDelCliente()` porta `assistenza` come `Cornice::dati()`, e la `CorniceDelCliente` mostra sopra l'`AppShell` la barra con «Termina e torna al backoffice» (che chiama `onLogout`), senza «Segna tutte come lette»; con il gettone dell'accesso nessuna chiamata in più. Per la fascia nessuna modifica nei moduli: zr-home la riceve aggiornando. E il precarico dei file d'ingresso dice che Early Hints è acceso dal pannello di Cloudflare (zr-pm, 15/11). E il titolo della `SectionCard` con una parola senza spazi va a capo, e a 390 px la pagina non scorre di lato (#3887): un rimedio provvisorio in `resources/css/rimedi.css`, finché il design system non porta la richiesta 290; un modulo che ha scritto la regola nel suo CSS la può togliere |
 | `v4.35.1` | «Informativa privacy» anche nel menu del profilo della `CorniceDelloStaff` (#3753, R1 della revisione della `v4.35.0`), prima della linea, con o senza `menu`; e l'icona della voce, in tutte e tre le cornici, è `file` e non più `lock`, che nella cornice vuol dire una voce che non si apre. JS d'ingresso invariato | niente | un caso che conta le voci del menu del profilo dello staff ne trova una in più, «Informativa privacy», prima della linea | `staff.html` in it, es, en: righe PV |
 | `v4.35.2` | le carte della `DealPipeline` si trascinano anche col dito (richiesta 293, sì di zr-pm-74 del 16/11, su richiesta di Luciano): una pressione di 250 ms prende la carta, una copia segue il dito, la lavagna scorre da sola vicino ai bordi, e al rilascio la carta passa alla colonna sotto il dito con lo stesso `onMove` del mouse; lo scorrimento col dito, il mouse, la tastiera e «Sposta in…» restano come sono. Un rimedio provvisorio: il pezzo del tocco (1.240 byte con gzip) arriva solo dove c'è una lavagna, e il JS d'ingresso non cambia; il pezzo dei rimedi sale a 1.640 | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: righe TC in un telefono emulato |
+| `v4.35.3` | le correzioni del trascinamento col dito dalla revisione della `v4.35.2` (sì di zr-pm-74 del 16/11): la carta tenuta non ha il drag del browser, che su Safari iOS e Chrome Android dopo mezzo secondo si prendeva il dito e fermava il trascinamento; se la lavagna si aggiorna mentre il dito tiene una carta, la pagina non scorre e alla fine la carta non resta presa né la colonna accesa. Il pezzo del tocco sale a 1.359 byte, la misura più 20; il JS d'ingresso non cambia | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: TC.1 guarda anche il drag del browser |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

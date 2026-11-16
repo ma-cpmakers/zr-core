@@ -1684,13 +1684,15 @@ async function carteColDito() {
     // La copia sta sotto il dito, dove il dito l'ha presa, e si vede (fissa, sopra la pagina).
     const sottoIlDito = (ombra, x, y) => !!ombra && x >= ombra.x && x <= ombra.x + ombra.w && y >= ombra.y && y <= ombra.y + ombra.h;
     const vista = sottoIlDito(tenuta.dovOmbra, presa.x + 2, presa.y + 2);
+    // Dalla v4.35.3 (R1 della revisione della v4.35.2): col dito sulla carta niente drag del browser, che su iOS e Android si prende il dito.
+    const delBrowser = await page.evaluate((id) => getComputedStyle(document.querySelector(`[data-deal-id="${id}"]`)).getPropertyValue('-webkit-user-drag'), carta.id);
     await striscia({ x: presa.x + 2, y: presa.y + 2 }, ferma.seconda, 10, 30);
     await foto('tocco-trascina.png');
     await tocca('touchEnd');
     await pausa(600);
     const lasciata = await stato();
     const dove = lasciata.carte.find((questa) => questa.id === carta.id)?.fase;
-    scrivi(vista && tenuta.presa && dove === 1 && !lasciata.ombra && !lasciata.presa ? '✅' : '❌', 'TC.1', 'una pressione di 250 ms prende la carta, una copia segue il dito, e al rilascio sulla seconda colonna la carta ci passa', `presa: ${tenuta.presa}, copia sotto il dito: ${vista}, colonna dopo: ${dove}${lasciata.spostata ? `, onMove: ${lasciata.spostata}` : ''}`);
+    scrivi(vista && delBrowser === 'none' && tenuta.presa && dove === 1 && !lasciata.ombra && !lasciata.presa ? '✅' : '❌', 'TC.1', 'una pressione di 250 ms prende la carta, una copia segue il dito, e al rilascio sulla seconda colonna la carta ci passa', `presa: ${tenuta.presa}, copia sotto il dito: ${vista}, drag del browser: ${delBrowser}, colonna dopo: ${dove}${lasciata.spostata ? `, onMove: ${lasciata.spostata}` : ''}`);
 
     // TC.3: con la carta presa, il dito fermo vicino al bordo destro.
     const ora = await stato();
