@@ -1815,14 +1815,17 @@ async function schedeColDito() {
             await pausa(ogni);
         }
     };
-    const aSinistra = async (lista) => {
-        await page.evaluate((quale) => {
+    // La lista `lista` a sinistra nella board, o, con `frazione`, col suo bordo sinistro a quella frazione della finestra (TK.5:
+    // la lista prima e la lista dopo tutte e due in vista, anche su un telefono stretto).
+    const aSinistra = async (lista, frazione = 0) => {
+        await page.evaluate(([quale, dove]) => {
             const lavagna = document.querySelector('.zr-lanes');
             const colonna = lavagna?.querySelectorAll('[data-list-id]')[quale];
             if (lavagna && colonna) {
-                lavagna.scrollTo({ left: lavagna.scrollLeft + colonna.getBoundingClientRect().left - lavagna.getBoundingClientRect().left - 8, behavior: 'instant' });
+                const margine = dove ? innerWidth * dove - lavagna.getBoundingClientRect().left : 8;
+                lavagna.scrollTo({ left: lavagna.scrollLeft + colonna.getBoundingClientRect().left - lavagna.getBoundingClientRect().left - margine, behavior: 'instant' });
             }
-        }, lista);
+        }, [lista, frazione]);
         await pausa(300);
     };
     const stato = () => page.evaluate(() => {
@@ -1830,7 +1833,7 @@ async function schedeColDito() {
         const liste = [...document.querySelectorAll('.zr-lanes [data-list-id]')];
         const schede = [...document.querySelectorAll('.zr-lanes [data-list-id] .zr-card')].map((scheda) => {
             const posto = scheda.getBoundingClientRect();
-            return { id: scheda.id, lista: liste.indexOf(scheda.closest('[data-list-id]')), x: posto.x + Math.min(posto.width / 2, 120), xl: Math.max(posto.x, 0) + 24, y: posto.y + posto.height / 2 };
+            return { id: scheda.id, lista: liste.indexOf(scheda.closest('[data-list-id]')), x: posto.x + Math.min(posto.width / 2, 120), xl: Math.max(posto.x, 0) + 24, xr: posto.right, y: posto.y + posto.height / 2 };
         });
         const destra = lavagna?.getBoundingClientRect();
         // Il pezzo che si vede di ogni lista, fuori dalla striscia del bordo dove la board scorre da sola (un quinto della board),
@@ -1841,6 +1844,7 @@ async function schedeColDito() {
             schede,
             pezzi,
             scorso: lavagna?.scrollLeft ?? 0,
+            largo: innerWidth,
             destra: destra ? { x: destra.right - 6, y: (liste[0]?.getBoundingClientRect().top ?? destra.top) + 24 } : null,
             ombra: !!ombra,
             presa: !!document.querySelector('.zr-lanes .zr-card.is-dragging'),
@@ -1913,10 +1917,12 @@ async function schedeColDito() {
     }
 
     // TK.5: dalla seconda lista alla terza, che rifiuta.
-    await aSinistra(1);
+    // La terza lista comincia a metà della finestra: su un telefono una lista è larga quasi quanto lo schermo, e con la seconda a
+    // sinistra la terza starebbe tutta nella striscia del bordo. La scheda si tocca fuori dalla striscia di sinistra.
+    await aSinistra(2, 0.55);
     const rifiuto = await stato();
-    const tre = rifiuto.schede.find((questa) => questa.lista === 1);
-    if (tre && rifiuto.pezzi[2]?.visibile) {
+    const tre = rifiuto.schede.filter((questa) => questa.lista === 1).map((questa) => ({ ...questa, x: Math.min(Math.max(questa.x, rifiuto.largo * 0.2 + 20), questa.xr - 16) }))[0];
+    if (tre && tre.x > rifiuto.largo * 0.2 && rifiuto.pezzi[2]?.visibile) {
         await tieni(tre);
         await striscia({ x: tre.x + 2, y: tre.y + 2 }, rifiuto.pezzi[2], 10, 30);
         await pausa(300);
