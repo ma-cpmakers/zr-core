@@ -23,7 +23,8 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
- * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753).
+ * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
+ * e dalla v4.35.1 anche nella cornice dello staff.
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
@@ -1461,6 +1462,9 @@ async function uat(page, apri) {
         await quantiRisultati(page);
         await tornaAllaPagina();
         await sopraIlPannello(page);
+        await tornaAllaPagina();
+        // Dalla v4.35.1 (#3753, R1 della revisione della v4.35.0): l'informativa privacy anche nel menu dello staff.
+        await informativaPrivacy(page);
         await tornaAllaPagina();
         await loStaff(page);
         await senzaConfigurazione(page, apri, 1280);
