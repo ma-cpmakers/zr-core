@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -25,13 +25,14 @@
  *
  * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
  * e dalla v4.35.1 anche nella cornice dello staff.
+ * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293).
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -59,6 +60,12 @@ const colloSpazio = argomenti.includes('--spazio') && argomenti.splice(argomenti
 // Prima del tag zr-core la lancia su `layout.html?barra=1`, che ha la visita lenta («UAT alla Corta lenta»); su una pagina del
 // modulo con `--barra` si clicca il primo collegamento interno della pagina, e la barra si vede solo se la risposta tarda.
 const conLaBarra = argomenti.includes('--barra') && argomenti.splice(argomenti.indexOf('--barra'), 1).length > 0;
+// --tocco (dalla v4.35.2, richiesta 293): la pagina ha una `DealPipeline`, e girano le righe TC col dito, in un telefono emulato
+// (390 × 844, `hasTouch` e `isMobile`, in un contesto suo; con UAT_PAGE sono ➖). Prima del tag zr-core la lancia
+// su `layout.html?lavagna=1`; su una pagina del modulo sposta una carta davvero, quindi solo su dati di prova.
+const colDito = argomenti.includes('--tocco') && argomenti.splice(argomenti.indexOf('--tocco'), 1).length > 0;
+/** Col Chromium della UAT, il telefono delle righe TC in un contesto suo; col browser condiviso (UAT_PAGE) non c'è. */
+let telefonoNuovo;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1426,6 +1433,9 @@ async function uat(page, apri) {
         await barraDiInertia(page, csp);
         await tornaAllaPagina();
     }
+    if (colDito) {
+        await carteColDito();
+    }
     if (colCliente) {
         await fuoriDaiMenu(page);
         await tornaAllaPagina();
@@ -1590,6 +1600,129 @@ async function ilMioSpazio(page) {
     await pausa(800);
     const dopo = await page.evaluate(() => ({ segno: window.__uatSpazio === 1, dove: location.href }));
     scrivi(dopo.segno ? '✅' : '❌', 'SP.2', 'un clic semplice sulla voce non ricarica la pagina', `segno nella finestra dopo il clic: ${dopo.segno}; indirizzo ${dopo.dove}`);
+}
+
+// TC (dalla v4.35.2, richiesta 293): le carte della `DealPipeline` col dito, con `--tocco`, in un telefono emulato. Il dito lo
+// muove Chromium (`Input.dispatchTouchEvent`), come un dito vero: TC.1 una pressione di 250 ms prende la carta, una copia segue il
+// dito e al rilascio su un'altra colonna la carta ci passa; TC.2 un dito che scorre subito fa scorrere la lavagna e non prende
+// niente; TC.3 con la carta presa, il dito fermo vicino al bordo destro fa scorrere la lavagna, e la carta arriva a una colonna
+// che prima era fuori vista (a 390 px si vedono la prima e un pezzo della seconda); TC.4 un tocco breve resta un clic: nessuna presa, e la carta non si sposta; TC.5 sulle carte
+// `touch-action: manipulation`, che lascia scorrere e ingrandire.
+async function carteColDito() {
+    // Il telefono è un contesto suo, 390 × 844 con `hasTouch` e `isMobile`. Il browser condiviso (UAT_PAGE) non ne ha uno: lì le
+    // righe TC non girano (il tocco emulato sulla scheda di un computer, provato il 16/11, sposta la pagina sotto il dito).
+    if (!telefonoNuovo) {
+        scrivi('➖', 'TC', 'col browser condiviso (UAT_PAGE) niente telefono: le righe TC girano col Chromium della UAT', '');
+        return;
+    }
+    const page = await telefonoNuovo();
+    const cdp = await page.context().newCDPSession(page);
+    await page.goto(indirizzo, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.zr-lanes [data-deal-id]', { timeout: 15000 });
+    // La lavagna in cima allo schermo: il dito tocca ciò che si vede.
+    await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await pausa(800);
+    // Le schermate dalla sessione CDP, a dito posato: quella di Playwright, presa durante il trascinamento, ferma i tocchi che seguono.
+    const foto = async (nome) => writeFileSync(join(cartella, nome), Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const tocca = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }] });
+    const striscia = async (da, a, passi, ogni) => {
+        for (let passo = 1; passo <= passi; passo++) {
+            await tocca('touchMove', da.x + ((a.x - da.x) * passo) / passi, da.y + ((a.y - da.y) * passo) / passi);
+            await pausa(ogni);
+        }
+    };
+    const stato = () => page.evaluate(() => {
+        const lavagna = document.querySelector('.zr-lanes');
+        const colonne = [...document.querySelectorAll('.zr-lanes [data-stage]')];
+        const carte = [...document.querySelectorAll('.zr-lanes [data-deal-id]')].map((carta) => {
+            const posto = carta.getBoundingClientRect();
+            return { id: carta.getAttribute('data-deal-id'), fase: colonne.indexOf(carta.closest('[data-stage]')), x: posto.x + posto.width / 2, y: posto.y + posto.height / 2 };
+        });
+        const destra = lavagna?.getBoundingClientRect();
+        const seconda = colonne[1]?.getBoundingClientRect();
+        return {
+            carte,
+            scorso: lavagna?.scrollLeft ?? 0,
+            destra: destra ? { x: destra.right - 6, y: destra.top + 120 } : null,
+            // Il pezzo della seconda colonna che si vede, fuori dalla striscia del bordo dove la lavagna scorre da sola.
+            seconda: seconda ? { x: seconda.x + 12, y: seconda.top + 140 } : null,
+            ombra: !!document.querySelector('.zr-tocco-ombra'),
+            dovOmbra: (() => { const ombra = document.querySelector('.zr-tocco-ombra'); const posto = ombra?.getBoundingClientRect(); return posto && getComputedStyle(ombra).position === 'fixed' ? { x: posto.x, y: posto.y, w: posto.width, h: posto.height } : null; })(),
+            presa: !!document.querySelector('.zr-lanes .is-dragging'),
+            azione: [...new Set([...document.querySelectorAll('.zr-lanes [data-deal-id]')].map((carta) => getComputedStyle(carta).touchAction))].join(', '),
+            spostata: document.querySelector('[data-uat="spostata"]')?.textContent ?? '',
+            aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
+        };
+    });
+    const prima = await stato();
+    const carta = prima.carte.find((questa) => questa.fase === 0);
+    if (!carta || !prima.seconda) {
+        scrivi('❌', 'TC.1', 'la pagina ha una DealPipeline con una carta nella prima colonna', `carte: ${prima.carte.length}`);
+        await page.context().close();
+        return;
+    }
+    scrivi(prima.azione === 'manipulation' ? '✅' : '❌', 'TC.5', 'sulle carte touch-action: manipulation (il dito scorre e ingrandisce come sempre)', prima.azione);
+
+    // TC.2: un dito che scorre subito, senza la pressione lunga.
+    await tocca('touchStart', carta.x, carta.y);
+    await striscia(carta, { x: carta.x - 180, y: carta.y }, 6, 16);
+    await tocca('touchEnd');
+    await pausa(600);
+    const scorsa = await stato();
+    scrivi(scorsa.scorso > prima.scorso + 40 && !scorsa.presa && !scorsa.ombra && scorsa.carte.find((questa) => questa.id === carta.id)?.fase === 0 ? '✅' : '❌', 'TC.2', 'un dito che scorre subito fa scorrere la lavagna e non prende la carta', `scorrimento ${prima.scorso} → ${scorsa.scorso}, presa: ${scorsa.presa}`);
+    await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollTo({ left: 0, behavior: 'instant' }));
+    await pausa(300);
+
+    // TC.1: pressione di 300 ms, il dito alla seconda colonna, rilascio.
+    const ferma = await stato();
+    const presa = ferma.carte.find((questa) => questa.id === carta.id);
+    await tocca('touchStart', presa.x, presa.y);
+    await pausa(350);
+    await tocca('touchMove', presa.x + 2, presa.y + 2);
+    await pausa(100);
+    const tenuta = await stato();
+    // La copia sta sotto il dito, dove il dito l'ha presa, e si vede (fissa, sopra la pagina).
+    const sottoIlDito = (ombra, x, y) => !!ombra && x >= ombra.x && x <= ombra.x + ombra.w && y >= ombra.y && y <= ombra.y + ombra.h;
+    const vista = sottoIlDito(tenuta.dovOmbra, presa.x + 2, presa.y + 2);
+    await striscia({ x: presa.x + 2, y: presa.y + 2 }, ferma.seconda, 10, 30);
+    await foto('tocco-trascina.png');
+    await tocca('touchEnd');
+    await pausa(600);
+    const lasciata = await stato();
+    const dove = lasciata.carte.find((questa) => questa.id === carta.id)?.fase;
+    scrivi(vista && tenuta.presa && dove === 1 && !lasciata.ombra && !lasciata.presa ? '✅' : '❌', 'TC.1', 'una pressione di 250 ms prende la carta, una copia segue il dito, e al rilascio sulla seconda colonna la carta ci passa', `presa: ${tenuta.presa}, copia sotto il dito: ${vista}, colonna dopo: ${dove}${lasciata.spostata ? `, onMove: ${lasciata.spostata}` : ''}`);
+
+    // TC.3: con la carta presa, il dito fermo vicino al bordo destro.
+    const ora = await stato();
+    const altra = ora.carte.find((questa) => questa.fase === 0);
+    if (altra && ora.destra) {
+        await tocca('touchStart', altra.x, altra.y);
+        await pausa(350);
+        await striscia({ x: altra.x, y: altra.y }, ora.destra, 8, 30);
+        await pausa(1500);
+        const alBordo = await stato();
+        await foto('tocco-bordo.png');
+        // Al bordo il dito sta sul margine della lavagna, che non accetta la carta: torna indietro su una colonna e la lascia.
+        await striscia(ora.destra, { x: ora.destra.x - 90, y: ora.destra.y }, 4, 30);
+        await tocca('touchEnd');
+        await pausa(600);
+        const fase = (await stato()).carte.find((questa) => questa.id === altra.id)?.fase ?? -1;
+        scrivi(alBordo.scorso > 150 && fase >= 2 ? '✅' : '❌', 'TC.3', 'col dito fermo al bordo destro la lavagna scorre da sola, e la carta arriva a una colonna che prima era fuori vista (dalla terza in là)', `scorrimento ${alBordo.scorso}, colonna dopo: ${fase}`);
+        await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollTo({ left: 0, behavior: 'instant' }));
+        await pausa(300);
+    } else {
+        scrivi('❌', 'TC.3', 'una seconda carta nella prima colonna per il bordo', '');
+    }
+
+    // TC.4: un tocco breve.
+    const breve = (await stato()).carte.find((questa) => questa.fase >= 0);
+    await tocca('touchStart', breve.x, breve.y);
+    await pausa(60);
+    await tocca('touchEnd');
+    await pausa(600);
+    const toccata = await stato();
+    scrivi(!toccata.ombra && !toccata.presa && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è', `presa: ${toccata.presa}${toccata.aperta ? `, onOpen: ${toccata.aperta}` : ''}`);
+    await page.context().close();
 }
 
 // AV (dalla v4.33.0, #3535): la barra d'avanzamento di Inertia dal pacchetto, con `--barra`. Durante una visita lenta: AV.1 la barra
@@ -1810,6 +1943,7 @@ if (process.env.UAT_PAGE) {
     const { chromium } = dalProgetto('playwright');
     const browser = await chromium.launch();
     const page = await (await browser.newContext()).newPage();
+    telefonoNuovo = async () => (await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 })).newPage();
     try {
         await uat(page, (dove) => page.goto(dove, { waitUntil: 'networkidle' }));
     } finally {

@@ -276,10 +276,31 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('il titolo della SectionCard va a capo anche dentro una parola: overflow-wrap anywhere, e nient\'altro (AC 1, richiesta 290)', () => {
-        expect(regole).toBe('.zr-section-card-title { overflow-wrap: anywhere; }');
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voce 3887, richiesta 290; v4.35.2, richiesta 293)', () => {
+        expect(regole).toBe([
+            '.zr-section-card-title { overflow-wrap: anywhere; }',
+            '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
+            '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
+        ].join(' '));
+    });
+
+    it('il titolo della SectionCard va a capo anche dentro una parola: overflow-wrap anywhere (AC 1, richiesta 290)', () => {
         // Il bundle di oggi non lo fa da sé: quando la 290 arriva, questo caso diventa rosso e il rimedio si toglie.
         expect(bundleCss).toMatch(/\.zr-section-card-title \{(?![^}]*overflow-wrap)[^}]*\}/);
+    });
+
+    // v4.35.2 (richiesta 293, zr-pm-74 16/11): le carte della DealPipeline col dito (resources/js/tocco.ts). Sulla carta il dito
+    // scorre e ingrandisce come sempre (`manipulation`, non `none`: lo zoom resta), la pressione lunga non seleziona il testo; la
+    // copia che segue il dito sta sopra tutto coi token del design system.
+    it('le carte della DealPipeline lasciano scorrere il dito, e la copia che lo segue usa i token (v4.35.2, richiesta 293)', () => {
+        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
+
+        expect(token).toContain('--z-toast:');
+        expect(token).toContain('--shadow-lift:');
+        expect(regole).not.toMatch(/touch-action: none/);
+        // Il design system di oggi trascina le carte solo col drag HTML5: quando la 293 arriva, questo caso diventa rosso e il
+        // rimedio si toglie, con resources/js/tocco.ts.
+        expect(readFileSync(delRepo('resources/js/zeiras/DealPipeline.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
     });
 });
 
