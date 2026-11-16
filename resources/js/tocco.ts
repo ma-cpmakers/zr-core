@@ -81,8 +81,17 @@ export function premi(giu: PointerEvent): void {
         return;
     }
     inCorso = true;
+    // Il drag del browser no (v4.35.3, R1 della revisione della v4.35.2): Safari su iOS e Chrome su Android, col dito fermo
+    // più di mezzo secondo, avviano il loro su una carta `draggable` e si prendono il dito (`pointercancel`).
+    carta.style.setProperty('-webkit-user-drag', 'none');
 
     const dito = giu.pointerId;
+    const id = carta.getAttribute('data-deal-id') ?? '';
+    /**
+     * La carta com'è adesso (v4.35.3, R2): se la lavagna si aggiorna mentre il dito la tiene (la DealPipeline rilegge le fasi
+     * ogni 20 s), quella toccata può essere uscita dal documento, e la sua al suo posto ha lo stesso `data-deal-id`.
+     */
+    const viva = (): Element => (carta.isConnected ? carta : [...lavagna.querySelectorAll('[data-deal-id]')].find((questa) => questa.getAttribute('data-deal-id') === id) ?? carta);
     let [x, y] = [giu.clientX, giu.clientY];
     let preso = false;
     let ombra: HTMLElement | undefined;
@@ -132,6 +141,9 @@ export function premi(giu: PointerEvent): void {
         segui();
         document.body.append(ombra);
         preso = presa = true;
+        // I `touchmove` vanno alla carta toccata anche quando è uscita dal documento, e da lì non arrivano più alla lavagna: li
+        // ascolta anche lei (v4.35.3, R2).
+        carta.addEventListener('touchmove', trattieni, { passive: false });
         manda(carta, 'dragstart', x, y);
         giro = requestAnimationFrame(scorri);
     };
@@ -162,7 +174,7 @@ export function premi(giu: PointerEvent): void {
             if (qui && lavagna.contains(qui) && !manda(qui, 'dragover', x, y)) {
                 manda(qui, 'drop', x, y);
             }
-            manda(carta, 'dragend', x, y);
+            manda(viva(), 'dragend', x, y);
             // Il clic che il browser manda dopo il dito alzato non apre la carta appena lasciata.
             addEventListener('click', fermato, true);
             setTimeout(() => removeEventListener('click', fermato, true), 400);
@@ -174,7 +186,7 @@ export function premi(giu: PointerEvent): void {
             return;
         }
         if (preso) {
-            manda(carta, 'dragend', x, y);
+            manda(viva(), 'dragend', x, y);
         }
         fine();
     };
@@ -200,14 +212,16 @@ export function premi(giu: PointerEvent): void {
         ['selectstart', fermo],
     ] as const;
 
-    function fine(): void {
+    const fine = (): void => {
         presa = false;
+        carta.style.removeProperty('-webkit-user-drag');
+        carta.removeEventListener('touchmove', trattieni);
         clearTimeout(tempo);
         cancelAnimationFrame(giro);
         ombra?.remove();
         ascolta.forEach(([tipo, chi]) => removeEventListener(tipo, chi as EventListener, true));
         inCorso = false;
-    }
+    };
 
     ascolta.forEach(([tipo, chi]) => addEventListener(tipo, chi as EventListener, { capture: true, passive: false }));
 }

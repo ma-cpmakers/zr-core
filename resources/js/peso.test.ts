@@ -951,13 +951,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
 
     // v4.35.2 (richiesta 293, sì di zr-pm-74 del 16/11): le carte della DealPipeline col dito, in un pezzo che chiede solo il
     // pezzo dei rimedi, quando entra una lavagna: nel JS d'ingresso niente, e nei rimedi solo ciò che lo chiede e gli passa il
-    // dito. 1.220 misurati, il tetto è la misura più 20.
-    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.240 byte, la misura della v4.35.2 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
+    // dito. 1.220 misurati, il tetto è la misura più 20. v4.35.3 (R1 e R2 della revisione della v4.35.2, sì di zr-pm-74 del
+    // 16/11): niente drag del browser sulla carta tenuta e la lavagna che si aggiorna sotto il dito, 1.339 misurati, più 20.
+    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.359 byte, la misura della v4.35.3 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
         const delTocco = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEL_TOCCO));
 
         expect(volte(soloCornice.js, DEL_TOCCO)).toBe(0);
         expect(delTocco.map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
-        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_240);
+        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_359);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:
