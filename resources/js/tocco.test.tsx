@@ -185,3 +185,36 @@ it('se la lavagna si aggiorna mentre il dito tiene la carta, il dito non fa scor
     expect(scorrimento.defaultPrevented).toBe(true);
     expect(document.querySelector('.is-dragging, .is-over, .zr-tocco-ombra')).toBeNull();
 });
+
+// v4.35.4 (zr-crm e zr-pm-74, 16/11): sul CRM la lavagna sta dentro il margine della pagina (32 px per lato) e la seconda fase,
+// a 390 px, comincia oltre il bordo destro. Il dito che la cerca va nel margine, dove la lavagna scorre da sola: lasciata lì, la
+// carta deve andare alla colonna che si vede sul bordo, all'altezza del dito, e non tornare indietro.
+it('il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo: la carta va alla colonna che si vede lì (v4.35.4)', async () => {
+    const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
+    lavagna.getBoundingClientRect = () => ({ left: 32, right: 358, top: 0, bottom: 400, width: 326, height: 400, x: 32, y: 0, toJSON: () => ({}) });
+    const dove: number[] = [];
+    document.elementFromPoint = (x: number) => (dove.push(x), x > 358 || x < 32 ? document.body : colonna('prop'));
+
+    posa('d1', 100, 40);
+    await act(() => aspetta(300));
+    await act(async () => void dito('pointermove', document.body, 380, 40));
+    await act(async () => void dito('pointerup', document.body, 380, 40));
+
+    expect(onMove).toHaveBeenCalledTimes(1);
+    expect(onMove.mock.calls[0]?.slice(1)).toStrictEqual(['prop', 'new']);
+    expect(Math.max(...dove)).toBeLessThan(358);
+});
+
+it('sopra o sotto la lavagna, fuori dalla sua altezza, la carta lasciata torna dov\'era (v4.35.4)', async () => {
+    const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
+    lavagna.getBoundingClientRect = () => ({ left: 32, right: 358, top: 100, bottom: 400, width: 326, height: 300, x: 32, y: 100, toJSON: () => ({}) });
+    document.elementFromPoint = (x: number, y: number) => (x > 358 || x < 32 || y < 100 || y > 400 ? document.body : colonna('prop'));
+
+    posa('d1', 100, 140);
+    await act(() => aspetta(300));
+    await act(async () => void dito('pointermove', document.body, 380, 60));
+    await act(async () => void dito('pointerup', document.body, 380, 60));
+
+    expect(onMove).not.toHaveBeenCalled();
+    expect(colonna('new').contains(carta('d1'))).toBe(true);
+});

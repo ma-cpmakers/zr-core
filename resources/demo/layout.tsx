@@ -163,7 +163,7 @@ function Lunga({ visita }: Props) {
             <Collegamenti />
             <DialogoDelModulo aperto={dialogo} onChiudi={() => setDialogo(false)} />
             {scelti.get('dialogo') === '1' && <DialogoDelDesignSystem />}
-            {scelti.get('lavagna') === '1' && <LavagnaDelDesignSystem />}
+            {(scelti.get('lavagna') === '1' || scelti.get('lavagna') === 'margine') && <LavagnaDelDesignSystem margine={scelti.get('lavagna') === 'margine'} />}
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
         </>
@@ -173,9 +173,10 @@ function Lunga({ visita }: Props) {
 /**
  * Con `?lavagna=1` (dalla `v4.35.2`, richiesta 293), una `DealPipeline` del design system con sei fasi, per le righe TC della UAT
  * (`--tocco`): a 390 px le fasi escono di lato e la lavagna scorre. «UAT spostata» dice l'ultimo `onMove`, «UAT aperta» l'ultimo
- * `onOpen`.
+ * `onOpen`. Con `?lavagna=margine` (dalla `v4.35.4`) la lavagna sta dentro un margine di `--space-6` per lato, come sul CRM: le
+ * righe TC.6 lasciano la carta col dito nel margine.
  */
-function LavagnaDelDesignSystem() {
+function LavagnaDelDesignSystem({ margine = false }: { margine?: boolean }) {
     const [spostata, setSpostata] = useState('');
     const [aperta, setAperta] = useState('');
     const fasi = ['UAT Nuovo', 'UAT Qualificato', 'UAT Proposta', 'UAT Negoziazione', 'UAT Vinto', 'UAT Perso'].map((title, fase) => ({
@@ -185,7 +186,7 @@ function LavagnaDelDesignSystem() {
     }));
 
     return (
-        <section data-uat="lavagna">
+        <section data-uat="lavagna" style={margine ? { paddingInline: 'var(--space-6)' } : undefined}>
             <Zeiras.DealPipeline stages={fasi} onMove={(trattativa, verso, da) => setSpostata(`${trattativa.id} ${da} ${verso}`)} onOpen={(trattativa) => setAperta(trattativa.id)} />
             <p>UAT spostata: <output data-uat="spostata">{spostata}</output> · UAT aperta: <output data-uat="aperta">{aperta}</output></p>
         </section>

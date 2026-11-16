@@ -1663,6 +1663,10 @@ async function carteColDito() {
     }
     scrivi(prima.azione === 'manipulation' ? '✅' : '❌', 'TC.5', 'sulle carte touch-action: manipulation (il dito scorre e ingrandisce come sempre)', prima.azione);
 
+    // Sulla pagina con la lavagna dentro un margine (`?lavagna=margine`, dalla v4.35.4) gira solo TC.6: la seconda colonna lì
+    // comincia oltre il bordo, e TC.1-TC.4 hanno i loro punti sulla lavagna di `?lavagna=1`.
+    const soloMargine = new URL(indirizzo).searchParams.get('lavagna') === 'margine';
+    if (!soloMargine) {
     // TC.2: un dito che scorre subito, senza la pressione lunga.
     await tocca('touchStart', carta.x, carta.y);
     await striscia(carta, { x: carta.x - 180, y: carta.y }, 6, 16);
@@ -1714,6 +1718,29 @@ async function carteColDito() {
         await pausa(300);
     } else {
         scrivi('❌', 'TC.3', 'una seconda carta nella prima colonna per il bordo', '');
+    }
+    }
+
+    // TC.6 (dalla v4.35.4, solo con la lavagna dentro un margine, `?lavagna=margine`): una carta tenuta, il dito nel margine a
+    // destra della lavagna, alla sua altezza, dove la lavagna scorre da sola; lasciata lì, la carta va a una colonna più avanti.
+    const margine = soloMargine && await page.evaluate(() => { const posto = document.querySelector('.zr-lanes')?.getBoundingClientRect(); return posto && innerWidth - posto.right > 12 ? { x: innerWidth - 6, y: posto.top + 120 } : null; });
+    // La prima carta che si vede, presa a sinistra: TC.1 e TC.3 hanno già portato avanti le due della prima colonna.
+    const sesta = margine && (await page.evaluate(() => { const colonne = [...document.querySelectorAll('.zr-lanes [data-stage]')]; const carta = [...document.querySelectorAll('.zr-lanes [data-deal-id]')].find((questa) => questa.getBoundingClientRect().left < innerWidth - 120); const posto = carta?.getBoundingClientRect(); return carta && posto ? { id: carta.getAttribute('data-deal-id'), fase: colonne.indexOf(carta.closest('[data-stage]')), x: Math.max(posto.left, 0) + 24, y: posto.top + posto.height / 2 } : null; }));
+    if (sesta) {
+        const spostataPrima = (await stato()).spostata;
+        await tocca('touchStart', sesta.x, sesta.y);
+        await pausa(350);
+        await striscia({ x: sesta.x, y: sesta.y }, margine, 8, 30);
+        await pausa(700);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === sesta.id)?.fase ?? -1;
+        scrivi(fase > sesta.fase && dopo.spostata !== spostataPrima && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TC.6', 'lasciata col dito nel margine accanto alla lavagna, alla sua altezza, la carta va alla colonna che si vede sul bordo', `colonna dopo: ${fase}, onMove: ${dopo.spostata || '-'}`);
+        await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollTo({ left: 0, behavior: 'instant' }));
+        await pausa(300);
+    } else if (soloMargine) {
+        scrivi('❌', 'TC.6', 'la lavagna dentro un margine, e una carta che si vede', '');
     }
 
     // TC.4: un tocco breve.
