@@ -164,6 +164,7 @@ function Lunga({ visita }: Props) {
             <DialogoDelModulo aperto={dialogo} onChiudi={() => setDialogo(false)} />
             {scelti.get('dialogo') === '1' && <DialogoDelDesignSystem />}
             {(scelti.get('lavagna') === '1' || scelti.get('lavagna') === 'margine') && <LavagnaDelDesignSystem margine={scelti.get('lavagna') === 'margine'} />}
+            {scelti.get('lavagna') === 'board' && <BoardDelDesignSystem />}
             {Array.from({ length: 60 }, (_, riga) => <p key={riga}>UAT riga {riga + 1}</p>)}
             <Collegamenti />
         </>
@@ -189,6 +190,54 @@ function LavagnaDelDesignSystem({ margine = false }: { margine?: boolean }) {
         <section data-uat="lavagna" style={margine ? { paddingInline: 'var(--space-6)' } : undefined}>
             <Zeiras.DealPipeline stages={fasi} onMove={(trattativa, verso, da) => setSpostata(`${trattativa.id} ${da} ${verso}`)} onOpen={(trattativa) => setAperta(trattativa.id)} />
             <p>UAT spostata: <output data-uat="spostata">{spostata}</output> · UAT aperta: <output data-uat="aperta">{aperta}</output></p>
+        </section>
+    );
+}
+
+/**
+ * Con `?lavagna=board` (dalla `v4.36.0`, richiesta 294), una `KanbanBoard` del design system con sei liste, per le righe TK della
+ * UAT (`--tocco`): a 390 px le liste escono di lato e la board scorre. La terza lista rifiuta le schede. «UAT spostata» dice
+ * l'ultimo `onMove` (scheda, da, verso, prima di quale), «UAT aperta» l'ultimo `onOpenCard`, «UAT rifiutata» l'ultimo `onRefuse`.
+ */
+function BoardDelDesignSystem() {
+    const [liste, setListe] = useState(() =>
+        ['UAT Da fare', 'UAT In corso', 'UAT Bloccata', 'UAT Verifica', 'UAT Pronta', 'UAT Fatta'].map((title, lista) => ({
+            id: `l${lista + 1}`,
+            title,
+            cards: lista < 2 ? [1, 2].map((scheda) => ({ id: `b${lista + 1}${scheda}`, title: `UAT Scheda ${lista + 1}.${scheda}` })) : [],
+        })),
+    );
+    const [spostata, setSpostata] = useState('');
+    const [aperta, setAperta] = useState('');
+    const [rifiutata, setRifiutata] = useState('');
+
+    return (
+        <section data-uat="board">
+            <Zeiras.KanbanBoard
+                title="UAT Board"
+                crumbs={false}
+                lists={liste}
+                canEnter={(_scheda, verso) => (verso.id === 'l3' ? 'UAT serve l\'approvazione' : true)}
+                onRefuse={(scheda, verso, perche) => setRifiutata(`${scheda.id} ${verso.id} ${perche}`)}
+                onOpenCard={(scheda) => setAperta(scheda.id)}
+                onMove={(scheda, verso, da, prima) => {
+                    setSpostata(`${scheda.id} ${da} ${verso} ${prima ?? '-'}`);
+                    setListe((ora) => {
+                        const senza = ora.map((lista) => ({ ...lista, cards: lista.cards.filter((questa) => questa.id !== scheda.id) }));
+                        const mossa = ora.flatMap((lista) => lista.cards).find((questa) => questa.id === scheda.id);
+
+                        return mossa ? senza.map((lista) => {
+                            if (lista.id !== verso) {
+                                return lista;
+                            }
+                            const dove = prima ? lista.cards.findIndex((questa) => questa.id === prima) : -1;
+
+                            return { ...lista, cards: dove < 0 ? [...lista.cards, mossa] : [...lista.cards.slice(0, dove), mossa, ...lista.cards.slice(dove)] };
+                        }) : ora;
+                    });
+                }}
+            />
+            <p>UAT spostata: <output data-uat="spostata">{spostata}</output> · UAT aperta: <output data-uat="aperta">{aperta}</output> · UAT rifiutata: <output data-uat="rifiutata">{rifiutata}</output></p>
         </section>
     );
 }

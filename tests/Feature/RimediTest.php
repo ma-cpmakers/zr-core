@@ -30,3 +30,40 @@ it('il README dice il rimedio, la richiesta che lo toglie e che un modulo può t
     'la riga della versione' => ['va a capo, e a 390 px la pagina non scorre di lato (#3887)'],
     'il modulo toglie la regola' => ['Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto.'],
 ]);
+
+// Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il secondo rimedio, lo scroll-padding dei contenitori che scorrono,
+// che lascia all'anello del fuoco i suoi 4 px; sta nello stesso file, e il README lo dice.
+it('rimedi.css porta lo scroll-padding dei contenitori che scorrono, e il README lo dice (voce 3888 · AC 3)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il secondo (#3888, richiesta 278, da zr-crm)')
+        ->toContain('si ferma a 4 px dal bordo invece che a filo');
+});
+
+// Voce #3889 (richieste 288 e 279; zr-pm-74 15/11): coi colori forzati la voce attiva del menu e il segmento scelto hanno un
+// contorno, e il campo Cerca chiuso si distingue dalla barra; nello stesso file, e il README lo dice.
+it('rimedi.css porta i contorni coi colori forzati e quello del campo Cerca, e il README lo dice (voce 3889 · AC 4)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); }')
+        ->toContain('.zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il terzo e il quarto (#3889, richieste 288 e 279')
+        ->toContain('4,04:1 sulla barra, e coi colori forzati un contorno vero');
+});
+
+// Voce #3890 (richiesta 283; zr-pm-74 15/11): sotto i 720 px, con la ricerca aperta, le azioni della barra si stringono sotto il
+// campo e non allargano la pagina; restano nel giro del Tab (#2805).
+it('rimedi.css stringe le azioni della barra sotto la ricerca aperta, e il README lo dice (voce 3890 · AC 3)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il quinto (#3890, richiesta 283')
+        ->toContain('A ricerca chiusa la barra aspetta la richiesta.');
+});

@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco] [--scuro]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -23,9 +23,12 @@
  * Prima del tag zr-core le lancia su `layout.html` e su `staff.html`, in italiano, in inglese e in spagnolo (dalla v4.5.1), e
  * dalla v4.13.0 anche su `cliente.html` (con `--cliente`).
  *
+ * Dalla v4.36.0 con `--scuro` tutta la UAT gira col tema scuro scelto (`data-theme="dark"` su `<html>` e il sistema chiaro),
+ * axe compreso, e le righe TS guardano i quattro casi del tema (#3757).
  * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
  * e dalla v4.35.1 anche nella cornice dello staff.
- * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293).
+ * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293),
+ * e dalla v4.36.0 le righe TK le schede della `KanbanBoard`, su `layout.html?lavagna=board` (richiesta 294).
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
  *
@@ -66,6 +69,10 @@ const conLaBarra = argomenti.includes('--barra') && argomenti.splice(argomenti.i
 const colDito = argomenti.includes('--tocco') && argomenti.splice(argomenti.indexOf('--tocco'), 1).length > 0;
 /** Col Chromium della UAT, il telefono delle righe TC in un contesto suo; col browser condiviso (UAT_PAGE) non c'è. */
 let telefonoNuovo;
+// --scuro (dalla v4.36.0, #3757): la pagina si apre col tema scuro scelto dalla persona — `data-theme="dark"` su `<html>` prima
+// che la pagina si disegni, come lo scrive il modulo, e il sistema chiaro —, e tutte le righe, axe compreso, girano così; le righe
+// TS guardano i quattro casi del tema. Prima del tag zr-core la lancia su `layout.html`, `staff.html` e `cliente.html` (con `--cliente`).
+const colTemaScuro = argomenti.includes('--scuro') && argomenti.splice(argomenti.indexOf('--scuro'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1413,6 +1420,18 @@ async function uat(page, apri) {
     page.on('request', (richiesta) => /^https?:\/\/fonts\.(googleapis|gstatic)\.com\//.test(richiesta.url()) && diGoogle.push(new URL(richiesta.url()).host));
 
     await page.setViewportSize({ width: 1280, height: 800 });
+    if (colTemaScuro) {
+        await page.emulateMedia({ colorScheme: 'light' });
+        // Lo script parte prima che ci sia `<html>`: l'attributo va sull'elemento appena il parser lo crea, prima di ogni stile.
+        await page.addInitScript(() => {
+            const metti = () => document.documentElement?.setAttribute('data-theme', 'dark');
+            if (document.documentElement) {
+                metti();
+            } else {
+                new MutationObserver((_, osservatore) => document.documentElement && (metti(), osservatore.disconnect())).observe(document, { childList: true });
+            }
+        });
+    }
     const registrata = await registraLaLingua(page);
     await apri(indirizzo);
     await page.waitForSelector('.zr-shell', { timeout: 15000 });
@@ -1429,12 +1448,16 @@ async function uat(page, apri) {
     };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
+    if (colTemaScuro) {
+        await temaScuro(page);
+    }
     if (conLaBarra) {
         await barraDiInertia(page, csp);
         await tornaAllaPagina();
     }
     if (colDito) {
         await carteColDito();
+        await schedeColDito();
     }
     if (colCliente) {
         await fuoriDaiMenu(page);
@@ -1606,7 +1629,7 @@ async function ilMioSpazio(page) {
 // muove Chromium (`Input.dispatchTouchEvent`), come un dito vero: TC.1 una pressione di 250 ms prende la carta, una copia segue il
 // dito e al rilascio su un'altra colonna la carta ci passa; TC.2 un dito che scorre subito fa scorrere la lavagna e non prende
 // niente; TC.3 con la carta presa, il dito fermo vicino al bordo destro fa scorrere la lavagna, e la carta arriva a una colonna
-// che prima era fuori vista (a 390 px si vedono la prima e un pezzo della seconda); TC.4 un tocco breve resta un clic: nessuna presa, e la carta non si sposta; TC.5 sulle carte
+// che prima era fuori vista (a 390 px si vedono la prima e un pezzo della seconda); TC.4 un tocco breve resta un clic: nessuna presa, la carta non si sposta e si apre; TC.8 e TC.9 (dalla v4.36.0) il dito al bordo basso e una pressione di 700 ms; TC.5 sulle carte
 // `touch-action: manipulation`, che lascia scorrere e ingrandire.
 async function carteColDito() {
     // Il telefono è un contesto suo, 390 × 844 con `hasTouch` e `isMobile`. Il browser condiviso (UAT_PAGE) non ne ha uno: lì le
@@ -1618,7 +1641,13 @@ async function carteColDito() {
     const page = await telefonoNuovo();
     const cdp = await page.context().newCDPSession(page);
     await page.goto(indirizzo, { waitUntil: 'networkidle' });
-    await page.waitForSelector('.zr-lanes [data-deal-id]', { timeout: 15000 });
+    await page.waitForSelector('.zr-lanes .zr-card', { timeout: 15000 });
+    // Dalla v4.36.0 la pagina può avere una KanbanBoard al posto della DealPipeline: lì girano le righe TK (schedeColDito).
+    if (!(await page.locator('.zr-lanes [data-deal-id]').count())) {
+        scrivi('➖', 'TC', 'la pagina non ha una DealPipeline: le righe TC girano su layout.html?lavagna=1', '');
+        await page.context().close();
+        return;
+    }
     // La lavagna in cima allo schermo: il dito tocca ciò che si vede.
     await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }));
     await pausa(800);
@@ -1654,6 +1683,18 @@ async function carteColDito() {
             aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
         };
     });
+    // La prima carta della lavagna portata in vista, di lato, a 16 px dal bordo sinistro (dalla v4.36.0, R8): il dito tocca ciò che si vede.
+    const inVista = () => page.evaluate(() => {
+        const lavagna = document.querySelector('.zr-lanes');
+        const colonne = [...document.querySelectorAll('.zr-lanes [data-stage]')];
+        const carta = document.querySelector('.zr-lanes [data-deal-id]');
+        if (!lavagna || !carta) {
+            return null;
+        }
+        lavagna.scrollLeft += carta.getBoundingClientRect().left - Math.max(lavagna.getBoundingClientRect().left, 0) - 16;
+        const posto = carta.getBoundingClientRect();
+        return { id: carta.getAttribute('data-deal-id'), fase: colonne.indexOf(carta.closest('[data-stage]')), x: posto.left + 24, y: posto.top + posto.height / 2, basso: innerHeight - 6 };
+    });
     const prima = await stato();
     const carta = prima.carte.find((questa) => questa.fase === 0);
     if (!carta || !prima.seconda) {
@@ -1663,7 +1704,7 @@ async function carteColDito() {
     }
     scrivi(prima.azione === 'manipulation' ? '✅' : '❌', 'TC.5', 'sulle carte touch-action: manipulation (il dito scorre e ingrandisce come sempre)', prima.azione);
 
-    // Sulla pagina con la lavagna dentro un margine (`?lavagna=margine`, dalla v4.35.4) gira solo TC.6: la seconda colonna lì
+    // Sulla pagina con la lavagna dentro un margine (`?lavagna=margine`, dalla v4.35.4) girano solo TC.6 e TC.7: la seconda colonna lì
     // comincia oltre il bordo, e TC.1-TC.4 hanno i loro punti sulla lavagna di `?lavagna=1`.
     const soloMargine = new URL(indirizzo).searchParams.get('lavagna') === 'margine';
     if (!soloMargine) {
@@ -1719,6 +1760,34 @@ async function carteColDito() {
     } else {
         scrivi('❌', 'TC.3', 'una seconda carta nella prima colonna per il bordo', '');
     }
+
+    // TC.8 e TC.9 (dalla v4.36.0, R8 della revisione della v4.35.2): la prima carta che si vede, tenuta ferma 700 ms prima di
+    // muoversi (Safari su iOS e Chrome su Android, dopo mezzo secondo, avviano il loro drag e si prendono il dito: TC.9), poi il dito
+    // al bordo basso dello schermo, dove la pagina scorre da sola (TC.8); lasciata sotto la lavagna, la carta torna dov'era.
+    const nona = await inVista();
+    await pausa(300);
+    if (nona) {
+        const primaDiScorrere = await page.evaluate(() => scrollY + (document.querySelector('.zr-main')?.scrollTop ?? 0));
+        await tocca('touchStart', nona.x, nona.y);
+        await pausa(700);
+        await tocca('touchMove', nona.x + 2, nona.y + 2);
+        await pausa(100);
+        const tenuta = await stato();
+        await striscia({ x: nona.x + 2, y: nona.y + 2 }, { x: nona.x, y: nona.basso }, 8, 30);
+        await pausa(1200);
+        const giu = await page.evaluate(() => scrollY + (document.querySelector('.zr-main')?.scrollTop ?? 0));
+        await foto('tocco-verticale.png');
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === nona.id)?.fase ?? -1;
+        scrivi(tenuta.presa && tenuta.ombra ? '✅' : '❌', 'TC.9', 'una pressione ferma di 700 ms prima di muoversi tiene la carta presa (il drag del browser non si prende il dito)', `presa: ${tenuta.presa}, copia: ${tenuta.ombra}`);
+        scrivi(giu > primaDiScorrere + 100 && fase === nona.fase && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TC.8', 'con la carta presa il dito al bordo basso dello schermo fa scorrere la pagina da sola; lasciata sotto la lavagna, la carta torna dov\'era', `scorrimento ${primaDiScorrere} → ${giu}, colonna: ${nona.fase} → ${fase}`);
+        await page.evaluate(() => { scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('.zr-main')?.scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }); });
+        await pausa(300);
+    } else {
+        scrivi('❌', 'TC.8', 'una carta che si vede, per il bordo basso', '');
+    }
     }
 
     // TC.6 (dalla v4.35.4, solo con la lavagna dentro un margine, `?lavagna=margine`): una carta tenuta, il dito nel margine a
@@ -1743,14 +1812,219 @@ async function carteColDito() {
         scrivi('❌', 'TC.6', 'la lavagna dentro un margine, e una carta che si vede', '');
     }
 
+    // TC.7 (dalla v4.36.0, zr-crm 16/11, solo con `?lavagna=margine`): il dito fermo nel margine finché la lavagna è scorsa fino
+    // in fondo; lì sul bordo c'è il padding della lavagna, e la carta lasciata deve andare all'ultima colonna, non restare dov'era.
+    const settima = margine && (await page.evaluate(() => { const colonne = [...document.querySelectorAll('.zr-lanes [data-stage]')]; const carta = [...document.querySelectorAll('.zr-lanes [data-deal-id]')].find((questa) => questa.getBoundingClientRect().left < innerWidth - 120 && colonne.indexOf(questa.closest('[data-stage]')) < colonne.length - 1); const posto = carta?.getBoundingClientRect(); return carta && posto ? { id: carta.getAttribute('data-deal-id'), fase: colonne.indexOf(carta.closest('[data-stage]')), ultima: colonne.length - 1, x: Math.max(posto.left, 0) + 24, y: posto.top + posto.height / 2 } : null; }));
+    if (settima) {
+        await tocca('touchStart', settima.x, settima.y);
+        await pausa(350);
+        await striscia({ x: settima.x, y: settima.y }, margine, 8, 30);
+        let inFondo = false;
+        for (let volta = 0; volta < 40 && !inFondo; volta++) {
+            await pausa(100);
+            inFondo = await page.evaluate(() => { const lavagna = document.querySelector('.zr-lanes'); return !!lavagna && lavagna.scrollLeft >= lavagna.scrollWidth - lavagna.clientWidth - 1; });
+        }
+        await pausa(300);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === settima.id)?.fase ?? -1;
+        scrivi(inFondo && fase === settima.ultima && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TC.7', 'col dito fermo nel margine la lavagna scorre fino in fondo, e la carta lasciata lì va all\'ultima colonna (non sul padding del bordo)', `in fondo: ${inFondo}, colonna dopo: ${fase} di ${settima.ultima}`);
+        await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollTo({ left: 0, behavior: 'instant' }));
+        await pausa(300);
+    } else if (soloMargine) {
+        scrivi('❌', 'TC.7', 'la lavagna dentro un margine, e una carta che si vede fuori dall\'ultima colonna', '');
+    }
+
     // TC.4: un tocco breve.
-    const breve = (await stato()).carte.find((questa) => questa.fase >= 0);
+    const breve = await inVista();
+    await pausa(300);
     await tocca('touchStart', breve.x, breve.y);
     await pausa(60);
     await tocca('touchEnd');
     await pausa(600);
     const toccata = await stato();
-    scrivi(!toccata.ombra && !toccata.presa && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è', `presa: ${toccata.presa}${toccata.aperta ? `, onOpen: ${toccata.aperta}` : ''}`);
+    // Dalla v4.36.0 (R8): il clic deve arrivare alla carta, cioè `onOpen` con la sua trattativa.
+    scrivi(!toccata.ombra && !toccata.presa && toccata.aperta === breve.id && toccata.carte.find((questa) => questa.id === breve.id)?.fase === breve.fase ? '✅' : '❌', 'TC.4', 'un tocco breve resta un clic: nessuna presa, la carta resta dov\'è e si apre (onOpen)', `presa: ${toccata.presa}, onOpen: ${toccata.aperta || '-'}`);
+    await page.context().close();
+}
+
+// TK (dalla v4.36.0, richiesta 294, voce 3913): le schede della `KanbanBoard` col dito, con `--tocco`, nello stesso telefono delle
+// righe TC, sulla pagina con una board (`layout.html?lavagna=board`): TK.1 una pressione di 250 ms prende la scheda, una copia segue
+// il dito e al rilascio sulla seconda lista la scheda ci passa (`onMove` senza «prima di»); TK.2 rilasciata sopra una scheda di
+// un'altra lista ci va prima («prima di» quella scheda); TK.3 col dito fermo al bordo destro la board scorre da sola, una volta
+// sola (lo scorrimento è della board, il pezzo non ci somma il suo), e la scheda arriva a una lista che prima era fuori vista;
+// TK.4 un dito che scorre subito fa scorrere la board e non prende niente, e un tocco breve apre la scheda (`onOpenCard`);
+// TK.5 una lista che rifiuta la scheda non la riceve, e `onRefuse` arriva; TK.6 sulle schede `touch-action: manipulation` e,
+// col dito sulla scheda, niente drag del browser.
+async function schedeColDito() {
+    if (!telefonoNuovo) {
+        scrivi('➖', 'TK', 'col browser condiviso (UAT_PAGE) niente telefono: le righe TK girano col Chromium della UAT', '');
+        return;
+    }
+    const page = await telefonoNuovo();
+    const cdp = await page.context().newCDPSession(page);
+    await page.goto(indirizzo, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.zr-lanes .zr-card', { timeout: 15000 });
+    if (!(await page.locator('.zr-lanes [data-list-id] .zr-card').count())) {
+        scrivi('➖', 'TK', 'la pagina non ha una KanbanBoard: le righe TK girano su layout.html?lavagna=board', '');
+        await page.context().close();
+        return;
+    }
+    await page.evaluate(() => document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await pausa(800);
+    const foto = async (nome) => writeFileSync(join(cartella, nome), Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const tocca = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: Math.round(x), y: Math.round(y) }] });
+    const striscia = async (da, a, passi, ogni) => {
+        for (let passo = 1; passo <= passi; passo++) {
+            await tocca('touchMove', da.x + ((a.x - da.x) * passo) / passi, da.y + ((a.y - da.y) * passo) / passi);
+            await pausa(ogni);
+        }
+    };
+    // La lista `lista` a sinistra nella board, o, con `frazione`, col suo bordo sinistro a quella frazione della finestra (TK.5:
+    // la lista prima e la lista dopo tutte e due in vista, anche su un telefono stretto).
+    const aSinistra = async (lista, frazione = 0) => {
+        await page.evaluate(([quale, dove]) => {
+            const lavagna = document.querySelector('.zr-lanes');
+            const colonna = lavagna?.querySelectorAll('[data-list-id]')[quale];
+            if (lavagna && colonna) {
+                const margine = dove ? innerWidth * dove - lavagna.getBoundingClientRect().left : 8;
+                lavagna.scrollTo({ left: lavagna.scrollLeft + colonna.getBoundingClientRect().left - lavagna.getBoundingClientRect().left - margine, behavior: 'instant' });
+            }
+        }, [lista, frazione]);
+        await pausa(300);
+    };
+    const stato = () => page.evaluate(() => {
+        const lavagna = document.querySelector('.zr-lanes');
+        const liste = [...document.querySelectorAll('.zr-lanes [data-list-id]')];
+        const schede = [...document.querySelectorAll('.zr-lanes [data-list-id] .zr-card')].map((scheda) => {
+            const posto = scheda.getBoundingClientRect();
+            return { id: scheda.id, lista: liste.indexOf(scheda.closest('[data-list-id]')), x: posto.x + Math.min(posto.width / 2, 120), xl: Math.max(posto.x, 0) + 24, xr: posto.right, y: posto.y + posto.height / 2 };
+        });
+        const destra = lavagna?.getBoundingClientRect();
+        // Il pezzo che si vede di ogni lista, fuori dalla striscia del bordo dove la board scorre da sola (un quinto della board),
+        // all'altezza della sua testata: sopra nessuna scheda, e anche una lista vuota è alta fin lì.
+        const pezzi = liste.map((lista) => { const posto = lista.getBoundingClientRect(); return { x: posto.x + 12, y: posto.top + 24, visibile: posto.x + 12 < innerWidth * 0.8 - 8 }; });
+        const ombra = document.querySelector('.zr-tocco-ombra');
+        return {
+            schede,
+            pezzi,
+            scorso: lavagna?.scrollLeft ?? 0,
+            largo: innerWidth,
+            destra: destra ? { x: destra.right - 6, y: (liste[0]?.getBoundingClientRect().top ?? destra.top) + 24 } : null,
+            ombra: !!ombra,
+            presa: !!document.querySelector('.zr-lanes .zr-card.is-dragging'),
+            azione: [...new Set([...document.querySelectorAll('.zr-lanes [data-list-id] .zr-card[draggable="true"]')].map((scheda) => getComputedStyle(scheda).touchAction))].join(', '),
+            spostata: document.querySelector('[data-uat="spostata"]')?.textContent ?? '',
+            aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
+            rifiutata: document.querySelector('[data-uat="rifiutata"]')?.textContent ?? '',
+        };
+    });
+    const tieni = async (scheda) => {
+        await tocca('touchStart', scheda.x, scheda.y);
+        await pausa(350);
+        await tocca('touchMove', scheda.x + 2, scheda.y + 2);
+        await pausa(100);
+    };
+    const prima = await stato();
+    const uno = prima.schede.find((questa) => questa.lista === 0);
+    if (!uno || !prima.pezzi[1]) {
+        scrivi('❌', 'TK.1', 'la pagina ha una KanbanBoard con una scheda nella prima lista', `schede: ${prima.schede.length}`);
+        await page.context().close();
+        return;
+    }
+    const delBrowser = async (id) => page.evaluate((quale) => getComputedStyle(document.getElementById(quale)).getPropertyValue('-webkit-user-drag'), id);
+
+    // TK.4: un dito che scorre subito, poi un tocco breve.
+    await tocca('touchStart', uno.x, uno.y);
+    await striscia(uno, { x: uno.x - 180, y: uno.y }, 6, 16);
+    await tocca('touchEnd');
+    await pausa(600);
+    const scorsa = await stato();
+    await aSinistra(0);
+    const breve = (await stato()).schede.find((questa) => questa.id === uno.id);
+    await tocca('touchStart', breve.x, breve.y);
+    await pausa(60);
+    await tocca('touchEnd');
+    await pausa(600);
+    const toccata = await stato();
+    scrivi(scorsa.scorso > prima.scorso + 40 && !scorsa.presa && !scorsa.ombra && scorsa.schede.find((questa) => questa.id === uno.id)?.lista === 0 && toccata.aperta === uno.id && !toccata.presa && !toccata.spostata ? '✅' : '❌', 'TK.4', 'un dito che scorre subito fa scorrere la board e non prende la scheda; un tocco breve la apre', `scorrimento ${prima.scorso} → ${scorsa.scorso}, presa: ${scorsa.presa}, aperta: ${toccata.aperta || '-'}, spostata: ${toccata.spostata || '-'}`);
+
+    // TK.1 e TK.6: pressione, il dito alla seconda lista, rilascio.
+    const ferma = await stato();
+    const presa = ferma.schede.find((questa) => questa.id === uno.id);
+    await tieni(presa);
+    const tenuta = await stato();
+    const drag = await delBrowser(uno.id);
+    await striscia({ x: presa.x + 2, y: presa.y + 2 }, ferma.pezzi[1], 10, 30);
+    await foto('tocco-board.png');
+    await tocca('touchEnd');
+    await pausa(600);
+    const lasciata = await stato();
+    const dove = lasciata.schede.find((questa) => questa.id === uno.id)?.lista;
+    scrivi(tenuta.ombra && tenuta.presa && dove === 1 && lasciata.spostata === `${uno.id} l1 l2 -` && !lasciata.ombra && !lasciata.presa ? '✅' : '❌', 'TK.1', 'una pressione di 250 ms prende la scheda, una copia segue il dito, e al rilascio sulla seconda lista la scheda ci passa', `presa: ${tenuta.presa}, copia: ${tenuta.ombra}, lista dopo: ${dove}, onMove: ${lasciata.spostata || '-'}`);
+    scrivi(prima.azione === 'manipulation' && drag === 'none' ? '✅' : '❌', 'TK.6', 'sulle schede touch-action: manipulation, e col dito sulla scheda niente drag del browser', `${prima.azione}, drag del browser: ${drag}`);
+
+    // TK.2: l'altra scheda della prima lista, lasciata sopra la prima scheda della seconda lista.
+    const ora = await stato();
+    const due = ora.schede.find((questa) => questa.lista === 0);
+    const bersaglio = ora.schede.find((questa) => questa.lista === 1);
+    if (due && bersaglio && ora.pezzi[1]) {
+        await tieni(due);
+        const sopraLei = { x: ora.pezzi[1].x, y: bersaglio.y };
+        await striscia({ x: due.x + 2, y: due.y + 2 }, sopraLei, 10, 30);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const ordine = dopo.schede.filter((questa) => questa.lista === 1).map((questa) => questa.id);
+        scrivi(dopo.spostata === `${due.id} l1 l2 ${bersaglio.id}` && ordine.indexOf(due.id) === ordine.indexOf(bersaglio.id) - 1 ? '✅' : '❌', 'TK.2', 'rilasciata sopra una scheda di un\'altra lista, la scheda va prima di quella', `onMove: ${dopo.spostata || '-'}, seconda lista: ${ordine.join(' ')}`);
+    } else {
+        scrivi('❌', 'TK.2', 'una scheda nella prima lista e una nella seconda', '');
+    }
+
+    // TK.5: dalla seconda lista alla terza, che rifiuta.
+    // La terza lista comincia a metà della finestra: su un telefono una lista è larga quasi quanto lo schermo, e con la seconda a
+    // sinistra la terza starebbe tutta nella striscia del bordo. La scheda si tocca fuori dalla striscia di sinistra.
+    await aSinistra(2, 0.55);
+    const rifiuto = await stato();
+    const tre = rifiuto.schede.filter((questa) => questa.lista === 1).map((questa) => ({ ...questa, x: Math.min(Math.max(questa.x, rifiuto.largo * 0.2 + 20), questa.xr - 16) }))[0];
+    if (tre && tre.x > rifiuto.largo * 0.2 && rifiuto.pezzi[2]?.visibile) {
+        await tieni(tre);
+        await striscia({ x: tre.x + 2, y: tre.y + 2 }, rifiuto.pezzi[2], 10, 30);
+        await pausa(300);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        scrivi(dopo.schede.find((questa) => questa.id === tre.id)?.lista === 1 && dopo.rifiutata.startsWith(`${tre.id} l3 `) && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TK.5', 'una lista che rifiuta la scheda non la riceve, e onRefuse arriva', `lista dopo: ${dopo.schede.find((questa) => questa.id === tre.id)?.lista}, onRefuse: ${dopo.rifiutata || '-'}`);
+    } else {
+        scrivi('❌', 'TK.5', 'una scheda nella seconda lista e la terza lista in vista', '');
+    }
+
+    // TK.3: dal principio, una scheda tenuta e il dito fermo al bordo destro.
+    await aSinistra(0);
+    const bordo = await stato();
+    const quattro = bordo.schede.find((questa) => questa.lista === 1) ?? bordo.schede.find((questa) => questa.lista === 0);
+    if (quattro && bordo.destra) {
+        // Il dito sulla parte che si vede della scheda, a sinistra: la seconda lista a 390 px esce di lato.
+        await tieni({ ...quattro, x: quattro.xl });
+        await striscia({ x: quattro.xl, y: quattro.y }, bordo.destra, 8, 30);
+        const scorrimenti = [];
+        for (let volta = 0; volta < 6; volta++) {
+            await pausa(250);
+            scorrimenti.push((await stato()).scorso);
+        }
+        await foto('tocco-board-bordo.png');
+        await striscia(bordo.destra, { x: bordo.destra.x - 110, y: bordo.destra.y }, 4, 30);
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const lista = dopo.schede.find((questa) => questa.id === quattro.id)?.lista ?? -1;
+        // Una volta sola: lo scorrimento della board va sempre avanti, senza i salti all'indietro di due scorrimenti che litigano.
+        const avanti = scorrimenti.every((valore, volta) => volta === 0 || valore >= scorrimenti[volta - 1]);
+        scrivi(scorrimenti.at(-1) > bordo.scorso + 150 && avanti && lista >= 3 ? '✅' : '❌', 'TK.3', 'col dito fermo al bordo destro la board scorre da sola, sempre avanti, e la scheda arriva a una lista che prima era fuori vista (dalla quarta in là)', `scorrimento ${bordo.scorso} → ${scorrimenti.join(', ')}, lista dopo: ${lista}`);
+    } else {
+        scrivi('❌', 'TK.3', 'una scheda per il bordo', '');
+    }
     await page.context().close();
 }
 
@@ -1812,6 +2086,54 @@ async function barraDiInertia(page, csp) {
     }));
     const inConsole = csp.blocchi.filter((blocco) => /style-src/.test(blocco));
     scrivi(dopo.violazioni.length === 0 && dopo.stili === 0 && inConsole.length === 0 ? '✅' : '❌', 'AV.2', 'nessun <style> della barra nella pagina e nessuna violazione di style-src', `violazioni durante la visita ${dopo.violazioni.length}${dopo.violazioni.length ? `: ${dopo.violazioni.slice(0, 3).join(' | ')}` : ''}; in console ${inConsole.length}; <style> della barra ${dopo.stili}`);
+}
+
+// TS (dalla v4.36.0, #3757): il tema scuro dal CSS del pacchetto, con `--scuro`. Un fondo è scuro quando la sua luminanza è sotto
+// 0,1 e chiaro quando è sopra 0,5; l'inchiostro all'opposto. TS.1 con `data-theme="dark"` e il sistema chiaro la pagina e la barra
+// laterale sono scure; TS.2 con `data-theme="system"` e il sistema scuro, scure; TS.3 con `data-theme="system"` e il sistema chiaro,
+// chiare; TS.4 senza `data-theme` e col sistema scuro, chiare: un modulo che non scrive la scelta della persona non diventa scuro da
+// sé (correzione di zr-pm-cc del 13/11); TS.5 con `data-theme="light"` e il sistema scuro, chiare. Poi la pagina torna come l'ha
+// aperta la UAT: scura scelta, sistema chiaro.
+async function temaScuro(page) {
+    const leggi = () => page.evaluate(() => {
+        const rgb = (testo) => (testo.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const luce = ([r, g, b]) => {
+            const lineare = (c) => (c / 255 <= 0.03928 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+            return 0.2126 * lineare(r) + 0.7152 * lineare(g) + 0.0722 * lineare(b);
+        };
+        const corpo = getComputedStyle(document.body);
+        const laterale = document.querySelector('.zr-shell .zr-side');
+        return {
+            tema: document.documentElement.getAttribute('data-theme'),
+            schema: getComputedStyle(document.documentElement).colorScheme,
+            fondo: luce(rgb(corpo.backgroundColor)),
+            inchiostro: luce(rgb(corpo.color)),
+            laterale: laterale ? luce(rgb(getComputedStyle(laterale).backgroundColor)) : null,
+        };
+    });
+    const scuro = (l) => l.fondo < 0.1 && l.inchiostro > 0.5 && l.schema === 'dark' && (l.laterale === null || l.laterale < 0.1);
+    const chiaro = (l) => l.fondo > 0.5 && l.inchiostro < 0.1 && l.schema !== 'dark' && (l.laterale === null || l.laterale > 0.5);
+    const prova = (l) => `data-theme ${l.tema ?? 'assente'}, color-scheme ${l.schema}, luminanza del fondo ${l.fondo.toFixed(3)}, dell'inchiostro ${l.inchiostro.toFixed(3)}${l.laterale === null ? '' : `, della barra laterale ${l.laterale.toFixed(3)}`}`;
+    const caso = async (tema, sistema) => {
+        await page.evaluate((valore) => (valore === null ? document.documentElement.removeAttribute('data-theme') : document.documentElement.setAttribute('data-theme', valore)), tema);
+        await page.emulateMedia({ colorScheme: sistema });
+        await pausa(200);
+        return leggi();
+    };
+
+    const primo = await leggi();
+    scrivi(scuro(primo) ? '✅' : '❌', 'TS.1', 'con data-theme="dark" e il sistema chiaro la pagina e la barra laterale sono scure', prova(primo));
+    await page.screenshot({ path: join(cartella, 'tema-scuro-1280.png') });
+    const secondo = await caso('system', 'dark');
+    scrivi(scuro(secondo) ? '✅' : '❌', 'TS.2', 'con data-theme="system" e il sistema scuro la pagina è scura', prova(secondo));
+    const terzo = await caso('system', 'light');
+    scrivi(chiaro(terzo) ? '✅' : '❌', 'TS.3', 'con data-theme="system" e il sistema chiaro la pagina è chiara', prova(terzo));
+    const quarto = await caso(null, 'dark');
+    scrivi(chiaro(quarto) ? '✅' : '❌', 'TS.4', 'senza data-theme e col sistema scuro la pagina resta chiara: il modulo non diventa scuro da sé', prova(quarto));
+    await page.screenshot({ path: join(cartella, 'tema-senza-scelta-sistema-scuro-1280.png') });
+    const quinto = await caso('light', 'dark');
+    scrivi(chiaro(quinto) ? '✅' : '❌', 'TS.5', 'con data-theme="light" e il sistema scuro la pagina è chiara', prova(quinto));
+    await caso('dark', 'light');
 }
 
 // MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna

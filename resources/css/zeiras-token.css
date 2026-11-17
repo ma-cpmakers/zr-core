@@ -1,6 +1,8 @@
 /* Generato da scripts/token-css.mjs da resources/zeiras/tokens.json: non si modifica a mano, si rigenera con
-   `npm run token` a ogni riallineamento al design system. Tema chiaro. Si carica dopo bundle.css. */
+   `npm run token` a ogni riallineamento al design system. Il tema chiaro, e dalla v4.36.0 il tema scuro: con
+   data-theme="dark" su <html>, o con data-theme="system" quando il sistema è scuro. Si carica dopo bundle.css. */
 :root {
+    color-scheme: light;
     --surface: #f7f6f2;
     --surface-raised: #ffffff;
     --surface-sunken: #eeece5;
@@ -118,4 +120,78 @@
     --text-micro: 10px;
     --text-micro--line-height: 16px;
     --text-micro--font-weight: 700;
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #0f1412;
+    --surface-raised: #171e1b;
+    --surface-sunken: #0a0e0c;
+    --line: #28312d;
+    --line-strong: #65716b;
+    --ink: #eef2ef;
+    --ink-muted: #a3aea8;
+    --pine: #4cc9a8;
+    --pine-hover: #6fd8bb;
+    --on-pine: #062a21;
+    --pine-soft: #12332b;
+    --citrus: #f5c533;
+    --citrus-soft: #3a300a;
+    --citrus-ink: #f5d36b;
+    --coral: #ff8a70;
+    --on-coral: #2a0d06;
+    --coral-soft: #3d1a13;
+    --sky: #7cb8ea;
+    --sky-soft: #10273a;
+    --plum: #d1a2e0;
+    --plum-soft: #2e1936;
+    --focus: #7cb8ea;
+    --scrim: rgba(0,0,0,0.6);
+    --chart-1: #1fa383;
+    --chart-2: #d9722a;
+    --chart-3: #4a86d0;
+    --chart-4: #b58500;
+    --chart-5: #a86cc4;
+    --chart-other: #5c6661;
+    --chart-grid: #232b28;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.45);
+    --shadow-lift: 0 10px 28px rgba(0,0,0,0.55);
+    --shadow-overlay: 0 24px 64px rgba(0,0,0,0.7);
+}
+@media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] {
+        color-scheme: dark;
+        --surface: #0f1412;
+        --surface-raised: #171e1b;
+        --surface-sunken: #0a0e0c;
+        --line: #28312d;
+        --line-strong: #65716b;
+        --ink: #eef2ef;
+        --ink-muted: #a3aea8;
+        --pine: #4cc9a8;
+        --pine-hover: #6fd8bb;
+        --on-pine: #062a21;
+        --pine-soft: #12332b;
+        --citrus: #f5c533;
+        --citrus-soft: #3a300a;
+        --citrus-ink: #f5d36b;
+        --coral: #ff8a70;
+        --on-coral: #2a0d06;
+        --coral-soft: #3d1a13;
+        --sky: #7cb8ea;
+        --sky-soft: #10273a;
+        --plum: #d1a2e0;
+        --plum-soft: #2e1936;
+        --focus: #7cb8ea;
+        --scrim: rgba(0,0,0,0.6);
+        --chart-1: #1fa383;
+        --chart-2: #d9722a;
+        --chart-3: #4a86d0;
+        --chart-4: #b58500;
+        --chart-5: #a86cc4;
+        --chart-other: #5c6661;
+        --chart-grid: #232b28;
+        --shadow-card: 0 1px 2px rgba(0,0,0,0.45);
+        --shadow-lift: 0 10px 28px rgba(0,0,0,0.55);
+        --shadow-overlay: 0 24px 64px rgba(0,0,0,0.7);
+    }
 }

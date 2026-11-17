@@ -953,13 +953,16 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // pezzo dei rimedi, quando entra una lavagna: nel JS d'ingresso niente, e nei rimedi solo ciò che lo chiede e gli passa il
     // dito. 1.220 misurati, il tetto è la misura più 20. v4.35.3 (R1 e R2 della revisione della v4.35.2, sì di zr-pm-74 del
     // 16/11): niente drag del browser sulla carta tenuta e la lavagna che si aggiorna sotto il dito, 1.339 misurati, più 20; v4.35.4 (zr-crm e zr-pm-74,
-    // 16/11): il dito nel margine accanto alla lavagna conta come sul bordo, 1.370 misurati, più 20.
-    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.390 byte, la misura della v4.35.4 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
+    // 16/11): il dito nel margine accanto alla lavagna conta come sul bordo, 1.370 misurati, più 20; v4.36.0 (richiesta 294, #3913):
+    // anche le schede della KanbanBoard, con la loro chiave e lo scorrimento di lato lasciato alla board, 1.423 misurati, più 20;
+    // e nella stessa il padding della lavagna a fine corsa, col dito nel margine (zr-crm, 16/11), 1.480 misurati, più 20; e i rilievi
+    // R5 e R6 della revisione della v4.35.2 (i bordi che si vedono, il clic dopo una nuova pressione), 1.521 misurati, più 20.
+    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.541 byte, la misura della v4.36.0 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
         const delTocco = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEL_TOCCO));
 
         expect(volte(soloCornice.js, DEL_TOCCO)).toBe(0);
         expect(delTocco.map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
-        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_390);
+        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_541);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

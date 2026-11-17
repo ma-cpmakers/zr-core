@@ -276,11 +276,17 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voce 3887, richiesta 290; v4.35.2, richiesta 293)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889 e 3890; v4.35.2, richiesta 293; v4.36.0, richiesta 294)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
-            '.zr-lanes .zr-deal[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
+            '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
+            '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }',
+            '@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } }',
+            '@media (width > 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }',
+            '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',
+            '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
+            '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
         ].join(' '));
     });
 
@@ -301,6 +307,69 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         // Il design system di oggi trascina le carte solo col drag HTML5: quando la 293 arriva, questo caso diventa rosso e il
         // rimedio si toglie, con resources/js/tocco.ts.
         expect(readFileSync(delRepo('resources/js/zeiras/DealPipeline.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
+    });
+
+    // v4.36.0 (richiesta 294, voce 3913; zr-pm-74 16/11): lo stesso per le schede della KanbanBoard (K.6). La regola prende ogni
+    // `.zr-card` che si trascina dentro una lavagna, quindi anche le schede della board, che non hanno la classe della DealPipeline.
+    it('anche le schede della KanbanBoard lasciano scorrere il dito: la regola è su .zr-card (v4.36.0, richiesta 294 · K.6)', () => {
+        expect(regole).toContain('.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation;');
+        expect(regole).not.toContain('.zr-deal[draggable');
+        // Il design system di oggi trascina le schede della board solo col drag HTML5: quando la 294 arriva, questo caso diventa
+        // rosso e il rimedio si toglie (le maniglie delle liste usano già il puntatore, e restano fuori: sono della board).
+        expect(readFileSync(delRepo('resources/js/zeiras/KanbanCard.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
+    });
+
+    // Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il comando portato in vista dentro un contenitore che scorre si
+    // ferma a 4 px dal bordo, lo spazio dell'anello del fuoco (2 px più 2). Solo scroll-padding, che fuori dallo scorrimento
+    // non sposta niente; la prova in Chromium (0 px senza, 4 con, la forma della pagina uguale) è nella voce.
+    it('i contenitori che scorrono lasciano 4 px all\'anello del fuoco: scroll-padding var(--space-1), un token (voce 3888 · AC 1 e 3, richiesta 278)', () => {
+        expect(readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8')).toContain('--space-1:');
+        // Il bundle di oggi non lo fa da sé: quando la 278 arriva, questo caso diventa rosso e il rimedio si toglie.
+        expect(bundleCss).not.toMatch(/scroll-padding/);
+        expect(bundleIntero(bundleCss)).not.toMatch(/scroll-padding/);
+    });
+
+    // Voce #3889 (richieste 288 e 279; zr-pm-74 15/11). Coi colori forzati la voce attiva del menu e il segmento scelto hanno un
+    // contorno; il campo Cerca chiuso, sopra i 720 px, ha il contorno che il design system gli dà da aperto, e coi colori forzati
+    // un contorno vero. La prova in Chromium (prima e dopo, coi colori forzati e senza, 1280 e 390 px) è nella voce.
+    it('coi colori forzati la voce attiva e il segmento scelto non restano col solo grassetto (voce 3889 · AC 1 e 4, richiesta 288)', () => {
+        // Il bundle di oggi segna coi colori forzati solo .zr-radio-card e .zr-color: quando la 288 arriva, questo caso diventa rosso.
+        const forzati = [...bundleCss.matchAll(/@media \(forced-colors: active\) \{([^\n]*)\}/g)].map((m) => m[1]).join(' ');
+        expect(forzati).toContain('.zr-radio-card');
+        expect(forzati).not.toMatch(/zr-nav-item|zr-seg-item/);
+    });
+
+    it('il campo Cerca chiuso sopra i 720 px ha il contorno del campo aperto, line-strong a 4,04:1 sul bianco della barra (voce 3889 · AC 2 e 4, richiesta 279)', () => {
+        expect(bundleCss).toContain('.zr-search.is-open { box-shadow: inset 0 0 0 1px var(--line-strong); }');
+        expect(bundleCss).toMatch(/\.zr-top \{[^}]*background: var\(--surface-raised\)/);
+        // Il bundle di oggi non dà al campo chiuso né bordo né ombra: quando la 279 arriva, questo caso diventa rosso.
+        for (const [, regola] of bundleCss.matchAll(/(?:^|\n|\} ?|\s)\.zr-search \{([^}]*)\}/g)) expect(regola).not.toMatch(/(?:^|;)\s*(?:border(?:-(?:top|right|bottom|left|width|style|color))?|box-shadow|outline)\s*:/);
+        // Il contrasto si calcola dai token del pacchetto, non da colori scritti qui: almeno 3:1 (WCAG 1.4.11).
+        // Nel tema chiaro (il primo :root) e nello scuro (data-theme="dark", dalla #3757).
+        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
+        const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
+        const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
+            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+            .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
+        for (const tema of temi) {
+            const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(tema)?.[1] ?? '';
+            expect(colore('line-strong')).toMatch(/^#/);
+            const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
+            expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
+        }
+    });
+
+    // Voce #3890 (richiesta 283; zr-pm-74 15/11). Sotto i 720 px il campo della ricerca aperto copre la barra; le azioni restano
+    // sotto e, a 320 px col testo al 200%, allargavano la pagina a 338 px. La prova in Chromium (338 senza, 320 con; R390.9 di
+    // uat-cornice, il Tab dalla ricerca a campanella e profilo della #2805, ancora ✅) è nella voce.
+    it('con la ricerca aperta sotto i 720 px le azioni della barra si stringono e non allargano la pagina, e restano nel DOM (voce 3890, richiesta 283)', () => {
+        // Il bundle di oggi dà a .zr-top-actions solo display, allineamento, spazio e posizione: quando la 283 arriva, questo caso
+        // diventa rosso e il rimedio si toglie.
+        const regole = [...bundleCss.matchAll(/\.zr-top-actions \{([^}]*)\}/g)].map((m) => m[1]).join(' ');
+        expect(regole).toContain('display: flex');
+        expect(regole).not.toMatch(/min-width|overflow|flex-wrap/);
+        // Non `display: none` né `visibility: hidden`: campanella e profilo restano nel giro del Tab dopo la ricerca (#2805).
+        expect(readFileSync(delRepo('resources/css/rimedi.css'), 'utf8')).not.toMatch(/zr-top-actions \{[^}]*(?:display|visibility)/);
     });
 });
 

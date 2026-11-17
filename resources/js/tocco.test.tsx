@@ -143,6 +143,38 @@ it('vicino al bordo destro della lavagna, con la carta presa, la lavagna scorre 
     expect(scorso).toBeGreaterThan(0);
 });
 
+// v4.36.0 (R5 della revisione della v4.35.2): una lavagna più larga dello schermo ha il bordo fuori vista, dove il dito non arriva:
+// conta il bordo dello schermo.
+it('una lavagna che esce dallo schermo scorre col dito al bordo dello schermo (R5)', async () => {
+    const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
+    lavagna.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: innerWidth + 400, height: 600 });
+    posa('d1', 200, 100);
+    await act(() => aspetta(300));
+    sottoIlDito = colonna('new');
+    await act(async () => void dito('pointermove', document.body, innerWidth - 4, 100));
+    await act(() => aspetta(100));
+    const scorso = lavagna.scrollLeft;
+    await act(async () => void dito('pointercancel', document.body, innerWidth - 4, 100));
+
+    // Deve fallire se: conta il bordo della lavagna, 400 px oltre lo schermo, e col dito al bordo dello schermo niente scorre.
+    expect(scorso).toBeGreaterThan(0);
+});
+
+// v4.36.0 (R6): il clic dopo il dito alzato si ferma per 400 ms, ma se il browser non lo manda il clic che viene dopo una nuova
+// pressione è un clic vero.
+it('lasciata la carta, se il browser non manda il clic, una nuova pressione entro 400 ms apre la carta (R6)', async () => {
+    posa('d1');
+    await act(() => aspetta(300));
+    sottoIlDito = colonna('prop');
+    await act(async () => void dito('pointerup', document.body, 200, 40));
+    expect(onMove).toHaveBeenCalledTimes(1);
+
+    await act(async () => void dito('pointerdown', carta('d1'), 200, 40, 'mouse'));
+    await act(async () => void carta('d1').click());
+    // Deve fallire se: il clic resta fermo per 400 ms qualunque cosa succeda, e il primo clic vero dopo il trascinamento si perde.
+    expect(onOpen).toHaveBeenCalledTimes(1);
+});
+
 // v4.35.3 (R1 della revisione della v4.35.2): dalla pressione alla fine niente drag del browser sulla carta. Safari su iOS e
 // Chrome su Android, col dito fermo più di mezzo secondo, avviano il loro su un elemento `draggable` e si prendono il dito. Il
 // DOM finto non conosce `-webkit-user-drag`: si guarda che il pezzo lo scriva e lo tolga (in Chromium lo guarda TC.1).
@@ -203,6 +235,23 @@ it('il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul b
     expect(onMove).toHaveBeenCalledTimes(1);
     expect(onMove.mock.calls[0]?.slice(1)).toStrictEqual(['prop', 'new']);
     expect(Math.max(...dove)).toBeLessThan(358);
+});
+
+// v4.36.0 (zr-crm-35, 16/11, prova dal vivo della v4.35.4): col dito fermo nel margine la lavagna scorre fino in fondo, e lì
+// sul bordo c'è il suo padding, non una colonna. Lasciata lì, la carta deve andare all'ultima colonna, quella che si vede.
+it('a fine corsa, col dito nel margine, il padding della lavagna sul bordo non ferma la carta: va alla colonna accanto (v4.36.0)', async () => {
+    const lavagna = document.querySelector<HTMLElement>('.zr-lanes')!;
+    lavagna.getBoundingClientRect = () => ({ left: 32, right: 358, top: 0, bottom: 400, width: 326, height: 400, x: 32, y: 0, toJSON: () => ({}) });
+    lavagna.style.padding = '0 23px';
+    document.elementFromPoint = (x: number) => (x > 358 || x < 32 ? document.body : x >= 335 || x <= 55 ? lavagna : colonna('prop'));
+
+    posa('d1', 100, 40);
+    await act(() => aspetta(300));
+    await act(async () => void dito('pointermove', document.body, 380, 40));
+    await act(async () => void dito('pointerup', document.body, 380, 40));
+
+    expect(onMove).toHaveBeenCalledTimes(1);
+    expect(onMove.mock.calls[0]?.slice(1)).toStrictEqual(['prop', 'new']);
 });
 
 it('sopra o sotto la lavagna, fuori dalla sua altezza, la carta lasciata torna dov\'era (v4.35.4)', async () => {

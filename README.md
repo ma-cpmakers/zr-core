@@ -29,7 +29,7 @@ Da un frontend Zeiras (Laravel, React, Vite), a una versione con tag, senza cred
 ```
 
 **Il CSS**, in quest'ordine: prima il CSS del design system, `resources/css/bundle.css`, perché il suo `@import` dei font
-dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro.
+dev'essere la prima regola del CSS della pagina; poi le variabili dei token, nel tema chiaro e, dalla `v4.36.0`, nel tema scuro.
 
 ```css
 @import '../../vendor/zeiras/zr-core/resources/css/bundle.css';
@@ -45,6 +45,16 @@ pagina usa. La CSP di tutti li ammette (`font-src 'self'`), e dalla `v4.0.0` non
 `resources/zeiras/bundle.css` resta senza i due font, perché il browser ferma l'`@import` di Google, e va su
 `resources/css/bundle.css` («Passare alla v3.15», «Passare alla v4»).
 
+**Il tema scuro** (dalla `v4.36.0`, #3757): `zeiras-token.css` porta anche i valori scuri di `tokens.json`, per i colori e le
+ombre che nel tema scuro cambiano, e la cornice e ogni componente li prendono da sé, perché leggono solo le variabili. Il tema lo
+sceglie il modulo, con l'attributo `data-theme` su `<html>`, dove scrive la scelta della persona: `data-theme="dark"` dà il tema
+scuro, `data-theme="system"` segue il sistema (`prefers-color-scheme`: scuro solo quando il sistema è scuro), `data-theme="light"`
+il chiaro. **Senza `data-theme` la pagina resta chiara**, anche col sistema scuro: un modulo passa allo scuro quando scrive la
+scelta della persona e ha provato in scuro le sue pagine, perché ciò che colora da sé, fuori dai token, nessuno l'ha visto in
+scuro (correzione di zr-pm-cc del 13/11). Il file dice anche `color-scheme`, così barre di scorrimento e campi del browser seguono
+il tema. Un modulo che si era scritto i valori scuri nel suo CSS li toglie: arrivano dal pacchetto, senza un import in più. I
+valori sono quelli che il design system ha già (Decisione di zr-pm-cc del 13/11, prima che il suo CSS li porti).
+
 **Meno movimento** (dalla `v4.32.0`, #3534): chi chiede al sistema meno movimento (`prefers-reduced-motion: reduce`) non ha
 transizioni in nessuna pagina che carica il CSS del pacchetto. La regola sta in `resources/css/movimento.css`, che `bundle.css`
 e `zeiras.css` importano subito dopo i font: nessuna transizione su ogni elemento e sui suoi `::before` e `::after`, anche
@@ -59,6 +69,17 @@ si corregge nel pacchetto finché il design system non porta la richiesta che lo
 rimedio esce dal file. Il primo: il titolo della `SectionCard` (`.zr-section-card-title`) con una parola senza spazi, un nome o
 un codice, va a capo anche dentro la parola (`overflow-wrap: anywhere`), e a 390 px la pagina non scorre di lato (richiesta
 290, da zr-cashflow). Un modulo che ha scritto la stessa regola nel suo CSS la può togliere: arriva dal pacchetto.
+Il secondo (#3888, richiesta 278, da zr-crm): i contenitori che scorrono (il corpo del `DetailPanel`, la tabella, le
+linguette sottolineate che a 390 px scorrono di lato, l'area della pagina) hanno `scroll-padding: var(--space-1)`, e il
+comando che il browser porta in vista col fuoco si ferma a 4 px dal bordo invece che a filo: l'anello del fuoco si vede per
+intero. Fuori dallo scorrimento la pagina non cambia.
+Il terzo e il quarto (#3889, richieste 288 e 279, da zr-crm, zr-bookings e zr-superadmin): coi colori forzati (il
+Contrasto elevato di Windows) la voce attiva del menu e il segmento scelto hanno un contorno (`--border-ring`), e non restano col solo
+grassetto; sopra i 720 px il campo Cerca chiuso ha il contorno che il design system gli dà già da aperto, `var(--line-strong)`,
+4,04:1 sulla barra, e coi colori forzati un contorno vero. Sotto i 720 px, chiuso, resta l'icona.
+Il quinto (#3890, richiesta 283): sotto i 720 px il campo della ricerca aperto copre la barra, e le azioni del modulo, la
+campanella e il profilo, che restano sotto, a 320 px col testo al 200% allargavano la pagina; mentre la ricerca è aperta il
+loro contenitore si stringe e taglia ciò che esce, e restano nel giro del Tab dopo la ricerca. A ricerca chiusa la barra aspetta la richiesta.
 
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
@@ -76,7 +97,20 @@ sa quando la carta esce da una colonna, quindi col dito fuori dalla lavagna l'ul
 carta torna dov'era (col mouse è lo stesso). Dalla `v4.35.4` il dito nel margine della pagina accanto alla lavagna, alla sua
 altezza, conta come sul bordo: lì la lavagna scorre da sola, e al rilascio la carta va alla colonna che si vede sul bordo (sul
 CRM la lavagna sta dentro il margine della pagina e la seconda fase, a 390 px, comincia fuori vista). Sopra o sotto la
-lavagna il rilascio resta senza effetto.
+lavagna il rilascio resta senza effetto. Dalla `v4.36.0`, quando la lavagna è scorsa fino in fondo e sul bordo c'è il suo
+padding, il dito lì conta come sulla colonna accanto (zr-crm, dalla prova dal vivo della `v4.35.4`). E nella stessa (i rilievi
+R4-R8 della revisione della `v4.35.2`): il pezzo lo chiede solo una lavagna con carte che si trascinano (una board in sola
+lettura no), la penna (Apple Pencil) prende la carta come il dito, una lavagna o una colonna più grandi dello schermo scorrono
+col dito al bordo dello schermo, e il clic fermato dopo il rilascio non ferma quello che viene dopo una nuova pressione.
+
+**Le schede della KanbanBoard col dito** (dalla `v4.36.0`, richiesta 294; zr-pm-74 del 16/11): lo stesso pezzo del tocco prende
+anche le schede della `KanbanBoard`, finché il design system non porta la 294. Una pressione ferma di 250 ms prende la scheda, una
+copia segue il dito, e al rilascio su un'altra lista la scheda ci passa con lo stesso `onMove` del mouse; sopra una scheda di
+un'altra lista va prima di quella. Una lista che la rifiuta (`canEnter`, il limite con `blocks`) non la riceve, e `onRefuse`
+arriva come col mouse. Col dito vicino al bordo di lato scorre la board da sola, con lo scorrimento che ha già col mouse: il
+pezzo lì non scorre, o i due scorrimenti si sommerebbero. Un dito che scorre subito fa scorrere la board, e un tocco breve apre
+la scheda (`onOpenCard`). Sulle schede trascinabili `touch-action: manipulation`, in `rimedi.css`. Le righe TK di `uat-cornice`
+(`--tocco`, su `layout.html?lavagna=board`) lo provano in un telefono emulato. Un modulo non ha niente da fare: aggiorna.
 
 Il CSS del design system sta fuori dai layer della cascata. Con Tailwind 4, che mette le sue classi di utilità in un layer,
 vince su ognuna di loro: una pagina non ritocca con una classe una proprietà che un componente già dà (il colore di un
@@ -247,7 +281,8 @@ pagina, e dopo un clic a metà pagina il fuoco ripartiva dall'inizio). Un tasto 
 il pezzo dei rimedi, che la cornice chiede quando si monta, si perde come prima: lo vede solo il browser. Nel JS d'ingresso di queste app c'è anche l'aiuto
 con cui Vite carica i pezzi a richiesta (circa 0,7 KB con gzip): un'app che ha già pagine a richiesta lo porta comunque.
 Il nono, dalla `v4.35.2`, è il pezzo del tocco (circa 1,2 KB con gzip): le carte della `DealPipeline` trascinate col dito (vedi
-«Le carte della DealPipeline col dito», sotto), che il pezzo dei rimedi chiede solo quando in pagina entra una lavagna.
+«Le carte della DealPipeline col dito», sotto), che il pezzo dei rimedi chiede solo quando in pagina entra una lavagna. Dalla
+`v4.36.0` anche le schede della `KanbanBoard` (vedi «Le schede della KanbanBoard col dito»).
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
 tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
@@ -326,7 +361,7 @@ un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
-del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11). Quello dei rimedi era di
+del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
@@ -367,8 +402,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 106,5 KB | 17,5 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 103,3 KB | 17,1 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 108,7 KB | 17,8 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 105,5 KB | 17,4 KB | 4,8 KB | 1,7 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -558,6 +593,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.2` | le carte della `DealPipeline` si trascinano anche col dito (richiesta 293, sì di zr-pm-74 del 16/11, su richiesta di Luciano): una pressione di 250 ms prende la carta, una copia segue il dito, la lavagna scorre da sola vicino ai bordi, e al rilascio la carta passa alla colonna sotto il dito con lo stesso `onMove` del mouse; lo scorrimento col dito, il mouse, la tastiera e «Sposta in…» restano come sono. Un rimedio provvisorio: il pezzo del tocco (1.240 byte con gzip) arriva solo dove c'è una lavagna, e il JS d'ingresso non cambia; il pezzo dei rimedi sale a 1.640 | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: righe TC in un telefono emulato |
 | `v4.35.3` | le correzioni del trascinamento col dito dalla revisione della `v4.35.2` (sì di zr-pm-74 del 16/11): la carta tenuta non ha il drag del browser, che su Safari iOS e Chrome Android dopo mezzo secondo si prendeva il dito e fermava il trascinamento; se la lavagna si aggiorna mentre il dito tiene una carta, la pagina non scorre e alla fine la carta non resta presa né la colonna accesa. Il pezzo del tocco sale a 1.359 byte, la misura più 20; il JS d'ingresso non cambia | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: TC.1 guarda anche il drag del browser |
 | `v4.35.4` | il trascinamento col dito della `DealPipeline` quando la lavagna non arriva al bordo dello schermo (zr-crm e zr-pm-74, 16/11): il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo, e la carta lasciata lì va alla colonna che si vede sul bordo invece di tornare indietro. Pezzo del tocco 1.370 byte, tetto 1.390 (la misura più 20); JS d'ingresso invariato. Niente da fare per i moduli: aggiornare. |
+| `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o con `data-theme="system"` quando il sistema è scuro; senza `data-theme`, o con `"light"`, la pagina resta chiara anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; nessun modulo cambia finché non scrive `data-theme`. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). E i rimedi provvisori al CSS del design system in `rimedi.css` (vedi «Rimedi provvisori al design system»): lo `scroll-padding` dei contenitori che scorrono, che lascia all'anello del fuoco i suoi 4 px (#3888, richiesta 278); coi colori forzati il contorno sulla voce attiva del menu e sul segmento scelto, e il campo Cerca chiuso che si distingue dalla barra (#3889, richieste 288 e 279); con la ricerca aperta sotto i 720 px le azioni della barra che non allargano la pagina (#3890, richiesta 283). E le schede della `KanbanBoard` si trascinano anche col dito (#3913, richiesta 294; vedi «Le schede della KanbanBoard col dito»): pezzo del tocco 1.423 byte con gzip, tetto 1.443 (la misura più 20); JS d'ingresso invariato. E col dito nel margine, a lavagna scorsa fino in fondo, la carta lasciata sul padding del bordo va alla colonna accanto (zr-crm, prova dal vivo della `v4.35.4`): pezzo del tocco 1.480 byte, tetto 1.500 (la misura più 20). E i rilievi R4-R8 della revisione della `v4.35.2` (vedi «Le carte della DealPipeline col dito»): una board in sola lettura non chiede il pezzo del tocco, la penna come il dito, i bordi dello schermo per una lavagna più grande, il clic dopo una nuova pressione, e tre righe di `uat-cornice` (TC.4 con `onOpen`, TC.8 in verticale, TC.9 con 700 ms di pressione): pezzo del tocco 1.521 byte, tetto 1.541 (la misura più 20). Cosa fare: niente, finché il modulo non sceglie il tema; per lo scuro scrive su `<html>` `data-theme` dalla scelta della persona (`dark`, `light` o `system`) dopo aver provato in scuro le sue pagine, e toglie i valori scuri che si era scritto nel suo CSS. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
