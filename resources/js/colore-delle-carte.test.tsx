@@ -79,3 +79,27 @@ it('CardColorPicker: Home fuori da un radio non sceglie niente (C4)', async () =
     await act(async () => { lista.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })); });
     expect(onChange).not.toHaveBeenCalled();
 });
+
+it('CardColorPicker controllato con un nome fuori dalla tavolozza: nessuna scelta segnata, e «Nessuno» dà onChange(null) (revisione del lotto 0528, R1)', async () => {
+    const onChange = vi.fn();
+    await act(async () => radice.render(<CardColorPicker aria-label="UAT" value={'fucsia' as never} onChange={onChange} />));
+    const radio = [...contenitore.querySelectorAll<HTMLInputElement>('input[type=radio]')];
+    expect(radio.filter((r) => r.checked)).toHaveLength(0);
+    await act(async () => { radio[0].click(); });
+    expect(onChange).toHaveBeenLastCalledWith(null);
+});
+
+it('CardColorPicker: Maiusc+Home non sceglie (R9), e CARD_COLORS non si cambia (R6)', async () => {
+    const onChange = vi.fn();
+    await act(async () => radice.render(<CardColorPicker aria-label="UAT" defaultValue="mint" onChange={onChange} />));
+    const scelto = contenitore.querySelector<HTMLInputElement>('input:checked')!;
+    await act(async () => { scelto.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', shiftKey: true, bubbles: true })); });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(Object.isFrozen(CARD_COLORS)).toBe(true);
+});
+
+it('DealPipeline passa colorNames a ogni carta (R7)', async () => {
+    const fasi = [{ id: 'new', title: 'UAT', deals: [{ id: 'd1', title: 'UAT A', company: 'UAT', amount: 1, color: 'rose' as const }] }];
+    await act(async () => radice.render(<DealPipeline stages={fasi} colorNames={{ color: 'UAT Tinta', rose: 'UAT Rosso' }} onMove={vi.fn()} />));
+    expect(contenitore.textContent).toContain('UAT Tinta: UAT Rosso');
+});

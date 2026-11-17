@@ -5,6 +5,6 @@
 
   /* ---------- CardColorPicker: il colore di una carta, da una tavolozza fissa di 12 colori chiari (richiesta 297) ---------- */
   /* i nomi sono il contratto con l'API: il backoffice salva il nome, mai un esadecimale; null = nessun colore */
-  var CARD_COLORS = ['rose', 'peach', 'sand', 'lemon', 'lime', 'mint', 'sage', 'aqua', 'azure', 'lavender', 'lilac', 'stone'];
+  var CARD_COLORS = Object.freeze(['rose', 'peach', 'sand', 'lemon', 'lime', 'mint', 'sage', 'aqua', 'azure', 'lavender', 'lilac', 'stone']);
 
 export { CARD_COLORS };
