@@ -1879,6 +1879,8 @@ it('per ogni notifica del registro la rotta dà gli id che il suo percorso chied
     $dati = [
         'id' => 'uat-id-1', 'persona_id' => 'uat-persona-1', 'organizzazione_id' => 'uat-azienda-1', 'pipeline_id' => 'uat-pipeline-1',
         'trattativa_id' => 'uat-opp-1', 'board_id' => 'uat-board-1', 'lista_id' => 'uat-lista-1', 'aggiornata_il' => '2026-10-11T12:29:00.123Z',
+        // Voce 3569: l'id di un avviso di Finanze.
+        'avviso_id' => 'uat-avviso-1',
     ];
     $notifiche = [];
     $attesi = [];
