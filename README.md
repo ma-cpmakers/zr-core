@@ -103,6 +103,14 @@ R4-R8 della revisione della `v4.35.2`): il pezzo lo chiede solo una lavagna con 
 lettura no), la penna (Apple Pencil) prende la carta come il dito, una lavagna o una colonna più grandi dello schermo scorrono
 col dito al bordo dello schermo, e il clic fermato dopo il rilascio non ferma quello che viene dopo una nuova pressione.
 
+**Il colore delle carte** (dalla `v4.36.2`, richiesta 297 del design system, lotto 0528; richiesta di Luciano): una carta delle
+opportunità ha un colore da una tavolozza fissa di 12 colori chiari più «Nessuno». I nomi sono il contratto con il backoffice, che
+salva il nome e mai un esadecimale: `rose`, `peach`, `sand`, `lemon`, `lime`, `mint`, `sage`, `aqua`, `azure`, `lavender`, `lilac`,
+`stone` (`CARD_COLORS`, tipo `CardColor`); «Nessuno» è `null`. `DealCard` con `color` prende lo sfondo del token `card-<nome>`, nel
+tema chiaro e nello scuro, e dice «Colore: Rosa» al lettore di schermo nella lingua dell'app; `DealPipeline` lo legge da ogni
+`Deal` e la carta lo tiene quando cambia fase. Per sceglierlo c'è `CardColorPicker`: «Nessuno» e i 12 colori come radio, con le
+frecce, Home e Fine, ogni campione 44 px al tocco.
+
 **Le schede della KanbanBoard col dito** (dalla `v4.36.0`, richiesta 294; zr-pm-74 del 16/11): lo stesso pezzo del tocco prende
 anche le schede della `KanbanBoard`, finché il design system non porta la 294. Una pressione ferma di 250 ms prende la scheda, una
 copia segue il dito, e al rilascio su un'altra lista la scheda ci passa con lo stesso `onMove` del mouse; sopra una scheda di
@@ -256,7 +264,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 71,7 KB | 15,8 KB |
 | la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 71,7 KB | 15,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 211,5 KB | 68,5 KB | 71,2 KB | 15,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 71,2 KB | 15,7 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -404,8 +412,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 108,7 KB | 17,8 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 105,5 KB | 17,4 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 111,1 KB | 18,5 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 107,9 KB | 18,0 KB | 4,8 KB | 1,7 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -597,6 +605,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v4.35.4` | il trascinamento col dito della `DealPipeline` quando la lavagna non arriva al bordo dello schermo (zr-crm e zr-pm-74, 16/11): il dito nel margine accanto alla lavagna, alla sua altezza, conta come sul bordo, e la carta lasciata lì va alla colonna che si vede sul bordo invece di tornare indietro. Pezzo del tocco 1.370 byte, tetto 1.390 (la misura più 20); JS d'ingresso invariato. Niente da fare per i moduli: aggiornare. |
 | `v4.36.0` | il tema scuro (#3757): `zeiras-token.css` porta i valori scuri di `tokens.json` per i colori e le ombre che cambiano, con `data-theme="dark"` su `<html>` o con `data-theme="system"` quando il sistema è scuro; senza `data-theme`, o con `"light"`, la pagina resta chiara anche col sistema scuro, e il file dice `color-scheme`. La cornice e i componenti seguono da sé; nessun modulo cambia finché non scrive `data-theme`. Il CSS d'ingresso dell'app di prova sale di 1,7 KB, 0,6 con gzip (la tabella di «Quanto pesa il CSS»). Lo script UAT ha `--scuro` e le righe TS (Decisione di zr-pm-cc del 13/11). E i rimedi provvisori al CSS del design system in `rimedi.css` (vedi «Rimedi provvisori al design system»): lo `scroll-padding` dei contenitori che scorrono, che lascia all'anello del fuoco i suoi 4 px (#3888, richiesta 278); coi colori forzati il contorno sulla voce attiva del menu e sul segmento scelto, e il campo Cerca chiuso che si distingue dalla barra (#3889, richieste 288 e 279); con la ricerca aperta sotto i 720 px le azioni della barra che non allargano la pagina (#3890, richiesta 283). E le schede della `KanbanBoard` si trascinano anche col dito (#3913, richiesta 294; vedi «Le schede della KanbanBoard col dito»): pezzo del tocco 1.423 byte con gzip, tetto 1.443 (la misura più 20); JS d'ingresso invariato. E col dito nel margine, a lavagna scorsa fino in fondo, la carta lasciata sul padding del bordo va alla colonna accanto (zr-crm, prova dal vivo della `v4.35.4`): pezzo del tocco 1.480 byte, tetto 1.500 (la misura più 20). E i rilievi R4-R8 della revisione della `v4.35.2` (vedi «Le carte della DealPipeline col dito»): una board in sola lettura non chiede il pezzo del tocco, la penna come il dito, i bordi dello schermo per una lavagna più grande, il clic dopo una nuova pressione, e tre righe di `uat-cornice` (TC.4 con `onOpen`, TC.8 in verticale, TC.9 con 700 ms di pressione): pezzo del tocco 1.521 byte, tetto 1.541 (la misura più 20). Cosa fare: niente, finché il modulo non sceglie il tema; per lo scuro scrive su `<html>` `data-theme` dalla scelta della persona (`dark`, `light` o `system`) dopo aver provato in scuro le sue pagine, e toglie i valori scuri che si era scritto nel suo CSS. |
 | `v4.36.1` | i rilievi R1-R3 della revisione della `v4.36.0` (sì di zr-pm-74 del 17/11): lo `scroll-padding` della #3888 anche su `.zr-main-body`, il corpo che scorre sotto il percorso (R1; riga RP.1 di `uat-cornice`); col dito la scheda della `KanbanBoard` o la carta della `DealPipeline` che passa altrove manda `dragenter` e `dragleave` come il mouse, e una lista che la rifiutava non resta segnata né dà `onRefuse` quando la scheda è lasciata fuori dalla lavagna (R2; riga TK.7); una lavagna le cui carte diventano trascinabili cambiando solo `draggable` arriva al dito (R3). Pezzo del tocco 1.563 byte con gzip, tetto 1.583 (la misura più 20); JS d'ingresso invariato. Cosa fare: aggiornare, prima del deploy che porta la `v4.36.0` (zr-board e zr-crm). |
+| `v4.36.2` | il colore delle carte delle opportunità (richiesta 297, lotto 0528 del design system, voce #3946; richiesta di Luciano via zr-pm-74): i token `card-<nome>` chiaro e scuro, `DealCard` `color`, `Deal.color` in `DealPipeline` e `CardColorPicker`; i nomi della tavolozza sono il contratto con il backoffice |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
