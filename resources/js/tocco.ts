@@ -41,14 +41,17 @@ export function trattieni(mosso: Event): void {
     }
 }
 
-/** Un evento del drag HTML5 come lo manda il browser, sull'elemento `dove`: torna false se chi lo riceve l'ha fermato. */
-function manda(dove: Element, tipo: string, x: number, y: number): boolean {
+/**
+ * Un evento del drag HTML5 come lo manda il browser, sull'elemento `dove`: torna false se chi lo riceve l'ha fermato. `legato` è
+ * il `relatedTarget` di `dragenter` e `dragleave` (v4.36.1).
+ */
+function manda(dove: Element, tipo: string, x: number, y: number, legato: Element | null = null): boolean {
     let evento: Event;
 
     try {
-        evento = new DragEvent(tipo, { bubbles: true, cancelable: true, clientX: x, clientY: y, dataTransfer: new DataTransfer() });
+        evento = new DragEvent(tipo, { bubbles: true, cancelable: true, clientX: x, clientY: y, relatedTarget: legato, dataTransfer: new DataTransfer() });
     } catch {
-        evento = new Event(tipo, { bubbles: true, cancelable: true });
+        evento = new MouseEvent(tipo, { bubbles: true, cancelable: true, relatedTarget: legato });
     }
 
     return dove.dispatchEvent(evento);
@@ -125,12 +128,28 @@ export function premi(giu: PointerEvent): void {
             ? document.elementFromPoint(Math.min(Math.max(x, bordi.left + parseFloat(paddingLeft) + 1), bordi.right - parseFloat(paddingRight) - 1), y)
             : qui;
     };
-    const sopra = (): void => {
+    /**
+     * Il `dragover` a chi sta sotto il dito nella lavagna; torna true se l'ha fermato, cioè se lì la carta si lascia. Quando il dito
+     * passa altrove, come col mouse, il nuovo riceve `dragenter` e chi c'era prima `dragleave`, anche quando il dito esce dalla
+     * lavagna (v4.36.1, R2 della revisione della v4.36.0): la lista che rifiutava la carta non resta segnata, e la carta lasciata
+     * fuori non dà il rifiuto di una lista dove non è stata lasciata.
+     */
+    let qua: Element | null = null;
+    const sopra = (): boolean => {
         const qui = sotto();
+        const dentro = qui && lavagna.contains(qui) ? qui : null;
 
-        if (qui && lavagna.contains(qui)) {
-            manda(qui, 'dragover', x, y);
+        if (dentro !== qua) {
+            if (dentro) {
+                manda(dentro, 'dragenter', x, y, qua);
+            }
+            if (qua) {
+                manda(qua, 'dragleave', x, y, qui);
+            }
+            qua = dentro;
         }
+
+        return !!dentro && !manda(dentro, 'dragover', x, y);
     };
     const segui = (): void => {
         if (ombra) {
@@ -204,11 +223,10 @@ export function premi(giu: PointerEvent): void {
         }
         if (preso) {
             [x, y] = [su.clientX, su.clientY];
-            const qui = sotto();
 
             // Come il browser: `drop` solo dove l'ultimo `dragover` è stato fermato, cioè su chi accetta la carta.
-            if (qui && lavagna.contains(qui) && !manda(qui, 'dragover', x, y)) {
-                manda(qui, 'drop', x, y);
+            if (sopra() && qua) {
+                manda(qua, 'drop', x, y);
             }
             manda(viva(), 'dragend', x, y);
             // Il clic che il browser manda dopo il dito alzato non apre la carta appena lasciata. Se il browser non lo manda, il

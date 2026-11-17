@@ -37,7 +37,7 @@ it('rimedi.css porta lo scroll-padding dei contenitori che scorrono, e il README
     $radice = dirname(__DIR__, 2);
 
     expect(File::get("$radice/resources/css/rimedi.css"))
-        ->toContain('.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }')
+        ->toContain('.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }')
         ->and(File::get("$radice/README.md"))
         ->toContain('Il secondo (#3888, richiesta 278, da zr-crm)')
         ->toContain('si ferma a 4 px dal bordo invece che a filo');

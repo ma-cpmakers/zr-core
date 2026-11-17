@@ -25,7 +25,21 @@ const onOpenCard = vi.fn();
 const onRefuse = vi.fn();
 const canEnter = (_scheda: unknown, verso: { id: string }) => (verso.id === 'chiusa' ? 'Prima va approvata' : true);
 
+/**
+ * Il `DragEvent` di happy-dom non porta `relatedTarget`, `clientX` né `dataTransfer`: quello di Chromium sì (è un `MouseEvent`).
+ * La board legge `relatedTarget` in `dragleave` per sapere se il dito è uscito da una lista (R2 della revisione della v4.36.0).
+ */
+class DragEventDelBrowser extends MouseEvent {
+    readonly dataTransfer: DataTransfer | null;
+
+    constructor(tipo: string, init: DragEventInit = {}) {
+        super(tipo, init);
+        this.dataTransfer = init.dataTransfer ?? null;
+    }
+}
+
 beforeEach(async () => {
+    vi.stubGlobal('DragEvent', DragEventDelBrowser);
     contenitore = document.body.appendChild(document.createElement('div'));
     radice = createRoot(contenitore);
     await act(async () => radice.render(<KanbanBoard lists={LISTE} onMove={onMove} onOpenCard={onOpenCard} onRefuse={onRefuse} canEnter={canEnter} />));
@@ -39,6 +53,7 @@ afterEach(async () => {
     onMove.mockReset();
     onOpenCard.mockReset();
     onRefuse.mockReset();
+    vi.unstubAllGlobals();
 });
 
 const scheda = (id: string) => document.getElementById(id)!;
@@ -121,6 +136,27 @@ it('un dito che si muove prima dei 250 ms non prende la scheda, e un tocco breve
     expect(onMove).not.toHaveBeenCalled();
     expect(onOpenCard).toHaveBeenCalledTimes(1);
     expect(onOpenCard.mock.calls[0]?.[0]).toMatchObject({ id: 'k2' });
+});
+
+it('passata su una lista che la rifiuta e poi fuori dalla lavagna, la scheda lasciata fuori non dà onRefuse, e nessuna lista resta segnata (K.6, R2 della revisione della v4.36.0)', async () => {
+    // Deve fallire se: col dito arriva solo `dragover`, senza `dragenter` e `dragleave`, e la board non sa che il dito è uscito.
+    posa('k1');
+    await act(() => aspetta(300));
+    sottoIlDito = lista('doing');
+    await act(async () => void dito('pointermove', document.body, 120, 40));
+    expect(lista('doing').classList.contains('is-over')).toBe(true);
+    sottoIlDito = lista('chiusa');
+    await act(async () => void dito('pointermove', document.body, 200, 40));
+    expect(lista('doing').classList.contains('is-over')).toBe(false);
+    expect(lista('chiusa').classList.contains('is-refused')).toBe(true);
+    sottoIlDito = document.body;
+    await act(async () => void dito('pointermove', document.body, 400, 40));
+    expect(lista('chiusa').classList.contains('is-refused')).toBe(false);
+    await act(async () => void dito('pointerup', document.body, 400, 40));
+
+    expect(onRefuse).not.toHaveBeenCalled();
+    expect(onMove).not.toHaveBeenCalled();
+    expect(lista('todo').contains(scheda('k1'))).toBe(true);
 });
 
 it('una lista che rifiuta la scheda non la riceve col dito, e onRefuse arriva come col mouse (K.5)', async () => {
