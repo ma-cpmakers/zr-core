@@ -42,7 +42,7 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * notifiche da cliente, `bookings.cliente.`, sono della Dashboard: le apre «Il mio spazio» di zr-home (#3398). Vince l'inizio più lungo,
  * che sta dopo.
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'bookings.cliente.' => 'home', 'io.' => 'home'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'bookings.cliente.' => 'home', 'io.' => 'home', 'flow.' => 'flow'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array

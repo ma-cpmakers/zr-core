@@ -166,7 +166,7 @@ describe('le lingue della cornice', () => {
         // I tipi che zr-core conosce li dicono le chiavi dell'inglese: 63 (dallo sprint 74 anche i tre di Bookings, i due promemoria
         // delle scadenze, quello delle To-do e l'invito accettato; dallo sprint 79 i due degli sprint; dalla v4.12.0 il Gate deciso; dallo sprint 116 le quattro da cliente di Bookings), in ogni lingua, anche con un
         // file che ne ha uno in più.
-        // Voce #3569: e i due avvisi di Finanze.
+        // Voce 3569: e i due avvisi di Finanze.
         expect(tipiCheHa(frasiInglesi)).toHaveLength(65);
         expect(tipiCheHa(f)).toStrictEqual(tipiCheHa(frasiInglesi));
         expect(tipiCheHa(conLoSpagnoloCambiato('it'))).toStrictEqual(tipiCheHa(frasiInglesi));
@@ -453,14 +453,14 @@ describe('le lingue della cornice', () => {
         expect(cheNonConosce.map((tipo) => titoloDellaNotifica(tipo, lingua))).toStrictEqual(cheNonConosce.map(() => diRipiego[lingua]));
     });
 
-    // Voce #3569 (zr-backoffice-ea e zr-cashflow-47, 09/11): i due avvisi di Finanze che arrivano alla campanella, con le parole di
+    // Voce 3569 (zr-backoffice-ea e zr-cashflow-47, 09/11): i due avvisi di Finanze che arrivano alla campanella, con le parole di
     // Finanze. Non sono eventi: il tipo arriva senza `com.zeiras.` davanti, al singolare (`flow.avviso.`), e gli altri due avvisi di
     // Finanze (`spesa_fuori_dal_solito`, `estratto_fermo`) non arrivano alla campanella.
     it.each<[lingua: 'it' | 'en' | 'es', titoli: [saldo: string, addebito: string]]>([
         ['it', ['Nei prossimi 30 giorni i soldi non bastano', 'Un addebito atteso non è ancora arrivato']],
         ['en', ["Money won't last the next 30 days", "An expected charge hasn't arrived yet"]],
         ['es', ['El dinero no alcanza para los próximos 30 días', 'Un cargo esperado todavía no ha llegado']],
-    ])('con la lingua "%s", titoloDellaNotifica dà ai due avvisi di Finanze i loro titoli, non scambiati; il tipo col prefisso, al plurale, un pezzo del tipo e gli avvisi che non arrivano alla campanella restano col titolo di ripiego (voce #3569 · T1.1, T1.2)', async (lingua, titoli) => {
+    ])('con la lingua "%s", titoloDellaNotifica dà ai due avvisi di Finanze i loro titoli, non scambiati; il tipo col prefisso, al plurale, un pezzo del tipo e gli avvisi che non arrivano alla campanella restano col titolo di ripiego (voce 3569 · T1.1, T1.2)', async (lingua, titoli) => {
         const { titoloDellaNotifica } = await import('./frasi');
         const tipi = ['flow.avviso.saldo_non_basta', 'flow.avviso.addebito_non_arrivato'];
         const cheNonConosce = ['com.zeiras.flow.avviso.saldo_non_basta', 'flow.avvisi.saldo_non_basta', 'flow.avvisi.addebito_non_arrivato', 'flow.avviso', 'avviso.saldo_non_basta', 'flow.avviso.spesa_fuori_dal_solito', 'flow.avviso.estratto_fermo'];
@@ -926,7 +926,7 @@ describe('rigaDellaNotifica', () => {
     const DI_BOOKINGS = ['bookings.prenotazione.creata', 'bookings.prenotazione.spostata', 'bookings.prenotazione.annullata', ...['confermata', 'spostata', 'annullata', 'promemoria'].map((fine) => `bookings.cliente.prenotazione.${fine}`)];
     /** Sprint 74: il promemoria di una To-do e le due scadenze di una scheda non hanno chi (le manda il backoffice da sé): niente frasi con `{who}`. */
     /** v4.12.0: nemmeno il Gate deciso, che ha un titolo solo. */
-    /** Voce #3569: nemmeno i due avvisi di Finanze, che scrive il compito degli avvisi. */
+    /** Voce 3569: nemmeno i due avvisi di Finanze, che scrive il compito degli avvisi. */
     const SENZA_CHI = ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso', 'flow.avviso.saldo_non_basta', 'flow.avviso.addebito_non_arrivato'];
     const diGiulia = (tipo: unknown, risorsa_nome?: unknown) => ({ tipo, autore_nome: 'Giulia Bianchi', risorsa_nome });
     /** Un titolo atteso coi suoi nomi fra U+2068 e U+2069: dallo sprint 30 in una frase ogni nome è isolato (T2.1). */

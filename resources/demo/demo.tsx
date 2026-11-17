@@ -139,7 +139,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     const dati = useMemo(() => {
         const colCrm: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : crmAttivo ? { ...datiDiProva.prodotti, crm: 'attivo' } : datiDiProva.prodotti;
         const conBookings: DatiDellaCornice['prodotti'] = scelti.has('prenotazioni') ? { ...colCrm, bookings: 'attivo' } : colCrm;
-        // Con `?avvisi=1` (voce #3569) Finanze è attiva nel workspace: un clic su un avviso lo apre.
+        // Con `?avvisi=1` (voce 3569) Finanze è attiva nel workspace: un clic su un avviso lo apre.
         const conFinanze: DatiDellaCornice['prodotti'] = scelti.has('avvisi') ? { ...conBookings, flow: 'attivo' } : conBookings;
         const prodotti: DatiDellaCornice['prodotti'] = senzaModuli ? { ...datiDiProva.prodotti, pm: 'disponibile', reports: 'disponibile' } : conFinanze;
 

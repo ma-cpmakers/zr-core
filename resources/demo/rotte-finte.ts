@@ -71,7 +71,7 @@ const scadenze = new URLSearchParams(window.location.search).has('scadenze');
 // Con `?preventivi=1` (v3.2.2), dopo quelle di `?scadenze=1`, c'è la notifica della modifica che un cliente chiede dal link di
 // un preventivo, letta e senza chi: apre il preventivo, col suo `id`.
 const preventivi = new URLSearchParams(window.location.search).has('preventivi');
-// Con `?avvisi=1` (voce #3569), dopo quella di `?preventivi=1`, ci sono i due avvisi di Finanze che arrivano alla campanella, letti,
+// Con `?avvisi=1` (voce 3569), dopo quella di `?preventivi=1`, ci sono i due avvisi di Finanze che arrivano alla campanella, letti,
 // personali e senza chi: aprono l'avviso col suo `avviso_id`, il solo id che la parte server dà.
 const avvisi = new URLSearchParams(window.location.search).has('avvisi');
 // Con `?prenotazioni=1` (v3.6.0, sprint 74 · T1), in cima, ci sono le tre notifiche di Bookings, da leggere, senza chi (l'ospite
@@ -262,7 +262,7 @@ const notificheDiProva = [
     ...(preventivi
         ? [{ id: 'uat-r1', creata_il: fa(39 * 24 * 60), letta: true, app: 'crm', tipo: 'crm.preventivo.richiesta', ...detti(null, null, true), ids: { id: 'uat-preventivo-1' } as Record<string, string> }]
         : []),
-    // Solo con `?avvisi=1`, dopo quella di `?preventivi=1`: i due avvisi di Finanze (voce #3569), letti, per la persona e senza chi.
+    // Solo con `?avvisi=1`, dopo quella di `?preventivi=1`: i due avvisi di Finanze (voce 3569), letti, per la persona e senza chi.
     ...(avvisi
         ? ([
               ['uat-f1', 'flow.avviso.saldo_non_basta', 'uat-avviso-1'],

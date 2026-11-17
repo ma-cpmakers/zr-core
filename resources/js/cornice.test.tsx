@@ -2763,7 +2763,7 @@ describe('il pannello delle notifiche', () => {
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
         // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
-        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso. Sprint 116 · T2.2: le quattro da cliente. Voce #3569: i due
+        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso. Sprint 116 · T2.2: le quattro da cliente. Voce 3569: i due
         // avvisi di Finanze.
         expect(righe).toHaveLength(42);
         // Finanze si apre dove il workspace la ha.

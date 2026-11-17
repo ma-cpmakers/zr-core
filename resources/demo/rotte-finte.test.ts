@@ -526,8 +526,8 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica(ultima, 'it').titolo).toBe('Un cliente ha chiesto una modifica al preventivo');
     });
 
-    // Voce #3569: i due avvisi di Finanze stanno dietro `?avvisi=1`, per la UAT delle pagine di prova.
-    it.each([[''], ['&chi=1']])('con `?avvisi=1%s` in fondo all\'elenco ci sono i due avvisi di Finanze, letti, senza chi e col solo `avviso_id`: hanno il titolo nelle tre lingue e aprono l\'avviso, se Finanze si può aprire (voce #3569)', async (inPiu) => {
+    // Voce 3569: i due avvisi di Finanze stanno dietro `?avvisi=1`, per la UAT delle pagine di prova.
+    it.each([[''], ['&chi=1']])('con `?avvisi=1%s` in fondo all\'elenco ci sono i due avvisi di Finanze, letti, senza chi e col solo `avviso_id`: hanno il titolo nelle tre lingue e aprono l\'avviso, se Finanze si può aprire (voce 3569)', async (inPiu) => {
         await rotte(false, `?avvisi=1${inPiu}`);
 
         const { corpo } = await rispostaDi('/cornice/notifiche');

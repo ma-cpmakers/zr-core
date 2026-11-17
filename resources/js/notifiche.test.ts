@@ -44,7 +44,7 @@ describe('la destinazione di una notifica', () => {
         expect(registro.filter((voce) => 'notifiche' in voce)).toStrictEqual([]);
         // Sprint 74 · T1.3: anche Bookings, con le tre righe delle prenotazioni. v3.6.1: e per prima la Dashboard, con l'invito
         // accettato.
-        // Voce #3569: e Finanze, coi due avvisi che arrivano alla campanella.
+        // Voce 3569: e Finanze, coi due avvisi che arrivano alla campanella.
         expect(Object.keys(righe)).toStrictEqual(['home', 'pm', 'crm', 'bookings', 'flow']);
         expect(righe.flow).toStrictEqual(['saldo_non_basta', 'addebito_non_arrivato'].map((fine) => ({ tipo: `flow.avviso.${fine}`, percorso: '/avvisi/{avviso_id}', altrimenti: ['/avvisi'] })));
         // Sprint 116 · T2.2: e dopo le quattro da cliente di Bookings, che aprono «Il mio spazio».
@@ -222,11 +222,11 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
     });
 
-    // Voce #3569 · T2.1 (zr-cashflow-47, 09/11). Un avviso di Finanze apre l'avviso, con l'`avviso_id` dei `dati` (non l'id del
+    // Voce 3569 · T2.1 (zr-cashflow-47, 09/11). Un avviso di Finanze apre l'avviso, con l'`avviso_id` dei `dati` (non l'id del
     // soggetto né quello della notifica), nel workspace della notifica; senza `avviso_id` la lista degli avvisi; con Finanze che il
     // workspace non ha, un id fuori forma, il prefisso `com.zeiras.` o l'app di un altro prodotto, il pannello apre la pagina delle
     // notifiche.
-    it.each(['saldo_non_basta', 'addebito_non_arrivato'])('una notifica `flow.avviso.%s` apre l\'avviso in Finanze col suo `avviso_id`, e senza la lista degli avvisi; con Finanze spento, un id fuori forma, il prefisso o un\'altra app no (voce #3569 · T2.1)', (fine) => {
+    it.each(['saldo_non_basta', 'addebito_non_arrivato'])('una notifica `flow.avviso.%s` apre l\'avviso in Finanze col suo `avviso_id`, e senza la lista degli avvisi; con Finanze spento, un id fuori forma, il prefisso o un\'altra app no (voce 3569 · T2.1)', (fine) => {
         const tipo = `flow.avviso.${fine}`;
         const FLOW = 'https://flow.zeiras.com/w/acme-marketing';
         const conFinanze = { ...prodotti, flow: 'attivo' } as DatiDellaCornice['prodotti'];
