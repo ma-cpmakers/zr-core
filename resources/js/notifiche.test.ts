@@ -44,7 +44,9 @@ describe('la destinazione di una notifica', () => {
         expect(registro.filter((voce) => 'notifiche' in voce)).toStrictEqual([]);
         // Sprint 74 · T1.3: anche Bookings, con le tre righe delle prenotazioni. v3.6.1: e per prima la Dashboard, con l'invito
         // accettato.
-        expect(Object.keys(righe)).toStrictEqual(['home', 'pm', 'crm', 'bookings']);
+        // Voce #3569: e Finanze, coi due avvisi che arrivano alla campanella.
+        expect(Object.keys(righe)).toStrictEqual(['home', 'pm', 'crm', 'bookings', 'flow']);
+        expect(righe.flow).toStrictEqual(['saldo_non_basta', 'addebito_non_arrivato'].map((fine) => ({ tipo: `flow.avviso.${fine}`, percorso: '/avvisi/{avviso_id}', altrimenti: ['/avvisi'] })));
         // Sprint 116 · T2.2: e dopo le quattro da cliente di Bookings, che aprono «Il mio spazio».
         expect(righe.home).toStrictEqual([{ tipo: 'io.invito.accettato', percorso: '/impostazioni/membri' }, ...['confermata', 'spostata', 'annullata', 'promemoria'].map((fine) => ({ tipo: `bookings.cliente.prenotazione.${fine}`, percorso: '/spazio/prenotazioni/{id}' }))]);
         // Sprint 24 · T3 (voce #1748): una scheda nuova, modificata o assegnata, e nessun altro tipo della board.
@@ -218,6 +220,28 @@ describe('la destinazione di una notifica', () => {
         expect(apre({ app: 'bookings', tipo: `com.zeiras.bookings.prenotazione.${fine}`, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
         expect(apre({ app: 'bookings', tipo: 'bookings.prenotazione.cambiata', ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
         expect(apre({ app: 'crm', tipo, ids: { id: 'uat-prenotazione-1' } })).toBeUndefined();
+    });
+
+    // Voce #3569 · T2.1 (zr-cashflow-47, 09/11). Un avviso di Finanze apre l'avviso, con l'`avviso_id` dei `dati` (non l'id del
+    // soggetto né quello della notifica), nel workspace della notifica; senza `avviso_id` la lista degli avvisi; con Finanze che il
+    // workspace non ha, un id fuori forma, il prefisso `com.zeiras.` o l'app di un altro prodotto, il pannello apre la pagina delle
+    // notifiche.
+    it.each(['saldo_non_basta', 'addebito_non_arrivato'])('una notifica `flow.avviso.%s` apre l\'avviso in Finanze col suo `avviso_id`, e senza la lista degli avvisi; con Finanze spento, un id fuori forma, il prefisso o un\'altra app no (voce #3569 · T2.1)', (fine) => {
+        const tipo = `flow.avviso.${fine}`;
+        const FLOW = 'https://flow.zeiras.com/w/acme-marketing';
+        const conFinanze = { ...prodotti, flow: 'attivo' } as DatiDellaCornice['prodotti'];
+
+        expect(apre({ app: 'flow', tipo, ids: { avviso_id: 'uat-avviso-1' } }, conFinanze)).toBe(`${FLOW}/avvisi/uat-avviso-1`);
+        expect(apre({ app: 'flow', tipo, ids: { id: 'uat-notifica-1', avviso_id: 'uat-avviso-1' } }, conFinanze)).toBe(`${FLOW}/avvisi/uat-avviso-1`);
+        expect(apre({ app: 'flow', tipo, ids: { id: 'uat-notifica-1' } }, conFinanze)).toBe(`${FLOW}/avvisi`);
+        expect(apre({ app: 'flow', tipo, ids: {} }, conFinanze)).toBe(`${FLOW}/avvisi`);
+        expect(apre({ app: 'flow', tipo, ids: { avviso_id: '../x' } }, conFinanze)).toBe(`${FLOW}/avvisi`);
+        expect(destinazioneDellaNotifica({ app: 'flow', tipo, ids: { avviso_id: 'uat-avviso-1' } }, 'altro-ws', conFinanze)).toBe('https://flow.zeiras.com/w/altro-ws/avvisi/uat-avviso-1');
+        expect(apre({ app: 'flow', tipo, ids: { avviso_id: 'uat-avviso-1' } })).toBeUndefined();
+        expect(apre({ app: 'flow', tipo: `com.zeiras.${tipo}`, ids: { avviso_id: 'uat-avviso-1' } }, conFinanze)).toBeUndefined();
+        expect(apre({ app: 'flow', tipo: `flow.avvisi.${fine}`, ids: { avviso_id: 'uat-avviso-1' } }, conFinanze)).toBeUndefined();
+        expect(apre({ app: 'crm', tipo, ids: { avviso_id: 'uat-avviso-1' } }, conFinanze)).toBeUndefined();
+        expect(apre({ app: null, tipo, ids: { avviso_id: 'uat-avviso-1' } }, conFinanze)).toBeUndefined();
     });
 
     // Sprint 116 · T2.2 (voce #3398). Le quattro notifiche da cliente aprono la prenotazione in «Il mio spazio» di zr-home, nella

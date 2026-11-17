@@ -185,7 +185,7 @@ function tipiDiNotificaDelContratto(): array
  */
 function tipiDiNotificaConUnTitolo(): array
 {
-    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoliDelleNotificheDaClienteDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti()), ...array_keys(titoloDellaNotificaDelGateDeciso())];
+    return [...tipiDiNotificaDelContratto(), ...array_keys(titoliDelleNotificheDiCioCheVieneAssegnato()), ...array_keys(titoloDellaNotificaDellaSchedaAssegnata()), ...array_keys(titoloDellaNotificaDellaMenzioneInUnCommento()), ...array_keys(titoloDellaNotificaDelCreditoSottoZero()), ...array_keys(titoliDelleNotificheDelleScadenze()), ...array_keys(titoloDellaNotificaDellaRichiestaSulPreventivo()), ...array_keys(titoliDelleNotificheDiBookings()), ...array_keys(titoliDelleNotificheDaClienteDiBookings()), ...array_keys(titoloDellaNotificaDelleSchedeSenzaAssegnatario()), ...array_keys(titoliDiPromemoriaScadenzeEInviti()), ...array_keys(titoloDellaNotificaDelGateDeciso()), ...array_keys(titoliDegliAvvisiDiFinanze())];
 }
 
 /**
@@ -447,6 +447,21 @@ function titoloDellaNotificaDelGateDeciso(): array
 {
     return [
         'board.gate.deciso' => ['it' => 'Gate deciso', 'en' => 'Gate decided', 'es' => 'Gate decidido'],
+    ];
+}
+
+/**
+ * I titoli dei due avvisi di Finanze che arrivano alla campanella (voce #3569; zr-backoffice-ea e zr-cashflow-47, 09/11), con le
+ * parole di Finanze. Non sono eventi: li scrive il compito degli avvisi del backoffice, senza chi, e il `tipo` arriva senza
+ * `com.zeiras.` davanti. Scritti qui, non letti dai file delle lingue.
+ *
+ * @return array<string, array{it: string, en: string, es: string}>
+ */
+function titoliDegliAvvisiDiFinanze(): array
+{
+    return [
+        'flow.avviso.saldo_non_basta' => ['it' => 'Nei prossimi 30 giorni i soldi non bastano', 'en' => "Money won't last the next 30 days", 'es' => 'El dinero no alcanza para los próximos 30 días'],
+        'flow.avviso.addebito_non_arrivato' => ['it' => 'Un addebito atteso non è ancora arrivato', 'en' => "An expected charge hasn't arrived yet", 'es' => 'Un cargo esperado todavía no ha llegado'],
     ];
 }
 
@@ -1050,14 +1065,14 @@ it('il controllo trova un testo che manca, un testo vuoto, un italiano diverso d
         ->toBe(["«search» è l'id di un prodotto e un testo dell'AppShell"]);
 });
 
-it('ogni lingua ha il titolo di ognuno dei 63 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i ventitré che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato, il Gate deciso e le quattro da cliente di Bookings —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0; sprint 116 · T2.1)', function (string $codice) {
+it('ogni lingua ha il titolo di ognuno dei 65 tipi di notifica, 40 tipi di evento del contratto (gli altri, che non generano notifiche, non hanno un titolo) più i venticinque che non sono eventi — i cinque «assegnata», quattro del CRM e uno di Project Management, la menzione in un commento, il credito sotto zero, le due delle scadenze, la richiesta sul preventivo, le schede senza assegnatario, le tre di Bookings, il promemoria di una To-do, le due scadenze di una scheda, l\'invito accettato, il Gate deciso, le quattro da cliente di Bookings e i due avvisi di Finanze —, né uno in più né uno in meno (sprint 12 · T3.3; sprint 21 · T2.1, T5.3; sprint 22 · T5.4; sprint 24 · T3.1; sprint 26 · T6.1; v2.25.3; v2.25.4; v3.2.2; v3.5.0; v3.6.0; sprint 79 · T1.1; v4.12.0; sprint 116 · T2.1)', function (string $codice) {
     $titoli = array_values(array_filter(
         array_keys(lingueDellaCornice()[$codice] ?? []),
         fn (string $chiave) => str_starts_with($chiave, 'notificationTitle.'),
     ));
 
     expect(array_unique(tipiDiNotificaDelContratto()))->toHaveCount(40)
-        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(63)
+        ->and(array_unique(tipiDiNotificaConUnTitolo()))->toHaveCount(65)
         ->and($titoli)->toEqualCanonicalizing(chiaviDeiTitoliDelleNotifiche());
 })->with(['it', 'es', 'en']);
 
@@ -1448,6 +1463,27 @@ it('la notifica del Gate deciso ha il titolo della tabella nella lingua, sotto i
         ->and($titolo)->not->toBe($testi['notificationTitle'] ?? null)
         // Un titolo suo: nessun'altra notifica si chiama così.
         ->and(array_keys($deiTitoli, $titolo, true))->toBe(['notificationTitle.board.gate.deciso']);
+})->with(['it', 'en', 'es']);
+
+// Voce #3569 (zr-backoffice-ea e zr-cashflow-47, 09/11): i due avvisi di Finanze che arrivano alla campanella hanno il loro titolo,
+// senza chi; il tipo col prefisso o al plurale e gli altri due avvisi di Finanze non hanno un titolo, e non sono tipi di evento.
+it('i due avvisi di Finanze hanno il titolo della tabella nella lingua, non scambiati e senza chi: il tipo col prefisso `com.zeiras.` o con `flow.avvisi.`, e gli avvisi che non arrivano alla campanella, restano senza titolo, e nessuno è un tipo di evento del contratto (voce #3569 · T1.1, T1.2)', function (string $codice) {
+    $testi = lingueDellaCornice()[$codice] ?? [];
+    $tabella = titoliDegliAvvisiDiFinanze();
+    $titoli = array_map(fn (string $tipo) => $testi["notificationTitle.$tipo"] ?? null, array_keys($tabella));
+
+    expect($titoli)->toBe(array_column($tabella, $codice))
+        ->and(array_unique($titoli))->toHaveCount(2)
+        ->and($titoli)->not->toContain($testi['notificationTitle'] ?? null);
+    foreach (array_keys($tabella) as $tipo) {
+        $fine = substr($tipo, strlen('flow.avviso.'));
+        expect(array_key_exists("notificationTitle.com.zeiras.$tipo", $testi))->toBe(false)
+            ->and(array_key_exists("notificationTitle.flow.avvisi.$fine", $testi))->toBe(false)
+            ->and(array_key_exists("notificationTitleWho.$tipo", $testi))->toBe(false)
+            ->and(tipiDiNotificaDelContratto())->not->toContain($tipo);
+    }
+    expect(array_key_exists('notificationTitle.flow.avviso.spesa_fuori_dal_solito', $testi))->toBe(false)
+        ->and(array_key_exists('notificationTitle.flow.avviso.estratto_fermo', $testi))->toBe(false);
 })->with(['it', 'en', 'es']);
 
 it('ogni lingua ha due file con lo stesso nome, i testi e le frasi delle notifiche: le frasi stanno solo nel secondo, il titolo di ripiego resta nel primo, e insieme sono i testi della cornice (sprint 30 · T1.9)', function () {
@@ -2045,8 +2081,8 @@ it('ogni tipo di notifica che ha un titolo ha in ogni lingua la frase con solo c
     // ospite, non un membro, e il titolo non lo nomina mai, nemmeno se il backoffice ne mandasse il nome: le loro frasi sono
     // quelle con la data, senza chi (frasiDelleNotificheSenzaChiConLaData(), frasiDelleNotificheConLaSolaData()).
     // v3.6.0: nemmeno il promemoria di una To-do e le due scadenze di una scheda, che il backoffice manda da sé, senza chi.
-    // v4.12.0: nemmeno il Gate deciso, che ha un titolo solo.
-    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), array_keys(titoliDelleNotificheDaClienteDiBookings()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso']));
+    // v4.12.0: nemmeno il Gate deciso, che ha un titolo solo. Voce #3569: né i due avvisi di Finanze, senza chi.
+    $conUnTitolo = array_values(array_diff(array_unique(tipiDiNotificaConUnTitolo()), array_keys(titoliDelleNotificheDiBookings()), array_keys(titoliDelleNotificheDaClienteDiBookings()), array_keys(titoliDegliAvvisiDiFinanze()), ['board.todo.promemoria', 'board.scheda.scade_domani', 'board.scheda.scade_oggi', 'board.gate.deciso']));
     sort($conLeFrasi);
     sort($conUnTitolo);
 

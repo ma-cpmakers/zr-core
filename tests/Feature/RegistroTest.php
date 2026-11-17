@@ -528,7 +528,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
 
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
         // v3.6.1: per prima la Dashboard, con l'invito accettato.
-        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings'])
+        // Voce #3569: e Finanze, coi due avvisi.
+        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings', 'flow'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
         // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
         // promemoria di una To-do; dalla v4.12.0 trentadue: il Gate deciso.
@@ -536,7 +537,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
         // Sprint 116 · T2.2: con l'invito accettato le quattro da cliente di Bookings, che aprono «Il mio spazio».
         ->and(count($righe['home']))->toBe(5)
         // Sprint 74 · T1.3: e le tre di Bookings.
-        ->and(count($righe['bookings']))->toBe(3);
+        ->and(count($righe['bookings']))->toBe(3)
+        ->and($righe['flow'])->toBe(array_map(fn (string $fine) => ['tipo' => "flow.avviso.$fine", 'percorso' => '/avvisi/{avviso_id}', 'altrimenti' => ['/avvisi']], ['saldo_non_basta', 'addebito_non_arrivato']));
 });
 
 // Sprint 74 · T1.3 (voce #2548). Le tre notifiche di Bookings — un ospite ha prenotato, spostato o annullato — aprono il pannello
@@ -662,7 +664,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquatt
             ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
         // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings', 'flow'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });

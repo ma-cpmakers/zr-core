@@ -2763,9 +2763,11 @@ describe('il pannello delle notifiche', () => {
 
         // Sprint 70 · T2: 25 righe, più le due delle Scadenze; dalla v3.2.2 anche quella della richiesta sul preventivo.
         // Sprint 74 · T1.3: e le tre di Bookings. v3.6.1: le due scadenze di una scheda, il promemoria di una To-do e l'invito
-        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso. Sprint 116 · T2.2: le quattro da cliente.
-        expect(righe).toHaveLength(40);
-        expect(await apertiDalPannello(dati, 'crm', elenco)).toStrictEqual(righe.map(({ app, tipo, percorso }) => (tipo.startsWith('bookings.cliente.') ? paginaDelleNotifiche :
+        // accettato, che si apre nella Dashboard. v4.12.0: il Gate deciso. Sprint 116 · T2.2: le quattro da cliente. Voce #3569: i due
+        // avvisi di Finanze.
+        expect(righe).toHaveLength(42);
+        // Finanze si apre dove il workspace la ha.
+        expect(await apertiDalPannello({ ...dati, prodotti: { ...dati.prodotti, flow: 'attivo' } }, 'crm', elenco)).toStrictEqual(righe.map(({ app, tipo, percorso }) => (tipo.startsWith('bookings.cliente.') ? paginaDelleNotifiche :
             `${registro.find(({ id }) => id === app)?.indirizzo ?? ''}/w/${dati.workspace.slug}${percorso.replace(/\{([a-z_]+)\}/g, (_tutto, chiave: string) => `uat-${chiave.replace('_', '-')}`)}`)));
         // E ogni clic che apre la risorsa l'ha segnata letta, una volta: una `PATCH` della lettura per notifica, con il suo id; le
         // quattro da cliente, che aprono la pagina delle notifiche, no.

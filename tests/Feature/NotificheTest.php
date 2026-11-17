@@ -2634,6 +2634,32 @@ it('GET /cornice/notifiche dà alla richiesta sul preventivo il solo `id` del pr
         ->and(substr_count($corpo, 'trattativa_id'))->toBe(0);
 });
 
+// Voce #3569 (zr-backoffice-ea e zr-cashflow-47, 09/11). Un avviso di Finanze porta nei `dati` l'id dell'avviso e il suo tipo,
+// mai importi né nomi. Apre l'avviso, `/avvisi/{avviso_id}`: al browser va il solo `avviso_id`, e l'`id` della notifica o un altro
+// id non prendono il suo posto; senza, la lista degli avvisi, che non chiede id.
+
+it('GET /cornice/notifiche dà a un avviso di Finanze il solo `avviso_id`: il tipo dei `dati` resta qui, un `id` non prende il suo posto, e lo stesso avviso con l\'app di un altro prodotto non ne ha; `idsDellaNotifica` dà lo stesso (voce #3569 · T2.1)', function () {
+    sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
+    $notifiche = [
+        notificaConDati('uat-n4', ['avviso_id' => 'uat-avviso-1', 'tipo' => 'saldo_non_basta'], 'flow.avviso.saldo_non_basta', 'flow'),
+        notificaConDati('uat-n3', ['avviso_id' => 'uat-avviso-2', 'tipo' => 'addebito_non_arrivato'], 'flow.avviso.addebito_non_arrivato', 'flow'),
+        notificaConDati('uat-n2', ['id' => 'uat-avviso-3', 'tipo' => 'saldo_non_basta'], 'flow.avviso.saldo_non_basta', 'flow'),
+        notificaConDati('uat-n1', ['avviso_id' => 'uat-avviso-4', 'tipo' => 'saldo_non_basta'], 'flow.avviso.saldo_non_basta', 'crm'),
+    ];
+    Http::fake(['*' => Http::response(['data' => $notifiche, 'successivo' => null])]);
+
+    $risposta = senzaGettone($this->getJson('cornice/notifiche'))->assertOk();
+    $corpo = (string) $risposta->getContent();
+    $delMetodo = array_map(fn (array $notifica): array => NotificheDellaCornice::idsDellaNotifica($notifica['app'], $notifica['tipo'], $notifica['dati'] ?? null), $notifiche);
+
+    expect($delMetodo)->toBe([['avviso_id' => 'uat-avviso-1'], ['avviso_id' => 'uat-avviso-2'], [], []])
+        ->and($risposta->json('data.*.ids'))->toBe($delMetodo)
+        ->and(substr_count($corpo, '"ids":{}'))->toBe(2)
+        ->and(substr_count($corpo, 'uat-avviso-3'))->toBe(0)
+        ->and(substr_count($corpo, 'uat-avviso-4'))->toBe(0)
+        ->and(substr_count($corpo, 'saldo_non_basta"'))->toBe(3);
+});
+
 it('una scheda con un id fuori forma, o senza `id` nei suoi `dati`, ha `ids` vuoto: non è un guasto, il valore non arriva al browser, e gli altri id non prendono il suo posto (sprint 24 · T3.3)', function (string $tipo, mixed $dati) {
     sessioneAMano(WORKSPACE_DELLE_NOTIFICHE);
     Http::fake(['*' => Http::response(['data' => [notificaConDati('uat-n3', $dati, $tipo, 'pm')], 'successivo' => null])]);

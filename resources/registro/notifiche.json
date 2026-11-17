@@ -46,5 +46,9 @@
         { "tipo": "bookings.prenotazione.creata", "percorso": "/prenotazioni/{id}" },
         { "tipo": "bookings.prenotazione.spostata", "percorso": "/prenotazioni/{id}" },
         { "tipo": "bookings.prenotazione.annullata", "percorso": "/prenotazioni/{id}" }
+    ],
+    "flow": [
+        { "tipo": "flow.avviso.saldo_non_basta", "percorso": "/avvisi/{avviso_id}", "altrimenti": ["/avvisi"] },
+        { "tipo": "flow.avviso.addebito_non_arrivato", "percorso": "/avvisi/{avviso_id}", "altrimenti": ["/avvisi"] }
     ]
 }

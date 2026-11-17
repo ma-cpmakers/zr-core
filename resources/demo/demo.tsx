@@ -139,7 +139,9 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
     const dati = useMemo(() => {
         const colCrm: DatiDellaCornice['prodotti'] = senzaCrm ? { ...datiDiProva.prodotti, crm: 'in_arrivo' } : crmAttivo ? { ...datiDiProva.prodotti, crm: 'attivo' } : datiDiProva.prodotti;
         const conBookings: DatiDellaCornice['prodotti'] = scelti.has('prenotazioni') ? { ...colCrm, bookings: 'attivo' } : colCrm;
-        const prodotti: DatiDellaCornice['prodotti'] = senzaModuli ? { ...datiDiProva.prodotti, pm: 'disponibile', reports: 'disponibile' } : conBookings;
+        // Con `?avvisi=1` (voce #3569) Finanze è attiva nel workspace: un clic su un avviso lo apre.
+        const conFinanze: DatiDellaCornice['prodotti'] = scelti.has('avvisi') ? { ...conBookings, flow: 'attivo' } : conBookings;
+        const prodotti: DatiDellaCornice['prodotti'] = senzaModuli ? { ...datiDiProva.prodotti, pm: 'disponibile', reports: 'disponibile' } : conFinanze;
 
         const ridotti = daAccettare ? { prodotti: [], aziende: [], non_lette: 0, accettazione_richiesta: true } : {};
 
@@ -179,7 +181,7 @@ function Prova({ Cornice, inFondo }: { Cornice: ComponentType<CorniceProps>; inF
                     </select>
                 </label>
             </form>
-            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti') || scelti.has('scadenze') || scelti.has('preventivi') || scelti.has('prenotazioni')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
+            {(scelti.has('crm') || scelti.has('viste') || scelti.has('opportunita') || scelti.has('schede') || scelti.has('frasi') || scelti.has('motivi') || scelti.has('crediti') || scelti.has('scadenze') || scelti.has('preventivi') || scelti.has('avvisi') || scelti.has('prenotazioni')) && aperto !== undefined ? <p id="uat-aperto">UAT aperto: <code>{aperto}</code></p> : null}
             {scelti.has('rimedi') ? <ProvaDeiRimedi /> : null}
             {inFondo}
         </Cornice>

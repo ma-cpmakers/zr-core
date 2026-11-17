@@ -526,6 +526,29 @@ describe('le rotte finte delle notifiche dicono quando, sull\'orologio che la pa
         expect(rigaDellaNotifica(ultima, 'it').titolo).toBe('Un cliente ha chiesto una modifica al preventivo');
     });
 
+    // Voce #3569: i due avvisi di Finanze stanno dietro `?avvisi=1`, per la UAT delle pagine di prova.
+    it.each([[''], ['&chi=1']])('con `?avvisi=1%s` in fondo all\'elenco ci sono i due avvisi di Finanze, letti, senza chi e col solo `avviso_id`: hanno il titolo nelle tre lingue e aprono l\'avviso, se Finanze si può aprire (voce #3569)', async (inPiu) => {
+        await rotte(false, `?avvisi=1${inPiu}`);
+
+        const { corpo } = await rispostaDi('/cornice/notifiche');
+        const notifiche = corpo.data as { id: string; app: string | null; tipo?: string; letta: boolean; autore_nome: string | null; risorsa_nome: string | null; ids: Record<string, string> }[];
+        const { destinazioneDellaNotifica, rigaDellaNotifica, titoloDellaNotifica } = await import('../js/frasi');
+        const ultime = notifiche.slice(-2);
+
+        expect(ultime.map((n) => [n.id, n.app, n.tipo, n.letta, n.autore_nome, n.risorsa_nome, n.ids])).toEqual([
+            ['uat-f1', 'flow', 'flow.avviso.saldo_non_basta', true, null, null, { avviso_id: 'uat-avviso-1' }],
+            ['uat-f2', 'flow', 'flow.avviso.addebito_non_arrivato', true, null, null, { avviso_id: 'uat-avviso-2' }],
+        ]);
+        expect(ultime.map((n) => destinazioneDellaNotifica(n, 'uat-marketing', { pm: 'attivo', flow: 'attivo' }))).toEqual([1, 2].map((n) => `https://flow.zeiras.com/w/uat-marketing/avvisi/uat-avviso-${n}`));
+        expect(ultime.map((n) => destinazioneDellaNotifica(n, 'uat-marketing', { pm: 'attivo' }))).toEqual([undefined, undefined]);
+        expect(['it', 'en', 'es'].map((lingua) => ultime.map((n) => titoloDellaNotifica(n.tipo, lingua)))).toEqual([
+            ['Nei prossimi 30 giorni i soldi non bastano', 'Un addebito atteso non è ancora arrivato'],
+            ["Money won't last the next 30 days", "An expected charge hasn't arrived yet"],
+            ['El dinero no alcanza para los próximos 30 días', 'Un cargo esperado todavía no ha llegado'],
+        ]);
+        expect(rigaDellaNotifica(ultime[0]!, 'it').titolo).toBe('Nei prossimi 30 giorni i soldi non bastano');
+    });
+
     // v2.25.3: il credito di un pacchetto sotto zero sta dietro `?crediti=1`, così le pagine di prova di prima restano com'erano.
     it.each([['', false], ['&chi=1', true]])('con `?crediti=1%s` in fondo all\'elenco c\'è la notifica del credito sotto zero del CRM, letta e col solo `persona_id`: ha il titolo nelle tre lingue, con chi la frase, e apre il contatto, se il CRM si può aprire (v2.25.3)', async (inPiu, conChi) => {
         await rotte(false, `?crediti=1${inPiu}`);
