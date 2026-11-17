@@ -14,7 +14,7 @@ const giu = (dove: Element, pointerType: string) => {
     return evento;
 };
 
-it('il pezzo del tocco si chiede quando entra una lavagna; un dito su una carta che si trascina gli passa la pressione, la penna anche (R7); il mouse, una carta in attesa, un dito fuori dalla lavagna e una lavagna senza carte che si trascinano (R4) no (TC.7)', async () => {
+it('il pezzo del tocco si chiede quando entra una lavagna; un dito su una carta che si trascina gli passa la pressione, la penna anche (R7); il mouse, una carta in attesa, un dito fuori dalla lavagna e una lavagna senza carte che si trascinano (R4) no, finché una carta non diventa trascinabile (R3 della v4.36.0) (TC.7)', async () => {
     document.body.innerHTML = '<div class="zr-shell"><main></main><p>fuori</p></div>';
     await import('./rimedi');
     await arrivato();
@@ -49,4 +49,12 @@ it('il pezzo del tocco si chiede quando entra una lavagna; un dito su una carta 
     document.querySelector('p')!.dispatchEvent(new Event('touchmove', { bubbles: true, cancelable: true }));
     document.querySelector('#ferma h4')!.dispatchEvent(new Event('touchmove', { bubbles: true, cancelable: true }));
     expect(tocco.mossi).toStrictEqual([mosso]);
+
+    // v4.36.1 (R3 della revisione della v4.36.0): una carta che diventa trascinabile cambiando solo `draggable` porta la lavagna
+    // al dito. Deve fallire se: l'osservatore guarda solo gli elementi che entrano, e la board che esce dalla sola lettura resta ferma.
+    document.querySelector('#ferma article')!.setAttribute('draggable', 'true');
+    await arrivato();
+    const sullaFerma = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.querySelector('#ferma h4')!.dispatchEvent(sullaFerma);
+    expect(tocco.mossi).toStrictEqual([mosso, sullaFerma]);
 });

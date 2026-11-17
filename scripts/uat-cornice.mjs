@@ -1448,6 +1448,9 @@ async function uat(page, apri) {
     };
     await page.screenshot({ path: join(cartella, 'pagina-1280.png') });
     await controllaAxe(page, 'A.1', 'a 1280 px, a pannelli chiusi');
+    if (!conLoStaff && !colCliente && /\/layout\.html$/.test(new URL(page.url()).pathname)) {
+        await scrollPaddingColPercorso(page);
+    }
     if (colTemaScuro) {
         await temaScuro(page);
     }
@@ -1856,7 +1859,8 @@ async function carteColDito() {
 // sola (lo scorrimento è della board, il pezzo non ci somma il suo), e la scheda arriva a una lista che prima era fuori vista;
 // TK.4 un dito che scorre subito fa scorrere la board e non prende niente, e un tocco breve apre la scheda (`onOpenCard`);
 // TK.5 una lista che rifiuta la scheda non la riceve, e `onRefuse` arriva; TK.6 sulle schede `touch-action: manipulation` e,
-// col dito sulla scheda, niente drag del browser.
+// col dito sulla scheda, niente drag del browser; TK.7 (dalla v4.36.1) passata sulla lista che la rifiuta e poi fuori dalla lavagna,
+// la scheda lasciata lì non dà `onRefuse` e nessuna lista resta segnata.
 async function schedeColDito() {
     if (!telefonoNuovo) {
         scrivi('➖', 'TK', 'col browser condiviso (UAT_PAGE) niente telefono: le righe TK girano col Chromium della UAT', '');
@@ -1918,6 +1922,10 @@ async function schedeColDito() {
             spostata: document.querySelector('[data-uat="spostata"]')?.textContent ?? '',
             aperta: document.querySelector('[data-uat="aperta"]')?.textContent ?? '',
             rifiutata: document.querySelector('[data-uat="rifiutata"]')?.textContent ?? '',
+            rifiuto: !!document.querySelector('.zr-lanes .zr-col.is-refused'),
+            sopra: !!document.querySelector('.zr-lanes .zr-col.is-over'),
+            // Sotto la lavagna, fuori dalla striscia del bordo basso della finestra (TK.7).
+            sotto: destra ? { x: innerWidth / 2, y: Math.min(destra.bottom + 60, innerHeight - 70), fuori: Math.min(destra.bottom + 60, innerHeight - 70) > destra.bottom + 10 } : null,
         };
     });
     const tieni = async (scheda) => {
@@ -1980,6 +1988,28 @@ async function schedeColDito() {
         scrivi(dopo.spostata === `${due.id} l1 l2 ${bersaglio.id}` && ordine.indexOf(due.id) === ordine.indexOf(bersaglio.id) - 1 ? '✅' : '❌', 'TK.2', 'rilasciata sopra una scheda di un\'altra lista, la scheda va prima di quella', `onMove: ${dopo.spostata || '-'}, seconda lista: ${ordine.join(' ')}`);
     } else {
         scrivi('❌', 'TK.2', 'una scheda nella prima lista e una nella seconda', '');
+    }
+
+    // TK.7 (dalla v4.36.1, R2 della revisione della v4.36.0): la scheda passa sulla terza lista, che la rifiuta, poi esce dalla
+    // lavagna, sotto, e il dito si alza lì: la lista non resta segnata, nessuna resta evidenziata e onRefuse non arriva, come col
+    // mouse. Prima di TK.5, che scrive «UAT rifiutata».
+    await aSinistra(2, 0.55);
+    const fuori = await stato();
+    const sette = fuori.schede.filter((questa) => questa.lista === 1).map((questa) => ({ ...questa, x: Math.min(Math.max(questa.x, fuori.largo * 0.2 + 20), questa.xr - 16) }))[0];
+    if (sette && sette.x > fuori.largo * 0.2 && fuori.pezzi[2]?.visibile && fuori.sotto?.fuori) {
+        await tieni(sette);
+        await striscia({ x: sette.x + 2, y: sette.y + 2 }, fuori.pezzi[2], 10, 30);
+        await pausa(300);
+        const sullaTerza = await stato();
+        await striscia(fuori.pezzi[2], fuori.sotto, 8, 30);
+        await pausa(300);
+        const uscita = await stato();
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        scrivi(sullaTerza.rifiuto && !uscita.rifiuto && !uscita.sopra && !dopo.rifiutata && dopo.schede.find((questa) => questa.id === sette.id)?.lista === 1 && !dopo.presa && !dopo.ombra ? '✅' : '❌', 'TK.7', 'passata sulla lista che la rifiuta e poi fuori dalla lavagna, la scheda lasciata lì torna dov\'era: la lista non resta segnata e onRefuse non arriva', `sulla terza: rifiutata ${sullaTerza.rifiuto}; fuori: rifiutata ${uscita.rifiuto}, evidenziata ${uscita.sopra}; onRefuse: ${dopo.rifiutata || '-'}; lista dopo: ${dopo.schede.find((questa) => questa.id === sette.id)?.lista}`);
+    } else {
+        scrivi('❌', 'TK.7', 'una scheda nella seconda lista, la terza lista in vista e posto sotto la lavagna', '');
     }
 
     // TK.5: dalla seconda lista alla terza, che rifiuta.
@@ -2134,6 +2164,25 @@ async function temaScuro(page) {
     const quinto = await caso('light', 'dark');
     scrivi(chiaro(quinto) ? '✅' : '❌', 'TS.5', 'con data-theme="light" e il sistema scuro la pagina è chiara', prova(quinto));
     await caso('dark', 'light');
+}
+
+// RP (dalla v4.36.1, R1 della revisione della v4.36.0; #3888, richiesta 278): sulla pagina col percorso a scorrere è `.zr-main-body`,
+// non `.zr-main`: anche lì lo scroll-padding lascia all'anello del fuoco i suoi 4 px. Solo sulle pagine di prova, con `pagina=percorso`.
+async function scrollPaddingColPercorso(page) {
+    const conPercorso = new URL(page.url());
+    conPercorso.searchParams.set('pagina', 'percorso');
+    const altra = await page.context().newPage();
+    try {
+        await altra.goto(conPercorso.href, { waitUntil: 'networkidle' });
+        await altra.waitForSelector('.zr-shell .zr-main-body', { timeout: 15000 });
+        const contenitori = await altra.evaluate(() => [...document.querySelectorAll('.zr-main, .zr-main-body')]
+            .filter((uno) => /auto|scroll/.test(getComputedStyle(uno).overflowY))
+            .map((uno) => `${uno.classList[0]} ${getComputedStyle(uno).scrollPaddingTop}`));
+        const lascia = contenitori.length > 0 && contenitori.every((uno) => uno.endsWith(' 4px'));
+        scrivi(lascia ? '✅' : '❌', 'RP.1', 'sulla pagina col percorso il contenitore che scorre lascia 4 px all\'anello del fuoco (scroll-padding, #3888)', contenitori.join(' · ') || 'nessun contenitore che scorre');
+    } finally {
+        await altra.close();
+    }
 }
 
 // MV (dalla v4.32.0, #3534): meno movimento dal CSS del pacchetto, a 390 px. MV.1 con `prefers-reduced-motion: reduce` nessuna

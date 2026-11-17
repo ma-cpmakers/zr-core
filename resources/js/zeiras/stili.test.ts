@@ -281,7 +281,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
-            '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }',
+            '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }',
             '@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } }',
             '@media (width > 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }',
             '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',

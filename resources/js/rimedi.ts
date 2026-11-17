@@ -262,7 +262,7 @@ new MutationObserver((cambi) => {
     nomiDaiTesti();
     tastiera?.aOgniCambio();
     lavagneColDito();
-}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label'] });
+}).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label', 'draggable'] });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {

@@ -22,8 +22,9 @@
  * Richiesta 278 (zr-crm-14, zr-pm-74 15/11; voce #3888): l'anello del fuoco (2 px più 2 di scostamento) non è tagliato quando il
  * browser porta in vista un comando dentro un contenitore che scorre: il comando si ferma a 4 px dal bordo, non a filo. Solo
  * scroll-padding: fuori dallo scorrimento la pagina non cambia.
+ * Con il percorso a scorrere è `.zr-main-body`, e il rimedio vale anche lì (v4.36.1, R1 della revisione della v4.36.0).
  */
-.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main { scroll-padding: var(--space-1); }
+.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }
 
 /*
  * Richiesta 288 (zr-crm-35, zr-pm-74 15/11; voce #3889): coi colori forzati (Contrasto elevato di Windows) sfondo e ombra della
