@@ -304,7 +304,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`, e (T2) `fonti`, coi tipi delle sue risorse della ricerca, che
             // `Registro::voci()` rimette in `risorse` da resources/registro/ricerca.json.
             ['fonti', 'icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
+            // Voce 3569: anche Finanze ha `notifiche`, i due avvisi.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
+            ...array_fill(0, 3, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'flow' => 'euro', 'reports' => 'chart',
