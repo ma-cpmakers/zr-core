@@ -77,3 +77,24 @@
  */
 .zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }
 .zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }
+
+/*
+ * Richieste 272, 273, 242 e 298 (verifica a 320/390/1280 del 17/11; zr-pm-74, Decisione 25922; voci #3948-#3951, v5.5.0): al tocco
+ * quattro aree che il design system lascia sotto i 44 px. Solo con `pointer: coarse`: col mouse niente cambia.
+ * 272: la casella di riga della DataTable si prende su 24×44, e accanto il tocco cade sulla riga e la apre. Un'area da 44×44
+ * centrata sulla casella (come `.zr-btn::after`), che sta nella cella della casella: il tocco seleziona e la riga non si apre.
+ * 273: le azioni che vanno a capo hanno 8 px fra le righe, e l'area da 44 di un pulsante sm (32 px) è coperta da quella della
+ * riga sotto: 12 px, come la paginazione (richiesta 233). Il selettore porta il tag perché il `gap` del bundle viene dopo.
+ * 242: lo Switch si prende su 24 px di altezza: 44, come Checkbox (183) e ToggleGroup.
+ * 298: il campo della ricerca è alto 40 px nella barra di 60: 44, come Field (185); aperto sotto i 720 px sta a `--space-2` dall'alto,
+ * e la barra resta di 60.
+ */
+@media (pointer: coarse) {
+  .zr-td-check .zr-check::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+  :is(div, footer):is(.zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions) { row-gap: var(--space-3); }
+  button.zr-switch { min-height: 44px; }
+  .zr-top .zr-search { height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 720px) {
+  .zr-top .zr-search.is-open { top: var(--space-2); }
+}

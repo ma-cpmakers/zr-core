@@ -82,3 +82,18 @@ it('rimedi.css dà all\'anello del fuoco nel Toast il colore del suo testo, e il
         ->toContain('Il sesto (#3891, richiesta 291')
         ->toContain('il colore del testo del Toast');
 });
+
+// Voci #3948-#3951 (richieste 272, 273, 242 e 298; Decisione 25922 di zr-pm-74, v5.5.0): al tocco la casella di riga della
+// DataTable, le azioni che vanno a capo, lo Switch e il campo della ricerca si prendono su 44 px; col mouse niente cambia.
+it('rimedi.css porta le quattro aree da 44 px al tocco, e il README le dice (voci 3948-3951)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-td-check .zr-check::after')
+        ->toContain('{ row-gap: var(--space-3); }')
+        ->toContain('button.zr-switch { min-height: 44px; }')
+        ->toContain('.zr-top .zr-search { height: 44px; }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Dal nono al dodicesimo (#3948-#3951')
+        ->toContain('Col mouse niente cambia.');
+});
