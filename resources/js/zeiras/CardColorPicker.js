@@ -15,13 +15,14 @@ import { useCompLabels } from './interni/useCompLabels';
     var id = useId('ccl');
     var names = useCompLabels(CARD_COLOR_TEXTS, p.names);
     var ctrl = p.value !== undefined;
-    var st = useState(p.defaultValue !== undefined ? cardColorOf(p.defaultValue) : null), val = ctrl ? cardColorOf(p.value) : st[0];
+    /* un valore fuori dalla tavolozza (un colore tolto, o di domani) non segna nessuna scelta: anche «Nessuno» resta da scegliere e dà onChange(null) */
+    var st = useState(p.defaultValue !== undefined ? cardColorOf(p.defaultValue) : null), val = ctrl ? (p.value != null && !cardColorOf(p.value) ? undefined : cardColorOf(p.value)) : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
     var opts = [null].concat(CARD_COLORS); /* «Nessuno» per primo */
     function pick(c) { if (!ctrl) st[1](c); if (p.onChange) p.onChange(c); }
     /* le frecce le fanno i radio nativi; Home e Fine portano alla prima e all'ultima scelta e la scelgono, come le frecce */
     function onKey(e) {
-      if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey || !e.target.matches || !e.target.matches('input[type="radio"]')) return;
+      if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !e.target.matches || !e.target.matches('input[type="radio"]')) return;
       var all = e.currentTarget.querySelectorAll('input[type="radio"]:not(:disabled)'); if (!all.length) return;
       var to = all[e.key === 'Home' ? 0 : all.length - 1]; e.preventDefault(); to.focus(); if (!to.checked) pick(to.value || null);
     }

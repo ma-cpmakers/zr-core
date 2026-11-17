@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"},{"name":"AddList"},{"name":"AgendaGrid"},{"name":"ColorPicker"},{"name":"LabelsProvider"},{"name":"NotificationItem"},{"name":"ReorderList"},{"name":"CardColorPicker"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -1707,7 +1707,7 @@
 
   /* ---------- CardColorPicker: il colore di una carta, da una tavolozza fissa di 12 colori chiari (richiesta 297) ---------- */
   /* i nomi sono il contratto con l'API: il backoffice salva il nome, mai un esadecimale; null = nessun colore */
-  var CARD_COLORS = ['rose', 'peach', 'sand', 'lemon', 'lime', 'mint', 'sage', 'aqua', 'azure', 'lavender', 'lilac', 'stone'];
+  var CARD_COLORS = Object.freeze(['rose', 'peach', 'sand', 'lemon', 'lime', 'mint', 'sage', 'aqua', 'azure', 'lavender', 'lilac', 'stone']);
   var CARD_COLOR_TEXTS = {
     it: { rose: 'Rosa', peach: 'Pesca', sand: 'Sabbia', lemon: 'Limone', lime: 'Lime', mint: 'Menta', sage: 'Salvia', aqua: 'Acqua', azure: 'Azzurro', lavender: 'Lavanda', lilac: 'Lilla', stone: 'Pietra', none: 'Nessuno', color: 'Colore' },
     en: { rose: 'Rose', peach: 'Peach', sand: 'Sand', lemon: 'Lemon', lime: 'Lime', mint: 'Mint', sage: 'Sage', aqua: 'Aqua', azure: 'Azure', lavender: 'Lavender', lilac: 'Lilac', stone: 'Stone', none: 'None', color: 'Color' },
@@ -1717,13 +1717,14 @@
     var id = useId('ccl');
     var names = useCompLabels(CARD_COLOR_TEXTS, p.names);
     var ctrl = p.value !== undefined;
-    var st = useState(p.defaultValue !== undefined ? cardColorOf(p.defaultValue) : null), val = ctrl ? cardColorOf(p.value) : st[0];
+    /* un valore fuori dalla tavolozza (un colore tolto, o di domani) non segna nessuna scelta: anche «Nessuno» resta da scegliere e dà onChange(null) */
+    var st = useState(p.defaultValue !== undefined ? cardColorOf(p.defaultValue) : null), val = ctrl ? (p.value != null && !cardColorOf(p.value) ? undefined : cardColorOf(p.value)) : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
     var opts = [null].concat(CARD_COLORS); /* «Nessuno» per primo */
     function pick(c) { if (!ctrl) st[1](c); if (p.onChange) p.onChange(c); }
     /* le frecce le fanno i radio nativi; Home e Fine portano alla prima e all'ultima scelta e la scelgono, come le frecce */
     function onKey(e) {
-      if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey || !e.target.matches || !e.target.matches('input[type="radio"]')) return;
+      if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !e.target.matches || !e.target.matches('input[type="radio"]')) return;
       var all = e.currentTarget.querySelectorAll('input[type="radio"]:not(:disabled)'); if (!all.length) return;
       var to = all[e.key === 'Home' ? 0 : all.length - 1]; e.preventDefault(); to.focus(); if (!to.checked) pick(to.value || null);
     }
@@ -2763,7 +2764,7 @@
             var extra = p.dealActions ? p.dealActions(d) || [] : [];
             if (extra.length) acts = acts.concat([{ sep: true }], extra);
             /* la scheda non è un role="button": dentro c'è il «⋯», che deve restare raggiungibile; «Apri» sta anche nel menu */
-            return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
+            return h(DealCard, Object.assign({ key: d.id, colorNames: p.colorNames, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
               draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
               onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
               onKeyDown: p.onOpen ? function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onOpen(d); } } : undefined })); }).concat(more ? [more] : []));
