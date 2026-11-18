@@ -1331,20 +1331,20 @@ function tipiDelContrattoFuoriPosto(array $tipi, array $nonArrivano, array $ling
 
 // Sprint 79 · T2 (voce 2820, Decisioni 18907 e 18918 di zr-pm). Il titolo di ripiego non torna di nascosto: ogni tipo di evento del
 // contratto ha un titolo nelle tre lingue, o sta nell'elenco dei tipi che non arrivano alla campanella, e mai tutti e due.
-it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 119 tipi della versione 27d335ea e l\'elenco 79, con crm.campo.creato, workspace.eliminato, le tre aperture e l\'invito di Bookings, la fattura del CRM e la cancellazione dei dati di Finanze (sprint 79 · T2.1, T2.2, T2.3; 16/11/2026)', function () {
+it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'elenco dei tipi che non arrivano alla campanella, mai tutti e due; la copia ha i 122 tipi della versione d080a3e6 e l\'elenco 82, con crm.campo.creato, workspace.eliminato, le tre aperture, l\'invito e le tre vetrine di Bookings, la fattura del CRM e la cancellazione dei dati di Finanze (sprint 79 · T2.1, T2.2, T2.3; 18/11/2026)', function () {
     $contratto = tipiDiEventoDelContratto();
     $lingue = array_intersect_key(lingueDellaCornice(), array_flip(['it', 'es', 'en']));
     $conIlTitolo = array_values(array_diff($contratto['tipi'], array_keys($contratto['non_arrivano'])));
     $inOrdine = $contratto['tipi'];
     sort($inOrdine, SORT_STRING);
 
-    expect($contratto['versione'])->toBe('27d335ea')
-        ->and($contratto['tipi'])->toHaveCount(119)
-        // L'impronta dei tipi di 27d335ea, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
+    expect($contratto['versione'])->toBe('d080a3e6')
+        ->and($contratto['tipi'])->toHaveCount(122)
+        // L'impronta dei tipi di d080a3e6, quella che scripts/tipi-del-contratto.mjs dice per il contratto: un tipo scritto male
         // nella copia e nell'elenco insieme non resta verde.
-        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('d3f27ca20d202b527af259e6e9f59ba3735ff7d35aea5efe3ac8c770f214924f')
-        ->and(array_unique($contratto['tipi']))->toHaveCount(119)
-        ->and($contratto['non_arrivano'])->toHaveCount(79)
+        ->and(hash('sha256', implode("\n", $inOrdine)))->toBe('2eec224f3e765e8bd9ec8920c8fbe36b1092a2dad1fe9f039c1061f5046ca292')
+        ->and(array_unique($contratto['tipi']))->toHaveCount(122)
+        ->and($contratto['non_arrivano'])->toHaveCount(82)
         ->and(array_diff(array_keys($contratto['non_arrivano']), $contratto['tipi']))->toBe([])
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.crm.campo.creato')
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.workspace.eliminato')
@@ -1360,6 +1360,10 @@ it('ogni tipo di evento del contratto ha un titolo in ogni lingua o sta nell\'el
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.flow.movimento.creato')
         // La cancellazione dei dati di Finanze è una traccia col solo id del workspace, senza la persona: Cancellazione::EVENTO, e non è nel Catalogo (zr-backoffice su 27d335ea).
         ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.flow.dati.cancellati')
+        // Una vetrina di Bookings non notifica i colleghi: Vetrina::notifica() è false, e non è nel Catalogo (zr-backoffice su d080a3e6).
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.vetrina.creata')
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.vetrina.modificata')
+        ->and($contratto['non_arrivano'])->toHaveKey('com.zeiras.bookings.vetrina.eliminata')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.flow.avviso.saldo_non_basta')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.creato')
         ->and($contratto['non_arrivano'])->not->toHaveKey('com.zeiras.board.sprint.modificato')

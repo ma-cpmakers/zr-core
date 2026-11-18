@@ -49,6 +49,8 @@ export { Tabs } from './Tabs';
 export { RadioGroup } from './RadioGroup';
 export { COLOR_NAMES } from './COLOR_NAMES';
 export { ColorPicker } from './ColorPicker';
+export { CARD_COLORS } from './CARD_COLORS';
+export { CardColorPicker } from './CardColorPicker';
 export { ToggleGroup } from './ToggleGroup';
 export { INLINE_EDIT_LABELS } from './INLINE_EDIT_LABELS';
 export { InlineEdit } from './InlineEdit';

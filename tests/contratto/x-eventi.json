@@ -1,6 +1,6 @@
 {
-    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. L'invito di Bookings su bd078afd (05/11/2026), con la fonte di zr-backoffice-c6. La fattura del CRM su 8e80fafb (06/11/2026), con la fonte di zr-backoffice-ab. I quattordici eventi di Finanze su 6b369c95 (09/11/2026), con la fonte di zr-backoffice-ea. La cancellazione dei dati di Finanze (com.zeiras.flow.dati.cancellati) su 27d335ea (16/11/2026), letta da zr-core nel codice di zr-backoffice. Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
-    "versione": "27d335ea",
+    "_": "I tipi di evento del contratto pubblicato di /v1 (x-eventi di docs.zeiras.com/v1/openapi.json) e quelli che non arrivano mai alla campanella, con la fonte di zr-backoffice-55 su 7b68432d (27/10/2026) su d3e474de (31/10/2026) e, con la fonte di zr-backoffice-66, su 400c8d51 (31/10/2026); le tre aperture di Bookings su 6a67cc74 (03/11/2026), da Apertura::notifica() di zr-backoffice; i due tipi dei documenti del CRM su 6aeb650e (04/11/2026), con la fonte di zr-backoffice-66. L'invito di Bookings su bd078afd (05/11/2026), con la fonte di zr-backoffice-c6. La fattura del CRM su 8e80fafb (06/11/2026), con la fonte di zr-backoffice-ab. I quattordici eventi di Finanze su 6b369c95 (09/11/2026), con la fonte di zr-backoffice-ea. La cancellazione dei dati di Finanze (com.zeiras.flow.dati.cancellati) su 27d335ea (16/11/2026), letta da zr-core nel codice di zr-backoffice. Le tre vetrine di Bookings su d080a3e6 (18/11/2026), dal codice di zr-backoffice (Vetrina::notifica()). Li leggono LingueTest.php e scripts/tipi-del-contratto.mjs (sprint 79 · T2, voce 2820).",
+    "versione": "d080a3e6",
     "tipi": [
         "com.zeiras.app.modificata",
         "com.zeiras.board.board.creata",
@@ -42,6 +42,9 @@
         "com.zeiras.bookings.persona.modificata",
         "com.zeiras.bookings.prenotazione.creata",
         "com.zeiras.bookings.prenotazione.modificata",
+        "com.zeiras.bookings.vetrina.creata",
+        "com.zeiras.bookings.vetrina.eliminata",
+        "com.zeiras.bookings.vetrina.modificata",
         "com.zeiras.crm.acquisto.creato",
         "com.zeiras.crm.acquisto.modificato",
         "com.zeiras.crm.acquisto.scoperto",
@@ -201,6 +204,9 @@
         "com.zeiras.flow.movimento.modificato": "zr-backoffice-ea su 6b369c95 (09/11/2026): nel Catalogo delle notifiche di Finanze (io.notifiche.preferenze) ci sono solo i due tipi flow.avviso.*; questo è un evento sui dati di Finanze per le app, non una notifica per i colleghi",
         "com.zeiras.flow.regola.creata": "zr-backoffice-ea su 6b369c95 (09/11/2026): nel Catalogo delle notifiche di Finanze (io.notifiche.preferenze) ci sono solo i due tipi flow.avviso.*; questo è un evento sui dati di Finanze per le app, non una notifica per i colleghi",
         "com.zeiras.flow.regola.eliminata": "zr-backoffice-ea su 6b369c95 (09/11/2026): nel Catalogo delle notifiche di Finanze (io.notifiche.preferenze) ci sono solo i due tipi flow.avviso.*; questo è un evento sui dati di Finanze per le app, non una notifica per i colleghi",
-        "com.zeiras.flow.dati.cancellati": "zr-core su 27d335ea (16/11/2026), dal codice di zr-backoffice: Cancellazione::EVENTO (#3597) è la traccia della cancellazione, col solo id del workspace e senza la persona, e nel Catalogo delle notifiche (app/Notifiche/Catalogo.php) di Finanze ci sono solo i due flow.avviso.*"
+        "com.zeiras.flow.dati.cancellati": "zr-core su 27d335ea (16/11/2026), dal codice di zr-backoffice: Cancellazione::EVENTO (#3597) è la traccia della cancellazione, col solo id del workspace e senza la persona, e nel Catalogo delle notifiche (app/Notifiche/Catalogo.php) di Finanze ci sono solo i due flow.avviso.*",
+        "com.zeiras.bookings.vetrina.creata": "zr-core su d080a3e6 (18/11/2026), dal codice di zr-backoffice: Vetrina::notifica() è false («una vetrina non notifica i colleghi»), l'evento porta l'id e i nomi dei campi cambiati, e nel Catalogo delle notifiche (app/Notifiche/Catalogo.php) Bookings ha solo le tre prenotazione.*",
+        "com.zeiras.bookings.vetrina.eliminata": "zr-core su d080a3e6 (18/11/2026), dal codice di zr-backoffice: Vetrina::notifica() è false («una vetrina non notifica i colleghi»), l'evento porta l'id e i nomi dei campi cambiati, e nel Catalogo delle notifiche (app/Notifiche/Catalogo.php) Bookings ha solo le tre prenotazione.*",
+        "com.zeiras.bookings.vetrina.modificata": "zr-core su d080a3e6 (18/11/2026), dal codice di zr-backoffice: Vetrina::notifica() è false («una vetrina non notifica i colleghi»), l'evento porta l'id e i nomi dei campi cambiati, e nel Catalogo delle notifiche (app/Notifiche/Catalogo.php) Bookings ha solo le tre prenotazione.*"
     }
 }
