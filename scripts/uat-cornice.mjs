@@ -1923,6 +1923,19 @@ async function carteColDito() {
     }
     scrivi(prima.azione === 'manipulation' ? '✅' : '❌', 'TC.5', 'sulle carte touch-action: manipulation (il dito scorre e ingrandisce come sempre)', prima.azione);
 
+    // TC.11 (dalla v5.1.0, richiesta 259, rimedio provvisorio: Decisione 26298 di zr-pm-74): la carta 1.2 senza importo
+    // (`amountText="—"`). Si vede «—», e il lettore di schermo legge il testo nascosto (in italiano «valore non indicato»), non il
+    // trattino: il nome che Chromium dà alla carta dall'albero dell'accessibilità.
+    const senzaImporto = page.locator('[data-deal-id="t12"]');
+    if (await senzaImporto.count()) {
+        const visto = await senzaImporto.evaluate((carta) => [...(carta.querySelector('.zr-deal-amount')?.childNodes ?? [])].map((nodo) => (nodo.nodeType === 1 && nodo.classList.contains('zr-visually-hidden') ? '' : nodo.textContent)).join(''));
+        const nascosto = await senzaImporto.evaluate((carta) => carta.querySelector('.zr-deal-amount .zr-visually-hidden')?.textContent ?? '');
+        const letto = await senzaImporto.ariaSnapshot();
+        scrivi(visto === '—' && nascosto !== '' && letto.includes(nascosto) && !letto.includes('—') ? '✅' : '❌', 'TC.11', 'la carta senza importo mostra «—» e il lettore di schermo legge il testo nascosto, non il trattino (richiesta 259)', `si vede: «${visto}», si legge: ${JSON.stringify(letto.replace(/\s+/g, ' ').slice(0, 160))}`);
+    } else {
+        scrivi('➖', 'TC.11', 'la carta senza importo: la pagina non ha la carta 1.2', '');
+    }
+
     // Sulla pagina con la lavagna dentro un margine (`?lavagna=margine`, dalla v4.35.4) girano solo TC.6 e TC.7: la seconda colonna lì
     // comincia oltre il bordo, e TC.1-TC.4 hanno i loro punti sulla lavagna di `?lavagna=1`.
     const soloMargine = new URL(indirizzo).searchParams.get('lavagna') === 'margine';

@@ -173,7 +173,8 @@ function Lunga({ visita }: Props) {
 
 /**
  * Con `?lavagna=1` (dalla `v4.35.2`, richiesta 293), una `DealPipeline` del design system con sei fasi, per le righe TC della UAT
- * (`--tocco`): a 390 px le fasi escono di lato e la lavagna scorre. «UAT spostata» dice l'ultimo `onMove`, «UAT aperta» l'ultimo
+ * (`--tocco`): a 390 px le fasi escono di lato e la lavagna scorre. La carta 1.2 è senza importo (`amountText="—"`, dalla `v5.1.0`,
+ * richiesta 259: riga TC.11). «UAT spostata» dice l'ultimo `onMove`, «UAT aperta» l'ultimo
  * `onOpen`. Con `?lavagna=margine` (dalla `v4.35.4`) la lavagna sta dentro un margine di `--space-6` per lato, come sul CRM: le
  * righe TC.6 lasciano la carta col dito nel margine.
  */
@@ -183,7 +184,7 @@ function LavagnaDelDesignSystem({ margine = false }: { margine?: boolean }) {
     const fasi = ['UAT Nuovo', 'UAT Qualificato', 'UAT Proposta', 'UAT Negoziazione', 'UAT Vinto', 'UAT Perso'].map((title, fase) => ({
         id: `f${fase + 1}`,
         title,
-        deals: fase < 2 ? [1, 2].map((carta) => ({ id: `t${fase + 1}${carta}`, title: `UAT Trattativa ${fase + 1}.${carta}`, company: 'UAT Azienda', amount: 1000, probability: 10 })) : [],
+        deals: fase < 2 ? [1, 2].map((carta) => ({ id: `t${fase + 1}${carta}`, title: `UAT Trattativa ${fase + 1}.${carta}`, company: 'UAT Azienda', amount: 1000, probability: 10, ...(fase === 0 && carta === 2 ? { amountText: '—' } : {}) })) : [],
     }));
 
     return (

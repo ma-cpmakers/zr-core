@@ -90,6 +90,13 @@ durante il trascinamento. La `DealPipeline` toglie il segno alla colonna solo al
 col pezzo del tocco) esce dalla lavagna, il pezzo del tocco dà alla `.zr-lanes` l'attributo `data-zr-fuori`, e lì la colonna
 segnata torna come le altre; rientrato il puntatore, o finito il trascinamento, l'attributo si toglie.
 
+L'ottavo (richiesta 259, dalla `v5.1.0`; sì di zr-pm-74 del 18/11, per la #3930 di zr-crm): la `DealCard` di un'opportunità
+senza importo. Il modulo le dà `amountText="—"`, da sola o dentro la `DealPipeline`: il trattino si vede, e il lettore di schermo
+non lo legge ma legge «valore non indicato» nella lingua della pagina (`<html lang>`: «valor no indicado» in spagnolo, «value
+not specified» in inglese e nelle lingue che zr-core non ha). I testi stanno in `resources/lingue/rimedi/`. Lo fa il pezzo dei
+rimedi, che dentro l'importo mette il trattino nascosto al lettore e il testo nascosto alla vista; quando `amountText` cambia, React
+riscrive l'importo e il rimedio se ne va da sé. Il modulo non scrive altro: niente `aria-label` e niente testo nascosto suo.
+
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
 quando in pagina entra una lavagna (`.zr-lanes`), il pezzo dei rimedi chiede il pezzo del tocco (`resources/js/tocco.ts`), che
@@ -309,9 +316,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 71,7 KB | 16,4 KB |
-| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 71,7 KB | 15,9 KB |
-| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 71,2 KB | 15,7 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 72,7 KB | 16,6 KB |
+| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 72,7 KB | 16,7 KB |
+| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 72,2 KB | 16,5 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -414,11 +421,12 @@ Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la ve
 «Informativa privacy» nel menu del profilo (#3753, Decisione di zr-pm-cc del 13/11). I file dell'inglese e dello spagnolo
 salgono a 977 e 1.103 byte, la misura più 20.
 Hanno
-un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.640 i rimedi (1.472 fino alla `v4.35.1`), 1.797 la
+un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
-del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20), e 1.583 dalla `v4.36.1`, con `dragenter` e `dragleave` (R2 della revisione della `v4.36.0`, la misura più 20), e 1.678 dalla `v5.0.1`, col segno della lavagna quando il puntatore ne esce (richiesta 299, regola di zr-pm-74 del 18/11; la misura più 20). Quello dei rimedi era di
+del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20), e 1.583 dalla `v4.36.1`, con `dragenter` e `dragleave` (R2 della revisione della `v4.36.0`, la misura più 20), e 1.678 dalla `v5.0.1`, col segno della lavagna quando il puntatore ne esce (richiesta 299, regola di zr-pm-74 del 18/11; la misura più 20). I rimedi salgono a 1.951 nella `v5.1.0`, la misura più 20: la carta
+della `DealCard` senza importo (richiesta 259, rimedio provvisorio, sì di zr-pm-74 del 18/11). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
