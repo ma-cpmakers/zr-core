@@ -1,4 +1,6 @@
-/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AddressField di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata): li importa il modulo resources/js/zeiras/AddressField.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AddressField di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in `@layer zeiras`: li importa il modulo resources/js/zeiras/AddressField.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer zeiras {
 /* AddressField */
 .zr-address-box { position: relative; }
 .zr-address-box input { padding-right: 36px; }
@@ -7,3 +9,4 @@
 .zr-address-ico { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); flex: none; }
 .zr-address-attr { padding: var(--space-1-5) var(--space-2) 2px; text-align: right; font-size: 11px; line-height: 16px; color: var(--ink-muted); border-top: 1px solid var(--line); margin-top: var(--space-1); }
 .zr-field-msg.zr-address-ok { color: var(--success); }
+}

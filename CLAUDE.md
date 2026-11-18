@@ -31,10 +31,12 @@ torna, la dici a zr-pm (vedi «A chi chiedi»). Il primo lavoro è nel prompt di
   font, anche `resources/css/movimento.css`, scritto a mano: con `prefers-reduced-motion: reduce` nessuna transizione (righe MV di
   `uat-cornice`). Dalla `v4.33.0` (#3535) anche `resources/css/avanzamento.css`, la barra d'avanzamento di Inertia coi token
   (`includeCSS: false` nel modulo; righe AV di `uat-cornice` con `--barra`). Dalla `v4.35.0` (#3887) anche `resources/css/rimedi.css`, i rimedi provvisori al CSS del design system finché il
-  design system non porta la richiesta che li toglie (il primo: il titolo della SectionCard che va a capo, richiesta 290; il secondo, #3888: lo `scroll-padding` dei contenitori che scorrono, richiesta 278; #3889: i contorni coi colori forzati e il campo Cerca, richieste 288 e 279; #3890: le azioni della barra sotto la ricerca aperta, richiesta 283). Dalla `v4.34.0` (#3723) c'è anche
+  design system non porta la richiesta che li toglie (il primo: il titolo della SectionCard che va a capo, richiesta 290; il secondo, #3888: lo `scroll-padding` dei contenitori che scorrono, richiesta 278; #3889: i contorni coi colori forzati e il campo Cerca, richieste 288 e 279; #3890: le azioni della barra sotto la ricerca aperta, richiesta 283; dalla `v5.0.0` #3891: l'anello del fuoco nel Toast, richiesta 291). Dalla `v4.34.0` (#3723) c'è anche
   `resources/css/assistenza.css`, la fascia di assistenza come nel design di admin: una barra citrus sopra l'`AppShell`, fuori dal
   contenuto (la cornice mette l'`AppShell` in un contenitore solo in assistenza; il pulsante «Termina e torna al backoffice»). Non
-  lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11).
+  lo importano i due CSS ma il pezzo degli avvisi (`resources/js/avvisi.ts`): arriva solo in assistenza (zr-pm-74, 14/11). Dalla `v5.0.0` (#3538) le regole del design system in quei CSS stanno in `@layer zeiras`, sotto la riga
+  dell'ordine degli strati in testa (`ORDINE_DEGLI_STRATI` di `scripts/componenti-genera.mjs`, provata in vitest con una build vera di Tailwind 4), e i rimedi
+  con loro (`@import './rimedi.css' layer(zeiras);`).
 - **Il registro dei prodotti**: per ogni prodotto codice, icona (un nome del set Zeiras), tono, indirizzo, «Presto»; il
   nome sta nelle traduzioni, perché si traduce (decisione 5926).
   È di zr-core, non del backoffice.
@@ -86,7 +88,7 @@ serve uno è un segnale di progetto sbagliato. Il resto dipende da te.
   (`extra.laravel.providers`), Testbench 11, Pest 4, Larastan livello 5, Pint; React 19, TypeScript 7, Vite 8, vitest 5.
 - CI (`.github/workflows/ci.yml`): `composer validate`, nessun segreto, lo zip del pacchetto, sintassi PHP, Pint, PHPStan,
   `npm ci` + `tsc --noEmit` (due volte: col `tsconfig.json` e con `tsconfig.stretto.json`, le nove opzioni più strette sui sorgenti
-  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), le variabili dei token rigenerate e confrontate (`npm run token -- --controlla`, dalla `v3.13.0`), Pest. Nessun `composer.lock` nel repo (è una libreria).
+  che si installano e sulle pagine di prova) + vitest + build + pagine di prova, la favicon rigenerata e confrontata (`npm run favicon -- --controlla`), il modulo dei componenti rigenerato e confrontato (`npm run componenti -- --controlla`), le variabili dei token rigenerate e confrontate (`npm run token -- --controlla`, dalla `v3.13.0`; dalla `v5.0.0` anche il tema di Tailwind 4, `resources/css/zeiras-tailwind.css`, #3536, provato in vitest con una build vera di `tailwindcss`), Pest. Nessun `composer.lock` nel repo (è una libreria).
   Rossa = non si tagga.
 - `zeiras/zr-auth` `^0.12.141`: la CI fa due giri per ogni versione minore accettata, uno con l'ultima patch e uno con la più
   bassa che il vincolo accetta (la legge da `composer.json`), e il verde è di tutti i giri (dalla `v1.4.0` la minore è una:

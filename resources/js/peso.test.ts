@@ -13,6 +13,7 @@ import clienteItaliano from '../lingue/cliente/it.json';
 import inglese from '../lingue/en.json';
 import spagnolo from '../lingue/es.json';
 import italiano from '../lingue/it.json';
+import toastSpagnolo from '../lingue/toast/es.json';
 
 // Sprint 25 · T2 (voce #1759). L'ingresso per le app, `resources/js/app.ts`: la cornice senza `Zeiras`, cioè senza i componenti
 // del design system che l'app non usa. Qui si costruiscono le tre app di prova di resources/demo/peso come le costruisce un
@@ -473,6 +474,18 @@ describe('un\'app che prende solo la cornice non porta la cornice del cliente (s
         // «Il mio spazio» e «Come cliente» no: sono anche i testi di default dell'`AppShell`, nel design system.
         expect(tutto).not.toContain(clienteItaliano.notificationsEmptyText);
         expect(tutto).not.toContain(clienteInglese.notificationsEmptyText);
+    });
+});
+
+// Voce #3537 · AC 5: il Toast di turno sta in coda ai due ingressi, come il Toast della cornice, e un'app che prende solo la
+// cornice non lo porta: né il suo codice (la radice che si fa da sé, `createRoot` del Toast) né i suoi testi. «Deshacer» è il
+// segno: sta solo in resources/lingue/toast.
+describe('un\'app che prende solo la cornice non porta il Toast di turno (voce 3537 · AC 5)', () => {
+    it('niente codice né testi del Toast di turno nell\'ingresso e nei pezzi a richiesta', () => {
+        const tutto = [soloCornice.js, ...soloCornice.aRichiesta].join('\n');
+
+        expect(tutto).not.toContain(toastSpagnolo.undo);
+        expect(tutto).not.toContain('zr-toast');
     });
 });
 

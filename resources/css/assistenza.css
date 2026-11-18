@@ -39,6 +39,8 @@
  * (`dialogoSopraIlPannello`), che una regola senza vincerebbe: in Chromium la barra restava sopra (UAT della v4.34.1).
  */
 .zr-assist .zr-scrim:not(.is-inline) { z-index: calc(var(--z-dialog) + 4) !important; }
+/* Dalla v5.0.0 il design system sta in `@layer zeiras` e questo file no: la regola sopra vincerebbe anche su `.zr-btn-secondary:hover`. */
+.zr-assist-bar .zr-btn:hover { background: var(--surface-sunken); }
 .zr-assist > :not(.zr-assist-bar) { flex: 1; min-height: 0; position: relative; container-type: size; }
 .zr-assist > :not(.zr-assist-bar) .zr-shell { height: 100%; min-height: 0; }
 /*

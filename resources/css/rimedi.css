@@ -60,3 +60,11 @@
 @media (max-width: 720px) {
   .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; }
 }
+
+/*
+ * Richiesta 291 (zr-core, voce #3891; zr-pm-74 15/11, Decisione 25442): il Toast ha lo sfondo var(--ink), e l'anello del fuoco che
+ * il design system dà ad «Annulla» e alla ✕ è var(--focus), 2,82:1 sul Toast nel tema chiaro e 1,88:1 nello scuro (WCAG 1.4.11
+ * chiede 3:1). Dentro il Toast l'anello prende il colore del suo testo, var(--surface): 15,47:1 e 16,46:1. Fuori dal Toast niente
+ * cambia.
+ */
+.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }

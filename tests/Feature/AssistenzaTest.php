@@ -18,10 +18,23 @@ it('lo zip del pacchetto porta assistenza.css, che importa il pezzo degli avvisi
     foreach (['bundle.css', 'zeiras.css'] as $css) {
         $righe = explode("\n", File::get("$radice/resources/css/$css"));
 
-        expect(array_slice($righe, 1, 3))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"])
+        // Dalla `v5.0.0` (voce #3538) la prima riga è quella dell'ordine degli strati, la seconda il commento che dice il file generato.
+        expect($righe[0])->toBe('@layer theme, base, zeiras, components, utilities;')
+            ->and(array_slice($righe, 2, 3))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';"])
             ->and(implode("\n", $righe))->not->toContain('assistenza.css');
     }
     expect(File::get("$radice/resources/js/avvisi.ts"))->toContain("\nimport '../css/assistenza.css';\n");
+});
+
+// Voce #3538 (revisione della v5.0.0): dalla `v5.0.0` le regole del design system stanno in `@layer zeiras` e assistenza.css no, quindi
+// `.zr-assist-bar .zr-btn` vince anche su `.zr-btn-secondary:hover`: senza una sua regola al passaggio del mouse il pulsante della
+// fascia non cambierebbe più sfondo.
+it('il pulsante della fascia cambia sfondo al passaggio del mouse anche con il design system nello strato (voce 3538)', function () {
+    $css = File::get(dirname(__DIR__, 2).'/resources/css/assistenza.css');
+
+    expect($css)->toContain('.zr-assist-bar .zr-btn { background: var(--surface-raised);')
+        ->and($css)->toContain('.zr-assist-bar .zr-btn:hover { background: var(--surface-sunken); }')
+        ->and(File::get(dirname(__DIR__, 2).'/resources/zeiras/bundle.css'))->toContain('.zr-btn-secondary:hover { background: var(--surface-sunken); }');
 });
 
 it('il pulsante della fascia dice «Termina e torna al backoffice» nelle tre lingue degli avvisi, e la riga piccola non ripete più l\'email (voce 3723 · AC 2)', function (string $lingua, string $pulsante, string $modifiche, string $solaLettura) {

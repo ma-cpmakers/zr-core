@@ -28,3 +28,6 @@ export function coiCssDelPacchetto(css: string): string;
 
 /** Il testo di resources/css/bundle.css (dalla `v3.15.0`): il bundle intero coi font del pacchetto (e dalla `v4.32.0` movimento.css, dalla `v4.33.0` avanzamento.css), sotto il commento che lo dice generato. */
 export function bundleIntero(css: string): string;
+
+/** La riga che dichiara l'ordine degli strati (dalla `v5.0.0`, #3538): la prima di ogni CSS generato, con le regole del design system in `@layer zeiras`. */
+export const ORDINE_DEGLI_STRATI: string;

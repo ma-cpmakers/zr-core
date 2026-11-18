@@ -49,7 +49,7 @@ const opzione = (nome, altrimenti) => {
 const parola = opzione('--parola', 'pro');
 // --staff (dalla v3.16.0): la pagina ha la cornice dello staff (`CorniceDelloStaff`), senza selettore, «+» e notifiche: girano
 // axe, la ricerca, Esc, i menu e il cassetto, i font e le righe S, e dalla v3.17.0 le righe TO del Toast (`staff.html` con `toast=1`,
-// che la pagina dei moduli non ha: lì sono ➖), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
+// che la pagina dei moduli non ha: lì sono ➖, e dalla v5.0.0 le righe TT del Toast di turno con `turno=1`), dalla v4.1.1 N.1-N.2, Q.1 e D.1-D.2, e dalla v4.3.0 S.4 (`configurazione=0`) e
 // S.5 (`invio=1`), dalla v4.5.0 S.6 (`ruolo` e `fino`) e dalla v4.5.1 S.7 (`fino` domani). Prima del tag zr-core la lancia su `staff.html --parola uat`.
 const conLoStaff = argomenti.includes('--staff') && argomenti.splice(argomenti.indexOf('--staff'), 1).length > 0;
 // --cliente (dalla v4.13.0, #3319): la pagina ha la cornice del cliente (`CorniceDelCliente`), senza la ricerca, che non si vede, e
@@ -1403,6 +1403,72 @@ async function toastAlSuoPosto(page, apri, larghezza) {
     }
 }
 
+// TT (dalla v5.0.0, #3537): il Toast di turno, `mostraToast`. Sulla pagina con `turno=1`, che `staff.html` capisce, due pulsanti lo
+// chiedono: `#uat-turno` con «Annulla», `#uat-turno-senza` senza azione. TT.1 col puntatore fuori c'è a 9 s e non c'è più a 10,6 s;
+// TT.2 col Tab su «Annulla» c'è ancora a 11 s, e Invio lo preme e lo chiude; TT.3 il secondo prende il posto del primo; TT.4
+// «Annulla» nella lingua di `?lingua`. Una pagina senza i due pulsanti: ➖.
+const ANNULLA = { it: 'Annulla', es: 'Deshacer', en: 'Undo' };
+async function toastDiTurno(page, apri) {
+    const dove = new URL(indirizzo);
+    dove.searchParams.set('turno', '1');
+    // Senza il Toast di `toast=1` e il suo Dialog: qui il Toast a schermo è solo quello di turno.
+    dove.searchParams.delete('toast');
+    dove.searchParams.delete('dialogo');
+    await apri(dove.href);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(500);
+    const righe = [
+        ['TT.1', 'il Toast di turno con «Annulla» resta 10 s: c\'è a 9 s, a 10,6 s non c\'è più (#3537)'],
+        ['TT.2', 'col fuoco su «Annulla», arrivato col Tab, il Toast c\'è ancora a 11 s; Invio lo preme e il Toast si chiude (#3537)'],
+        ['TT.3', 'un Toast nuovo prende il posto di quello aperto: a schermo uno solo (#3537)'],
+        ['TT.4', '«Annulla» nella lingua della pagina (#3537)'],
+    ];
+    if (!(await page.$('#uat-turno'))) {
+        righe.forEach(([id, cosa]) => scrivi('➖', id, cosa, 'la pagina non ha i pulsanti del Toast di turno (?turno=1)'));
+        return;
+    }
+    const lingua = (dove.searchParams.get('lingua') || 'it').slice(0, 2);
+    const quanti = () => page.evaluate(() => [...document.querySelectorAll('.zr-toast')].map((t) => t.textContent));
+    await page.mouse.move(1, 1);
+    await page.click('#uat-turno');
+    await page.mouse.move(1, 1);
+    await pausa(9000);
+    const a9 = await quanti();
+    // La lingua della pagina è quella di `<html lang>`, che il modulo scrive per la persona: con `?lingua` la pagina di prova la
+    // mette lì, e una pagina del modulo deve dire la stessa della sua cornice.
+    const etichetta = await page.evaluate(() => document.querySelector('.zr-toast-action')?.textContent ?? '');
+    const dellaPagina = (await page.evaluate(() => document.documentElement.lang)).slice(0, 2);
+    await page.screenshot({ path: join(cartella, 'toast-di-turno.png') });
+    await pausa(1600);
+    const a106 = await quanti();
+    scrivi(a9.length === 1 && a106.length === 0 ? '✅' : '❌', ...righe[0], `a 9 s ${a9.length}, a 10,6 s ${a106.length}`);
+    scrivi(etichetta === ANNULLA[lingua] && dellaPagina === lingua ? '✅' : '❌', ...righe[3], `«${etichetta}», atteso «${ANNULLA[lingua] ?? '?'}» (lingua ${lingua}, <html lang> ${dellaPagina})`);
+
+    await page.click('#uat-turno');
+    await page.mouse.move(1, 1);
+    await pausa(300);
+    await page.evaluate(() => {
+        const fermate = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+            .filter((e) => e.tabIndex >= 0 && !e.closest('.zr-toast') && e.checkVisibility());
+        fermate.at(-1)?.focus();
+    });
+    await page.keyboard.press('Tab');
+    const sullAzione = await page.evaluate(() => document.activeElement?.matches('.zr-toast-action') ?? false);
+    await pausa(11000);
+    const a11 = await quanti();
+    await page.keyboard.press('Enter');
+    await pausa(300);
+    const dopo = await quanti();
+    const scritto = await page.evaluate(() => document.querySelector('#uat-ultima')?.textContent ?? '');
+    scrivi(sullAzione && a11.length === 1 && dopo.length === 0 && scritto === 'annulla di turno' ? '✅' : '❌', ...righe[1], `Tab su «Annulla»: ${sullAzione}; a 11 s ${a11.length}; dopo Invio ${dopo.length}, la pagina: «${scritto}»`);
+
+    await page.click('#uat-turno');
+    await page.click('#uat-turno-senza');
+    await pausa(300);
+    const insieme = await quanti();
+    scrivi(insieme.length === 1 && insieme[0].includes('UAT salvata') ? '✅' : '❌', ...righe[2], `a schermo ${insieme.length}: ${insieme.map((t) => `«${t}»`).join(', ')}`);
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -1508,6 +1574,7 @@ async function uat(page, apri) {
         await fineDomani(page, apri, 1280);
         await ricercaAllInvio(page, apri);
         await toastAlSuoPosto(page, apri, 1280);
+        await toastDiTurno(page, apri);
         return a390(page, apri, diGoogle, errori, csp);
     }
     await fuoriDaiMenu(page);

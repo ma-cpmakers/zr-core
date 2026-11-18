@@ -4290,10 +4290,11 @@ it('il passo «9. La ricerca» della guida non dice più che il segnaposto della
     'lo nominano tutti e due' => ['che il segnaposto e l\'invito della ricerca nominano'],
 ]);
 
-// Sprint 28 · T5.6 (voce #1829; `Decisione:` 11283 di zr-pm). Il CSS del design system sta fuori dai layer della cascata, e vince
-// su ogni classe di utilità di Tailwind, che sta in un layer: il README lo dice dove fa importare `bundle.css`, e dice che cosa
-// fa una pagina — non ritocca con una classe ciò che un componente già dà, e l'aspetto che manca lo chiede a zr-core. Non dice
-// mai di cambiare la cascata.
+// Sprint 28 · T5.6 (voce #1829; `Decisione:` 11283 di zr-pm): il README diceva dove fa importare `bundle.css` come il CSS del
+// design system sta nella cascata. Fino alla `v4.36.0` stava fuori dai layer e vinceva sulle classi di utilità di Tailwind 4;
+// dalla `v5.0.0` (voce #3538, Decisione 23101 di zr-pm-07) sta in `@layer zeiras`, fra il preflight e le utilità, con la riga
+// dell'ordine in testa: il README dice l'ordine, che il CSS del pacchetto va prima di `tailwindcss` e che cosa cambia per un
+// modulo. Non dice di forzare una proprietà né di mettere il CSS del pacchetto in un layer da sé.
 
 /** Il capoverso «Il CSS» del README su una riga sola, da «**Il CSS**» a «**Il JS**», coi due `@import`. Vuoto se non c'è. */
 function capoversoDelCss(string $readme): string
@@ -4303,24 +4304,29 @@ function capoversoDelCss(string $readme): string
     return suUnaRiga($capoverso[0] ?? '');
 }
 
-it('il README dice, dove fa importare `bundle.css`, che il CSS del design system sta fuori dai layer e vince sulle classi di utilità di Tailwind, e che cosa fa una pagina (sprint 28 · T5.6)', function (string $frase) {
+it('il README dice, dove fa importare `bundle.css`, che il CSS del design system sta in `@layer zeiras` fra il preflight e le classi di utilità di Tailwind 4, e che cosa cambia per un modulo (sprint 28 · T5.6; voce 3538 · AC 5)', function (string $frase) {
     $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
 
     expect($css)->not->toBe('')
         ->and(str_contains($css, $frase))->toBe(true);
 })->with([
-    'fuori dai layer' => ['Il CSS del design system sta fuori dai layer della cascata.'],
-    // Lettura della PR #61, R11: vince dove le utilità stanno in un layer, e il README dice quale Tailwind.
-    'con quale Tailwind vince' => ['Con Tailwind 4, che mette le sue classi di utilità in un layer, vince su ognuna di loro'],
-    'che cosa non fa una pagina' => ['una pagina non ritocca con una classe una proprietà che un componente già dà'],
-    'per che cosa vale' => ['Vale per le proprietà che il componente dichiara e per una classe senza il modificatore che forza (`!`)'],
-    'con Tailwind 3' => ['con Tailwind 3, che non usa i layer della cascata, decidono specificità e ordine'],
-    'a chi si chiede' => ['In ogni caso un aspetto che il componente non ha non si ottiene con una classe sopra: lo si chiede all\'agente di zr-core'],
+    'lo strato' => ['le regole del design system stanno nello strato `zeiras` della cascata'],
+    'l\'ordine degli strati' => ['@layer theme, base, zeiras, components, utilities;'],
+    'sopra il preflight' => ['Con Tailwind 4 il design system sta così sopra il preflight (`base`), che non gli toglie sfondo, bordo e padding'],
+    'le classi valgono' => ['una classe messa su un componente vale, senza `!`'],
+    'prima di tailwindcss' => ['Per questo il CSS del pacchetto si importa prima di `tailwindcss`'],
+    // Revisione della voce, R1: importato dopo `tailwindcss` `zeiras` va in coda, sopra `utilities`; sotto `base` va senza la riga.
+    'importato dopo' => ['Importato dopo `tailwindcss`, l\'ordine lo fisserebbe la riga di Tailwind, e `zeiras` finirebbe in coda, sopra `utilities`'],
+    'senza la riga' => ['senza la riga, `zeiras` starebbe sotto `base` e il preflight cancellerebbe i componenti'],
+    'le regole fuori dagli strati' => ['Le regole del modulo fuori dagli strati vincono sul design system come su ogni strato'],
+    'le dichiarazioni forzate' => ['Una classe col modificatore che forza non vince sulle sette dichiarazioni forzate del design system, in tre regole'],
+    'con Tailwind 3' => ['Con Tailwind 3, che non mette preflight e classi negli strati, vincerebbero tutti e due sul design system'],
+    'a chi si chiede' => ['un aspetto che il componente non ha e che serve anche altrove si chiede all\'agente di zr-core'],
     // Sprint 92 · T4 (voce #2945): dalla v3.15.0 il CSS del design system che il README fa importare è quello coi font del pacchetto.
     'i due `@import` restano lì' => ['@import \'../../vendor/zeiras/zr-core/resources/css/bundle.css\'; @import \'../../vendor/zeiras/zr-core/resources/css/zeiras-token.css\';'],
 ]);
 
-it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di forzare una proprietà (sprint 28 · T5.6)', function (string $vietata) {
+it('il capoverso «Il CSS» del README non dice di forzare una proprietà né di mettere il CSS del pacchetto in un layer da sé, e non dice più che sta fuori dai layer (sprint 28 · T5.6; voce 3538)', function (string $vietata) {
     $css = capoversoDelCss((string) file_get_contents(__DIR__.'/../../README.md'));
 
     expect($css)->not->toBe('')
@@ -4328,7 +4334,8 @@ it('il capoverso «Il CSS» del README non dice di cambiare la cascata né di fo
 })->with([
     'forzare una proprietà' => ['!important'],
     'un layer per il design system, nell\'`@import`' => ['layer('],
-    'un layer dichiarato' => ['@layer'],
+    // Voce #3538: fino alla `v4.36.0` il CSS del design system stava fuori dai layer; dalla `v5.0.0` no.
+    'fuori dai layer' => ['sta fuori dai layer della cascata'],
     // Lettura della PR #61, R11: non vince su «ogni» classe di qualunque Tailwind.
     'vince sempre' => ['per questo vince su ogni classe di utilità di Tailwind'],
 ]);
@@ -5148,7 +5155,7 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice', 'mostraToast'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
@@ -5772,7 +5779,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Voce #3535: dalla `v4.33.0` gli stili della barra d'avanzamento di Inertia, che bundle.css e zeiras.css importano.
     // Voce #3723: dalla `v4.34.0` gli stili della fascia di assistenza, che bundle.css e zeiras.css importano.
     // Voce #3887: dalla `v4.35.0` i rimedi provvisori al CSS del design system, che bundle.css e zeiras.css importano.
-    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #3536: dalla `v5.0.0` il tema di Tailwind 4 coi nomi dei token, che `npm run token` genera.
+    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)

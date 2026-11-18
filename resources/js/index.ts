@@ -20,3 +20,6 @@ export { ToastDellaCornice, type ToastDellaCorniceProps } from './toast';
 // La cornice del cliente (dalla `v4.13.0`): per le pagine «Il mio spazio» di zr-home, coi dati di `Cornice::datiDelCliente()`. In
 // coda, come la cornice dello staff; un'app che non la usa non la porta nella build.
 export { CorniceDelCliente, type CorniceDelClienteProps, type DatiDelCliente } from './cliente';
+// Il Toast di turno (dalla `v5.0.0`): `mostraToast` e `chiudiToast`, con la durata, «Annulla» e un Toast alla volta della cornice.
+// In coda, come il Toast della cornice; un'app che non lo usa non lo porta nella build.
+export { chiudiToast, mostraToast, type ToastDaMostrare } from './turno';

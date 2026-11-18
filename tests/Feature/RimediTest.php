@@ -17,7 +17,10 @@ it('lo zip del pacchetto porta rimedi.css, e bundle.css e zeiras.css lo importan
     foreach (['bundle.css', 'zeiras.css'] as $css) {
         $righe = explode("\n", File::get("$radice/resources/css/$css"));
 
-        expect(array_slice($righe, 1, 4))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css';"]);
+        // Dalla `v5.0.0` (voce #3538) la prima riga è quella dell'ordine degli strati, la seconda il commento che dice il file generato;
+        // i rimedi entrano nello strato del design system, e una classe di utilità del modulo li supera come supera le sue regole.
+        expect($righe[0])->toBe('@layer theme, base, zeiras, components, utilities;')
+            ->and(array_slice($righe, 2, 4))->toBe(["@import './font.css';", "@import './movimento.css';", "@import './avanzamento.css';", "@import './rimedi.css' layer(zeiras);"]);
     }
 });
 
@@ -66,4 +69,16 @@ it('rimedi.css stringe le azioni della barra sotto la ricerca aperta, e il READM
         ->and(File::get("$radice/README.md"))
         ->toContain('Il quinto (#3890, richiesta 283')
         ->toContain('A ricerca chiusa la barra aspetta la richiesta.');
+});
+
+// Voce #3891 (richiesta 291; zr-pm-74 15/11): l'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del
+// Toast, che sullo sfondo del Toast passa i 3:1 in tutti e due i temi.
+it('rimedi.css dà all\'anello del fuoco nel Toast il colore del suo testo, e il README lo dice (voce 3891)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Il sesto (#3891, richiesta 291')
+        ->toContain('il colore del testo del Toast');
 });
