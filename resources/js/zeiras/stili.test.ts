@@ -386,7 +386,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
 
     // Voce #3891 (richiesta 291; zr-pm-74 15/11, Decisione 25442). Il Toast ha lo sfondo var(--ink) e l'anello del fuoco del design
     // system su «Annulla» e sulla ✕ è var(--focus): sotto 3:1 in tutti e due i temi (WCAG 1.4.11). Il rimedio gli dà il colore del
-    // testo del Toast, var(--surface). La prova in Chromium sta nella voce (fatta con uat-cornice del ramo della #3862, non nel tag: R1 della revisione).
+    // testo del Toast, var(--surface). La prova in Chromium è la riga TT.5 di uat-cornice (--staff, dalla v5.0.1: R1 della revisione).
     it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del Toast, almeno 3:1 sullo sfondo (voce 3891, richiesta 291)', () => {
         // Il bundle di oggi dà ai due pulsanti l'anello var(--focus) e al Toast lo sfondo var(--ink): quando la 291 arriva, questo
         // caso diventa rosso e il rimedio si toglie.

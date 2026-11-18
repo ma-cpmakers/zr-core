@@ -1422,6 +1422,7 @@ async function toastDiTurno(page, apri) {
         ['TT.2', 'col fuoco su «Annulla», arrivato col Tab, il Toast c\'è ancora a 11 s; Invio lo preme e il Toast si chiude (#3537)'],
         ['TT.3', 'un Toast nuovo prende il posto di quello aperto: a schermo uno solo (#3537)'],
         ['TT.4', '«Annulla» nella lingua della pagina (#3537)'],
+        ['TT.5', 'col fuoco dalla tastiera, l\'anello su «Annulla» e sulla ✕ del Toast almeno a 3:1 sul fondo del Toast (#3891, richiesta 291)'],
     ];
     if (!(await page.$('#uat-turno'))) {
         righe.forEach(([id, cosa]) => scrivi('➖', id, cosa, 'la pagina non ha i pulsanti del Toast di turno (?turno=1)'));
@@ -1454,6 +1455,23 @@ async function toastDiTurno(page, apri) {
     });
     await page.keyboard.press('Tab');
     const sullAzione = await page.evaluate(() => document.activeElement?.matches('.zr-toast-action') ?? false);
+    // TT.5 (dalla v5.0.1, R1 della revisione della #3891, zr-pm-74 18/11): il rapporto fra il colore dell'anello del fuoco
+    // (`outline-color`) e lo sfondo del Toast, su «Annulla» e poi sulla ✕; il fuoco torna su «Annulla» per TT.2.
+    const anello = () => page.evaluate(() => {
+        const qui = document.activeElement;
+        const toast = qui?.closest('.zr-toast');
+        if (!qui || !toast) return null;
+        const rgb = (colore) => (colore.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const luce = (c) => c.map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((somma, v, i) => somma + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const [a, b] = [luce(rgb(getComputedStyle(qui).outlineColor)), luce(rgb(getComputedStyle(toast).backgroundColor))];
+        return { nome: qui.matches('.zr-toast-action') ? 'Annulla' : qui.matches('.zr-toast-close') ? '✕' : qui.tagName, stile: getComputedStyle(qui).outlineStyle, rapporto: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100 };
+    });
+    const anelli = [await anello()];
+    await page.keyboard.press('Tab');
+    anelli.push(await anello());
+    await page.keyboard.press('Shift+Tab');
+    const misurati = anelli.filter(Boolean);
+    scrivi(misurati.length === 2 && misurati.every((a) => a.stile !== 'none' && a.rapporto >= 3) ? '✅' : '❌', ...righe[4], misurati.map((a) => `${a.nome}: ${a.rapporto}:1 (${a.stile})`).join('; ') || 'il fuoco non è nel Toast');
     await pausa(11000);
     const a11 = await quanti();
     await page.keyboard.press('Enter');
