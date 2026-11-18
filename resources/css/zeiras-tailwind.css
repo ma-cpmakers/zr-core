@@ -42,6 +42,18 @@
     --color-chart-5: var(--chart-5);
     --color-chart-other: var(--chart-other);
     --color-chart-grid: var(--chart-grid);
+    --color-card-rose: var(--card-rose);
+    --color-card-peach: var(--card-peach);
+    --color-card-sand: var(--card-sand);
+    --color-card-lemon: var(--card-lemon);
+    --color-card-lime: var(--card-lime);
+    --color-card-mint: var(--card-mint);
+    --color-card-sage: var(--card-sage);
+    --color-card-aqua: var(--card-aqua);
+    --color-card-azure: var(--card-azure);
+    --color-card-lavender: var(--card-lavender);
+    --color-card-lilac: var(--card-lilac);
+    --color-card-stone: var(--card-stone);
     --font-display: var(--font-display);
     --font-sans: var(--font-sans);
     --radius-2xs: var(--radius-2xs);
