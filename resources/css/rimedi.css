@@ -68,3 +68,12 @@
  * cambia.
  */
 .zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }
+
+/*
+ * Richiesta 299 (zr-crm-35, regola di zr-pm-74 del 18/11; v5.0.1): fuori dalla lavagna nessuna colonna segnata, nemmeno durante
+ * il trascinamento. La DealPipeline azzera la colonna segnata solo al rilascio; resources/js/tocco.ts segna la lavagna con
+ * data-zr-fuori quando il puntatore ne esce, e qui la colonna torna come le altre: lo sfondo e il bordo di .zr-col, e quello
+ * della fase vinta.
+ */
+.zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }
+.zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }

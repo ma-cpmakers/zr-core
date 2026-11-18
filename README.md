@@ -85,6 +85,11 @@ Il sesto (#3891, richiesta 291, dalla `v5.0.0`): l'anello del fuoco su «Annulla
 del Toast (`var(--surface)`) invece di `var(--focus)`, che sul fondo scuro del Toast stava sotto i 3:1 (2,82 nel tema chiaro,
 1,88 nello scuro); fuori dal Toast l'anello non cambia.
 
+Il settimo (richiesta 299, dalla `v5.0.1`; regola di zr-pm-74 del 18/11): fuori dalla lavagna nessuna colonna segnata, nemmeno
+durante il trascinamento. La `DealPipeline` toglie il segno alla colonna solo al rilascio: quando il puntatore (il mouse, o il dito
+col pezzo del tocco) esce dalla lavagna, il pezzo del tocco dà alla `.zr-lanes` l'attributo `data-zr-fuori`, e lì la colonna
+segnata torna come le altre; rientrato il puntatore, o finito il trascinamento, l'attributo si toglie.
+
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
 quando in pagina entra una lavagna (`.zr-lanes`), il pezzo dei rimedi chiede il pezzo del tocco (`resources/js/tocco.ts`), che
@@ -304,7 +309,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 71,7 KB | 15,8 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 71,7 KB | 16,4 KB |
 | la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 71,7 KB | 15,9 KB |
 | la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 71,2 KB | 15,7 KB |
 
@@ -413,7 +418,7 @@ un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
-del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20), e 1.583 dalla `v4.36.1`, con `dragenter` e `dragleave` (R2 della revisione della `v4.36.0`, la misura più 20). Quello dei rimedi era di
+del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20), e 1.583 dalla `v4.36.1`, con `dragenter` e `dragleave` (R2 della revisione della `v4.36.0`, la misura più 20), e 1.678 dalla `v5.0.1`, col segno della lavagna quando il puntatore ne esce (richiesta 299, regola di zr-pm-74 del 18/11; la misura più 20). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
@@ -454,8 +459,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 111,1 KB | 18,5 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 107,9 KB | 18,0 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 111,6 KB | 18,5 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 108,4 KB | 18,0 KB | 4,8 KB | 1,7 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -651,6 +656,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.0.0` | il tema di Tailwind 4 dal pacchetto (#3536): `resources/css/zeiras-tailwind.css`, generato da `tokens.json` con `npm run token`, dà a Tailwind 4 ogni colore, famiglia, raggio, ombra e stile di testo coi nomi dei token (`bg-surface-raised`, `rounded-md`, `shadow-card`, `text-heading-1`), che rendono `var(--…)`; `@theme inline reference`, non scrive niente nella pagina («Il tema di Tailwind 4») | niente; un modulo con Tailwind 4 che ha il blocco `@theme` scritto a mano lo può togliere e importare il file dopo `tailwindcss`, tenendo i suoi alias | niente | la build del modulo: le classi dei token rendono `var(--…)` come prima |
 | `v5.0.0` | il Toast di turno (#3537): `mostraToast` e `chiudiToast`, con la durata del design system (5 secondi, 10 con un'azione), la pausa finché il puntatore è sopra o il fuoco è dentro, «Annulla» nella lingua di `<html lang>` (`resources/lingue/toast/`), il fuoco che torna a chi preme da tastiera e un Toast alla volta; `ToastDellaCornice` resta com'è, e due insieme non si rincorrono più in coda al `body`; l'ingresso dell'app con la sola cornice non cambia. E l'anello del fuoco su «Annulla» e sulla ✕ ha il colore del testo del Toast, almeno 3:1 sul suo fondo (#3891, un rimedio provvisorio in `rimedi.css` per la richiesta 291) | niente; un modulo che tiene lo stato del Toast da sé (un involucro col suo `setTimeout`, uno stato per pagina) può passare a `mostraToast` e togliere l'involucro, una pagina alla volta | un caso che conta il tempo del Toast del modulo coi timer finti, se passa a `mostraToast`, lo conta sulla cornice (5 o 10 secondi) | un Toast con «Annulla» resta 10 secondi, e oltre col Tab sull'azione; due di fila: a schermo uno solo |
 | `v5.0.0` | il CSS del design system in `@layer zeiras`, fra il preflight di Tailwind 4 e le classi di utilità (#3538): `bundle.css`, `zeiras.css` e gli stili di MentionField e AddressField cominciano con `@layer theme, base, zeiras, components, utilities;`, e una classe su un componente vale; i rimedi provvisori (`rimedi.css`, dalla `v4.35.0`) entrano nello stesso strato, e una classe li supera come supera il design system; cambia la cascata, quindi maggiore («Passare alla v5») | `^5` nel `composer.json`, nella prossima PR; le classi di utilità su un componente o sui suoi elementi, che adesso valgono, si tengono o si tolgono, e un `!` messo contro il design system si può togliere | un caso che vuole come prima riga del CSS l'`@import` dei font ha davanti quella degli strati | nella build gli strati in quest'ordine, e in una pagina un `Button` col suo sfondo e il suo bordo |
+| `v5.0.1` | nella serie `v5` il colore delle carte delle opportunità della `v4.36.2` (richiesta 297, lotto 0528 del design system `ds-1794934191-8bd9`, voce #3946), col tema di Tailwind 4 rigenerato coi dodici token `card-<nome>`; fuori dalla lavagna nessuna colonna segnata, nemmeno durante il trascinamento (richiesta 299, rimedio provvisorio, regola di zr-pm-74 del 18/11): il pezzo del tocco segna la lavagna con `data-zr-fuori` quando il puntatore ne esce, e `rimedi.css` rimette alla colonna lo sfondo e il bordo di `.zr-col` (pezzo del tocco 1.658 byte con gzip, tetto 1.678, la misura più 20); la sentinella del rimedio del Toast vede anche `--focus` ridefinito nel Toast (R2 della revisione della #3891) | niente | nessuno | `layout.html?lavagna=1` con `--tocco`: riga TC.10 |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

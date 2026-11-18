@@ -1858,6 +1858,35 @@ async function carteColDito() {
     } else {
         scrivi('❌', 'TC.8', 'una carta che si vede, per il bordo basso', '');
     }
+    // TC.10 (dalla v5.0.1, richiesta 299; regola di zr-pm-74 del 18/11): una carta tenuta, il dito su un'altra colonna, che si
+    // vede segnata; poi il dito sopra la lavagna, fuori: nessuna colonna si vede segnata, già durante la tenuta (non solo al
+    // rilascio). «Si vede segnata» = il bordo della colonna non è trasparente: il design system dà a `.zr-col` un bordo trasparente
+    // e a `.zr-col.is-over` uno di colore.
+    const decima = await inVista();
+    await page.evaluate(() => { document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }); scrollBy({ top: -140, behavior: 'instant' }); document.querySelector('.zr-main')?.scrollBy({ top: -140, behavior: 'instant' }); });
+    await pausa(300);
+    const sopraLaLavagna = await page.evaluate(() => (document.querySelector('.zr-lanes')?.getBoundingClientRect().top ?? 0) - 60);
+    const decimaOra = await inVista();
+    const segnate = () => page.evaluate(() => [...document.querySelectorAll('.zr-lanes .zr-col')].filter((colonna) => getComputedStyle(colonna).borderTopColor !== 'rgba(0, 0, 0, 0)').length);
+    if (decima && decimaOra && sopraLaLavagna > 48) {
+        const accanto = (await stato()).seconda;
+        await tocca('touchStart', decimaOra.x, decimaOra.y);
+        await pausa(300);
+        await striscia({ x: decimaOra.x, y: decimaOra.y }, accanto ?? { x: decimaOra.x + 120, y: decimaOra.y }, 6, 30);
+        await pausa(200);
+        const dentro = await segnate();
+        await striscia(accanto ?? { x: decimaOra.x + 120, y: decimaOra.y }, { x: decimaOra.x + 40, y: sopraLaLavagna }, 6, 30);
+        await pausa(300);
+        const fuori = await segnate();
+        await foto('tocco-fuori.png');
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === decimaOra.id)?.fase ?? -1;
+        scrivi(dentro >= 1 && fuori === 0 && fase === decimaOra.fase && !dopo.presa ? '✅' : '❌', 'TC.10', 'col dito fuori dalla lavagna, durante la tenuta, nessuna colonna si vede segnata; lasciata fuori, la carta torna dov\'era (richiesta 299)', `colonne segnate col dito su una colonna: ${dentro}, col dito fuori: ${fuori}; fase ${fase} (era ${decimaOra.fase})`);
+    } else {
+        scrivi('➖', 'TC.10', 'col dito fuori dalla lavagna nessuna colonna segnata: sopra la lavagna non c\'è posto per il dito', `sopra la lavagna: ${sopraLaLavagna} px`);
+    }
     }
 
     // TC.6 (dalla v4.35.4, solo con la lavagna dentro un margine, `?lavagna=margine`): una carta tenuta, il dito nel margine a
