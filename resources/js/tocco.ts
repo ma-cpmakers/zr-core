@@ -10,7 +10,7 @@
  * stesso `onMove` e lo stesso `onChange` del mouse. Vicino ai bordi la lavagna scorre da sola: di lato la `.zr-lanes`, in alto e
  * in basso il primo contenitore che scorre sotto il dito (la colonna, o la pagina). Un dito che si muove prima dei 250 ms fa
  * scorrere la pagina come sempre (sulle carte `touch-action: manipulation`, in `rimedi.css`), e un tocco breve resta un clic.
- * Il mouse resta del browser; la penna (Apple Pencil, dalla `v4.36.0`, R7) passa di qui come il dito; la tastiera e «Sposta in…» no.
+ * Il mouse resta del browser (tranne il segno della lavagna della richiesta 299, sotto); la penna (Apple Pencil, dalla `v4.36.0`, R7) passa di qui come il dito; la tastiera e «Sposta in…» no.
  */
 
 /**
@@ -29,6 +29,25 @@ const PASSO = 16;
 let inCorso = false;
 /** La carta è presa: il dito non fa più scorrere la pagina. */
 let presa = false;
+
+/**
+ * Richiesta 299 (zr-crm-35, regola di zr-pm-74 del 18/11): fuori dalla lavagna nessuna colonna segnata, nemmeno durante il
+ * trascinamento. La `DealPipeline` azzera la colonna segnata solo al `drop` o al `dragend`: quando il puntatore (il mouse col
+ * drag del browser, o il dito con gli eventi di questo pezzo) esce dalla lavagna, la lavagna prende `data-zr-fuori`, e
+ * `rimedi.css` spegne lì `.zr-col.is-over`; un `dragover` dentro la lavagna lo toglie, e così il rilascio e la fine del trascinamento.
+ */
+const FUORI = 'data-zr-fuori';
+const lavagnaDi = (evento: Event): Element | null | undefined => (evento.target as Element).closest?.('.zr-lanes');
+
+addEventListener('dragleave', (evento) => {
+    const lavagna = lavagnaDi(evento);
+
+    if (!lavagna?.contains((evento as MouseEvent).relatedTarget as Node | null)) {
+        lavagna?.setAttribute(FUORI, '');
+    }
+});
+// `dragend` arriva alla carta e `drop` alla colonna: tutti e due dentro la lavagna.
+['dragover', 'drop', 'dragend'].forEach((tipo) => addEventListener(tipo, (evento) => lavagnaDi(evento)?.removeAttribute(FUORI)));
 
 /**
  * Un `touchmove` sulla lavagna, che il pezzo dei rimedi passa di qui: con la carta presa non fa scorrere la pagina. Chromium

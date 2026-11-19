@@ -1422,6 +1422,7 @@ async function toastDiTurno(page, apri) {
         ['TT.2', 'col fuoco su «Annulla», arrivato col Tab, il Toast c\'è ancora a 11 s; Invio lo preme e il Toast si chiude (#3537)'],
         ['TT.3', 'un Toast nuovo prende il posto di quello aperto: a schermo uno solo (#3537)'],
         ['TT.4', '«Annulla» nella lingua della pagina (#3537)'],
+        ['TT.5', 'col fuoco dalla tastiera, l\'anello su «Annulla» e sulla ✕ del Toast almeno a 3:1 sul fondo del Toast (#3891, richiesta 291)'],
     ];
     if (!(await page.$('#uat-turno'))) {
         righe.forEach(([id, cosa]) => scrivi('➖', id, cosa, 'la pagina non ha i pulsanti del Toast di turno (?turno=1)'));
@@ -1454,6 +1455,23 @@ async function toastDiTurno(page, apri) {
     });
     await page.keyboard.press('Tab');
     const sullAzione = await page.evaluate(() => document.activeElement?.matches('.zr-toast-action') ?? false);
+    // TT.5 (dalla v5.0.1, R1 della revisione della #3891, zr-pm-74 18/11): il rapporto fra il colore dell'anello del fuoco
+    // (`outline-color`) e lo sfondo del Toast, su «Annulla» e poi sulla ✕; il fuoco torna su «Annulla» per TT.2.
+    const anello = () => page.evaluate(() => {
+        const qui = document.activeElement;
+        const toast = qui?.closest('.zr-toast');
+        if (!qui || !toast) return null;
+        const rgb = (colore) => (colore.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const luce = (c) => c.map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((somma, v, i) => somma + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const [a, b] = [luce(rgb(getComputedStyle(qui).outlineColor)), luce(rgb(getComputedStyle(toast).backgroundColor))];
+        return { nome: qui.matches('.zr-toast-action') ? 'Annulla' : qui.matches('.zr-toast-close') ? '✕' : qui.tagName, stile: getComputedStyle(qui).outlineStyle, rapporto: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100 };
+    });
+    const anelli = [await anello()];
+    await page.keyboard.press('Tab');
+    anelli.push(await anello());
+    await page.keyboard.press('Shift+Tab');
+    const misurati = anelli.filter(Boolean);
+    scrivi(misurati.length === 2 && misurati.every((a) => a.stile !== 'none' && a.rapporto >= 3) ? '✅' : '❌', ...righe[4], misurati.map((a) => `${a.nome}: ${a.rapporto}:1 (${a.stile})`).join('; ') || 'il fuoco non è nel Toast');
     await pausa(11000);
     const a11 = await quanti();
     await page.keyboard.press('Enter');
@@ -1857,6 +1875,35 @@ async function carteColDito() {
         await pausa(300);
     } else {
         scrivi('❌', 'TC.8', 'una carta che si vede, per il bordo basso', '');
+    }
+    // TC.10 (dalla v5.0.1, richiesta 299; regola di zr-pm-74 del 18/11): una carta tenuta, il dito su un'altra colonna, che si
+    // vede segnata; poi il dito sopra la lavagna, fuori: nessuna colonna si vede segnata, già durante la tenuta (non solo al
+    // rilascio). «Si vede segnata» = il bordo della colonna non è trasparente: il design system dà a `.zr-col` un bordo trasparente
+    // e a `.zr-col.is-over` uno di colore.
+    const decima = await inVista();
+    await page.evaluate(() => { document.querySelector('.zr-lanes')?.scrollIntoView({ block: 'start', behavior: 'instant' }); scrollBy({ top: -140, behavior: 'instant' }); document.querySelector('.zr-main')?.scrollBy({ top: -140, behavior: 'instant' }); });
+    await pausa(300);
+    const sopraLaLavagna = await page.evaluate(() => (document.querySelector('.zr-lanes')?.getBoundingClientRect().top ?? 0) - 60);
+    const decimaOra = await inVista();
+    const segnate = () => page.evaluate(() => [...document.querySelectorAll('.zr-lanes .zr-col')].filter((colonna) => getComputedStyle(colonna).borderTopColor !== 'rgba(0, 0, 0, 0)').length);
+    if (decima && decimaOra && sopraLaLavagna > 48) {
+        const accanto = (await stato()).seconda;
+        await tocca('touchStart', decimaOra.x, decimaOra.y);
+        await pausa(300);
+        await striscia({ x: decimaOra.x, y: decimaOra.y }, accanto ?? { x: decimaOra.x + 120, y: decimaOra.y }, 6, 30);
+        await pausa(200);
+        const dentro = await segnate();
+        await striscia(accanto ?? { x: decimaOra.x + 120, y: decimaOra.y }, { x: decimaOra.x + 40, y: sopraLaLavagna }, 6, 30);
+        await pausa(300);
+        const fuori = await segnate();
+        await foto('tocco-fuori.png');
+        await tocca('touchEnd');
+        await pausa(600);
+        const dopo = await stato();
+        const fase = dopo.carte.find((questa) => questa.id === decimaOra.id)?.fase ?? -1;
+        scrivi(dentro >= 1 && fuori === 0 && fase === decimaOra.fase && !dopo.presa ? '✅' : '❌', 'TC.10', 'col dito fuori dalla lavagna, durante la tenuta, nessuna colonna si vede segnata; lasciata fuori, la carta torna dov\'era (richiesta 299)', `colonne segnate col dito su una colonna: ${dentro}, col dito fuori: ${fuori}; fase ${fase} (era ${decimaOra.fase})`);
+    } else {
+        scrivi('➖', 'TC.10', 'col dito fuori dalla lavagna nessuna colonna segnata: sopra la lavagna non c\'è posto per il dito', `sopra la lavagna: ${sopraLaLavagna} px`);
     }
     }
 

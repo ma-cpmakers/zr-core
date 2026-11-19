@@ -971,13 +971,14 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
     // e nella stessa il padding della lavagna a fine corsa, col dito nel margine (zr-crm, 16/11), 1.480 misurati, più 20; e i rilievi
     // R5 e R6 della revisione della v4.35.2 (i bordi che si vedono, il clic dopo una nuova pressione), 1.521 misurati, più 20;
     // v4.36.1 (R2 della revisione della v4.36.0, sì di zr-pm-74 del 17/11): `dragenter` e `dragleave` quando il dito passa altrove,
-    // 1.563 misurati, più 20.
-    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.583 byte, la misura della v4.36.1 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
+    // 1.563 misurati, più 20; v5.0.1 (richiesta 299, regola di zr-pm-74 del 18/11): il segno della lavagna quando il puntatore ne
+    // esce, 1.658 misurati, più 20.
+    it('il pezzo del trascinamento col dito pesa, con gzip, al più 1.678 byte, la misura della v5.0.1 più 20, e non sta nel JS d\'ingresso né nel pezzo dei rimedi (richiesta 293)', () => {
         const delTocco = soloCornice.pezzi.filter((pezzo) => pezzo.includes(DEL_TOCCO));
 
         expect(volte(soloCornice.js, DEL_TOCCO)).toBe(0);
         expect(delTocco.map((pezzo) => pezzo.includes(DEI_RIMEDI))).toStrictEqual([false]);
-        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_583);
+        expect(gzip(delTocco[0] ?? '')).toBeLessThanOrEqual(1_678);
     });
 
     // Sprint 33 · T1.1 (voce #1915). Chi mostra le notifiche in una pagina sua ha titoli e righe subito, senza aspettare niente:

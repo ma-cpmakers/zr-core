@@ -267,3 +267,51 @@ it('sopra o sotto la lavagna, fuori dalla sua altezza, la carta lasciata torna d
     expect(onMove).not.toHaveBeenCalled();
     expect(colonna('new').contains(carta('d1'))).toBe(true);
 });
+
+// Richiesta 299 (zr-crm-35 su crm.zeiras.com, regola di zr-pm-74 del 18/11): la DealPipeline azzera la colonna segnata solo al
+// `drop` o al `dragend`, e fuori dalla lavagna l'ultima colonna resta `is-over` per tutta la tenuta. Il rimedio segna la lavagna
+// con `data-zr-fuori` quando il puntatore ne esce, e `rimedi.css` spegne lì `.zr-col.is-over`.
+const lavagna = () => document.querySelector<HTMLElement>('.zr-lanes')!;
+
+it('col dito fuori dalla lavagna, durante la tenuta, la lavagna è segnata e la colonna di prima non si vede segnata; rientrato, sì (richiesta 299)', async () => {
+    posa('d1');
+    await act(() => aspetta(300));
+    sottoIlDito = colonna('prop');
+    await act(async () => void dito('pointermove', document.body, 200, 40));
+    expect(colonna('prop').classList.contains('is-over')).toBe(true);
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+
+    // Deve fallire se: col dito fuori la lavagna non è segnata, e la colonna d'origine resta evidenziata fino al rilascio.
+    sottoIlDito = document.body;
+    await act(async () => void dito('pointermove', document.body, 200, 900));
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(true);
+
+    sottoIlDito = colonna('prop');
+    await act(async () => void dito('pointermove', document.body, 200, 40));
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+
+    sottoIlDito = document.body;
+    await act(async () => void dito('pointermove', document.body, 200, 900));
+    await act(async () => void dito('pointerup', document.body, 200, 900));
+    // Deve fallire se: il segno resta sulla lavagna dopo il rilascio, e il prossimo trascinamento parte senza evidenza.
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+});
+
+it('col mouse, il drag del browser che esce dalla lavagna la segna, il dragover dentro la libera, il dragend la libera (richiesta 299)', async () => {
+    const drag = (tipo: string, dove: EventTarget, legato: EventTarget | null = null) =>
+        act(async () => void dove.dispatchEvent(new MouseEvent(tipo, { bubbles: true, cancelable: true, relatedTarget: legato })));
+
+    await drag('dragstart', carta('d1'));
+    await drag('dragover', colonna('prop'));
+    // Deve fallire se: un dragleave da una colonna all'altra, dentro la lavagna, la segna.
+    await drag('dragleave', colonna('prop'), colonna('new'));
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+    await drag('dragleave', colonna('prop'), document.body);
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(true);
+    await drag('dragover', colonna('new'));
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+    await drag('dragleave', colonna('new'), null);
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(true);
+    await drag('dragend', carta('d1'));
+    expect(lavagna().hasAttribute('data-zr-fuori')).toBe(false);
+});

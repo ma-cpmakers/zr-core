@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"},{"name":"AddList"},{"name":"AgendaGrid"},{"name":"ColorPicker"},{"name":"LabelsProvider"},{"name":"NotificationItem"},{"name":"ReorderList"},{"name":"CardColorPicker"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -1705,6 +1705,43 @@
         : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
   }
 
+  /* ---------- CardColorPicker: il colore di una carta, da una tavolozza fissa di 12 colori chiari (richiesta 297) ---------- */
+  /* i nomi sono il contratto con l'API: il backoffice salva il nome, mai un esadecimale; null = nessun colore */
+  var CARD_COLORS = Object.freeze(['rose', 'peach', 'sand', 'lemon', 'lime', 'mint', 'sage', 'aqua', 'azure', 'lavender', 'lilac', 'stone']);
+  var CARD_COLOR_TEXTS = {
+    it: { rose: 'Rosa', peach: 'Pesca', sand: 'Sabbia', lemon: 'Limone', lime: 'Lime', mint: 'Menta', sage: 'Salvia', aqua: 'Acqua', azure: 'Azzurro', lavender: 'Lavanda', lilac: 'Lilla', stone: 'Pietra', none: 'Nessuno', color: 'Colore' },
+    en: { rose: 'Rose', peach: 'Peach', sand: 'Sand', lemon: 'Lemon', lime: 'Lime', mint: 'Mint', sage: 'Sage', aqua: 'Aqua', azure: 'Azure', lavender: 'Lavender', lilac: 'Lilac', stone: 'Stone', none: 'None', color: 'Color' },
+    es: { rose: 'Rosa', peach: 'Melocotón', sand: 'Arena', lemon: 'Limón', lime: 'Lima', mint: 'Menta', sage: 'Salvia', aqua: 'Agua', azure: 'Celeste', lavender: 'Lavanda', lilac: 'Lila', stone: 'Piedra', none: 'Ninguno', color: 'Color' } };
+  function cardColorOf(c) { return CARD_COLORS.indexOf(c) >= 0 ? c : null; }
+  function CardColorPicker(p) {
+    var id = useId('ccl');
+    var names = useCompLabels(CARD_COLOR_TEXTS, p.names);
+    var ctrl = p.value !== undefined;
+    /* un valore fuori dalla tavolozza (un colore tolto, o di domani) non segna nessuna scelta: anche «Nessuno» resta da scegliere e dà onChange(null) */
+    var st = useState(p.defaultValue !== undefined ? cardColorOf(p.defaultValue) : null), val = ctrl ? (p.value != null && !cardColorOf(p.value) ? undefined : cardColorOf(p.value)) : st[0];
+    var desc = p.error || p.hint ? id + '-d' : undefined;
+    var opts = [null].concat(CARD_COLORS); /* «Nessuno» per primo */
+    function pick(c) { if (!ctrl) st[1](c); if (p.onChange) p.onChange(c); }
+    /* le frecce le fanno i radio nativi; Home e Fine portano alla prima e all'ultima scelta e la scelgono, come le frecce */
+    function onKey(e) {
+      if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !e.target.matches || !e.target.matches('input[type="radio"]')) return;
+      var all = e.currentTarget.querySelectorAll('input[type="radio"]:not(:disabled)'); if (!all.length) return;
+      var to = all[e.key === 'Home' ? 0 : all.length - 1]; e.preventDefault(); to.focus(); if (!to.checked) pick(to.value || null);
+    }
+    return h('fieldset', { id: p.id, className: cx('zr-color-picker zr-card-color-picker', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
+      p.label ? h('legend', { className: 'zr-field-label' }, p.label) : null,
+      h('div', { className: 'zr-color-list', onKeyDown: onKey }, opts.map(function (c) {
+        var name = names[c || 'none'];
+        return h('label', { key: c || 'none', className: 'zr-color', title: name },
+          h('input', { type: 'radio', name: p.name || id, value: c || '', checked: c === val, 'aria-invalid': p.error ? true : undefined,
+            onChange: function () { pick(c); } }),
+          h('span', { className: cx('zr-color-dot', c ? 'is-card-' + c : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: 'zr-visually-hidden' }, name));
+      })),
+      p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
+        : p.hint ? h('p', { id: desc, className: 'zr-field-msg' }, p.hint) : null);
+  }
+
   /* ---------- ToggleGroup: scelte a pulsanti con lo stato premuto, una o più (richiesta 141) ---------- */
   function ToggleGroup(p) {
     var id = useId('tgl');
@@ -2563,10 +2600,12 @@
 
   function dealMoney(p) { if (p.formatAmount) try { return p.formatAmount(p.amount); } catch (e) {} return fmtMoney(p.amount, p.currency); }
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy', 'color', 'colorNames']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length && !p.busy ? p.actions : null, name = p.actionsLabel || KANBAN_TEXTS.cardActions;
+    /* il colore della carta (richiesta 297): lo sfondo di tutta la carta, e il suo nome per il lettore di schermo */
+    var cc = cardColorOf(p.color), ccn = useCompLabels(CARD_COLOR_TEXTS, p.colorNames);
     /* il «⋯» delle azioni, come in KanbanCard (richiesta 157): fuori dal Tab, dalla scheda con «.», Maiusc+F10 o il tasto Menu; al tocco su 44 px (richiesta 1) */
     if (acts) rest.onKeyDown = function (e) {
       if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
@@ -2574,12 +2613,13 @@
     };
     /* busy: lo spostamento aspetta il modulo; la scheda si vede occupata e non si trascina */
     if (p.busy) rest = Object.assign(rest, { 'aria-busy': true, draggable: false });
-    var card = h('article', Object.assign({ tabIndex: 0, 'aria-keyshortcuts': acts ? '. Shift+F10' : undefined }, rest, { className: cx('zr-card zr-deal', p.dragging && 'is-dragging', acts && 'has-actions', acts && !p.owner && 'is-ownerless', p.busy && 'is-busy', p.className) }),
+    var card = h('article', Object.assign({ tabIndex: 0, 'aria-keyshortcuts': acts ? '. Shift+F10' : undefined }, rest, { className: cx('zr-card zr-deal', cc && 'has-color is-card-' + cc, p.dragging && 'is-dragging', acts && 'has-actions', acts && !p.owner && 'is-ownerless', p.busy && 'is-busy', p.className) }),
       acts ? h('button', { ref: btn, type: 'button', tabIndex: -1, draggable: false, className: 'zr-card-actions', 'aria-label': name, 'aria-haspopup': 'menu', 'aria-expanded': menu,
         onMouseDown: function (e) { e.stopPropagation(); }, onClick: function (e) { e.stopPropagation(); kb.current = false; ms[1](!menu); } }, h(Icon, { name: 'more', size: 16 })) : null,
       h('div', { className: 'zr-deal-top' }, p.company ? h('span', { className: 'zr-deal-company' }, cIcon ? h(Icon, { name: cIcon, size: 14 }) : null, p.company) : h('span', null),
         p.busy ? h('span', { className: 'zr-btn-spin zr-deal-spin', 'aria-hidden': true }) : p.owner ? h(Avatar, { name: p.owner, size: 'sm' }) : null),
       h('h4', { className: 'zr-card-title' }, p.title),
+      cc ? h('span', { className: 'zr-visually-hidden' }, ccn.color + ': ' + ccn[cc]) : null,
       h('div', { className: 'zr-deal-foot' },
         h('strong', { className: 'zr-deal-amount' }, p.amountText != null ? p.amountText : dealMoney(p)), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
@@ -2724,7 +2764,7 @@
             var extra = p.dealActions ? p.dealActions(d) || [] : [];
             if (extra.length) acts = acts.concat([{ sep: true }], extra);
             /* la scheda non è un role="button": dentro c'è il «⋯», che deve restare raggiungibile; «Apri» sta anche nel menu */
-            return h(DealCard, Object.assign({ key: d.id, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
+            return h(DealCard, Object.assign({ key: d.id, colorNames: p.colorNames, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
               draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
               onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
               onKeyDown: p.onOpen ? function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onOpen(d); } } : undefined })); }).concat(more ? [more] : []));
@@ -3097,7 +3137,7 @@
     KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard, AddList: AddList, KANBAN_TEXTS: KANBAN_TEXTS,
     SiteHeader: SiteHeader, Hero: Hero, SectionHeading: SectionHeading, StepList: StepList, AudienceGrid: AudienceGrid,
     PricingCard: PricingCard, FAQ: FAQ, CtaBand: CtaBand, SiteFooter: SiteFooter, LandingPage: LandingPage, LanguageSwitch: LanguageSwitch, SectorGrid: SectorGrid, Breadcrumb: Breadcrumb,
-    ICON_NAMES: ICON_NAMES, BrandIcon: BrandIcon, BRAND_ICON_NAMES: BRAND_ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, AgendaGrid: AgendaGrid, AGENDA_LABELS: AGENDA_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
+    ICON_NAMES: ICON_NAMES, BrandIcon: BrandIcon, BRAND_ICON_NAMES: BRAND_ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, CardColorPicker: CardColorPicker, CARD_COLORS: CARD_COLORS, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, AgendaGrid: AgendaGrid, AGENDA_LABELS: AGENDA_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, ReorderList: ReorderList, REORDER_LABELS: REORDER_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
     ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, AppointmentItem: AppointmentItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER

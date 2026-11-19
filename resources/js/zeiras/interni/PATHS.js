@@ -1,6 +1,6 @@
 // Generato da scripts/componenti.mjs: non si ritocca a mano.
 // Sono righe private di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) che servono
-// a 59 nomi registrati: stanno qui una volta sola e chi le usa le importa.
+// a 60 nomi registrati: stanno qui una volta sola e chi le usa le importa.
 // A un riallineamento si rigenera con `npm run componenti`.
 
   /* Icone: tratto 1.75 su griglia 24, angoli arrotondati */

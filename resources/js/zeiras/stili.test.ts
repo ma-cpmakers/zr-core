@@ -285,7 +285,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890 e 3891; v4.35.2, richiesta 293; v4.36.0, richiesta 294)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890 e 3891; v4.35.2, richiesta 293; v4.36.0, richiesta 294; v5.0.1, richiesta 299)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
@@ -297,6 +297,8 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
             '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
             '.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }',
+            '.zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }',
+            '.zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }',
         ].join(' '));
     });
 
@@ -384,13 +386,17 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
 
     // Voce #3891 (richiesta 291; zr-pm-74 15/11, Decisione 25442). Il Toast ha lo sfondo var(--ink) e l'anello del fuoco del design
     // system su «Annulla» e sulla ✕ è var(--focus): sotto 3:1 in tutti e due i temi (WCAG 1.4.11). Il rimedio gli dà il colore del
-    // testo del Toast, var(--surface). La prova in Chromium (uat-cornice --accessibilita, AC.4 su staff.html) è nella voce.
+    // testo del Toast, var(--surface). La prova in Chromium è la riga TT.5 di uat-cornice (--staff, dalla v5.0.1: R1 della revisione).
     it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del Toast, almeno 3:1 sullo sfondo (voce 3891, richiesta 291)', () => {
         // Il bundle di oggi dà ai due pulsanti l'anello var(--focus) e al Toast lo sfondo var(--ink): quando la 291 arriva, questo
         // caso diventa rosso e il rimedio si toglie.
         expect(bundleCss).toMatch(/:where\([^)]*\.zr-toast-action, \.zr-toast-close[^)]*\):focus-visible \{ outline: \d+px solid var\(--focus\);/);
         expect(bundleCss).toMatch(/\.zr-toast \{[^}]*background: var\(--ink\);[^}]*color: var\(--surface\);/);
         expect(bundleCss).not.toMatch(/\.zr-toast[^{]*:focus-visible[^{]*\{[^}]*outline-color/);
+        // R2 della revisione della 3891 (v5.0.1): la 291 può arrivare anche come `--focus` ridefinito dentro il Toast, o come
+        // `outline:` intero su una regola del Toast col fuoco: anche così il caso diventa rosso.
+        expect(bundleCss).not.toMatch(/\.zr-toast[^{,]*\{[^}]*--focus\s*:/);
+        expect(bundleCss).not.toMatch(/(?:^|\n|\} ?)\.zr-toast[^{,]*:focus-visible[^{]*\{[^}]*outline\s*:/);
         const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
         const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
         const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
@@ -403,6 +409,21 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             expect(rapporto(luce(colore('focus')), luce(colore('ink')))).toBeLessThan(3);
             expect(rapporto(luce(colore('surface')), luce(colore('ink')))).toBeGreaterThanOrEqual(3);
         }
+    });
+});
+
+// Richiesta 299 (zr-crm-35, regola di zr-pm-74 del 18/11; v5.0.1). La DealPipeline azzera la colonna segnata solo al rilascio:
+// fuori dalla lavagna resources/js/tocco.ts la segna con data-zr-fuori, e rimedi.css rimette alla colonna lo sfondo e il bordo
+// di .zr-col (e della fase vinta). I casi del segno sono in tocco.test.tsx; in Chromium, TC.10 di uat-cornice (--tocco).
+describe('fuori dalla lavagna nessuna colonna segnata (v5.0.1, richiesta 299)', () => {
+    it('rimedi.css rimette alla colonna segnata, sulla lavagna con data-zr-fuori, i valori di .zr-col del bundle: i token, nessun valore a mano', () => {
+        expect(bundleCss).toMatch(/\.zr-col \{[^}]*background: var\(--surface-sunken\);[^}]*border: 1px solid transparent;/);
+        expect(bundleCss).toContain('.zr-col.is-over { background: var(--pine-soft); border-color: var(--pine); }');
+        expect(bundleCss).toContain('.zr-col.is-won { background: var(--success-soft); }');
+    });
+
+    it('la DealPipeline di oggi non ascolta dragleave: quando la 299 arriva, questo caso diventa rosso e il rimedio si toglie', () => {
+        expect(readFileSync(delRepo('resources/js/zeiras/DealPipeline.js'), 'utf8')).not.toMatch(/onDragLeave/);
     });
 });
 
