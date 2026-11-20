@@ -1,0 +1,13 @@
+{
+    "choose": "Choose a file",
+    "drop": "or drag it here",
+    "remove": "Remove",
+    "removeFile": "Remove {name}",
+    "chosen": "File chosen: {name}",
+    "removed": "File removed",
+    "wrongType": "{name} is not an accepted file type. Accepted: {types}.",
+    "tooBig": "{name} is too large: {size} at most.",
+    "onlyOne": "Drag one file at a time.",
+    "required": "required",
+    "missing": "The file is missing: it is required."
+}

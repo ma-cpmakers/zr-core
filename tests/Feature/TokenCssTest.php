@@ -140,6 +140,15 @@ function valoriAMano(iterable $file): array
         if ($sorgente->getFilename() === 'avanzamento.css') {
             $testo = (string) preg_replace('/(#nprogress \.bar \{[^}]*?)height:\s*2px;/', '$1', $testo);
         }
+        // Voce 3813: l'anello di fuoco del design system sulla zona del campo file, scritto per parti nello stile dell'elemento
+        // (`outlineWidth` e `outlineOffset` a 2px, come `outline: 2px solid var(--focus)` e `outline-offset: 2px` di bundle.css), e
+        // il caso che lo aspetta. Solo lì, solo quelli.
+        if ($sorgente->getFilename() === 'campo-file.tsx') {
+            $testo = (string) preg_replace("/outline(?:Width|Offset): sopra \\? '2px'/", '', $testo);
+        }
+        if ($sorgente->getFilename() === 'campo-file.test.tsx') {
+            $testo = str_replace("const ACCESO = '2px solid var(--focus)';", '', $testo);
+        }
         // E il caso di stili.test.ts che controlla lo stesso spessore: il blocco atteso e l'unica misura delle regole.
         if ($sorgente->getFilename() === 'stili.test.ts') {
             $testo = (string) preg_replace(["/(blocco\('#nprogress \.bar'\)\)\.toBe\('[^']*?)height:\s*2px;/", "/toStrictEqual\(\['2px'\]\)/"], ['$1', ''], $testo);

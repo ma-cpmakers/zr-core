@@ -23,3 +23,6 @@ export { CorniceDelCliente, type CorniceDelClienteProps, type DatiDelCliente } f
 // Il Toast di turno (dalla `v5.0.0`): `mostraToast` e `chiudiToast`, con la durata, «Annulla» e un Toast alla volta della cornice.
 // In coda, come il Toast della cornice; un'app che non lo usa non lo porta nella build.
 export { chiudiToast, mostraToast, type ToastDaMostrare } from './turno';
+// Il campo file con la zona di rilascio (dalla `v5.1.0`, voce #3813): provvisorio, finché il design system non porta il suo
+// (richiesta 264). In coda, come il Toast di turno; un'app che non lo usa non lo porta nella build.
+export { CampoFile, type CampoFileProps, type EtichetteDelCampoFile } from './campo-file';

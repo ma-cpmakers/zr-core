@@ -913,7 +913,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_685);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.640 byte, il tetto della v4.35.2 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.951 byte, il tetto della v5.1.0 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293; richiesta 259)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -946,8 +946,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // tetto 1.472, per eccezione senza contropartita (sì di zr-pm-07 dell'08/11: accessibilità del selettore, si toglie con la 240).
         // v4.35.2 (richiesta 293, sì di zr-pm-74 del 16/11): il dito su una carta della DealPipeline chiede il pezzo del tocco
         // (`tocco.ts`), chiesto quando entra una lavagna, e gli passa la pressione e i `touchmove` della lavagna: 1.620 misurati,
-        // tetto alla misura più 20; si toglie con la 293.
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_640);
+        // tetto alla misura più 20; si toglie con la 293. v5.1.0 (richiesta 259, Decisione 26298, sì di zr-pm-74 del 18/11): la
+        // carta della DealCard senza importo, «—» che si vede e «valore non indicato» che si legge, coi testi delle tre lingue
+        // (`resources/lingue/rimedi/`): 1.636 prima, 1.931 dopo, tetto alla misura più 20; si toglie con la 259.
+        expect(gzip(rimedi)).toBeLessThanOrEqual(1_951);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {

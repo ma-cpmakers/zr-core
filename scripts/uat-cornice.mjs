@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente] [--spazio] [--barra] [--tocco] [--scuro]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente | --campo-file] [--spazio] [--barra] [--tocco] [--scuro]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -73,6 +73,9 @@ let telefonoNuovo;
 // che la pagina si disegni, come lo scrive il modulo, e il sistema chiaro —, e tutte le righe, axe compreso, girano così; le righe
 // TS guardano i quattro casi del tema. Prima del tag zr-core la lancia su `layout.html`, `staff.html` e `cliente.html` (con `--cliente`).
 const colTemaScuro = argomenti.includes('--scuro') && argomenti.splice(argomenti.indexOf('--scuro'), 1).length > 0;
+// --campo-file (dalla v5.1.0, #3813): la pagina è quella del campo file con la zona di rilascio, senza la cornice: girano axe e le
+// righe CF, la CSP ed E.1. Prima del tag zr-core la lancia su `campo-file.html`, in italiano, spagnolo e inglese (`?lingua=`).
+const colCampoFile = argomenti.includes('--campo-file') && argomenti.splice(argomenti.indexOf('--campo-file'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1487,6 +1490,128 @@ async function toastDiTurno(page, apri) {
     scrivi(insieme.length === 1 && insieme[0].includes('UAT salvata') ? '✅' : '❌', ...righe[2], `a schermo ${insieme.length}: ${insieme.map((t) => `«${t}»`).join(', ')}`);
 }
 
+/**
+ * CF (dalla v5.1.0, voce #3813): il campo file con la zona di rilascio, sulla pagina di prova `campo-file.html` (CSV o PDF, al
+ * più 1 MB). CF.1 la scelta dal pulsante, CF.2 il trascinamento con l'anello di fuoco, CF.3 gli errori di tipo e di dimensione,
+ * CF.4 «Togli» col fuoco e lo stesso file scelto di nuovo, CF.5 a 390 px niente scorrimento di lato; in ognuna l'annuncio della
+ * regione live, nella lingua della pagina. I testi attesi vengono dai file delle lingue del pacchetto.
+ */
+async function campoFile(page, apri) {
+    await apri(indirizzo);
+    await page.waitForSelector('[data-zona-file]', { timeout: 15000 });
+    await pausa(300);
+    const lingua = await page.evaluate(() => document.documentElement.lang);
+    const testi = JSON.parse(readFileSync(new URL(`../resources/lingue/campo-file/${['it', 'es'].includes(lingua) ? lingua : 'en'}.json`, import.meta.url), 'utf8'));
+    const sostituisci = (testo, valori) => testo.replace(/\{(\w+)\}/g, (tutto, chiave) => valori[chiave] ?? tutto);
+    const stato = () =>
+        page.evaluate(() => {
+            const zona = document.querySelector('[data-zona-file]');
+            const stile = getComputedStyle(zona);
+            const prova = document.createElement('span');
+            prova.style.color = 'var(--focus)';
+            document.body.append(prova);
+            const fuoco = getComputedStyle(prova).color;
+            prova.style.color = 'var(--danger)';
+            const pericolo = getComputedStyle(prova).color;
+            prova.remove();
+            return {
+                zona: zona.textContent,
+                anello: stile.outlineStyle === 'solid' && stile.outlineWidth === '2px' && stile.outlineColor === fuoco,
+                bordoDiErrore: stile.borderTopColor === pericolo,
+                live: document.querySelector('[aria-live="polite"]')?.textContent ?? null,
+                errore: document.querySelector('.zr-field-msg.is-error')?.textContent ?? null,
+                invalido: zona.querySelector('button')?.getAttribute('aria-invalid'),
+                fuocoSuScegli: document.activeElement === zona.querySelector('button'),
+                nelForm: document.querySelector('input[type=file]')?.files?.[0]?.name ?? null,
+                alModulo: document.querySelector('[data-uat-file]')?.textContent,
+                altezza: zona.getBoundingClientRect().height,
+            };
+        });
+    const dallaFinestra = async (nome, byte, mimeType) => {
+        const [finestra] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: testi.choose }).click()]);
+        await finestra.setFiles({ name: nome, mimeType, buffer: Buffer.alloc(byte) });
+        await pausa(200);
+    };
+    /** Un trascinamento finto: `dragenter`, `dragleave` o `drop` con un file, su un elemento della zona. */
+    const trascina = (tipo, selettore, nome) =>
+        page.evaluate(
+            ([tipo, selettore, nome]) => {
+                const dati = new DataTransfer();
+                if (nome) dati.items.add(new File(['uat'], nome, { type: 'application/pdf' }));
+                const evento = new DragEvent(tipo, { bubbles: true, cancelable: true, dataTransfer: dati });
+                document.querySelector(selettore).dispatchEvent(evento);
+                return evento.defaultPrevented;
+            },
+            [tipo, selettore, nome],
+        );
+
+    await controllaAxe(page, 'A.1', 'campo file vuoto, a 1280 px');
+    const vuoto = await stato();
+    await dallaFinestra('uat-estratto.csv', 2048, 'text/csv');
+    const scelto = await stato();
+    scrivi(
+        scelto.zona.includes('uat-estratto.csv') && scelto.alModulo === 'uat-estratto.csv 2048' && vuoto.live === '' && scelto.live === sostituisci(testi.chosen, { name: 'uat-estratto.csv' }) && vuoto.zona.includes(testi.drop) ? '✅' : '❌',
+        'CF.1',
+        `«${testi.choose}» apre la scelta del sistema, il file si vede e arriva al modulo, e la regione live (vuota prima) lo dice`,
+        `zona «${scelto.zona}», al modulo «${scelto.alModulo}», live «${scelto.live}»`,
+    );
+    await page.screenshot({ path: join(cartella, `campo-file-scelto-${lingua}.png`) });
+
+    await trascina('dragenter', '[data-zona-file]', 'uat-estratto.pdf');
+    const acceso = await stato();
+    await page.screenshot({ path: join(cartella, `campo-file-anello-${lingua}.png`) });
+    await trascina('dragenter', '[data-zona-file] button', 'uat-estratto.pdf');
+    await trascina('dragleave', '[data-zona-file]', 'uat-estratto.pdf');
+    const sopraIlPulsante = await stato();
+    const fermato = await trascina('drop', '[data-zona-file] button', 'uat-estratto.pdf');
+    await pausa(200);
+    const rilasciato = await stato();
+    scrivi(
+        acceso.anello && sopraIlPulsante.anello && fermato && !rilasciato.anello && rilasciato.alModulo === 'uat-estratto.pdf 3' && rilasciato.nelForm === 'uat-estratto.pdf' && rilasciato.live === sostituisci(testi.chosen, { name: 'uat-estratto.pdf' }) ? '✅' : '❌',
+        'CF.2',
+        'il trascinamento accende l\'anello di fuoco del design system (anche sopra il pulsante), il rilascio lo spegne, sceglie il file e lo mette nel form',
+        `anello ${acceso.anello}/${sopraIlPulsante.anello}/${rilasciato.anello}, preventDefault ${fermato}, al modulo «${rilasciato.alModulo}», nel form «${rilasciato.nelForm}»`,
+    );
+
+    await dallaFinestra('uat-foto.png', 10, 'image/png');
+    const tipo = await stato();
+    await page.screenshot({ path: join(cartella, `campo-file-errore-${lingua}.png`) });
+    await controllaAxe(page, 'A.2', 'campo file con l\'errore');
+    await dallaFinestra('uat-grande.csv', 1_000_001, 'text/csv');
+    const grande = await stato();
+    const unMega = await page.evaluate((lingua) => new Intl.NumberFormat(lingua, { style: 'unit', unit: 'megabyte', maximumFractionDigits: 1 }).format(1), lingua);
+    const erroreDiTipo = sostituisci(testi.wrongType, { name: 'uat-foto.png', types: 'CSV, PDF' });
+    const erroreDiPeso = sostituisci(testi.tooBig, { name: 'uat-grande.csv', size: unMega });
+    scrivi(
+        tipo.errore === erroreDiTipo && tipo.live === erroreDiTipo && tipo.invalido === 'true' && tipo.bordoDiErrore && tipo.alModulo === 'uat-estratto.pdf 3' && grande.errore === erroreDiPeso && grande.live === erroreDiPeso && grande.alModulo === 'uat-estratto.pdf 3' && tipo.nelForm === 'uat-estratto.pdf' && grande.nelForm === 'uat-estratto.pdf' ? '✅' : '❌',
+        'CF.3',
+        'un PNG e un CSV di 1 MB + 1 byte non si scelgono: l\'errore dice i tipi ammessi e la dimensione massima, la regione live lo annuncia, e nel form resta il file di prima',
+        `«${tipo.errore}» · «${grande.errore}», aria-invalid ${tipo.invalido}, bordo ${tipo.bordoDiErrore}, al modulo «${grande.alModulo}», nel form «${tipo.nelForm}»/«${grande.nelForm}»`,
+    );
+
+    await dallaFinestra('uat-estratto.csv', 2048, 'text/csv');
+    await page.getByRole('button', { name: sostituisci(testi.removeFile, { name: 'uat-estratto.csv' }) }).focus();
+    await page.keyboard.press('Enter');
+    await pausa(200);
+    const tolto = await stato();
+    await dallaFinestra('uat-estratto.csv', 2048, 'text/csv');
+    const dinuovo = await stato();
+    scrivi(
+        tolto.fuocoSuScegli && tolto.alModulo === 'nessuno' && tolto.nelForm === null && !tolto.zona.includes('uat-estratto.csv') && tolto.live === testi.removed && tolto.errore === null && dinuovo.alModulo === 'uat-estratto.csv 2048' ? '✅' : '❌',
+        'CF.4',
+        `«${testi.remove}» da tastiera toglie il file, il fuoco torna su «${testi.choose}», la regione live lo dice, e lo stesso file si sceglie di nuovo`,
+        `fuoco su «${testi.choose}» ${tolto.fuocoSuScegli}, al modulo «${tolto.alModulo}» poi «${dinuovo.alModulo}», live «${tolto.live}»`,
+    );
+
+    await page.setViewportSize({ width: 390, height: 800 });
+    await pausa(200);
+    const largo = await page.evaluate(() => document.documentElement.scrollWidth);
+    const stretto = await stato();
+    await page.screenshot({ path: join(cartella, `campo-file-390-${lingua}.png`) });
+    scrivi(largo <= 390 && stretto.altezza >= 44 ? '✅' : '❌', 'CF.5', 'a 390 px niente scorrimento di lato, e la zona è alta almeno 44 px', `scrollWidth ${largo}, zona ${Math.round(stretto.altezza)} px`);
+    await controllaAxe(page, 'A.3', 'campo file a 390 px');
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -1515,6 +1640,12 @@ async function uat(page, apri) {
                 new MutationObserver((_, osservatore) => document.documentElement && (metti(), osservatore.disconnect())).observe(document, { childList: true });
             }
         });
+    }
+    if (colCampoFile) {
+        await campoFile(page, apri);
+        cspSenzaBlocchi(csp.politica, csp.blocchi);
+        scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
+        return;
     }
     const registrata = await registraLaLingua(page);
     await apri(indirizzo);
@@ -1791,6 +1922,19 @@ async function carteColDito() {
         return;
     }
     scrivi(prima.azione === 'manipulation' ? '✅' : '❌', 'TC.5', 'sulle carte touch-action: manipulation (il dito scorre e ingrandisce come sempre)', prima.azione);
+
+    // TC.11 (dalla v5.1.0, richiesta 259, rimedio provvisorio: Decisione 26298 di zr-pm-74): la carta 1.2 senza importo
+    // (`amountText="—"`). Si vede «—», e il lettore di schermo legge il testo nascosto (in italiano «valore non indicato»), non il
+    // trattino: il nome che Chromium dà alla carta dall'albero dell'accessibilità.
+    const senzaImporto = page.locator('[data-deal-id="t12"]');
+    if (await senzaImporto.count()) {
+        const visto = await senzaImporto.evaluate((carta) => [...(carta.querySelector('.zr-deal-amount')?.childNodes ?? [])].map((nodo) => (nodo.nodeType === 1 && nodo.classList.contains('zr-visually-hidden') ? '' : nodo.textContent)).join(''));
+        const nascosto = await senzaImporto.evaluate((carta) => carta.querySelector('.zr-deal-amount .zr-visually-hidden')?.textContent ?? '');
+        const letto = await senzaImporto.ariaSnapshot();
+        scrivi(visto === '—' && nascosto !== '' && letto.includes(nascosto) && !letto.includes('—') ? '✅' : '❌', 'TC.11', 'la carta senza importo mostra «—» e il lettore di schermo legge il testo nascosto, non il trattino (richiesta 259)', `si vede: «${visto}», si legge: ${JSON.stringify(letto.replace(/\s+/g, ' ').slice(0, 160))}`);
+    } else {
+        scrivi('➖', 'TC.11', 'la carta senza importo: la pagina non ha la carta 1.2', '');
+    }
 
     // Sulla pagina con la lavagna dentro un margine (`?lavagna=margine`, dalla v4.35.4) girano solo TC.6 e TC.7: la seconda colonna lì
     // comincia oltre il bordo, e TC.1-TC.4 hanno i loro punti sulla lavagna di `?lavagna=1`.

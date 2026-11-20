@@ -5155,7 +5155,7 @@ it('il README importa dall\'ingresso per le app solo nomi che quell\'ingresso es
     // Un esempio che importa dall'ingresso per le app il nome che lì non c'è.
     $conZeiras = str_replace('import { Cornice, type DatiDellaCornice } from \'../../vendor/zeiras/zr-core/resources/js/app\';', 'import { Cornice, Zeiras } from \'../../vendor/zeiras/zr-core/resources/js/app\';', $readme);
 
-    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice', 'mostraToast'])
+    expect($importati($readme))->toBe(['Cornice', 'DatiDellaCornice', 'CorniceDelloStaff', 'CorniceDelCliente', 'DatiDelCliente', 'ToastDellaCornice', 'mostraToast', 'CampoFile'])
         ->and(array_values(array_diff($importati($readme), $esportati)))->toBe([])
         ->and($conZeiras)->not->toBe($readme)
         ->and(array_values(array_diff($importati($conZeiras), $esportati)))->toBe(['Zeiras']);
@@ -5244,10 +5244,10 @@ it('la guida dice a un modulo che nasce di partire dall\'ingresso per le app, co
     'il test di allineamento' => ['lo sha256 di `bundle.js` resta il segno che il design system è cambiato'],
 ]);
 
-it('le pagine di prova sono cinque, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff; dalla v4.13.0 cliente.html, la cornice del cliente: sprint 110 · T3.1)', function () {
+it('le pagine di prova sono sei, e quella dell\'ingresso per le app prende la cornice da lì e scrive se window.Zeiras c\'è (sprint 25 · T2.3; dalla v3.16.0 anche staff.html, la cornice dello staff; dalla v4.13.0 cliente.html, la cornice del cliente: sprint 110 · T3.1; dalla v5.1.0 campo-file.html, il campo file: voce #3813)', function () {
     $costruzione = (string) file_get_contents(__DIR__.'/../../vite.demo.config.ts');
 
-    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html', 'cliente.html']"))->toBe(1)
+    expect(substr_count($costruzione, "input: ['index.html', 'app.html', 'layout.html', 'staff.html', 'cliente.html', 'campo-file.html']"))->toBe(1)
         ->and(scritteNellaPaginaDiProva('app.html', ['<script type="module" src="./app.tsx"></script>']))->toBe(['<script type="module" src="./app.tsx"></script>' => 1])
         ->and(scritteNellaPaginaDiProva('app.tsx', ["import { Cornice } from '../js/app';", "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}"]))
         ->toBe(["import { Cornice } from '../js/app';" => 1, "window.Zeiras: {'Zeiras' in window ? 'presente' : 'assente'}" => 1])
@@ -5684,7 +5684,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // v4.34.1 (revisione della v4.34.0, R2): a 1.859, la misura più 20 (sì di zr-pm-74, 15/11).
     // v4.35.2 (richiesta 293, sì di zr-pm-74 16/11): i rimedi a 1.640 e il pezzo del tocco a 1.240, la misura più 20.
     'i pesi: il pezzo del tocco' => ['pesi', 'e dalla `v4.35.2` 1.240 il pezzo del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11)'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.640 i rimedi (1.472 fino alla `v4.35.1`), 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).

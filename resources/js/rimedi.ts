@@ -6,6 +6,9 @@
  * si toglie quando il componente porta il suo.
  */
 
+import { fileDelleLingue } from './lingue';
+import inglese from '../lingue/rimedi/en.json';
+
 /**
  * Nel pannello delle notifiche l'avatar di chi ha fatto è un `role="img"` col nome, dentro il pulsante della notifica: quando il
  * titolo della stessa riga dice già quel nome, un lettore di schermo lo leggeva due volte (riga 85 delle richieste al design
@@ -242,6 +245,31 @@ function nomiDaiTesti(): void {
     });
 }
 
+/** I testi dei rimedi, per lingua: un file loro (`resources/lingue/rimedi/`), dalla `v5.1.0`. */
+const testi = import.meta.glob<typeof inglese>('../lingue/rimedi/*.json', { eager: true, import: 'default' });
+
+/**
+ * Richiesta 259 al design system, rimedio provvisorio (`v5.1.0`, Decisione 26298, sì di zr-pm-74 del 18/11; #3930 di zr-crm): la
+ * `DealCard` di un'opportunità senza importo. Il modulo scrive `amountText="—"`, e un trattino da solo il lettore di schermo lo
+ * tace. Allora «—» si vede e non si legge, e si legge «valore non indicato» nella lingua della pagina (`<html lang>`), in
+ * inglese in una lingua che zr-core non ha. Quando `amountText` cambia React riscrive il testo per intero, e i due pezzi messi
+ * qui se ne vanno con lui; se torna «—», tornano. Anche sulle carte della `DealPipeline`. Si toglie quando la `DealCard` lo fa da sé.
+ */
+function importiNonIndicati(): void {
+    document.querySelectorAll('.zr-deal-amount').forEach((importo) => {
+        if (!importo.childElementCount && importo.textContent === '—') {
+            const { perCodice, fileDi } = fileDelleLingue(testi);
+            const visto = document.createElement('span');
+            const letto = document.createElement('span');
+            visto.setAttribute('aria-hidden', 'true');
+            visto.textContent = '—';
+            letto.className = 'zr-visually-hidden';
+            letto.textContent = perCodice.get(fileDi(document.documentElement.lang) ?? '')?.noAmount?.trim() || inglese.noAmount;
+            importo.replaceChildren(visto, letto);
+        }
+    });
+}
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
@@ -260,14 +288,19 @@ new MutationObserver((cambi) => {
     azioniSottoLaRicerca();
     cassetto();
     nomiDaiTesti();
+    importiNonIndicati();
     tastiera?.aOgniCambio();
     lavagneColDito();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label', 'draggable'] });
+
+// Richiesta 259: da un importo a «—» React cambia solo il testo che c'è (`nodeValue`), e l'ascolto di sopra non lo vede.
+new MutationObserver((cambi) => cambi.some((cambio) => cambio.target.parentElement?.matches('.zr-deal-amount')) && conLaCornice() && importiNonIndicati()).observe(document, { characterData: true, subtree: true });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
     nomiDaiTesti();
+    importiNonIndicati();
     lavagneColDito();
 }
 
