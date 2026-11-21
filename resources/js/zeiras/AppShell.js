@@ -13,7 +13,7 @@ import { DEFAULT_NAV, IS_MAC, SIDE_DLG, TOP_NARROW, sideShown, useOutside } from
 import { countParts } from './interni/countParts';
 import { Icon } from './Icon';
 import { Button } from './Button';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { APPSHELL_LABELS } from './APPSHELL_LABELS';
 import { Logo } from './Logo';
 import { NotificationItem } from './NotificationItem';

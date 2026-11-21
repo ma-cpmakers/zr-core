@@ -285,7 +285,9 @@ function stiliUsati(righe, { proprie }) {
 // Il posto lo dice chi la usa: la dichiarazione di un nome registrato sta nel suo modulo; una riga privata che serve a un nome
 // registrato solo (anche attraverso altre righe) sta nel suo modulo; una che serve a più nomi sta in resources/js/zeiras/interni/,
 // insieme alle altre che servono agli stessi nomi, in un modulo che prende il nome della prima. `Avatar.Stack = AvatarStack;` sta
-// col nome a cui dà la proprietà. Ogni altra istruzione senza dichiarazione ferma lo script. Un modulo importa da un altro i nomi
+// da sola nel modulo pubblico del nome a cui dà la proprietà (Avatar.js, che ri-esporta Avatar), e il nome sta in interni/ (lotto
+// 0531): gli altri moduli lo importano da lì, così chi usa Avatar dentro un componente (la cornice) non porta anche AvatarStack, e
+// chi prende Avatar per nome lo riceve con Stack. Ogni altra istruzione senza dichiarazione ferma lo script. Un modulo importa da un altro i nomi
 // che usa; se un modulo legge appena caricato un nome di un altro che a sua volta lo importa (un giro), lo script si ferma: in un
 // giro il nome letto subito può non esserci ancora. Le righe le legge il parser della build (`parseAst` di Vite).
 const COMMENTO_GENERATO = (...cheCosa) => ['// Generato da scripts/componenti.mjs: non si ritocca a mano.', ...cheCosa.map((riga) => `// ${riga}`), '// A un riallineamento si rigenera con `npm run componenti`.'];
@@ -453,10 +455,15 @@ export function moduli({ corpo, nomi }, divisi = undefined) {
     const unisci = (a, b) => {
         capo[radice(a)] = radice(b);
     };
+    // Le istruzioni che danno una proprietà a un nome registrato: ognuna nel modulo pubblico di quel nome, da sola (vedi sopra).
+    const proprietaDi = new Map();
     unita.forEach((una, indice) => {
         if (una.proprietaDi !== null) {
             vuole(dove.has(una.proprietaDi), `la riga ${una.numero} dà una proprietà a «${una.proprietaDi}», che il corpo del bundle non dichiara`);
-            unisci(indice, dove.get(una.proprietaDi));
+            if (nomi.includes(una.proprietaDi)) {
+                vuole(!proprietaDi.has(una.proprietaDi), `due righe danno una proprietà a «${una.proprietaDi}»: lo script ne mette una sola nel suo modulo pubblico`);
+                proprietaDi.set(una.proprietaDi, indice);
+            } else unisci(indice, dove.get(una.proprietaDi));
         }
         for (const nome of una.assegnati) if (dove.has(nome) && dove.get(nome) !== indice) unisci(indice, dove.get(nome));
     });
@@ -492,6 +499,7 @@ export function moduli({ corpo, nomi }, divisi = undefined) {
     const perNome = new Map();
     const interni = new Map();
     const modulo = unita.map((una, indice) => {
+        if (una.proprietaDi !== null && proprietaDi.get(una.proprietaDi) === indice) return null;
         const registrati = una.dichiarati.filter((nome) => nomi.includes(nome));
         vuole(registrati.length <= 1, `la riga ${una.numero} dichiara più nomi registrati (${registrati.join(', ')}): lo script dà un modulo a ognuno`);
         if (conChi[indice] !== indice) return null;
@@ -513,8 +521,18 @@ export function moduli({ corpo, nomi }, divisi = undefined) {
 
         return typeof suo === 'string' ? perNome.get(suo) : suo;
     };
-    unita.forEach((_una, indice) => moduloDi(indice).unita.push(indice));
-    const tutti = [...perNome.values(), ...interni.values()];
+    // Il nome che riceve una proprietà va in interni/ (gli altri moduli lo importano da lì), e il suo modulo pubblico ha la proprietà.
+    const pubblici = new Map();
+    for (const [nome, indice] of proprietaDi) {
+        const casa = perNome.get(nome);
+        casa.interno = true;
+        casa.conProprieta = true;
+        pubblici.set(indice, { nome, interno: false, unita: [], pubblico: true });
+    }
+    const moduloDiPrima = moduloDi;
+    const moduloDiOra = (indice) => pubblici.get(indice) ?? moduloDiPrima(indice);
+    unita.forEach((_una, indice) => moduloDiOra(indice).unita.push(indice));
+    const tutti = [...perNome.values(), ...interni.values(), ...pubblici.values()];
     const nomiDeiFile = new Map();
     for (const uno of tutti) {
         const chiave = fileDi(uno).toLowerCase();
@@ -573,7 +591,17 @@ export function moduli({ corpo, nomi }, divisi = undefined) {
         const stili = divisi === undefined ? [] : stiliUsati(righe, divisi);
         const quanti = new Set(uno.unita.flatMap((indice) => [...diChi[conChi[indice]]])).size;
         file[fileDi(uno)] = [
-            ...(uno.interno
+            ...(uno.conProprieta
+                ? COMMENTO_GENERATO(
+                    `È ${uno.nome} di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) senza la proprietà che il bundle gli dà:`,
+                    `i moduli lo importano da qui, e ../${uno.nome}.js gliela dà per chi lo prende per nome.`,
+                )
+                : uno.pubblico
+                ? COMMENTO_GENERATO(
+                    `È ${uno.nome} di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) con la proprietà che il bundle gli dà:`,
+                    `il nome sta in interni/${uno.nome}.js, che i moduli importano senza portare anche ciò che la proprietà vuole.`,
+                )
+                : uno.interno
                 ? COMMENTO_GENERATO(
                     'Sono righe private di resources/zeiras/bundle.js (il design system di Zeiras, copia derivata) che servono',
                     `a ${quanti === 0 ? 'nessun nome registrato' : `${quanti} nomi registrati`}: stanno qui una volta sola e chi le usa le importa.`,

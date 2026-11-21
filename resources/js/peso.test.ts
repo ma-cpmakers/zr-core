@@ -468,6 +468,15 @@ describe('un\'app che prende solo la cornice dall\'ingresso per le app non porta
         expect(soloCornice.js).toContain(DELLA_CORNICE);
     });
 
+    // Lotto 0531 (voce 4102, zr-pm-a0 21/11): la cornice usa l'Avatar, che non porta più con sé l'AvatarStack (Avatar.Stack sta in
+    // Avatar.js, i componenti prendono l'Avatar da interni/Avatar.js); dall'ingresso di sempre l'AvatarStack c'è.
+    it('l\'AvatarStack («zr-avatars» e i testi del «+n») non c\'è; dall\'ingresso di sempre sì', () => {
+        for (const testo of ['zr-avatars', 'altre {n} persone']) {
+            expect(soloCornice.js).not.toContain(testo);
+            expect(diSempre.js).toContain(testo);
+        }
+    });
+
     it('pesa, con gzip, al più il 60% della stessa app dall\'ingresso di sempre', () => {
         expect(gzip(soloCornice.js)).toBeLessThanOrEqual(0.6 * gzip(diSempre.js));
     });

@@ -9,7 +9,7 @@ import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
 import { omit } from './interni/omit';
 import { Icon } from './Icon';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { KANBAN_TEXTS } from './KANBAN_TEXTS';
 import { dealMoney } from './interni/MONEY';
 import { CARD_COLOR_TEXTS, cardColorOf } from './interni/CARD_COLOR_TEXTS';

@@ -5,7 +5,7 @@
 import { h } from './interni/h';
 import { useState } from './interni/useState';
 import { Button } from './Button';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { fmtEur } from './interni/fmtEur';
 import { Tabs } from './Tabs';
 import { PageHeader } from './PageHeader';

@@ -19,12 +19,13 @@ import { useCompLabels } from './interni/useCompLabels';
     var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
     var opts = (p.none ? [null] : []).concat(tones); /* null = nessun colore */
+    var first = opts.indexOf(val) >= 0 ? val : opts[0]; /* autoFocus: il Dialog dà il fuoco al colore scelto, o al primo (richiesta 261) */
     return h('fieldset', { id: p.id, className: cx('zr-color-picker', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
       p.label ? h('legend', { className: 'zr-field-label' }, p.label) : null,
       h('div', { className: 'zr-color-list' }, opts.map(function (t) {
         var name = t ? names[t] : p.none;
         return h('label', { key: t || 'none', className: 'zr-color', title: name },
-          h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined,
+          h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined, 'data-autofocus': p.autoFocus && !p.disabled && t === first ? '' : undefined,
             onChange: function () { if (!ctrl) st[1](t); if (p.onChange) p.onChange(t); } }),
           h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }),
           h('span', { className: 'zr-visually-hidden' }, name));

@@ -28,7 +28,7 @@ import { FOCUSABLE } from './interni/FOCUSABLE';
       var box = ref.current, origin = from.current && from.current.el;
       if (!origin || !document.contains(origin)) origin = box.contains(document.activeElement) ? null : document.activeElement; /* un dialogo che ne sostituisce un altro: il pulsante di quello è uscito, e il fuoco è già tornato alla pagina */
       if (!box.contains(document.activeElement)) {
-        var t = box.querySelector('[data-autofocus]') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
+        var t = box.querySelector('[data-autofocus]:not(:disabled)') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
         try { t.focus({ preventScroll: true }); } catch (e) {}
       }
       return function () {

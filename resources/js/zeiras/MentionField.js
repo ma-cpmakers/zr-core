@@ -7,7 +7,7 @@ import { useState } from './interni/useState';
 import { cx } from './interni/cx';
 import { Icon } from './Icon';
 import { Label } from './Label';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { useId } from './AppShell';
 import { MENTION_LABELS } from './MENTION_LABELS';
 import '../../css/zeiras/MentionField.css';

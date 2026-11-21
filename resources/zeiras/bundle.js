@@ -137,9 +137,10 @@
   }
 
   /* ---------- Avatar ---------- */
+  /* la prima lettera coi suoi segni di ogni parola che ne ha: un'emoji o un simbolo si saltano, un accento scomposto (NFD) resta; «?» se il nome non ha lettere (richiesta 267) */
   function initials(name) {
-    var parts = String(name || '?').trim().split(/\s+/);
-    return ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+    var parts = String(name || '').normalize('NFC').trim().split(/\s+/).map(function (w) { var m = w.match(/\p{L}\p{M}*/u); return m ? m[0] : ''; }).filter(Boolean);
+    return parts.length ? (parts[0] + (parts.length > 1 ? parts[parts.length - 1] : '')).toUpperCase().normalize('NFC') : '?';
   }
   function toneFor(name) {
     var s = String(name || ''), n = 0;
@@ -153,14 +154,22 @@
     return h('span', {
       className: cx('zr-avatar', 'zr-avatar-' + size, 'zr-label-' + (p.tone || toneFor(p.name)), photo && 'has-photo', p.className),
       title: p.decorative ? undefined : p.name, role: p.decorative ? undefined : 'img', 'aria-label': p.decorative ? undefined : p.name, 'aria-hidden': p.decorative ? 'true' : undefined /* decorative: il nome è già accanto (richiesta 109) */
-    }, initials(p.name), photo ? h('img', { className: 'zr-avatar-img', src: photo, alt: '', onError: function () { setFailed(photo); } }) : null);
+    }, String(p.initials || '').trim() || initials(p.name), photo ? h('img', { className: 'zr-avatar-img', src: photo, alt: '', onError: function () { setFailed(photo); } }) : null);
   }
+  /* il «+n» nella lingua dell'app; la prop labels vince (richiesta 265) */
+  var AVATAR_STACK_TEXTS = {
+    it: { moreOne: "un'altra persona", moreMany: 'altre {n} persone' },
+    en: { moreOne: '1 more person', moreMany: '{n} more people' },
+    es: { moreOne: 'una persona más', moreMany: '{n} personas más' } };
   function AvatarStack(p) {
-    var people = p.people || [], max = p.max || 3;
+    /* una persona è un nome, o { id, name, initials, tone }: la chiave è l'id, così due persone con lo stesso nome restano due (265, 300) */
+    var people = (p.people || []).filter(function (x) { return x != null && x !== ''; }).map(function (x) { return typeof x === 'object' ? x : { name: String(x) }; }), max = p.max || 3;
+    var T = useCompLabels(AVATAR_STACK_TEXTS, p.labels);
     var shown = people.slice(0, max), extra = people.length - shown.length;
+    var more = extra > 0 ? tpl(extra === 1 ? T.moreOne : T.moreMany, { n: extra }) : null;
     return h('span', { className: 'zr-avatars' },
-      shown.map(function (n) { return h(Avatar, { key: n, name: n, size: p.size || 'sm' }); }),
-      extra > 0 ? h('span', { className: cx('zr-avatar', 'zr-avatar-' + (p.size || 'sm'), 'zr-label-neutral'), title: extra + ' altri' }, '+' + extra) : null);
+      shown.map(function (x, i) { return h(Avatar, { key: x.id != null ? 'id-' + x.id : 'n-' + i, name: x.name, initials: x.initials, tone: x.tone, size: p.size || 'sm' }); }),
+      extra > 0 ? h('span', { className: cx('zr-avatar', 'zr-avatar-' + (p.size || 'sm'), 'zr-label-neutral'), role: 'img', 'aria-label': more, title: more }, '+' + extra) : null);
   }
   Avatar.Stack = AvatarStack;
 
@@ -1819,12 +1828,13 @@
     var st = useState(p.defaultValue !== undefined ? p.defaultValue : null), val = ctrl ? p.value : st[0];
     var desc = p.error || p.hint ? id + '-d' : undefined;
     var opts = (p.none ? [null] : []).concat(tones); /* null = nessun colore */
+    var first = opts.indexOf(val) >= 0 ? val : opts[0]; /* autoFocus: il Dialog dà il fuoco al colore scelto, o al primo (richiesta 261) */
     return h('fieldset', { id: p.id, className: cx('zr-color-picker', p.error && 'is-error', p.className), disabled: p.disabled, 'aria-describedby': desc, 'aria-label': p.label ? undefined : p['aria-label'] },
       p.label ? h('legend', { className: 'zr-field-label' }, p.label) : null,
       h('div', { className: 'zr-color-list' }, opts.map(function (t) {
         var name = t ? names[t] : p.none;
         return h('label', { key: t || 'none', className: 'zr-color', title: name },
-          h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined,
+          h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined, 'data-autofocus': p.autoFocus && !p.disabled && t === first ? '' : undefined,
             onChange: function () { if (!ctrl) st[1](t); if (p.onChange) p.onChange(t); } }),
           h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }),
           h('span', { className: 'zr-visually-hidden' }, name));
@@ -2317,7 +2327,7 @@
       var box = ref.current, origin = from.current && from.current.el;
       if (!origin || !document.contains(origin)) origin = box.contains(document.activeElement) ? null : document.activeElement; /* un dialogo che ne sostituisce un altro: il pulsante di quello è uscito, e il fuoco è già tornato alla pagina */
       if (!box.contains(document.activeElement)) {
-        var t = box.querySelector('[data-autofocus]') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
+        var t = box.querySelector('[data-autofocus]:not(:disabled)') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
         try { t.focus({ preventScroll: true }); } catch (e) {}
       }
       return function () {
@@ -2362,7 +2372,9 @@
     var tone = p.tone || (pct >= 90 ? 'danger' : pct >= 75 ? 'warning' : 'pine');
     return h('div', { className: 'zr-progress' },
       p.label ? h('div', { className: 'zr-progress-top' }, h('span', null, p.label), h('span', null, p.valueLabel || pct + '%')) : null,
-      h('div', { className: 'zr-progress-track', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': p.label },
+      h('div', { className: 'zr-progress-track', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
+        /* senza label la barra prende il nome da aria-labelledby o aria-label: il titolo della sezione non si ripete (richiesta 262) */
+        'aria-label': p.label || p['aria-label'], 'aria-labelledby': p.label ? undefined : p['aria-labelledby'] },
         h('div', { className: 'zr-progress-bar zr-bg-' + tone, style: { width: pct + '%' } })));
   }
 
