@@ -34,6 +34,7 @@
  * e dalla v4.36.0 le righe TK le schede della `KanbanBoard`, su `layout.html?lavagna=board` (richiesta 294).
  * Dalla v4.33.0 con `--barra` le righe AV guardano la barra d'avanzamento di Inertia durante una visita lenta (#3535).
  * Dalla v4.32.0 le righe MV guardano, a 390 px, che con `prefers-reduced-motion: reduce` non ci siano transizioni (#3534).
+ * Dalla v5.8.0 le righe AZ guardano le azioni del modulo nel cassetto a 320 px col testo al 200% (#4095, richiesta 283).
  *
  * Una riga per controllo: ✅ passa, ❌ non passa, ➖ non provato (con il perché). Esce con 1 se una riga è ❌.
  */
@@ -2114,6 +2115,8 @@ async function uat(page, apri) {
     await dialogoColMouse(page);
     await dialogoDescrittoESfondoInerte(page);
     await attendiDaUnDialogo(page);
+    // Dalla v5.8.0 (#4095, richiesta 283): le azioni del modulo nel cassetto a 320 px col testo al 200%.
+    await azioniNelCassetto(page, apri);
 
     await a390(page, apri, diGoogle, errori, csp);
 }
@@ -2909,6 +2912,60 @@ async function ilCliente(page, larghezza) {
 }
 
 /** A 390 px: axe, la ricerca, Esc, il cassetto; la campanella solo fuori dalla cornice dello staff. Poi i font, la CSP e la console. */
+/**
+ * AZ (dalla v5.8.0, voce #4095, richiesta 283 nel lotto 0530 del design system): le azioni del modulo (`actions`, nella pagina di
+ * prova «UAT azione») a 320 px col testo al 200% non stanno nella barra e vanno in cima al cassetto. AZ.1 l'azione è nel
+ * cassetto, non nella barra, e la pagina non scorre di lato, con campanella e profilo dentro la finestra; AZ.2 aperto il cassetto,
+ * un clic sull'azione fa ciò che fa (il segno nella pagina) e chiude il cassetto; AZ.3 a 390 px col testo al 100% l'azione è
+ * nella barra, come prima.
+ */
+async function azioniNelCassetto(page, apri) {
+    const dove = () => page.evaluate(() => {
+        const azione = [...document.querySelectorAll('.zr-shell button')].find((b) => b.textContent.trim() === 'UAT azione');
+        const finestra = document.documentElement.clientWidth;
+        const dentro = (sel) => { const r = document.querySelector(sel)?.getBoundingClientRect(); return !!r && r.left >= -1 && r.right <= finestra + 1; };
+        return {
+            dove: !azione ? 'assente' : azione.closest('.zr-side') ? 'cassetto' : azione.closest('.zr-top') ? 'barra' : 'altrove',
+            pagina: [document.documentElement.scrollWidth, finestra],
+            campanella: dentro('.zr-shell .zr-bell'),
+            profilo: dentro('.zr-shell .zr-avatar-btn'),
+        };
+    });
+    await page.setViewportSize({ width: 320, height: 800 });
+    await apri(indirizzo);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(800);
+    await testoAlDoppio(page);
+    await pausa(500);
+    const a320 = await dove();
+    scrivi(a320.dove === 'cassetto' && a320.pagina[0] <= a320.pagina[1] + 1 && a320.campanella && a320.profilo ? '✅' : '❌', 'AZ.1',
+        'a 320 px col testo al 200% l\'azione del modulo sta nel cassetto, non nella barra, e la pagina non scorre di lato (#4095, richiesta 283)',
+        `azione: ${a320.dove}; pagina ${a320.pagina[0]} su ${a320.pagina[1]}; campanella ${a320.campanella ? 'dentro' : 'fuori'}, profilo ${a320.profilo ? 'dentro' : 'fuori'}`);
+    await page.click('.zr-shell .zr-top-menu');
+    await pausa(400);
+    await page.screenshot({ path: join(cartella, 'azioni-320-200.png') });
+    const aperto = await page.evaluate(() => document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'));
+    const azione = page.locator('.zr-shell .zr-side button', { hasText: 'UAT azione' }).first();
+    let dopo = { espanso: null, segno: '' };
+    if (aperto === 'true' && await azione.count()) {
+        await azione.click();
+        await pausa(400);
+        dopo = await page.evaluate(() => ({
+            espanso: document.querySelector('.zr-shell .zr-top-menu')?.getAttribute('aria-expanded'),
+            segno: [...document.querySelectorAll('output')].map((o) => o.textContent).join(' '),
+        }));
+    }
+    scrivi(aperto === 'true' && dopo.espanso === 'false' && /UAT azione/.test(dopo.segno) ? '✅' : '❌', 'AZ.2',
+        'a 320 px col testo al 200%, dal cassetto aperto, il clic sull\'azione fa ciò che fa e chiude il cassetto (#4095, richiesta 283)',
+        `cassetto aperto: ${aperto}; dopo il clic aria-expanded ${dopo.espanso}; segno «${dopo.segno.trim().slice(0, 60)}»`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await apri(indirizzo);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(800);
+    const a390 = await dove();
+    scrivi(a390.dove === 'barra' ? '✅' : '❌', 'AZ.3', 'a 390 px col testo al 100% l\'azione del modulo sta nella barra, come prima (#4095)', `azione: ${a390.dove}`);
+}
+
 async function a390(page, apri, diGoogle, errori, csp) {
     await page.setViewportSize({ width: 390, height: 844 });
     await apri(indirizzo);
