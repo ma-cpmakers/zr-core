@@ -290,96 +290,80 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             const righe = css.split('\n');
             expect(righe.filter((riga) => riga === "@import './rimedi.css' layer(zeiras);")).toHaveLength(1);
             expect(righe.indexOf("@import './rimedi.css' layer(zeiras);")).toBe(righe.indexOf("@import './avanzamento.css';") + 1);
-            expect(css).not.toMatch(/\.zr-section-card-title \{[^}]*overflow-wrap/);
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890, 3891, 3948-3951 e 4055-4057; v4.35.2, richiesta 293; v4.36.0, richiesta 294; v5.0.1, richiesta 299)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (richieste 283, 293, 294 e 299; dalla v5.7.0, voce 4089, gli altri tredici li porta il design system)', () => {
         expect(regole).toBe([
-            '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
-            '.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }',
-            '@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } }',
-            '@media (width > 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }',
-            '@media (forced-colors: active) and (width > 720px) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } }',
-            '@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }',
             '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
-            '.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }',
-            '@media (pointer: coarse) { .zr-td-check .zr-check::after { content: \'\'; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }',
-            ':is(div, footer):is(.zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions) { row-gap: var(--space-3); }',
-            'button.zr-switch { min-height: 44px; } .zr-top .zr-search { height: 44px; } }',
-            '@media (pointer: coarse) and (max-width: 720px) { .zr-top .zr-search.is-open { top: var(--space-2); } }',
-            '.zr-detail-head > .zr-detail-ctx { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }',
-            '@media (pointer: coarse) { table.zr-table th { height: 44px; } .zr-th-sort { position: relative; }',
-            '.zr-th-sort::after { content: \'\'; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }',
-            'div.zr-detail-actions { gap: var(--space-3); } .zr-detail-actions + button.zr-detail-close { margin-left: 0; } }',
         ].join(' '));
     });
 
-    // Voci 3948-3951 (richieste 272, 273, 242 e 298; verifica del 17/11, Decisione 25922 di zr-pm-74, v5.5.0). La prova in Chromium col
-    // tocco emulato (hit-test a griglia di 1 px sulla pagina di prova con DataTable, PageHeader, Switch e la ricerca aperta, a 320
-    // e 390 px: casella 24×44 e la riga aperta a ±21 px, Filtra/Esporta 40, Switch 24, ricerca 40 senza; 44 con) è nella voce.
-    // Quando il design system porta una delle quattro richieste, il suo caso diventa rosso e il rimedio si toglie.
-    it('al tocco il design system di oggi lascia sotto i 44 px la casella di riga, le azioni a capo, lo Switch e la ricerca (voci 3948-3951)', () => {
-        const alTocco = [...bundleCss.matchAll(/@media \(pointer: coarse\) \{([\s\S]*?)\}\s*\}/g)].map((m) => m[1]).join(' ');
-        // 272: nessuna area propria per la casella della cella; 273: nessun row-gap al tocco; 242: nessuna regola dello Switch; 298:
-        // il campo della ricerca non cambia altezza.
-        expect(alTocco).not.toMatch(/zr-td-check/);
-        expect(alTocco).not.toMatch(/zr-page-actions|row-gap: var\(--space-3\)/);
-        expect(alTocco).not.toMatch(/zr-switch/);
-        expect(alTocco).not.toMatch(/\.zr-search \{[^}]*height/);
-        expect(bundleCss).toMatch(/\.zr-search \{[^}]*height: 40px/);
-        expect(bundleCss).toMatch(/\.zr-page-actions \{[^}]*gap: var\(--space-2\)/);
+    // Voce 4089 (lotto 0529 del design system, Decisione di zr-pm-a0 del 21/11): le tredici richieste dei rimedi stanno nel bundle.
+    // La prova in Chromium (banco a sette modi, 0 differenze fra «tag più rimedi» e «lotto 0529 senza rimedi») è nella voce. Se
+    // un riallineamento perde una delle regole, il suo caso diventa rosso: il rimedio torna in rimedi.css finché il design system
+    // non la riporta.
+    const alTocco = () => bundleCss.split('\n').filter((riga) => riga.startsWith('@media (pointer: coarse) {')).join(' ');
+
+    it('al tocco il design system porta da sé 44 px per lo Switch, la casella di riga, l\'ordinamento e la ricerca, e 12 px fra le righe dei gruppi e fra le azioni del pannello (richieste 242, 272, 273, 298, 304, 305)', () => {
+        const tocco = alTocco();
+        expect(tocco).toContain('.zr-switch { min-height: 44px; }');
+        expect(tocco).toMatch(/\.zr-td-check \.zr-check::after \{[^}]*width: 44px; height: 44px;/);
+        expect(tocco).toContain('.zr-table th { height: 44px; }');
+        expect(tocco).toMatch(/\.zr-th-sort::after \{[^}]*width: max\(100%, 44px\); height: 44px;/);
+        expect(tocco).toContain('.zr-top .zr-search { height: 44px; }');
+        expect(bundleCss).toContain('@media (pointer: coarse) and (max-width: 720px) { .zr-top .zr-search.is-open { top: var(--space-2); } }');
+        expect(tocco).toContain('.zr-detail-actions { gap: var(--space-3); } .zr-detail-actions + .zr-detail-close { margin-left: 0; }');
+        // 273: la regola sta in fondo al file, sopra tutti i gap scritti prima, coi gruppi della richiesta.
+        const ultima = bundleCss.trimEnd().split('\n').at(-1) ?? '';
+        expect(ultima).toMatch(/^@media \(pointer: coarse\) \{ [^{]*\.zr-page-actions, [^{]*\.zr-detail-foot, [^{]*\.zr-dialog-foot[^{]*\{ row-gap: var\(--space-3\); \}/);
     });
 
-    it('i quattro rimedi al tocco valgono solo con pointer: coarse, e vincono sulle regole del bundle che vengono dopo (voci 3948-3951)', () => {
-        // Fuori da `pointer: coarse` nessuna delle quattro: col mouse niente cambia (3950: «44 px anche col mouse» è il difetto).
-        const fuori = regole.replace(/@media \(pointer: coarse\)[^{]*\{(?:[^{}]*\{[^}]*\})*\s*\}/g, '');
-        expect(fuori).toContain('.zr-toast :is(');
-        expect(fuori).not.toMatch(/zr-td-check|row-gap|zr-switch|height: 44px/);
-        // rimedi.css sta prima del bundle nello strato: la casella e il row-gap hanno un selettore più forte del `gap` e del
-        // `min-height` del bundle (tag + classe), la ricerca aperta più forte di `.zr-search.is-open` sotto i 720 px.
-        expect(regole).toContain(':is(div, footer):is(.zr-page-actions');
-        expect(regole).toContain('button.zr-switch { min-height: 44px; }');
-        expect(regole).toContain('.zr-top .zr-search.is-open { top: var(--space-2); }');
+    it('il design system porta a capo il titolo della SectionCard e il contesto del pannello (richieste 290 e 302)', () => {
+        expect(bundleCss).toMatch(/\.zr-section-card-title \{[^}]*overflow-wrap: anywhere;/);
+        expect(bundleCss).toMatch(/\.zr-detail-ctx \{[^}]*overflow-wrap: anywhere;/);
+        expect(bundleCss).not.toMatch(/\.zr-detail-ctx \{[^}]*(?:text-overflow: ellipsis|white-space: nowrap)/);
     });
 
-    // Voci 4055-4057 (richieste 302, 304 e 305; zr-pm-a0 21/11, v5.5.0). La prova in Chromium (contesto del pannello a 320 px col
-    // testo al 200%; col tocco emulato, elementFromPoint a ±21 px dal centro dell'ordinamento e dei pulsanti dell'intestazione del
-    // pannello) è nelle voci. Quando il design system porta una delle tre richieste, il suo caso diventa rosso e il rimedio si toglie.
-    it('il design system di oggi mette in puntini il contesto del pannello, lascia l\'ordinamento senza area al tocco e le azioni del pannello a 4 px (voci 4055-4057)', () => {
-        const alTocco = [...bundleCss.matchAll(/@media \(pointer: coarse\) \{([\s\S]*?)\}\s*\}/g)].map((m) => m[1]).join(' ');
-        // 302: il contesto su una riga coi puntini.
-        expect(bundleCss).toMatch(/\.zr-detail-ctx \{[^}]*text-overflow: ellipsis; white-space: nowrap/);
-        // 304: l'ordinamento non è un .zr-btn e nessuna regola al tocco gli dà un'area; l'intestazione è alta 40 px.
-        expect(bundleCss).toMatch(/\.zr-th-sort \{[^}]*padding: 0; border: 0/);
-        expect(alTocco).not.toMatch(/zr-th-sort|\.zr-table th/);
-        expect(bundleCss).toMatch(/\.zr-table th \{[^}]*height: 40px/);
-        // 305: le azioni a 4 px fra loro e dalla ✕, anche al tocco.
-        expect(bundleCss).toMatch(/\.zr-detail-actions \{[^}]*gap: var\(--space-1\)/);
-        expect(bundleCss).toContain('.zr-detail-actions + .zr-detail-close { margin-left: calc(var(--space-1) - var(--space-3)); }');
-        expect(alTocco).not.toMatch(/zr-detail-actions|zr-detail-close/);
+    it('il design system lascia 4 px all\'anello del fuoco nei contenitori che scorrono: scroll-padding var(--space-1), un token (richiesta 278)', () => {
+        expect(readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8')).toContain('--space-1:');
+        expect(bundleCss).toContain('.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }');
     });
 
-    it('i rimedi della 304 e della 305 valgono solo al tocco, quello della 302 sempre, e vincono sulle regole del bundle (voci 4055-4057)', () => {
-        // Col mouse niente cambia per l'ordinamento e per le azioni (4056 e 4057: «44 o 12 px anche col mouse» è il difetto).
-        const fuori = regole.replace(/@media \(pointer: coarse\)[^{]*\{(?:[^{}]*\{[^}]*\})*\s*\}/g, '');
-        expect(fuori).toContain('.zr-detail-head > .zr-detail-ctx { white-space: normal;');
-        expect(fuori).not.toMatch(/zr-th-sort|zr-table th|zr-detail-actions|zr-detail-close/);
-        // rimedi.css sta prima del bundle nello strato: ogni regola che cambia una proprietà del bundle ha un selettore più forte
-        // (due classi, o tag e classe).
-        expect(regole).toContain('.zr-detail-head > .zr-detail-ctx {');
-        expect(regole).toContain('table.zr-table th { height: 44px; }');
-        expect(regole).toContain('div.zr-detail-actions { gap: var(--space-3); }');
-        expect(regole).toContain('.zr-detail-actions + button.zr-detail-close { margin-left: 0; }');
+    it('coi colori forzati la voce attiva del menu e il segmento scelto hanno un contorno nel design system (richiesta 288)', () => {
+        const forzati = [...bundleCss.matchAll(/@media \(forced-colors: active\) \{([^\n]*)\}/g)].map((m) => m[1]).join(' ');
+        expect(forzati).toMatch(/\.zr-nav-item\.is-active:not\(:focus-visible\), \.zr-seg-item\.is-active:not\(:focus-visible\)[^{]*\{ outline: var\(--border-ring\) solid Highlight;/);
+        expect(forzati).toContain('.zr-toggle.is-on:not(:focus-visible)');
     });
 
-    it('il titolo della SectionCard va a capo anche dentro una parola: overflow-wrap anywhere (AC 1, richiesta 290)', () => {
-        // Il bundle di oggi non lo fa da sé: quando la 290 arriva, questo caso diventa rosso e il rimedio si toglie.
-        expect(bundleCss).toMatch(/\.zr-section-card-title \{(?![^}]*overflow-wrap)[^}]*\}/);
+    it('il campo Cerca chiuso sopra i 720 px ha nel design system il contorno del campo aperto, line-strong ad almeno 3:1 sulla barra (richiesta 279)', () => {
+        expect(bundleCss).toContain('.zr-search.is-open { box-shadow: inset 0 0 0 1px var(--line-strong); }');
+        expect(bundleCss).toContain('@media not all and (max-width: 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } }');
+        expect(bundleCss).toContain('@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } }');
+        expect(bundleCss).toMatch(/\.zr-top \{[^}]*background: var\(--surface-raised\)/);
+        // Il contrasto si calcola dai token del pacchetto, non da colori scritti qui: almeno 3:1 (WCAG 1.4.11).
+        // Nel tema chiaro (il primo :root) e nello scuro (data-theme="dark", dalla #3757).
+        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
+        const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
+        const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
+            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+            .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
+        for (const tema of temi) {
+            const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(tema)?.[1] ?? '';
+            expect(colore('line-strong')).toMatch(/^#/);
+            const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
+            expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
+        }
+    });
+
+    it('il padding sopra dell\'area che scorre è una variabile del design system, --zr-main-body-pt, anche senza percorso (richiesta 292)', () => {
+        expect(bundleCss).toMatch(/\.zr-main-body \{ --zr-main-body-pt: var\(--space-4\);[^}]*padding: var\(--zr-main-body-pt\)/);
+        expect(bundleCss).toMatch(/\.zr-main \{ --zr-main-body-pt: var\(--space-6\);[^}]*padding-top: var\(--zr-main-body-pt\)/);
+        expect(bundleCss).toContain('.zr-main.is-flush .zr-main-body { --zr-main-body-pt: 0px;');
     });
 
     // v4.35.2 (richiesta 293, zr-pm-74 16/11): le carte della DealPipeline col dito (resources/js/tocco.ts). Sulla carta il dito
@@ -406,46 +390,6 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         expect(readFileSync(delRepo('resources/js/zeiras/KanbanCard.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
     });
 
-    // Voce #3888 (richiesta 278, zr-crm-14; zr-pm-74 15/11): il comando portato in vista dentro un contenitore che scorre si
-    // ferma a 4 px dal bordo, lo spazio dell'anello del fuoco (2 px più 2). Solo scroll-padding, che fuori dallo scorrimento
-    // non sposta niente; la prova in Chromium (0 px senza, 4 con, la forma della pagina uguale) è nella voce.
-    it('i contenitori che scorrono lasciano 4 px all\'anello del fuoco: scroll-padding var(--space-1), un token (voce 3888 · AC 1 e 3, richiesta 278)', () => {
-        expect(readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8')).toContain('--space-1:');
-        // Il bundle di oggi non lo fa da sé: quando la 278 arriva, questo caso diventa rosso e il rimedio si toglie.
-        expect(bundleCss).not.toMatch(/scroll-padding/);
-        expect(bundleIntero(bundleCss)).not.toMatch(/scroll-padding/);
-    });
-
-    // Voce #3889 (richieste 288 e 279; zr-pm-74 15/11). Coi colori forzati la voce attiva del menu e il segmento scelto hanno un
-    // contorno; il campo Cerca chiuso, sopra i 720 px, ha il contorno che il design system gli dà da aperto, e coi colori forzati
-    // un contorno vero. La prova in Chromium (prima e dopo, coi colori forzati e senza, 1280 e 390 px) è nella voce.
-    it('coi colori forzati la voce attiva e il segmento scelto non restano col solo grassetto (voce 3889 · AC 1 e 4, richiesta 288)', () => {
-        // Il bundle di oggi segna coi colori forzati solo .zr-radio-card e .zr-color: quando la 288 arriva, questo caso diventa rosso.
-        const forzati = [...bundleCss.matchAll(/@media \(forced-colors: active\) \{([^\n]*)\}/g)].map((m) => m[1]).join(' ');
-        expect(forzati).toContain('.zr-radio-card');
-        expect(forzati).not.toMatch(/zr-nav-item|zr-seg-item/);
-    });
-
-    it('il campo Cerca chiuso sopra i 720 px ha il contorno del campo aperto, line-strong a 4,04:1 sul bianco della barra (voce 3889 · AC 2 e 4, richiesta 279)', () => {
-        expect(bundleCss).toContain('.zr-search.is-open { box-shadow: inset 0 0 0 1px var(--line-strong); }');
-        expect(bundleCss).toMatch(/\.zr-top \{[^}]*background: var\(--surface-raised\)/);
-        // Il bundle di oggi non dà al campo chiuso né bordo né ombra: quando la 279 arriva, questo caso diventa rosso.
-        for (const [, regola] of bundleCss.matchAll(/(?:^|\n|\} ?|\s)\.zr-search \{([^}]*)\}/g)) expect(regola).not.toMatch(/(?:^|;)\s*(?:border(?:-(?:top|right|bottom|left|width|style|color))?|box-shadow|outline)\s*:/);
-        // Il contrasto si calcola dai token del pacchetto, non da colori scritti qui: almeno 3:1 (WCAG 1.4.11).
-        // Nel tema chiaro (il primo :root) e nello scuro (data-theme="dark", dalla #3757).
-        const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
-        const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
-        const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)
-            .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-            .reduce((somma, c, i) => somma + c * [0.2126, 0.7152, 0.0722][i]!, 0);
-        for (const tema of temi) {
-            const colore = (nome: string) => new RegExp(`--${nome}: (#[0-9a-f]{6});`).exec(tema)?.[1] ?? '';
-            expect(colore('line-strong')).toMatch(/^#/);
-            const [scuro, chiaro] = [luce(colore('line-strong')), luce(colore('surface-raised'))].sort((a, b) => a - b);
-            expect((chiaro! + 0.05) / (scuro! + 0.05)).toBeGreaterThanOrEqual(3);
-        }
-    });
-
     // Voce #3890 (richiesta 283; zr-pm-74 15/11). Sotto i 720 px il campo della ricerca aperto copre la barra; le azioni restano
     // sotto e, a 320 px col testo al 200%, allargavano la pagina a 338 px. La prova in Chromium (338 senza, 320 con; R390.9 di
     // uat-cornice, il Tab dalla ricerca a campanella e profilo della #2805, ancora ✅) è nella voce.
@@ -460,18 +404,12 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
     });
 
     // Voce #3891 (richiesta 291; zr-pm-74 15/11, Decisione 25442). Il Toast ha lo sfondo var(--ink) e l'anello del fuoco del design
-    // system su «Annulla» e sulla ✕ è var(--focus): sotto 3:1 in tutti e due i temi (WCAG 1.4.11). Il rimedio gli dà il colore del
-    // testo del Toast, var(--surface). La prova in Chromium è la riga TT.5 di uat-cornice (--staff, dalla v5.0.1: R1 della revisione).
-    it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del Toast, almeno 3:1 sullo sfondo (voce 3891, richiesta 291)', () => {
-        // Il bundle di oggi dà ai due pulsanti l'anello var(--focus) e al Toast lo sfondo var(--ink): quando la 291 arriva, questo
-        // caso diventa rosso e il rimedio si toglie.
+    // system su «Annulla» e sulla ✕ è var(--focus): sotto 3:1 in tutti e due i temi (WCAG 1.4.11). Dalla v5.7.0 (voce 4089, lotto
+    // 0529) il design system gli dà da sé il colore del testo del Toast, var(--surface). In Chromium, la riga TT.5 di uat-cornice (--staff).
+    it('l\'anello del fuoco su «Annulla» e sulla ✕ del Toast ha nel design system il colore del testo del Toast, almeno 3:1 sullo sfondo (richiesta 291)', () => {
         expect(bundleCss).toMatch(/:where\([^)]*\.zr-toast-action, \.zr-toast-close[^)]*\):focus-visible \{ outline: \d+px solid var\(--focus\);/);
         expect(bundleCss).toMatch(/\.zr-toast \{[^}]*background: var\(--ink\);[^}]*color: var\(--surface\);/);
-        expect(bundleCss).not.toMatch(/\.zr-toast[^{]*:focus-visible[^{]*\{[^}]*outline-color/);
-        // R2 della revisione della 3891 (v5.0.1): la 291 può arrivare anche come `--focus` ridefinito dentro il Toast, o come
-        // `outline:` intero su una regola del Toast col fuoco: anche così il caso diventa rosso.
-        expect(bundleCss).not.toMatch(/\.zr-toast[^{,]*\{[^}]*--focus\s*:/);
-        expect(bundleCss).not.toMatch(/(?:^|\n|\} ?)\.zr-toast[^{,]*:focus-visible[^{]*\{[^}]*outline\s*:/);
+        expect(bundleCss).toContain('.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }');
         const token = readFileSync(delRepo('resources/css/zeiras-token.css'), 'utf8');
         const temi = [token.slice(0, token.indexOf(':root[data-theme="dark"]')), token.slice(token.indexOf(':root[data-theme="dark"]'))];
         const luce = (esa: string) => [1, 3, 5].map((i) => parseInt(esa.slice(i, i + 2), 16) / 255)

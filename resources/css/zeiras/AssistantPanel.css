@@ -17,6 +17,7 @@
 .zr-amsg-bubble { padding: 9px var(--space-3); border-radius: 14px 14px 14px 4px; background: var(--surface-sunken); color: var(--ink); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
 .zr-amsg.is-me .zr-amsg-bubble { background: var(--pine); color: var(--on-pine); border-radius: 14px 14px 4px 14px; max-width: 88%; }
 .zr-amsg-actions { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+@media (pointer: coarse) { .zr-amsg-actions { row-gap: var(--space-3); } } /* al tocco 12 px fra le righe, come i gruppi in fondo al file: qui perché gli stili degli assistenti hanno un CSS loro (richiesta 273) */
 .zr-amsg.is-handoff { justify-content: center; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; padding: 2px 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); text-align: center; }
 .zr-amsg.is-handoff > .zr-bot { margin-top: 0; }
 .zr-acomp { display: flex; gap: var(--space-2); }

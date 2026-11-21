@@ -38,6 +38,7 @@
 .zr-ases-empty h3 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 650; }
 .zr-ases-empty p { margin: 0; max-width: 44ch; color: var(--ink-muted); }
 .zr-ases-empty-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+@media (pointer: coarse) { .zr-ases-doc-tools, .zr-ases-empty-acts, .zr-ases-doc-foot { row-gap: var(--space-3); } } /* al tocco 12 px fra le righe, come i gruppi in fondo al file (richiesta 273) */
 .zr-ases-pick { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
 .zr-ases-select { flex: 1; min-width: 0; height: 36px; padding: 0 var(--space-2-5); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 14px; }
 .zr-ases-select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
