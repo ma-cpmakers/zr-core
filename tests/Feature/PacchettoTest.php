@@ -5102,8 +5102,8 @@ function ingressoJs(string $file): string
 it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
     $zip = fileDelloZipDiHead();
     // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi, dalla `v3.2.0` (sprint 72 · T1.5) quello di
-    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css, dalla `v4.8.1` (#3055) il modulo dell'Alert.
-    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/Alert.js', 'resources/js/zeiras/Alert.d.ts', 'resources/js/zeiras/AddressField.d.ts'];
+    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css, dalla `v4.8.1` (#3055) il modulo dell'Alert, dalla `v5.6.0` (#4088) i CSS degli assistenti.
+    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/AssistantAvatar.css', 'resources/css/zeiras/AssistantNav.css', 'resources/css/zeiras/AssistantPanel.css', 'resources/css/zeiras/AssistantSession.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/Alert.js', 'resources/js/zeiras/Alert.d.ts', 'resources/js/zeiras/AddressField.d.ts'];
     $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
 
     expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
@@ -5780,7 +5780,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Voce #3723: dalla `v4.34.0` gli stili della fascia di assistenza, che bundle.css e zeiras.css importano.
     // Voce #3887: dalla `v4.35.0` i rimedi provvisori al CSS del design system, che bundle.css e zeiras.css importano.
     // Voce #3536: dalla `v5.0.0` il tema di Tailwind 4 coi nomi dei token, che `npm run token` genera.
-    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #4088: dalla `v5.6.0` gli stili dei quattro componenti degli assistenti, divisi da bundle.css come quelli di MentionField.
+    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/AssistantAvatar.css', 'resources/css/zeiras/AssistantNav.css', 'resources/css/zeiras/AssistantPanel.css', 'resources/css/zeiras/AssistantSession.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)
