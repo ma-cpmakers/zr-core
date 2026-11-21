@@ -59,16 +59,17 @@ it('i contorni coi colori forzati e quello del campo Cerca non stanno più in ri
         ->toContain('4,04:1 sulla barra, e coi colori forzati un contorno vero');
 });
 
-// Voce #3890 (richiesta 283; zr-pm-74 15/11): sotto i 720 px, con la ricerca aperta, le azioni della barra si stringono sotto il
-// campo e non allargano la pagina; restano nel giro del Tab (#2805).
-it('rimedi.css stringe le azioni della barra sotto la ricerca aperta, e il README lo dice (voce 3890 · AC 3)', function () {
+// Voce #3890 (richiesta 283; zr-pm-74 15/11): sotto i 720 px, con la ricerca aperta, le azioni della barra si stringevano sotto il
+// campo e non allargavano la pagina. Dalla v5.8.0 (voce #4095, lotto 0530) lo fa il design system: le azioni vanno nel cassetto.
+it('le azioni della barra sotto la ricerca aperta non stanno più in rimedi.css, e il README lo dice (voce 3890; dalla v5.8.0, voce 4095)', function () {
     $radice = dirname(__DIR__, 2);
 
     expect(File::get("$radice/resources/css/rimedi.css"))
-        ->toContain('.zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; }')
+        ->not->toContain('.zr-top-actions { min-width: 0; overflow: hidden; }')
         ->and(File::get("$radice/README.md"))
         ->toContain('Il quinto (#3890, richiesta 283')
-        ->toContain('A ricerca chiusa la barra aspetta la richiesta.');
+        ->toContain('in cima al cassetto, e il rimedio è uscito da `rimedi.css`.')
+        ->not->toContain('A ricerca chiusa la barra aspetta la richiesta.');
 });
 
 // Voce #3891 (richiesta 291; zr-pm-74 15/11): l'anello del fuoco su «Annulla» e sulla ✕ del Toast ha il colore del testo del
@@ -120,6 +121,21 @@ it('il README dice che dalla v5.7.0 tredici rimedi li porta il design system, co
 
     expect($readme)
         ->toContain('**Dalla `v5.7.0` tredici rimedi li porta il design system** (#4089, lotto 0529, `ds-')
-        ->toContain('In `rimedi.css` restano il quinto (283), il settimo (299) e quelli')
+        ->toContain('In `rimedi.css` restavano il quinto (283), il settimo (299) e quelli')
         ->not->toContain('DS_TAG');
+});
+
+// Voce #4095 (lotto 0530 del design system, Decisione di zr-pm-a0 del 21/11): dalla v5.8.0 esce anche il rimedio della 283; in
+// rimedi.css restano quelli delle richieste 293, 294 e 299.
+it('il README dice che dalla v5.8.0 esce anche il quinto rimedio, col tag, e quali restano (voce 4095)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/README.md"))
+        ->toContain('**Dalla `v5.8.0` esce anche il quinto** (#4095, lotto 0530,')
+        ->toContain('`ds-1795297647-ba18`): in `rimedi.css` restano il settimo (299) e quelli del dito (293 e 294).')
+        ->not->toContain('In `rimedi.css` restano il quinto (283)')
+        ->and(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('Richiesta 293')
+        ->toContain('Richiesta 299')
+        ->not->toContain('Richiesta 283');
 });
