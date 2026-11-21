@@ -7,6 +7,7 @@ import { h } from './interni/h';
 import { useState } from './interni/useState';
 import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
+import { drawerBack } from './interni/drawerBack';
 import { Button } from './Button';
 import { useLabels } from './useLabels';
 import { PANEL_FULL } from './interni/PANEL_FULL';
@@ -40,7 +41,7 @@ import { FOCUSABLE } from './interni/FOCUSABLE';
         document.removeEventListener('keydown', key);
         var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf;
         var id = origin && origin.getAttribute && origin.getAttribute('data-id');
-        var back = target && document.contains(target) ? target : id ? document.querySelector('[data-id="' + id + '"]') : origin;
+        var back = drawerBack(target && document.contains(target) ? target : id ? document.querySelector('[data-id="' + id + '"]') : origin); /* aperto dal cassetto, che si è chiuso: torna ad «Apri il menu» (richiesta 283) */
         if (back && document.contains(back) && back.focus && !document.querySelector('.zr-detail')) try { back.focus({ preventScroll: true }); } catch (e) {}
       };
     }, []);
@@ -55,7 +56,7 @@ import { FOCUSABLE } from './interni/FOCUSABLE';
     }
     var hasActs = p.actions != null && p.actions !== false && !(Array.isArray(p.actions) && !p.actions.some(Boolean));
     var closeBtn = h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose });
-    return h('aside', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
+    return h('div', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), /* un div: il ruolo dialog su un aside ARIA non lo ammette (richiesta 303) */ role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
       h('header', { className: 'zr-detail-head' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || C.back),
         h('div', { className: 'zr-detail-ctx' }, p.head),

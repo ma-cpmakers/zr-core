@@ -5,6 +5,7 @@
 import { h } from './interni/h';
 import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
+import { drawerBack } from './interni/drawerBack';
 import { Button } from './Button';
 import { useId } from './AppShell';
 import { useEffect } from './interni/useEffect';
@@ -33,6 +34,7 @@ import { FOCUSABLE } from './interni/FOCUSABLE';
       return function () {
         if (document.contains(box)) return; /* il dialogo è ancora nella pagina (il doppio effetto di StrictMode): niente da rendere */
         var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf, back = target || origin;
+        back = drawerBack(back); /* aperto da un'azione nel cassetto, che si è chiuso: torna ad «Apri il menu» (richiesta 283) */
         var a = document.activeElement; /* a chi ha preso il fuoco nel frattempo, fuori dal dialogo, non si toglie */
         if (back && back !== document.body && document.contains(back) && back.focus && (!a || a === document.body || box.contains(a) || !document.contains(a))) try { back.focus({ preventScroll: true }); } catch (e) {}
       };

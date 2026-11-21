@@ -6,6 +6,11 @@
   var useRef = React.useRef;
 
   function cx() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
+  /* il fuoco che tornerebbe a un elemento del cassetto chiuso o che si sta chiudendo (sotto i 1024 px) va ad «Apri il menu» (richiesta 283): Dialog e DetailPanel */
+  /* i dialoghi e i pannelli visibili fuori dalle azioni del cassetto (richiesta 283) */
+  var SIDE_DLG = '[role="dialog"], [role="alertdialog"], dialog[open], .zr-scrim, .zr-detail';
+  function sideShown(side) { return Array.prototype.filter.call(document.querySelectorAll(SIDE_DLG), function (x) { return !x.contains(side) && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== 'hidden'; }); }
+  function drawerBack(el) { return el && el.closest && el.closest('.zr-side:not(.is-open)') && window.matchMedia && window.matchMedia('(max-width: 1023px)').matches ? (document.querySelector('.zr-shell .zr-top-menu') || el) : el; }
   function omit(o, keys) { var r = {}; for (var k in o) { if (keys.indexOf(k) < 0) r[k] = o[k]; } return r; }
 
   /* Icone: tratto 1.75 su griglia 24, angoli arrotondati */
@@ -279,6 +284,7 @@
     account: 'Il tuo account', profile: 'Profilo', accountSettings: 'Impostazioni', plan: 'Piano', company: 'Azienda', logout: 'Esci',
     crumbs: 'Percorso', mainContent: 'Contenuto', skipToContent: 'Salta al contenuto', sideNav: 'Moduli e pagine'
   };
+  var TOP_NARROW = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, la barra in alto ha il menu e la ricerca chiusa a icona */
   var IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 
   function useOutside(open, refs, onClose) {
@@ -367,12 +373,39 @@
     var sid = ids.current;
     /* il menu «+» se ne va con le sue voci: create vuoto lo chiude, e non torna da solo quando le voci tornano (richiesta 28) */
     var hasCreate = !!(p.create && p.create.length);
+    /* sotto i 720 px, quando le azioni del modulo non stanno nella barra in alto (320 px col testo al 200%), vanno nel cassetto,
+       e campanella e profilo restano nella finestra; tornano nella barra quando ci stanno di nuovo (richiesta 283) */
+    var topRef = useRef(null), sideActRef = useRef(null), actOut = useRef(null), sideSnap = useRef(null); /* lo spazio della barra quando le azioni sono uscite */
+    var actSideSt = useState(false), actSide = actSideSt[0], setActSide = actSideSt[1];
+    var hasActions = !!p.actions, noSearch = p.search === false; /* prima dell'effetto, che lo ha fra le dipendenze */
+    React.useLayoutEffect(function () {
+      var top = topRef.current; if (!top || typeof window === 'undefined' || !window.matchMedia) return;
+      if (!hasActions) { setActSide(false); return; }
+      var mq = window.matchMedia(TOP_NARROW);
+      function gap(el) { return parseFloat(getComputedStyle(el).columnGap) || 0; }
+      function kids(el) { var w = 0, n = 0; for (var c = el.firstElementChild; c; c = c.nextElementSibling) { var cs = getComputedStyle(c); if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue; w += c.getBoundingClientRect().width; n += 1; } return { w: w, n: n }; }
+      function tall(el) { for (var c = el && el.firstElementChild; c; c = c.nextElementSibling) { var cs = getComputedStyle(c); if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue; /* i pannelli aperti sotto la barra non contano, come in kids() */ if (c.getBoundingClientRect().height > top.clientHeight + 0.5) return true; } return top.scrollHeight > top.clientHeight + 0.5; } /* un'azione che va a capo e supera l'altezza della barra */
+      function fit() {
+        if (!mq.matches) { actOut.current = null; setActSide(false); return; }
+        if (top.querySelector(':scope > .zr-search.is-open')) return; /* la ricerca aperta copre la barra: si misura a ricerca chiusa */
+        var s = getComputedStyle(top), room = top.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+        var k = kids(top), used = k.w + gap(top) * Math.max(0, k.n - 1), side = sideActRef.current, acts = top.querySelector(':scope > .zr-top-actions');
+        if (!side) { if (used > room + 0.5 || tall(acts)) { actOut.current = {}; setActSide(true); } return; }
+        side.classList.add('is-measuring'); var a = kids(side); side.classList.remove('is-measuring'); /* la larghezza delle azioni su una riga, non quella tagliata dal cassetto: tornano nella barra quando ci stanno senza andare a capo */
+        var o = actOut.current; if (o) { if (o.w === undefined) { o.w = a.w; o.free = room - used; } if (room - used <= o.free + 0.5 && a.w >= o.w - 0.5) return; } /* né lo spazio libero della barra né le azioni sono cambiati da quando sono uscite: restano, senza va e vieni */
+        if (used + a.w + (acts ? gap(acts) : 0) * a.n <= room - 4) { actOut.current = null; setActSide(false); } /* 4 px di margine: un'azione che ci sta appena non va e viene */
+      }
+      fit();
+      var ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+      if (ro) { ro.observe(top); for (var c = top.firstElementChild; c; c = c.nextElementSibling) ro.observe(c); if (sideActRef.current) for (var d = sideActRef.current.firstElementChild; d; d = d.nextElementSibling) ro.observe(d); } /* nel cassetto le singole azioni: il contenitore è largo quanto il cassetto */
+      if (mq.addEventListener) mq.addEventListener('change', fit); else mq.addListener(fit);
+      return function () { if (ro) ro.disconnect(); if (mq.removeEventListener) mq.removeEventListener('change', fit); else mq.removeListener(fit); };
+    }, [hasActions, actSide, noSearch, !!current]);
     useEffect(function () { if (!hasCreate) setCreateAt(null); }, [hasCreate]);
 
     /* un Esc già gestito da altri, o dato con un <dialog> del browser aperto sopra, non chiude anche il cassetto (richiesta 136) */
     useEffect(function () { if (!drawer) return; function k(e) { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.zr-scrim, dialog:modal') && !pop) setDrawer(false); } document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, [drawer, pop]);
     /* Ctrl+K / Cmd+K apre la ricerca da ogni pagina; con search={false} la ricerca non c'è e il tasto resta della pagina (richiesta 201) */
-    var noSearch = p.search === false;
     useEffect(function () {
       if (noSearch) return;
       function k(e) { if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setDrawer(false); setPop('search'); if (inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } } }
@@ -428,7 +461,7 @@
     var wsSettings = !!(curWs && (p.workspaceSettingsHref || p.onWorkspaceSettings));
     var personalName = personal ? (personal.label || L.personal) : '';
     var wsSwitch = (companies.length || personal) ? h('div', { ref: wsRef, className: cx('zr-ws', pop === 'ws' && 'is-open'), onKeyDown: wsKeys, onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'ws' ? null : v; }); } /* il fuoco esce verso un altro elemento: il selettore si chiude (richiesta 48) */ },
-      h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': sid + '-ws', 'aria-label': L.workspaceSwitch + ': ' + (onPersonal ? L.personalGroup + ' › ' + personalName : (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : '')),
+      h('button', { ref: wsBtn, type: 'button', className: 'zr-ws-switch', 'aria-expanded': pop === 'ws' ? 'true' : 'false', 'aria-controls': pop === 'ws' ? sid + '-ws' : undefined /* solo quando l'elenco c'è (richiesta 286) */, 'aria-label': L.workspaceSwitch + ': ' + (onPersonal ? L.personalGroup + ' › ' + personalName : (curCompany ? curCompany.name + ' › ' : '') + (curWs ? curWs.name : '')),
         onClick: function () { setPop(pop === 'ws' ? null : 'ws'); } },
         onPersonal ? h('span', { className: 'zr-iconbox zr-iconbox-sm zr-label-pine zr-ws-me', 'aria-hidden': 'true' }, h(Icon, { name: 'user', size: 16 })) : null,
         h('span', { className: 'zr-ws-text' },
@@ -466,7 +499,7 @@
     /* ---- Menu Prodotti collassabile ---- */
     var switcher = current ? h('div', { ref: prodRef, className: cx('zr-product', open && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false); } /* il fuoco esce dal pulsante e dalla lista: il menu si chiude, come selettore e ricerca (richiesta 212) */ },
       h('button', {
-        ref: switchRef, type: 'button', className: 'zr-product-switch', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': sid + '-products',
+        ref: switchRef, type: 'button', className: 'zr-product-switch', 'aria-expanded': open ? 'true' : 'false', 'aria-controls': open ? sid + '-products' : undefined /* solo quando il menu c'è (richiesta 286) */,
         onClick: function () { setOpen(!open); },
         onKeyDown: function (e) { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); } }
       },
@@ -629,6 +662,7 @@
             hasCreate ? h(Button, { variant: 'ghost', size: 'sm', icon: 'plus', className: 'zr-create', 'aria-label': p.createLabel || L.create, 'aria-haspopup': 'menu', 'aria-expanded': createAt ? 'true' : 'false',
               onClick: function (e) { setCreateAt(createAt ? null : e.currentTarget); } }) : null),
           wsSwitch),
+        actSide && hasActions ? h('div', { ref: sideActRef, className: 'zr-side-actions', onClickCapture: function (e) { sideSnap.current = sideShown(e.currentTarget); } /* la foto prima che il pulsante apra qualcosa */, onClick: function (e) { var b = e.target.closest && e.target.closest('button, a'), side = e.currentTarget, hp = b && b.getAttribute('aria-haspopup'); if (!b || (hp && hp !== 'false' && hp !== 'dialog')) return; var d = b.closest(SIDE_DLG.replace('dialog[open]', 'dialog')); if (d && side.contains(d)) return; /* un clic dentro un dialogo disegnato in actions (×, Annulla) non chiude il cassetto: il fuoco torna all'azione; il cassetto stesso, che può essere un dialogo, non conta */ var before = sideSnap.current || [], had = b.hasAttribute('aria-expanded'); setTimeout(function () { if (side.querySelector(SIDE_DLG)) return; if (had || b.hasAttribute('aria-expanded')) { /* prima o dopo il clic: un modulo può scriverlo solo da aperto */ var t = document.getElementById(b.getAttribute('aria-controls') || ''); if (t ? side.contains(t) : !sideShown(side).some(function (x) { return before.indexOf(x) < 0; })) return; } setDrawer(false); }, 0); } /* un'azione che apre un dialogo o un pannello chiude il cassetto, che starebbe sopra; restano aperti un menu col suo pulsante (aria-haspopup, non «dialog» né «false»), ciò che si apre o si chiude dentro il cassetto (aria-expanded con aria-controls dentro, o senza aria-controls nessun dialogo o pannello comparso fuori col clic) e un dialogo disegnato dentro actions, che il cassetto chiuso porterebbe via (richiesta 283) */ }, p.actions) : null,
         createAt && hasCreate ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
         h('nav', { ref: navRef, onClick: p.assistantNav ? slotClick : undefined, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
@@ -643,8 +677,8 @@
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
       p.assistantNav ? h('div', { className: 'zr-bubble-zone', role: 'status', onClick: slotClick }, p.assistantBubble || null) : null, /* sempre presente con la sezione: il fumetto nuovo si annuncia (306) */
-      h('header', { className: cx('zr-top', noSearch && 'no-search') },
-        h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': drawer ? L.closeMenu : L.openMenu, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
+      h('header', { ref: topRef, className: cx('zr-top', noSearch && 'no-search') },
+        h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': current ? undefined : (drawer ? L.closeMenu : L.openMenu), 'aria-description': current ? (drawer ? L.closeMenu : L.openMenu) : undefined /* col nome del modulo il nome è quello che si vede, «Apri il menu» la descrizione (richiesta 281) */, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
           h(Icon, { name: 'menu', size: 20 }), current ? h('span', { className: 'zr-top-product' }, current.label) : null),
         noSearch ? null : h('div', { ref: searchRef, className: cx('zr-search', showPanel && 'is-open'), onBlur: function (e) { if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPop(function (v) { return v === 'search' ? null : v; }); } /* il fuoco esce dalla ricerca: il pannello si chiude (richieste 7 e 90) */, onMouseDown: function (e) { if (e.target === e.currentTarget || (e.target.closest && e.target.closest('.zr-search-icon'))) { e.preventDefault(); if (inputRef.current) inputRef.current.focus(); setPop('search'); } } /* anche col fuoco già nel campo, chiuso con Esc: il tocco sull'icona lo riapre */ },
           h('span', { className: 'zr-search-icon' }, h(Icon, { name: 'search', size: 18 })),
@@ -655,9 +689,9 @@
           h('div', { className: 'zr-visually-hidden', role: 'status', 'aria-live': 'polite' }, countText),
           showPanel ? h('div', { className: 'zr-search-panel', role: 'group', 'aria-label': L.searchResults, onKeyDown: function (e) { if (e.key === 'Escape' && e.target === e.currentTarget) { e.preventDefault(); e.stopPropagation(); if (inputRef.current) inputRef.current.focus(); setPop(null); } } /* Esc dal pannello: si chiude e il fuoco torna al campo (richiesta 131) */ }, panelBody) : null),
         h('div', { className: 'zr-top-actions' },
-          p.actions || null,
+          actSide ? null : (p.actions || null),
           h('button', { ref: bellRef, type: 'button', className: cx('zr-btn zr-btn-ghost zr-btn-md zr-btn-icon zr-bell', pop === 'notif' && 'is-active'), 'aria-label': L.notifications + (unread ? ', ' + unreadText + ' ' + (unread === 1 ? L.unreadOne : L.unread) : ''),
-            'aria-expanded': pop === 'notif' ? 'true' : 'false', 'aria-controls': sid + '-notif',
+            'aria-expanded': pop === 'notif' ? 'true' : 'false', 'aria-controls': pop === 'notif' ? sid + '-notif' : undefined /* solo quando il pannello c'è (richiesta 286) */,
             onClick: function () { var next = pop === 'notif' ? null : 'notif'; setPop(next); if (next && p.onNotificationsOpen) p.onNotificationsOpen(); } },
             h(Icon, { name: 'bell', size: 18 }), unread ? h('span', { className: cx('zr-bell-count', unreadText.length > 2 && 'is-wide'), 'aria-hidden': 'true' }, unreadText) : null),
           h('button', { ref: avatarRef, type: 'button', className: 'zr-avatar-btn', 'aria-label': L.account + ': ' + user, 'aria-haspopup': 'menu', 'aria-expanded': pop === 'profile' ? 'true' : 'false',
@@ -1605,7 +1639,7 @@
       h('div', { className: 'zr-mention-anchor' },
         h('label', { className: 'zr-input has-icon zr-address-box' }, h(Icon, { name: place ? 'checkCircle' : 'search', size: 16 }),
           h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || 'Es. Arezzo oppure Via Roma 4, Arezzo', autoComplete: 'off', role: 'combobox',
-            'aria-expanded': showList, 'aria-controls': id + '-l', 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
+            'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
             'aria-activedescendant': showList && list.length ? id + '-o' + active : undefined,
             onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey, onFocus: function () { if (p.open === undefined) os[1](true); },
             onBlur: function () { if (p.open === undefined) setTimeout(function () { os[1](false); }, 120); } }),
@@ -1672,7 +1706,7 @@
             h('button', { type: 'button', className: 'zr-mention-x', 'aria-label': L.remove + ' ' + v.name, onClick: function () { remove(v); } }, h(Icon, { name: 'close', size: 14 })));
         }),
         h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || '@nome'), autoComplete: 'off', role: 'combobox',
-          'aria-expanded': showList, 'aria-controls': id + '-l', 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
+          'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
           'aria-activedescendant': showList && count ? id + '-o' + active : undefined,
           onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey,
           onBlur: function () { if (p.open === undefined) setTimeout(function () { os[1](false); }, 120); } })),
@@ -2289,6 +2323,7 @@
       return function () {
         if (document.contains(box)) return; /* il dialogo è ancora nella pagina (il doppio effetto di StrictMode): niente da rendere */
         var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf, back = target || origin;
+        back = drawerBack(back); /* aperto da un'azione nel cassetto, che si è chiuso: torna ad «Apri il menu» (richiesta 283) */
         var a = document.activeElement; /* a chi ha preso il fuoco nel frattempo, fuori dal dialogo, non si toglie */
         if (back && back !== document.body && document.contains(back) && back.focus && (!a || a === document.body || box.contains(a) || !document.contains(a))) try { back.focus({ preventScroll: true }); } catch (e) {}
       };
@@ -3348,7 +3383,7 @@
         document.removeEventListener('keydown', key);
         var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf;
         var id = origin && origin.getAttribute && origin.getAttribute('data-id');
-        var back = target && document.contains(target) ? target : id ? document.querySelector('[data-id="' + id + '"]') : origin;
+        var back = drawerBack(target && document.contains(target) ? target : id ? document.querySelector('[data-id="' + id + '"]') : origin); /* aperto dal cassetto, che si è chiuso: torna ad «Apri il menu» (richiesta 283) */
         if (back && document.contains(back) && back.focus && !document.querySelector('.zr-detail')) try { back.focus({ preventScroll: true }); } catch (e) {}
       };
     }, []);
@@ -3363,7 +3398,7 @@
     }
     var hasActs = p.actions != null && p.actions !== false && !(Array.isArray(p.actions) && !p.actions.some(Boolean));
     var closeBtn = h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-detail-close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose });
-    return h('aside', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
+    return h('div', { ref: ref, tabIndex: -1, className: cx('zr-detail', p.inline && 'is-inline', p.className), /* un div: il ruolo dialog su un aside ARIA non lo ammette (richiesta 303) */ role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': p.label, onKeyDown: trap },
       h('header', { className: 'zr-detail-head' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'chevronLeft', className: 'zr-detail-back', onClick: p.onBack || p.onClose }, p.backLabel || C.back),
         h('div', { className: 'zr-detail-ctx' }, p.head),

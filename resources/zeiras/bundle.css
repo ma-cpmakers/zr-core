@@ -1168,6 +1168,9 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-brand-v2.has-create { padding-right: 0; }
 .zr-brand-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-3); min-height: 32px; }
 .zr-brand-row .zr-create { position: relative; transform: none; } /* relative e non static: l'area di tocco della 150 resta sul «+» */
+.zr-side-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); } /* le azioni del modulo nel cassetto, quando nella barra in alto non ci stanno (richiesta 283) */
+.zr-side-actions > * { flex: none; max-width: 100%; }
+.zr-side-actions.is-measuring { flex-wrap: nowrap; width: max-content; } .zr-side-actions.is-measuring > * { max-width: none; } /* solo dentro la misura dell'AppShell, tolta prima del disegno: la larghezza delle azioni su una riga */
 .zr-brand-v2 > .zr-workspace { padding: 0 var(--space-3); }
 .zr-ws { display: flex; flex-direction: column; gap: var(--space-1); }
 .zr-ws-switch { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 44px; padding: var(--space-1) var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: background-color .15s; }
@@ -1212,8 +1215,8 @@ a.zr-ws-item { text-decoration: none; }
 
 .zr-bell { position: relative; }
 .zr-bell.is-active { background: var(--surface-sunken); color: var(--ink); }
-.zr-bell-count { position: absolute; top: 2px; left: calc(50% + 4px); min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--radius-pill); background: var(--coral); color: var(--on-coral); font-size: 10px; line-height: 16px; font-weight: 700; text-align: center; white-space: nowrap; box-shadow: 0 0 0 var(--border-ring, 2px) var(--surface-raised); pointer-events: none; } /* sull'angolo dell'icona, senza coprirla (176); il tocco passa sotto */
-.zr-bell-count.is-wide { left: calc(50% + 2px); padding: 0 3px; font-size: 9px; letter-spacing: -0.02em; } /* «99+» non arriva al pulsante accanto */
+.zr-bell-count { position: absolute; top: 2px; left: calc(50% + 4px - (1em - 10px) * 2); min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--radius-pill); background: var(--coral); color: var(--on-coral); font-size: 10px; line-height: 16px; font-weight: 700; text-align: center; white-space: nowrap; box-shadow: 0 0 0 var(--border-ring, 2px) var(--surface-raised); pointer-events: none; } /* sull'angolo dell'icona, senza coprirla (176); il tocco passa sotto */ /* al 100% dove stava; col testo più grande si sposta a sinistra del doppio di quanto cresce il carattere, e due cifre al 200% restano dentro il pulsante (richiesta 284) */
+.zr-bell-count.is-wide { left: calc(50% + 2px - (1em - 9px) * 3); padding: 0 3px; font-size: 9px; letter-spacing: -0.02em; } /* «99+» non arriva al pulsante accanto, e al 200% resta dentro il pulsante */
 .zr-avatar-btn { display: inline-flex; padding: 2px; border: 0; border-radius: var(--radius-pill); background: transparent; cursor: pointer; }
 .zr-avatar-btn[aria-expanded="true"] { box-shadow: 0 0 0 var(--border-ring, 2px) var(--pine-soft); }
 
@@ -1257,6 +1260,7 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-main.is-flush .zr-crumbbar { padding-bottom: var(--space-2); }
 .zr-main.is-flush .zr-main-body { --zr-main-body-pt: 0px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
+@media (pointer: coarse) { .zr-ws-item, .zr-notif-item, .zr-search-item, .zr-menu-item { min-height: 44px; } .zr-bell, .zr-avatar-btn { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; } } /* col dito anche sopra i 1024 px (un tablet in orizzontale): voci dei menu, campanella e profilo a 44 px (richiesta 244) */
 @media (max-width: 1023px) {
   .zr-ws-item, .zr-notif-item, .zr-search-item, .zr-menu-item { min-height: 44px; }
   .zr-top-menu { min-width: 44px; min-height: 44px; justify-content: center; }
@@ -1369,4 +1373,4 @@ a.zr-appt-title:focus-visible, button.zr-appt-title:focus-visible { outline: 2px
 }
 
 /* Al tocco i gruppi di pulsanti che vanno a capo hanno 12 px fra le righe, come la paginazione (richiesta 233): con 8 l'area da 44 di un pulsante sm (32 px) è coperta da quella della riga sotto. In fondo al file perché vale su tutti i gap di prima; un gruppo che il modulo fa da sé usa lo stesso row-gap (richiesta 273) */
-@media (pointer: coarse) { .zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions, .zr-tl-actions { row-gap: var(--space-3); } .zr-tl-actions { column-gap: var(--space-3); } }
+@media (pointer: coarse) { .zr-page-actions, .zr-side-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions, .zr-tl-actions { row-gap: var(--space-3); } .zr-tl-actions { column-gap: var(--space-3); } }

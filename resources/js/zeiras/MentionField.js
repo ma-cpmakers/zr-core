@@ -59,7 +59,7 @@ import '../../css/zeiras/MentionField.css';
             h('button', { type: 'button', className: 'zr-mention-x', 'aria-label': L.remove + ' ' + v.name, onClick: function () { remove(v); } }, h(Icon, { name: 'close', size: 14 })));
         }),
         h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || '@nome'), autoComplete: 'off', role: 'combobox',
-          'aria-expanded': showList, 'aria-controls': id + '-l', 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
+          'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
           'aria-activedescendant': showList && count ? id + '-o' + active : undefined,
           onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey,
           onBlur: function () { if (p.open === undefined) setTimeout(function () { os[1](false); }, 120); } })),

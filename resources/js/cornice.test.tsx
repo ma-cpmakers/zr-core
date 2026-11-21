@@ -10804,3 +10804,19 @@ describe('il menu a cassetto aperto dice di essere una finestra (sprint 87, voce
         expect(ruolo).toBeNull();
     });
 });
+
+// Voce #4095 (lotto 0530 del design system, richiesta 281; prima il rimedio della v5.3.0, voce 3858). Col modulo corrente il
+// pulsante del menu della barra mostra il suo nome, e l'`AppShell` gli dà quel nome: niente `aria-label`, «Apri il menu» nella
+// descrizione, nella lingua della persona. Il pezzo dei rimedi non lo tocca più (`nomiDaiTesti`, solo selettore e profilo).
+describe('il pulsante del menu col modulo si chiama col nome del modulo, dal design system (richiesta 281, voce 4095)', () => {
+    it.each(['it', 'es', 'en'])('in %s: nessun aria-label, «Apri il menu» nella descrizione', async (lingua) => {
+        await mostra(<Cornice dati={{ ...datiDiUnMembro, lingua, prodotti: { pm: 'attivo', crm: 'attivo' } }} product="crm" onLogout={esciSenzaEffetto}><p>La pagina</p></Cornice>);
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const menu = uno('.zr-top .zr-top-menu');
+
+        expect([menu?.getAttribute('aria-label'), menu?.getAttribute('aria-description'), menu?.querySelector('.zr-top-product')?.textContent])
+            .toStrictEqual([null, testi(lingua).openMenu, 'CRM']);
+    });
+});

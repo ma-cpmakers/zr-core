@@ -48,7 +48,7 @@ import '../../css/zeiras/AddressField.css';
       h('div', { className: 'zr-mention-anchor' },
         h('label', { className: 'zr-input has-icon zr-address-box' }, h(Icon, { name: place ? 'checkCircle' : 'search', size: 16 }),
           h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || 'Es. Arezzo oppure Via Roma 4, Arezzo', autoComplete: 'off', role: 'combobox',
-            'aria-expanded': showList, 'aria-controls': id + '-l', 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
+            'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
             'aria-activedescendant': showList && list.length ? id + '-o' + active : undefined,
             onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey, onFocus: function () { if (p.open === undefined) os[1](true); },
             onBlur: function () { if (p.open === undefined) setTimeout(function () { os[1](false); }, 120); } }),
