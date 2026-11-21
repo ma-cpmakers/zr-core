@@ -21,7 +21,7 @@ import '../../css/zeiras/AssistantNav.css';
       var who = assistantOf(a.assistant), name = a.name || who.name, writing = a.status === 'writing', un = a.unread || 0;
       var unText = un ? (un === 1 ? AT.unreadOne : tpl(AT.unreadMany, { n: un > 99 ? '99+' : un })) : '';
       var openName = tpl(AT.openChat, { name: name }) + (a.role ? ', ' + a.role : '') + (writing ? ', ' + AT.writing : '') + (un ? ', ' + unText : '');
-      return h('div', { key: a.id, className: cx('zr-asst', a.id === p.active && 'is-active', a.alert && 'is-alert'),
+      return h('div', { key: a.id, 'data-asst': a.id, className: cx('zr-asst', a.id === p.active && 'is-active', a.alert && 'is-alert'),
         onClick: function (e) { if (e.target.closest && e.target.closest('a, button')) return; open(a, e); } /* il resto della riga (il numero) apre la conversazione col puntatore; dalla tastiera la apre l'avatar */ },
         h('button', { type: 'button', className: 'zr-asst-open', 'aria-label': openName, 'aria-current': a.id === p.active ? 'true' : undefined, onClick: function (e) { open(a, e); } },
           h(AssistantAvatar, { assistant: a.assistant, size: 28, decorative: true }),

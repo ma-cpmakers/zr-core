@@ -23,7 +23,8 @@ const FILE_INTERNO = 'resources/js/zeiras/interni/h.js';
 // Dalla `v3.3.0` (sprint 75 · T1.1) divide anche bundle.css: il CSS senza gli stili dei due componenti, e quelli di ognuno.
 const FILE_DEL_CSS = 'resources/zeiras/bundle.css';
 // Dalla `v3.15.0` (sprint 92 · T2) anche il bundle intero coi font del pacchetto.
-const CSS_GENERATI = ['resources/css/zeiras.css', 'resources/css/bundle.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css'];
+// Dalla `v5.6.0` (voce 4088) anche i quattro degli assistenti: AssistantAvatar (con AiLabel), AssistantNav (con AssistantBubble), AssistantPanel, AssistantSession.
+const CSS_GENERATI = ['resources/css/zeiras.css', 'resources/css/bundle.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/AssistantAvatar.css', 'resources/css/zeiras/AssistantNav.css', 'resources/css/zeiras/AssistantPanel.css', 'resources/css/zeiras/AssistantSession.css'];
 const delRepo = (percorso: string) => fileURLToPath(new URL(`../../../${percorso}`, import.meta.url));
 const radice = mkdtempSync(join(tmpdir(), 'zr-core-componenti-'));
 const copia = join(radice, 'una copia #1 100% ?sì');
@@ -35,7 +36,7 @@ const generato = moduli.get(FILE_DEL_MODULO)!;
 const RITOCCATO = `${generato}// ritoccato a mano\n`;
 const generatoAParte = moduli.get(FILE_A_PARTE)!;
 const cssGenerati = CSS_GENERATI.map((percorso) => readFileSync(delRepo(percorso), 'utf8'));
-const scrittiTutti = /^scritti (\d+) moduli in resources\/js\/zeiras \(\d+ nomi esportati da componenti\.js\) e 4 CSS\n$/;
+const scrittiTutti = /^scritti (\d+) moduli in resources\/js\/zeiras \(\d+ nomi esportati da componenti\.js\) e 8 CSS\n$/;
 
 /** Lancia il comando nella copia, da una cartella che non è la sua: uscita, ciò che scrive e ciò che dice. */
 function comando(argomenti: string[] = [], script = nellaCopia('scripts/componenti.mjs')) {
@@ -71,10 +72,11 @@ describe('il comando dei componenti fa sempre il suo lavoro, anche in una cartel
         expect([esito.uscita, esito.errore, esito.file === generato]).toStrictEqual([0, '', true]);
         expect(esito.detto).toBe([
             `resources/js/zeiras/componenti.js: è quello che resources/zeiras/bundle.js genera (${(generato.match(/^export \{/gm) ?? []).length} nomi esportati)`,
-            'resources/css/zeiras.css: è quello che resources/zeiras/bundle.css genera (senza gli stili di MentionField e di AddressField)',
+            'resources/css/zeiras.css: è quello che resources/zeiras/bundle.css genera (senza gli stili di MentionField e di AddressField e di AssistantAvatar e di AssistantNav e di AssistantPanel e di AssistantSession)',
             'resources/css/bundle.css: è quello che resources/zeiras/bundle.css genera (il bundle intero coi font del pacchetto, movimento.css, avanzamento.css e rimedi.css)',
             'resources/css/zeiras/MentionField.css: è quello che resources/zeiras/bundle.css genera (gli stili di MentionField)',
             'resources/css/zeiras/AddressField.css: è quello che resources/zeiras/bundle.css genera (gli stili di AddressField)',
+            ...['AssistantAvatar', 'AssistantNav', 'AssistantPanel', 'AssistantSession'].map((nome) => `resources/css/zeiras/${nome}.css: è quello che resources/zeiras/bundle.css genera (gli stili di ${nome})`),
             `resources/js/zeiras: ${MODULI.length} moduli, tutti quelli che resources/zeiras/bundle.js genera e nessun altro`,
             '',
         ].join('\n'));

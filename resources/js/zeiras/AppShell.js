@@ -21,7 +21,6 @@ import { useEffect } from './interni/useEffect';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
 import { Menu } from './Menu';
-import '../../css/zeiras/AssistantNav.css';
 
   function AppShell(p) {
     var L = Object.assign({}, APPSHELL_LABELS, p.labels);
@@ -84,7 +83,7 @@ import '../../css/zeiras/AssistantNav.css';
     }
 
     /* ---- Assistenti (richiesta 306): la sezione (AssistantNav) e il fumetto (AssistantBubble) li porta chi usa la cornice; un loro clic chiude il cassetto ---- */
-    function slotClick(e) { if (e.target.closest('a, button, .zr-asst')) { setDrawer(false); setPop(null); } }
+    function slotClick(e) { if (e.target.closest('a, button, [data-asst]')) { setDrawer(false); setPop(null); } } /* la riga per il suo attributo, non per la classe: l'AppShell non nomina le classi della sezione, e un'app senza assistenti non ne porta gli stili */
 
     /* ---- Selettore Azienda › workspace ---- */
     var companies = p.companies || [];

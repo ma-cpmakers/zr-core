@@ -254,36 +254,6 @@ export function nelSelettore(workspace: WorkspaceDeiDati): ShellWorkspace {
 }
 
 /**
- * Quando è arrivata una notifica, nella forma corta dei design di zr-home (dalla `v3.6.0`, Decisione 18231): «ora», «5 min fa»,
- * «3 h fa», «ieri», poi «1 ott» (con l'anno se non è quest'anno). Un istante che non si legge non ha ora.
- */
-export function quando(istante: string, lingua: string | undefined, adesso: Date): string | undefined {
-    const data = new Date(istante);
-    if (isNaN(+data)) {
-        return undefined;
-    }
-    const secondi = (+adesso - +data) / 1000;
-    const relativa = new Intl.RelativeTimeFormat(lingua, { numeric: 'auto', style: 'short' });
-    if (secondi < 60) {
-        return relativa.format(0, 'second');
-    }
-    // `~~(-x)` è `-Math.floor(x)` per x da 1 in su, com'è qui, in meno byte (dalla `v2.17.1`).
-    if (secondi < 3600) {
-        return relativa.format(~~(-secondi / 60), 'minute');
-    }
-    const mezzanotte = (giorno: Date) => new Date(giorno).setHours(0, 0, 0, 0);
-    const giorni = Math.round((mezzanotte(adesso) - mezzanotte(data)) / 86_400_000);
-    if (giorni === 0) {
-        return relativa.format(~~(-secondi / 3600), 'hour');
-    }
-    if (giorni === 1) {
-        return relativa.format(-1, 'day');
-    }
-
-    return new Intl.DateTimeFormat(lingua, { day: 'numeric', month: 'short', year: data.getFullYear() === adesso.getFullYear() ? undefined : 'numeric' }).format(data);
-}
-
-/**
  * Una notifica della parte server nel pannello: il titolo e l'ora, nella lingua dei testi. Il titolo e la riga di sotto li dà
  * `rigaConLeFrasi`, con le frasi di quella lingua: per una notifica con chi ha fatto, una frase con chi e, dove il backoffice ne dà
  * il nome, che cosa. Di che
@@ -304,7 +274,7 @@ function nelPannello(notifica: NotificaDellaCornice, riga: { titolo: string; sot
         text: riga.sotto,
         actor: nomePulito(notifica.autore_nome),
         forMe: typeof notifica.per_me === 'boolean' ? notifica.per_me : undefined,
-        time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
+        time: campanella!.quando(notifica.creata_il, linguaDeiTesti(lingua), adesso),
         product: delProdotto && nomeDellaVoce(delProdotto, lingua),
         icon: delProdotto?.icona,
         tone: delProdotto?.tono,
