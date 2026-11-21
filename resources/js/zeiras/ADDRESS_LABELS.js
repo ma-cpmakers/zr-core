@@ -5,6 +5,6 @@
 
   /* ---------- MentionField: scegliere un cliente del CRM scrivendo @nome ---------- */
   /* ---------- AddressField: indirizzo con autocompletamento (Google Places) ---------- */
-  var ADDRESS_LABELS = { results: 'Suggerimenti', empty: 'Nessun suggerimento: puoi salvare il testo com’è', hint: 'Scrivi una città o un indirizzo completo', attribution: 'Suggerimenti di Google', city: 'Città', address: 'Indirizzo', freeText: 'Testo libero, non verificato', clear: 'Cancella l’indirizzo' };
+  var ADDRESS_LABELS = { results: 'Suggerimenti', empty: 'Nessun suggerimento: puoi salvare il testo com’è', hint: 'Scrivi una città o un indirizzo completo', attribution: 'Suggerimenti di Google', city: 'Città', address: 'Indirizzo', freeText: 'Testo libero, non verificato', clear: 'Cancella l’indirizzo', placeholder: 'Es. Arezzo oppure Via Roma 4, Arezzo' };
 
 export { ADDRESS_LABELS };

@@ -106,7 +106,7 @@ import { useCompLabels } from './interni/useCompLabels';
         : p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: p.type || 'text' }, attrs));
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
-        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + shown(value) : '') },
+        'aria-label': L.edit + ': ' + p.label + ', ' + (value ? shown(value) : p.placeholder || L.empty) }, /* a valore vuoto il nome porta anche il testo che si vede (richiesta 282) */
         h('span', { className: 'zr-inline-edit-text' }, value && p.view ? p.view(value) : shown(value) || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
       /* view: come si vede il valore dentro il pulsante; actions: accanto, fuori dal clic che apre il campo (un link, «Chiama») (richiesta 192) */
       if (p.actions) body = h('div', { className: 'zr-inline-edit-row' }, body, h('span', { className: 'zr-inline-edit-actions' }, p.actions));

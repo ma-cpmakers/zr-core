@@ -3,6 +3,6 @@
 // righe del bundle e quelle private che usa lui solo; il resto lo importa.
 // A un riallineamento si rigenera con `npm run componenti`.
 
-  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM' };
+  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM', placeholder: '@nome' };
 
 export { MENTION_LABELS };

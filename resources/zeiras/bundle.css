@@ -166,6 +166,7 @@ a.zr-asst-label:hover .zr-asst-name { text-decoration: underline; }
 .zr-folder-boards a, .zr-folder-new { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 36px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-md); background: transparent; font: inherit; font-size: 14px; color: var(--ink); text-decoration: none; cursor: pointer; box-sizing: border-box; }
 .zr-folder-boards a .zr-icon { color: var(--ink-muted); }
 .zr-folder-boards a:hover, .zr-folder-new:hover { background: var(--surface-sunken); }
+@media (pointer: coarse) { .zr-folder-boards a, .zr-folder-new { height: 44px; } } /* al tocco i link delle board e «Nuova board» alti un dito (richiesta 245) */
 .zr-folder-board { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .zr-folder-count { font-size: 12px; color: var(--ink-muted); }
 .zr-folder-new { color: var(--ink-muted); font-weight: 500; }
@@ -199,6 +200,7 @@ a.zr-asst-label:hover .zr-asst-name { text-decoration: underline; }
 .zr-col-add { display: flex; align-items: center; gap: var(--space-2); height: 36px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-md); background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink-muted); cursor: pointer; }
 .zr-col-add:hover { background: var(--surface-raised); color: var(--ink); }
 .zr-col-add[aria-disabled="true"] { opacity: .5; cursor: not-allowed; } .zr-col-add[aria-disabled="true"]:hover { background: transparent; color: var(--ink-muted); } /* la lista piena col limite che blocca (richiesta 227) */
+@media (pointer: coarse) { .zr-col-add { height: 44px; } } /* al tocco «Aggiungi una scheda» alto un dito (richiesta 245) */
 .zr-add-list { flex: none; width: var(--column-width); height: 48px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); border: var(--border-strong, 1.5px) dashed var(--line-strong); border-radius: var(--radius-lg); background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-muted); cursor: pointer; box-sizing: border-box; }
 .zr-add-list:hover { background: var(--surface-raised); color: var(--ink); }
 
@@ -457,6 +459,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-select > .zr-icon { position: absolute; right: var(--space-3); color: var(--ink-muted); pointer-events: none; }
 .zr-input input, .zr-select select, .zr-field textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; line-height: 20px; color: var(--ink); background: var(--surface-raised); border: 1px solid var(--line-strong); border-radius: var(--radius-md); }
 .zr-input input, .zr-select select { height: 40px; padding: 0 var(--space-3); }
+@media (pointer: coarse) { .zr-input input, .zr-select select, .zr-field textarea { font-size: 16px; } } /* al tocco il testo dei campi è di 16 px: sotto, il browser dell'iPhone ingrandisce la pagina al fuoco; anche nell'indirizzo (richiesta 247) */
 @media (pointer: coarse) { .zr-input input, .zr-select select { height: 44px; } } /* al tocco campo e select alti un dito, anche nella FilterBar e nell'indirizzo (richiesta 185) */
 .zr-input.has-icon input { padding-left: calc(var(--space-3) + 16px + var(--space-2)); } /* il margine, l'icona da 16 e lo stacco (richiesta 147) */
 .zr-select select { appearance: none; padding-right: calc(var(--space-3) + 16px + var(--space-2)); cursor: pointer; }
@@ -480,7 +483,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-check input:focus-visible + .zr-check-box { outline: 2px solid var(--focus); outline-offset: 2px; }
 .zr-check input:disabled, .zr-check input:disabled ~ * { cursor: not-allowed; } .zr-check input:disabled ~ * { opacity: .5; } /* una casella spenta si vede spenta, come Switch e Radio (richiesta 215) */
 
-.zr-switch { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 24px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; }
+.zr-switch { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 24px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; text-align: start; } /* l'etichetta che va a capo resta allineata a sinistra, non centrata come nel button (richiesta 296) */
 @media (pointer: coarse) { .zr-switch { min-height: 44px; } } /* al tocco l'interruttore si prende su 44 px di altezza, come Checkbox (183) e ToggleGroup (richiesta 242) */
 .zr-switch:disabled, .zr-switch[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .zr-switch-track { position: relative; width: 36px; height: 20px; border-radius: var(--radius-pill); background: var(--line-strong); transition: background-color .15s; flex: none; }
@@ -516,6 +519,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-radio input { position: absolute; left: -3px; top: -2px; width: 24px; height: 24px; margin: 0; opacity: 0; cursor: pointer; }
 .zr-radio-dot { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; box-sizing: border-box; border-radius: var(--radius-pill); border: var(--border-strong, 1.5px) solid var(--line-strong); background: var(--surface-raised); }
 .zr-radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--pine); transform: scale(0); transition: transform .12s; }
+@media (pointer: coarse) { .zr-radio { min-height: 44px; padding: var(--space-3) 0; box-sizing: border-box; } .zr-radio input { top: calc(var(--space-3) - 2px); } } /* al tocco la riga è alta un dito, come Checkbox (183): 12 px sopra e sotto il testo, il campo nascosto da 24 resta sul pallino (richiesta 243) */
 .zr-radio input:checked + .zr-radio-dot { border-color: var(--pine); }
 .zr-radio input:checked + .zr-radio-dot::after { transform: scale(1); }
 .zr-radio input:focus-visible + .zr-radio-dot { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -585,6 +589,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-inline-edit-actions { display: inline-flex; flex: none; align-items: center; gap: var(--space-1); }
 .zr-inline-edit.is-multiline .zr-inline-edit-text { white-space: pre-line; }
 .zr-inline-edit-field { width: 100%; box-sizing: border-box; margin: calc(-1 * var(--space-1) - 1px) 0; padding: var(--space-1) var(--space-1-5); border: 1px solid var(--focus); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); font: inherit; outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (pointer: coarse) { .zr-inline-edit-field { font-size: max(1em, 16px); } } /* al tocco almeno 16 px, come Field, e mai sotto il testo intorno (richiesta 247) */
 textarea.zr-inline-edit-field { resize: vertical; }
 .zr-inline-edit-select { position: relative; display: flex; align-items: center; } /* as="select" (richiesta 184) */
 .zr-inline-edit-select > .zr-icon { position: absolute; right: var(--space-1-5); color: var(--ink-muted); pointer-events: none; }
@@ -1318,6 +1323,7 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-mention-box:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 .zr-mention.is-error .zr-mention-box { border-color: var(--danger); }
 .zr-mention-box input { flex: 1 1 120px; min-width: 120px; min-height: 30px; border: 0; outline: 0; padding: 0 var(--space-1); background: transparent; font: inherit; font-size: 14px; line-height: 20px; color: var(--ink); }
+@media (pointer: coarse) { .zr-mention-box input { font-size: 16px; } } /* al tocco 16 px, come Field (richiesta 247) */
 .zr-mention-box input::placeholder { color: var(--ink-muted); }
 .zr-mention-chip { display: inline-flex; align-items: center; gap: var(--space-1-5); height: 30px; padding: 0 2px 0 3px; border-radius: var(--radius-pill); background: var(--sky-soft); color: var(--ink); font-size: 13px; font-weight: 600; max-width: 100%; }
 .zr-mention-chip .zr-avatar { box-shadow: none; }

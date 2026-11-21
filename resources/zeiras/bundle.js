@@ -1611,10 +1611,13 @@
 
   /* ---------- MentionField: scegliere un cliente del CRM scrivendo @nome ---------- */
   /* ---------- AddressField: indirizzo con autocompletamento (Google Places) ---------- */
-  var ADDRESS_LABELS = { results: 'Suggerimenti', empty: 'Nessun suggerimento: puoi salvare il testo com’è', hint: 'Scrivi una città o un indirizzo completo', attribution: 'Suggerimenti di Google', city: 'Città', address: 'Indirizzo', freeText: 'Testo libero, non verificato', clear: 'Cancella l’indirizzo' };
+  var ADDRESS_LABELS = { results: 'Suggerimenti', empty: 'Nessun suggerimento: puoi salvare il testo com’è', hint: 'Scrivi una città o un indirizzo completo', attribution: 'Suggerimenti di Google', city: 'Città', address: 'Indirizzo', freeText: 'Testo libero, non verificato', clear: 'Cancella l’indirizzo', placeholder: 'Es. Arezzo oppure Via Roma 4, Arezzo' };
+  var ADDRESS_TEXTS = { it: ADDRESS_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina, come InlineEdit (richiesta 263) */
+    en: { results: 'Suggestions', empty: 'No suggestions: you can save the text as it is', hint: 'Type a city or a full address', attribution: 'Suggestions from Google', city: 'City', address: 'Address', freeText: 'Free text, not verified', clear: 'Clear the address', placeholder: 'E.g. London or 10 Downing Street, London' },
+    es: { results: 'Sugerencias', empty: 'Ninguna sugerencia: puedes guardar el texto tal como está', hint: 'Escribe una ciudad o una dirección completa', attribution: 'Sugerencias de Google', city: 'Ciudad', address: 'Dirección', freeText: 'Texto libre, no verificado', clear: 'Borrar la dirección', placeholder: 'P. ej. Madrid o Calle Mayor 4, Madrid' } };
   function AddressField(p) {
     var id = useId('adr');
-    var L = Object.assign({}, ADDRESS_LABELS, p.labels || {});
+    var L = useCompLabels(ADDRESS_TEXTS, p.labels);
     var ctrl = p.value !== undefined;
     var vs = useState(p.defaultValue || ''), text = ctrl ? (p.value || '') : vs[0];
     var ps = useState(p.defaultPlace || null), place = p.place !== undefined ? p.place : ps[0];
@@ -1647,7 +1650,7 @@
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       h('div', { className: 'zr-mention-anchor' },
         h('label', { className: 'zr-input has-icon zr-address-box' }, h(Icon, { name: place ? 'checkCircle' : 'search', size: 16 }),
-          h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || 'Es. Arezzo oppure Via Roma 4, Arezzo', autoComplete: 'off', role: 'combobox',
+          h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || L.placeholder, autoComplete: 'off', role: 'combobox',
             'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
             'aria-activedescendant': showList && list.length ? id + '-o' + active : undefined,
             onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey, onFocus: function () { if (p.open === undefined) os[1](true); },
@@ -1667,10 +1670,13 @@
         : h('p', { id: desc, className: cx('zr-field-msg', place && 'zr-address-ok') }, status || p.hint || L.hint));
   }
 
-  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM' };
+  var MENTION_LABELS = { remove: 'Togli', create: 'Crea «{q}» nel CRM', empty: 'Nessun cliente con questo nome', hint: 'Scrivi @ e il nome per scegliere un cliente del CRM', results: 'Clienti del CRM', placeholder: '@nome' };
+  var MENTION_TEXTS = { it: MENTION_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina, come InlineEdit (richiesta 263) */
+    en: { remove: 'Remove', create: 'Create “{q}” in the CRM', empty: 'No client with this name', hint: 'Type @ and the name to choose a client from the CRM', results: 'CRM clients', placeholder: '@name' },
+    es: { remove: 'Quitar', create: 'Crear «{q}» en el CRM', empty: 'Ningún cliente con este nombre', hint: 'Escribe @ y el nombre para elegir un cliente del CRM', results: 'Clientes del CRM', placeholder: '@nombre' } };
   function MentionField(p) {
     var id = useId('mnt');
-    var L = Object.assign({}, MENTION_LABELS, p.labels || {});
+    var L = useCompLabels(MENTION_TEXTS, p.labels);
     var ctrlVal = p.value !== undefined;
     var vs = useState(p.defaultValue || []), values = ctrlVal ? p.value : vs[0];
     var ts = useState(p.defaultQuery != null ? '@' + p.defaultQuery : ''), text = p.query != null ? '@' + p.query : ts[0];
@@ -1709,12 +1715,13 @@
     return h('div', { className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className) },
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       h('div', { className: 'zr-mention-anchor' },
-      h('div', { className: 'zr-mention-box' },
+      h('div', { className: 'zr-mention-box', onMouseDown: function (e) { /* il tocco o il clic sul riquadro, fuori dal campo e dai «Togli», porta il fuoco nel campo senza toglierlo prima: la lista aperta resta (richiesta 246) */
+        if (e.button || e.target.closest('button, input')) return; var i = e.currentTarget.querySelector('input'); if (i) { e.preventDefault(); i.focus(); } } },
         values.map(function (v) {
           return h('span', { key: v.id, className: 'zr-mention-chip' }, h(Avatar, { name: v.name, size: 'sm' }), h('span', { className: 'zr-mention-chip-name' }, v.name),
             h('button', { type: 'button', className: 'zr-mention-x', 'aria-label': L.remove + ' ' + v.name, onClick: function () { remove(v); } }, h(Icon, { name: 'close', size: 14 })));
         }),
-        h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || '@nome'), autoComplete: 'off', role: 'combobox',
+        h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || L.placeholder), autoComplete: 'off', role: 'combobox',
           'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
           'aria-activedescendant': showList && count ? id + '-o' + active : undefined,
           onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey,
@@ -1738,13 +1745,16 @@
 
   function Checkbox(p) {
     var id = useId('chk');
-    var rest = omit(p, ['label', 'className', 'indeterminate', 'hint', 'error']);
-    var ref = useRef(null);
+    var rest = omit(p, ['label', 'className', 'indeterminate', 'hint', 'error', 'ref']);
+    var ref = useRef(null), own = Object.prototype.propertyIsEnumerable.call(p, 'ref') ? p.ref : undefined; /* il ref del modulo (React 19: una prop vera; con React 18 non si legge, e non dà un secondo avviso) e quello interno insieme: indeterminate resta (richiesta 251) */
+    var setRef = React.useMemo(function () { return function (el) { ref.current = el;
+      if (typeof own === 'function') { var c = own(el); if (typeof c === 'function') return function () { ref.current = null; c(); }; } /* la pulizia che il ref del modulo restituisce (React 19) resta sua */
+      else if (own) own.current = el; }; }, [own]);
     useEffect(function () { if (ref.current) ref.current.indeterminate = !!p.indeterminate; });
     var desc = p.error || p.hint ? id + '-d' : undefined; /* aiuto ed errore sotto, come Field (richiesta 144) */
     var wrap = 'hint' in p || 'error' in p; /* dalle props passate, non dal valore: l'errore che sparisce non rimonta la casella */
     var box = h('label', { className: cx('zr-check', p.error && 'is-error', !wrap && p.className) },
-      h('input', Object.assign({ type: 'checkbox', ref: ref, 'aria-describedby': desc, 'aria-invalid': p.error ? true : undefined }, rest)),
+      h('input', Object.assign({ type: 'checkbox', 'aria-describedby': desc, 'aria-invalid': p.error ? true : undefined }, rest, { ref: setRef })),
       h('span', { className: 'zr-check-box', 'aria-hidden': true }, h(Icon, { name: p.indeterminate ? 'close' : 'check', size: 14 })),
       p.label ? h('span', null, p.label) : null);
     if (!wrap) return box;
@@ -1757,8 +1767,9 @@
     var ctrl = p.checked !== undefined;
     var st = useState(!!p.defaultChecked), on = ctrl ? p.checked : st[0];
     var off = p['aria-disabled'] === true || p['aria-disabled'] === 'true'; /* spento ma raggiungibile: tiene il fuoco */
-    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, disabled: p.disabled, 'aria-disabled': off ? 'true' : undefined, 'aria-describedby': p['aria-describedby'], 'aria-invalid': p['aria-invalid'], className: cx('zr-switch', on && 'is-on', p.className),
-      onClick: function () { if (off) return; if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } },
+    var rest = omit(p, ['label', 'checked', 'defaultChecked', 'onChange', 'onClick', 'className', 'children', 'type', 'role']); /* id, ref, name, data-*, aria-describedby e aria-invalid passano al pulsante (richieste 179 e 249) */
+    return h('button', Object.assign(rest, { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': p['aria-label'] || p.label, 'aria-disabled': off ? 'true' : undefined, className: cx('zr-switch', on && 'is-on', p.className),
+      onClick: function (e) { if (p.onClick) p.onClick(e); if (off || e.defaultPrevented) return; if (!ctrl) st[1](!on); if (p.onChange) p.onChange(!on); } }),
       h('span', { className: 'zr-switch-track', 'aria-hidden': true }, h('span', { className: 'zr-switch-thumb' })),
       p.label ? h('span', { className: 'zr-switch-label' }, p.label) : null);
   }
@@ -2011,7 +2022,7 @@
         : p.multiline ? h('textarea', Object.assign({ rows: p.rows || 3 }, attrs)) : h('input', Object.assign({ type: p.type || 'text' }, attrs));
     } else {
       body = h('button', { ref: viewRef, type: 'button', className: cx('zr-inline-edit-view', !value && 'is-empty'), disabled: p.disabled, onClick: start,
-        'aria-label': L.edit + ': ' + p.label + (value ? ', ' + shown(value) : '') },
+        'aria-label': L.edit + ': ' + p.label + ', ' + (value ? shown(value) : p.placeholder || L.empty) }, /* a valore vuoto il nome porta anche il testo che si vede (richiesta 282) */
         h('span', { className: 'zr-inline-edit-text' }, value && p.view ? p.view(value) : shown(value) || p.placeholder || L.empty), p.disabled ? null : h(Icon, { name: 'edit', size: 14 }));
       /* view: come si vede il valore dentro il pulsante; actions: accanto, fuori dal clic che apre il campo (un link, «Chiama») (richiesta 192) */
       if (p.actions) body = h('div', { className: 'zr-inline-edit-row' }, body, h('span', { className: 'zr-inline-edit-actions' }, p.actions));

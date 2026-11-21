@@ -10,11 +10,15 @@ import { Label } from './Label';
 import { Avatar } from './interni/Avatar';
 import { useId } from './AppShell';
 import { MENTION_LABELS } from './MENTION_LABELS';
+import { useCompLabels } from './interni/useCompLabels';
 import '../../css/zeiras/MentionField.css';
 
+  var MENTION_TEXTS = { it: MENTION_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina, come InlineEdit (richiesta 263) */
+    en: { remove: 'Remove', create: 'Create “{q}” in the CRM', empty: 'No client with this name', hint: 'Type @ and the name to choose a client from the CRM', results: 'CRM clients', placeholder: '@name' },
+    es: { remove: 'Quitar', create: 'Crear «{q}» en el CRM', empty: 'Ningún cliente con este nombre', hint: 'Escribe @ y el nombre para elegir un cliente del CRM', results: 'Clientes del CRM', placeholder: '@nombre' } };
   function MentionField(p) {
     var id = useId('mnt');
-    var L = Object.assign({}, MENTION_LABELS, p.labels || {});
+    var L = useCompLabels(MENTION_TEXTS, p.labels);
     var ctrlVal = p.value !== undefined;
     var vs = useState(p.defaultValue || []), values = ctrlVal ? p.value : vs[0];
     var ts = useState(p.defaultQuery != null ? '@' + p.defaultQuery : ''), text = p.query != null ? '@' + p.query : ts[0];
@@ -53,12 +57,13 @@ import '../../css/zeiras/MentionField.css';
     return h('div', { className: cx('zr-field', 'zr-mention', p.error && 'is-error', p.className) },
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       h('div', { className: 'zr-mention-anchor' },
-      h('div', { className: 'zr-mention-box' },
+      h('div', { className: 'zr-mention-box', onMouseDown: function (e) { /* il tocco o il clic sul riquadro, fuori dal campo e dai «Togli», porta il fuoco nel campo senza toglierlo prima: la lista aperta resta (richiesta 246) */
+        if (e.button || e.target.closest('button, input')) return; var i = e.currentTarget.querySelector('input'); if (i) { e.preventDefault(); i.focus(); } } },
         values.map(function (v) {
           return h('span', { key: v.id, className: 'zr-mention-chip' }, h(Avatar, { name: v.name, size: 'sm' }), h('span', { className: 'zr-mention-chip-name' }, v.name),
             h('button', { type: 'button', className: 'zr-mention-x', 'aria-label': L.remove + ' ' + v.name, onClick: function () { remove(v); } }, h(Icon, { name: 'close', size: 14 })));
         }),
-        h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || '@nome'), autoComplete: 'off', role: 'combobox',
+        h('input', { id: id, type: 'text', value: text, placeholder: values.length ? '' : (p.placeholder || L.placeholder), autoComplete: 'off', role: 'combobox',
           'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
           'aria-activedescendant': showList && count ? id + '-o' + active : undefined,
           onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey,

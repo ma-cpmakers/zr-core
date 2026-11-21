@@ -9,12 +9,16 @@ import { Icon } from './Icon';
 import { Label } from './Label';
 import { useId } from './AppShell';
 import { ADDRESS_LABELS } from './ADDRESS_LABELS';
+import { useCompLabels } from './interni/useCompLabels';
 import '../../css/zeiras/MentionField.css';
 import '../../css/zeiras/AddressField.css';
 
+  var ADDRESS_TEXTS = { it: ADDRESS_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina, come InlineEdit (richiesta 263) */
+    en: { results: 'Suggestions', empty: 'No suggestions: you can save the text as it is', hint: 'Type a city or a full address', attribution: 'Suggestions from Google', city: 'City', address: 'Address', freeText: 'Free text, not verified', clear: 'Clear the address', placeholder: 'E.g. London or 10 Downing Street, London' },
+    es: { results: 'Sugerencias', empty: 'Ninguna sugerencia: puedes guardar el texto tal como está', hint: 'Escribe una ciudad o una dirección completa', attribution: 'Sugerencias de Google', city: 'Ciudad', address: 'Dirección', freeText: 'Texto libre, no verificado', clear: 'Borrar la dirección', placeholder: 'P. ej. Madrid o Calle Mayor 4, Madrid' } };
   function AddressField(p) {
     var id = useId('adr');
-    var L = Object.assign({}, ADDRESS_LABELS, p.labels || {});
+    var L = useCompLabels(ADDRESS_TEXTS, p.labels);
     var ctrl = p.value !== undefined;
     var vs = useState(p.defaultValue || ''), text = ctrl ? (p.value || '') : vs[0];
     var ps = useState(p.defaultPlace || null), place = p.place !== undefined ? p.place : ps[0];
@@ -47,7 +51,7 @@ import '../../css/zeiras/AddressField.css';
       p.label ? h('label', { htmlFor: id, className: 'zr-field-label' }, p.label, p.required ? h('span', { className: 'zr-req', 'aria-hidden': true }, ' *') : null) : null,
       h('div', { className: 'zr-mention-anchor' },
         h('label', { className: 'zr-input has-icon zr-address-box' }, h(Icon, { name: place ? 'checkCircle' : 'search', size: 16 }),
-          h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || 'Es. Arezzo oppure Via Roma 4, Arezzo', autoComplete: 'off', role: 'combobox',
+          h('input', { id: id, type: 'text', value: text, placeholder: p.placeholder || L.placeholder, autoComplete: 'off', role: 'combobox',
             'aria-expanded': showList, 'aria-controls': showList ? id + '-l' : undefined, 'aria-autocomplete': 'list', 'aria-describedby': desc, 'aria-invalid': !!p.error || undefined,
             'aria-activedescendant': showList && list.length ? id + '-o' + active : undefined,
             onChange: function (e) { setText(e.target.value); }, onKeyDown: onKey, onFocus: function () { if (p.open === undefined) os[1](true); },
