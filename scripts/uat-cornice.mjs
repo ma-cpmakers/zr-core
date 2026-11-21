@@ -1620,7 +1620,8 @@ async function campoFile(page, apri) {
  * RP (dalla v5.2.0, voce #3847): la barra di ripiego, quella della pagina senza i dati della cornice, a 1280 e 390 px e a 320 px
  * col testo al 200% (WCAG 1.4.10 e 1.4.4). RP.1 niente scorrimento di lato: né la pagina, né la barra, né la sua nav, e ogni voce
  * sta dentro la barra; RP.2 nessuna voce coperta: al centro e in quattro punti interni di ogni pulsante della barra il pulsante è
- * il primo elemento; RP.3 a 1280 px la barra è una riga alta quanto la topbar, come prima. Il testo al 200% raddoppia il corpo di
+ * il primo elemento; RP.3 a 1280 px la barra è una riga alta quanto la topbar, come prima, e RP.3b lo stesso col `border-box` del
+ * preflight di Tailwind 4 dei moduli (dalla v5.2.1). Il testo al 200% raddoppia il corpo di
  * ogni elemento e le interlinee in px (i font del pacchetto sono in px: la radice a 32 px non cambierebbe niente), come
  * `testi390.cjs` di zr-crm, da cui viene la misura della voce.
  */
@@ -1680,7 +1681,16 @@ async function barraDiRipiego(page, apri) {
         scrivi(!largo(misura.pagina) && !largo(misura.barra) && !largo(misura.nav) && misura.fuori.length === 0 ? '✅' : '❌', 'RP.1', `a ${vista} la barra di ripiego non scorre di lato e ogni voce sta dentro la barra (#3847)`, `pagina ${misura.pagina.join('/')}, barra ${misura.barra.join('/')}, nav ${misura.nav.join('/')}${misura.fuori.length ? `, fuori: ${misura.fuori.join(', ')}` : ''}`);
         scrivi(misura.voci > 1 && misura.coperti.length === 0 ? '✅' : '❌', 'RP.2', `a ${vista} nessuna voce della barra di ripiego è coperta (#3847)`, misura.coperti.length ? misura.coperti.join('; ') : `${misura.voci} pulsanti, 5 punti l'uno`);
         if (larghezza === 1280) {
-            scrivi(misura.righe === 1 && Math.abs(misura.altezza - misura.topbar - 1) <= 1 ? '✅' : '❌', 'RP.3', 'a 1280 px la barra di ripiego è una riga alta quanto la topbar (#3847)', `righe ${misura.righe}, altezza ${misura.altezza} (topbar ${misura.topbar} + il bordo)`);
+            scrivi(misura.righe === 1 && Math.abs(misura.altezza - misura.topbar) <= 1 ? '✅' : '❌', 'RP.3', 'a 1280 px la barra di ripiego è una riga alta quanto la topbar (#3847)', `righe ${misura.righe}, altezza ${misura.altezza} (topbar ${misura.topbar})`);
+            // RP.3b (v5.2.1, R1 della revisione della v5.2.0): i moduli hanno il preflight di Tailwind 4, che mette `border-box` a
+            // tutto; la pagina di prova no. Qui lo si fa come lui, a ogni elemento che non lo dice da sé, e la barra si rimisura.
+            const conPreflight = await page.evaluate(() => {
+                document.querySelectorAll('*').forEach((el) => { if (!el.style.boxSizing) el.style.boxSizing = 'border-box'; });
+                return document.querySelector('header').getBoundingClientRect().height;
+            });
+            scrivi(Math.abs(conPreflight - misura.topbar) <= 1 ? '✅' : '❌', 'RP.3b', 'a 1280 px, col border-box del preflight di Tailwind 4, la barra di ripiego è alta quanto la topbar (R1 della revisione della v5.2.0)', `altezza ${conPreflight} (topbar ${misura.topbar})`);
+            await apri(indirizzo);
+            await page.waitForSelector('header nav button', { timeout: 15000 });
             // Solo la barra: la pagina sotto è del modulo (quella di prova non ha un `main`, e ogni suo paragrafo sarebbe «region»).
             await page.evaluate(axe);
             const dellaBarra = await page.evaluate(async () => (await window.axe.run({ include: [['header']] }, { resultTypes: ['violations'], preload: false })).violations.flatMap((regola) => regola.nodes.map((nodo) => `${regola.id}(${regola.impact}) ${nodo.target.join(' ')}`)));
