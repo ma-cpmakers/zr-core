@@ -97,3 +97,18 @@ it('rimedi.css porta le quattro aree da 44 px al tocco, e il README le dice (voc
         ->toContain('Dal nono al dodicesimo (#3948-#3951')
         ->toContain('Col mouse niente cambia.');
 });
+
+// Voci #4055-#4057 (richieste 302, 304 e 305; zr-pm-a0 21/11, v5.5.0): il contesto del DetailPanel va a capo; al tocco
+// l'ordinamento della DataTable si prende su 44 px e le azioni del pannello stanno a 12 px; col mouse quelle due non cambiano.
+it('rimedi.css porta il contesto del pannello a capo e, al tocco, l\'ordinamento e le azioni del pannello, e il README li dice (voci 4055-4057)', function () {
+    $radice = dirname(__DIR__, 2);
+
+    expect(File::get("$radice/resources/css/rimedi.css"))
+        ->toContain('.zr-detail-head > .zr-detail-ctx { white-space: normal;')
+        ->toContain('table.zr-table th { height: 44px; }')
+        ->toContain('.zr-th-sort::after')
+        ->toContain('div.zr-detail-actions { gap: var(--space-3); }')
+        ->and(File::get("$radice/README.md"))
+        ->toContain('Dal tredicesimo al quindicesimo (#4055-#4057')
+        ->toContain('mouse l\'ordinamento e le azioni non cambiano.');
+});

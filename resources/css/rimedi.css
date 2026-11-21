@@ -98,3 +98,21 @@
 @media (pointer: coarse) and (max-width: 720px) {
   .zr-top .zr-search.is-open { top: var(--space-2); }
 }
+
+/*
+ * Richieste 302, 304 e 305 (21/11; zr-pm-a0; voci #4055-#4057, v5.5.0).
+ * 302: a 320 px col testo al 200% il contesto dell'intestazione del DetailPanel finisce in puntini e il nome non si legge: va a
+ * capo, come il titolo della SectionCard (290). Due classi: il bundle lo scrive con una.
+ * 304: al tocco il pulsante che ordina una colonna della DataTable è alto circa 20 px e, non essendo un `.zr-btn`, non ha l'area
+ * da 44 della 150: la prende, e l'intestazione è alta 44, così l'area non copre la prima riga.
+ * 305: al tocco le azioni dell'intestazione del DetailPanel e la ✕ stanno a 4 px, e le aree da 44 dei pulsanti da 32 si coprono:
+ * 12 px, come la paginazione (233) e le righe di azioni (273). Col mouse la 304 e la 305 non cambiano niente.
+ */
+.zr-detail-head > .zr-detail-ctx { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+@media (pointer: coarse) {
+  table.zr-table th { height: 44px; }
+  .zr-th-sort { position: relative; }
+  .zr-th-sort::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }
+  div.zr-detail-actions { gap: var(--space-3); }
+  .zr-detail-actions + button.zr-detail-close { margin-left: 0; }
+}

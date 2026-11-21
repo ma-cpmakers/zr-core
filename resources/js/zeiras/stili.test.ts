@@ -285,7 +285,7 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890, 3891 e 3948-3951; v4.35.2, richiesta 293; v4.36.0, richiesta 294; v5.0.1, richiesta 299)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (voci 3887, 3888, 3889, 3890, 3891, 3948-3951 e 4055-4057; v4.35.2, richiesta 293; v4.36.0, richiesta 294; v5.0.1, richiesta 299)', () => {
         expect(regole).toBe([
             '.zr-section-card-title { overflow-wrap: anywhere; }',
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
@@ -303,6 +303,10 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
             ':is(div, footer):is(.zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions) { row-gap: var(--space-3); }',
             'button.zr-switch { min-height: 44px; } .zr-top .zr-search { height: 44px; } }',
             '@media (pointer: coarse) and (max-width: 720px) { .zr-top .zr-search.is-open { top: var(--space-2); } }',
+            '.zr-detail-head > .zr-detail-ctx { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }',
+            '@media (pointer: coarse) { table.zr-table th { height: 44px; } .zr-th-sort { position: relative; }',
+            '.zr-th-sort::after { content: \'\'; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }',
+            'div.zr-detail-actions { gap: var(--space-3); } .zr-detail-actions + button.zr-detail-close { margin-left: 0; } }',
         ].join(' '));
     });
 
@@ -332,6 +336,36 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         expect(regole).toContain(':is(div, footer):is(.zr-page-actions');
         expect(regole).toContain('button.zr-switch { min-height: 44px; }');
         expect(regole).toContain('.zr-top .zr-search.is-open { top: var(--space-2); }');
+    });
+
+    // Voci 4055-4057 (richieste 302, 304 e 305; zr-pm-a0 21/11, v5.5.0). La prova in Chromium (contesto del pannello a 320 px col
+    // testo al 200%; col tocco emulato, elementFromPoint a ±21 px dal centro dell'ordinamento e dei pulsanti dell'intestazione del
+    // pannello) è nelle voci. Quando il design system porta una delle tre richieste, il suo caso diventa rosso e il rimedio si toglie.
+    it('il design system di oggi mette in puntini il contesto del pannello, lascia l\'ordinamento senza area al tocco e le azioni del pannello a 4 px (voci 4055-4057)', () => {
+        const alTocco = [...bundleCss.matchAll(/@media \(pointer: coarse\) \{([\s\S]*?)\}\s*\}/g)].map((m) => m[1]).join(' ');
+        // 302: il contesto su una riga coi puntini.
+        expect(bundleCss).toMatch(/\.zr-detail-ctx \{[^}]*text-overflow: ellipsis; white-space: nowrap/);
+        // 304: l'ordinamento non è un .zr-btn e nessuna regola al tocco gli dà un'area; l'intestazione è alta 40 px.
+        expect(bundleCss).toMatch(/\.zr-th-sort \{[^}]*padding: 0; border: 0/);
+        expect(alTocco).not.toMatch(/zr-th-sort|\.zr-table th/);
+        expect(bundleCss).toMatch(/\.zr-table th \{[^}]*height: 40px/);
+        // 305: le azioni a 4 px fra loro e dalla ✕, anche al tocco.
+        expect(bundleCss).toMatch(/\.zr-detail-actions \{[^}]*gap: var\(--space-1\)/);
+        expect(bundleCss).toContain('.zr-detail-actions + .zr-detail-close { margin-left: calc(var(--space-1) - var(--space-3)); }');
+        expect(alTocco).not.toMatch(/zr-detail-actions|zr-detail-close/);
+    });
+
+    it('i rimedi della 304 e della 305 valgono solo al tocco, quello della 302 sempre, e vincono sulle regole del bundle (voci 4055-4057)', () => {
+        // Col mouse niente cambia per l'ordinamento e per le azioni (4056 e 4057: «44 o 12 px anche col mouse» è il difetto).
+        const fuori = regole.replace(/@media \(pointer: coarse\)[^{]*\{(?:[^{}]*\{[^}]*\})*\s*\}/g, '');
+        expect(fuori).toContain('.zr-detail-head > .zr-detail-ctx { white-space: normal;');
+        expect(fuori).not.toMatch(/zr-th-sort|zr-table th|zr-detail-actions|zr-detail-close/);
+        // rimedi.css sta prima del bundle nello strato: ogni regola che cambia una proprietà del bundle ha un selettore più forte
+        // (due classi, o tag e classe).
+        expect(regole).toContain('.zr-detail-head > .zr-detail-ctx {');
+        expect(regole).toContain('table.zr-table th { height: 44px; }');
+        expect(regole).toContain('div.zr-detail-actions { gap: var(--space-3); }');
+        expect(regole).toContain('.zr-detail-actions + button.zr-detail-close { margin-left: 0; }');
     });
 
     it('il titolo della SectionCard va a capo anche dentro una parola: overflow-wrap anywhere (AC 1, richiesta 290)', () => {
