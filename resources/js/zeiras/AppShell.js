@@ -83,7 +83,7 @@ import { Menu } from './Menu';
     }
 
     /* ---- Assistenti (richiesta 306): la sezione (AssistantNav) e il fumetto (AssistantBubble) li porta chi usa la cornice; un loro clic chiude il cassetto ---- */
-    function slotClick(e) { if (e.target.closest('a, button, [data-asst]')) { setDrawer(false); setPop(null); } } /* la riga per il suo attributo, non per la classe: l'AppShell non nomina le classi della sezione, e un'app senza assistenti non ne porta gli stili */
+    function slotClick(e) { if (e.target.closest(e.currentTarget.tagName === 'NAV' ? '[data-asst]' : 'a, button')) { setDrawer(false); setPop(null); } } /* nel nav solo la riga di un assistente, per il suo attributo e non per la classe (l'AppShell non nomina le classi della sezione, e un'app senza assistenti non ne porta gli stili): le voci dei moduli le chiude go(), e una voce «Presto» lascia il cassetto aperto; nella zona il fumetto */
 
     /* ---- Selettore Azienda › workspace ---- */
     var companies = p.companies || [];
