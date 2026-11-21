@@ -1119,11 +1119,14 @@ describe('la barra minima di chi non ha i dati: un pezzo a richiesta, mai nel JS
         expect(barra).not.toContain('react/jsx-runtime');
     });
 
-    it('il pezzo pesa, con gzip, al più 420 byte (463 fino alla v2.24.0; misura della patch v2.24.1)', () => {
+    // Dalla v5.2.0 (#3847) 460: la barra che va a capo invece di scorrere di lato, a 320 px col testo al 200%; 440 misurati, la
+    // misura + 20, Decisione 25217 di zr-pm-74 (14/11). Lo spazio sopra e sotto le righe costa 17 byte (423 senza), e senza le
+    // voci che vanno a capo stanno a filo del bordo della barra: non vanno bene.
+    it('il pezzo pesa, con gzip, al più 460 byte (420 dalla v2.24.1, 463 fino alla v2.24.0)', () => {
         const [barra = ''] = conIlLayout.pezzi.filter((pezzo) => pezzo.includes(DELLA_BARRA));
 
         expect(barra).not.toBe('');
-        expect(gzip(barra)).toBeLessThanOrEqual(420);
+        expect(gzip(barra)).toBeLessThanOrEqual(460);
     });
 
 });

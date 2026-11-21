@@ -387,6 +387,18 @@ describe('LayoutDellaCornice', () => {
             expect(fetch).not.toHaveBeenCalled();
         });
 
+        // Voce #3847 (B.1, B.2, B.4): a 320 px col testo al 200% la nav stretta fra il logo ed «Esci» scorreva di lato e le voci
+        // finivano sotto il marchio. jsdom non impagina: qui la forma degli stili, in Chromium le righe RP di uat-cornice.
+        it('la barra va a capo invece di scorrere di lato, e ha solo token del design system (voce 3847 · B.1, B.2, B.4)', async () => {
+            await visita(null, <PaginaA key="1" />, dellaBarra(esciSenzaEffetto));
+
+            const barra = (uno('header') as HTMLElement).style;
+            const nav = (uno('header nav') as HTMLElement).style;
+            expect([barra.flexWrap, barra.height, barra.minHeight]).toStrictEqual(['wrap', '', 'calc(var(--topbar-height) - 2 * var(--space-2))']);
+            expect([nav.flexWrap, nav.overflowX, nav.overflow, nav.minWidth, nav.flexBasis]).toStrictEqual(['wrap', '', '', 'min-content', '0%']);
+            expect([barra.padding, barra.minHeight, barra.background, barra.borderBottom].filter((valore) => !valore.includes('var(--'))).toStrictEqual([]);
+        });
+
         it('T1.2 «Esci» chiama `onLogout`, una voce chiama `onNavigate` col suo id, e la voce attiva dice `aria-current` (le altre no)', async () => {
             const esci = vi.fn();
             const vai = vi.fn();
