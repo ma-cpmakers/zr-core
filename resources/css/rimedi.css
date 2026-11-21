@@ -4,10 +4,9 @@
  * resources/css/zeiras.css sotto avanzamento.css, quindi prima delle regole del bundle; un rimedio che cambia una proprietà
  * che il bundle già scrive deve vincere con un selettore più forte, non con !important.
  *
- * Richiesta 290 (zr-cashflow, zr-pm-74 15/11): il titolo della SectionCard con una parola senza spazi va a capo, e a 390 px la
- * pagina non scorre di lato.
+ * Dalla v5.7.0 (voce #4089, lotto 0529 del design system) tredici rimedi sono usciti, perché il design system li porta da sé:
+ * richieste 242, 272, 273, 278, 279, 288, 290, 291, 292, 298, 302, 304 e 305. Restano quelli delle richieste 283, 293, 294 e 299.
  */
-.zr-section-card-title { overflow-wrap: anywhere; }
 
 /*
  * Richiesta 293 (zr-pm-74 16/11, v4.35.2): le carte della DealPipeline si trascinano anche col dito (resources/js/tocco.ts), e
@@ -17,38 +16,6 @@
  */
 .zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }
-
-/*
- * Richiesta 278 (zr-crm-14, zr-pm-74 15/11; voce #3888): l'anello del fuoco (2 px più 2 di scostamento) non è tagliato quando il
- * browser porta in vista un comando dentro un contenitore che scorre: il comando si ferma a 4 px dal bordo, non a filo. Solo
- * scroll-padding: fuori dallo scorrimento la pagina non cambia.
- * Con il percorso a scorrere è `.zr-main-body`, e il rimedio vale anche lì (v4.36.1, R1 della revisione della v4.36.0).
- */
-.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); }
-
-/*
- * Richiesta 288 (zr-crm-35, zr-pm-74 15/11; voce #3889): coi colori forzati (Contrasto elevato di Windows) sfondo e ombra della
- * voce attiva del menu e del segmento scelto si azzerano, e resta solo il grassetto: un contorno, che i colori forzati tengono,
- * come il design system fa già per .zr-radio-card e .zr-color. Col fuoco sopra vale l'anello del fuoco.
- */
-@media (forced-colors: active) {
-  .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); }
-}
-
-/*
- * Richiesta 279 (zr-crm-14, zr-bookings, zr-superadmin; zr-pm-74 15/11; voce #3889): il campo Cerca chiuso non si distingue dalla
- * barra (1,18:1). Sopra i 720 px prende il contorno che il design system gli dà già da aperto (.zr-search.is-open), 4,04:1 sulla
- * barra; sotto, chiuso, resta l'icona. Coi colori forzati l'ombra sparisce: un contorno vero, sopra i 720 px e da aperto.
- */
-@media (width > 720px) {
-  .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); }
-}
-@media (forced-colors: active) and (width > 720px) {
-  .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; }
-}
-@media (forced-colors: active) {
-  .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; }
-}
 
 /*
  * Richiesta 283 (zr-core, giro B del 14/11; zr-pm-74 15/11; voce #3890): sotto i 720 px il campo della ricerca aperto copre la
@@ -62,14 +29,6 @@
 }
 
 /*
- * Richiesta 291 (zr-core, voce #3891; zr-pm-74 15/11, Decisione 25442): il Toast ha lo sfondo var(--ink), e l'anello del fuoco che
- * il design system dà ad «Annulla» e alla ✕ è var(--focus), 2,82:1 sul Toast nel tema chiaro e 1,88:1 nello scuro (WCAG 1.4.11
- * chiede 3:1). Dentro il Toast l'anello prende il colore del suo testo, var(--surface): 15,47:1 e 16,46:1. Fuori dal Toast niente
- * cambia.
- */
-.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); }
-
-/*
  * Richiesta 299 (zr-crm-35, regola di zr-pm-74 del 18/11; v5.0.1): fuori dalla lavagna nessuna colonna segnata, nemmeno durante
  * il trascinamento. La DealPipeline azzera la colonna segnata solo al rilascio; resources/js/tocco.ts segna la lavagna con
  * data-zr-fuori quando il puntatore ne esce, e qui la colonna torna come le altre: lo sfondo e il bordo di .zr-col, e quello
@@ -77,42 +36,3 @@
  */
 .zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }
 .zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }
-
-/*
- * Richieste 272, 273, 242 e 298 (verifica a 320/390/1280 del 17/11; zr-pm-74, Decisione 25922; voci #3948-#3951, v5.5.0): al tocco
- * quattro aree che il design system lascia sotto i 44 px. Solo con `pointer: coarse`: col mouse niente cambia.
- * 272: la casella di riga della DataTable si prende su 24×44, e accanto il tocco cade sulla riga e la apre. Un'area da 44×44
- * centrata sulla casella (come `.zr-btn::after`), che sta nella cella della casella: il tocco seleziona e la riga non si apre.
- * 273: le azioni che vanno a capo hanno 8 px fra le righe, e l'area da 44 di un pulsante sm (32 px) è coperta da quella della
- * riga sotto: 12 px, come la paginazione (richiesta 233). Il selettore porta il tag perché il `gap` del bundle viene dopo.
- * 242: lo Switch si prende su 24 px di altezza: 44, come Checkbox (183) e ToggleGroup.
- * 298: il campo della ricerca è alto 40 px nella barra di 60: 44, come Field (185); aperto sotto i 720 px sta a `--space-2` dall'alto,
- * e la barra resta di 60.
- */
-@media (pointer: coarse) {
-  .zr-td-check .zr-check::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
-  :is(div, footer):is(.zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions) { row-gap: var(--space-3); }
-  button.zr-switch { min-height: 44px; }
-  .zr-top .zr-search { height: 44px; }
-}
-@media (pointer: coarse) and (max-width: 720px) {
-  .zr-top .zr-search.is-open { top: var(--space-2); }
-}
-
-/*
- * Richieste 302, 304 e 305 (21/11; zr-pm-a0; voci #4055-#4057, v5.5.0).
- * 302: a 320 px col testo al 200% il contesto dell'intestazione del DetailPanel finisce in puntini e il nome non si legge: va a
- * capo, come il titolo della SectionCard (290). Due classi: il bundle lo scrive con una.
- * 304: al tocco il pulsante che ordina una colonna della DataTable è alto circa 20 px e, non essendo un `.zr-btn`, non ha l'area
- * da 44 della 150: la prende, e l'intestazione è alta 44, così l'area non copre la prima riga.
- * 305: al tocco le azioni dell'intestazione del DetailPanel e la ✕ stanno a 4 px, e le aree da 44 dei pulsanti da 32 si coprono:
- * 12 px, come la paginazione (233) e le righe di azioni (273). Col mouse la 304 e la 305 non cambiano niente.
- */
-.zr-detail-head > .zr-detail-ctx { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
-@media (pointer: coarse) {
-  table.zr-table th { height: 44px; }
-  .zr-th-sort { position: relative; }
-  .zr-th-sort::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }
-  div.zr-detail-actions { gap: var(--space-3); }
-  .zr-detail-actions + button.zr-detail-close { margin-left: 0; }
-}
