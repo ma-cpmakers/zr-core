@@ -1,0 +1,28 @@
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AssistantNav di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in `@layer zeiras`: li importa il modulo resources/js/zeiras/AssistantNav.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer zeiras {
+/* AssistantNav e AssistantBubble (richiesta 306): la sezione «Assistenti» del menu, una voce alta 44 px per assistente sotto i moduli, e il fumetto dei messaggi nuovi */
+.zr-asst { display: flex; align-items: center; gap: var(--space-2-5); min-height: 44px; padding: 0 var(--space-2-5) 0 var(--space-1); border-radius: var(--radius-md); color: var(--ink); cursor: pointer; }
+.zr-asst:hover { background: var(--surface-sunken); }
+.zr-asst.is-active { background: var(--pine-soft); }
+.zr-asst-open { position: relative; display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; cursor: pointer; }
+.zr-asst-open:focus-visible, .zr-asst-label:focus-visible, .zr-asst-bubble:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-asst-dot { position: absolute; right: 5px; bottom: 5px; width: 11px; height: 11px; border-radius: 50%; background: var(--pine); box-shadow: 0 0 0 2px var(--surface-raised); }
+.zr-asst-dot.is-writing { background: var(--citrus); }
+.zr-asst-label { flex: 1; min-width: 0; display: flex; flex-direction: column; color: inherit; text-decoration: none; font-size: 14px; line-height: 18px; font-weight: 600; }
+a.zr-asst-label:hover .zr-asst-name { text-decoration: underline; }
+.zr-asst-label small { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); overflow-wrap: anywhere; }
+.zr-asst-count { flex: none; min-width: 22px; height: 22px; padding: 0 var(--space-1-5); border-radius: var(--radius-pill); background: var(--coral); color: var(--on-coral); font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; }
+.zr-asst.is-alert .zr-bot { animation: zr-asst-wob .7s ease-in-out 4; }
+.zr-asst.is-alert .zr-asst-dot { animation: zr-asst-pulse 1s infinite; }
+@keyframes zr-asst-wob { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg) scale(1.1); } 75% { transform: rotate(10deg) scale(1.1); } }
+@keyframes zr-asst-pulse { 50% { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 6px color-mix(in srgb, var(--citrus) 45%, transparent); } }
+.zr-asst-bubble { position: fixed; z-index: var(--z-toast); top: calc(var(--topbar-height) + var(--space-5)); left: calc(var(--sidebar-width) + var(--space-6)); display: flex; align-items: center; gap: var(--space-2-5); max-width: 320px; padding: var(--space-2-5) var(--space-3-5); border: 1px solid var(--line-strong); border-radius: var(--radius-md-lg); background: var(--surface-raised); box-shadow: var(--shadow-lift); color: var(--ink); text-align: left; font: inherit; font-size: 14px; line-height: 20px; cursor: pointer; animation: zr-asst-pop .25s ease-out; }
+.zr-asst-bubble::before { content: ""; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; background: var(--surface-raised); border-left: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); transform: rotate(45deg); }
+.zr-asst-bubble-text { min-width: 0; overflow-wrap: anywhere; }
+.zr-asst-bubble small { display: block; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--pine); }
+@keyframes zr-asst-pop { from { transform: translateY(6px) scale(.96); opacity: 0; } }
+@media (max-width: 1023px) { .zr-asst-bubble { left: var(--space-4); right: var(--space-4); top: auto; bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px)); max-width: none; } .zr-asst-bubble::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .zr-asst.is-alert .zr-bot, .zr-asst.is-alert .zr-asst-dot, .zr-asst-bubble { animation: none; } }
+@media (forced-colors: active) { .zr-asst.is-active { outline: 2px solid Highlight; outline-offset: -2px; } .zr-asst-count { border: 1px solid CanvasText; } }
+}

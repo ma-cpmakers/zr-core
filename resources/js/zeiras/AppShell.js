@@ -12,14 +12,16 @@ import { countParts } from './interni/countParts';
 import { Icon } from './Icon';
 import { Button } from './Button';
 import { Avatar } from './Avatar';
-import { DEFAULT_NAV, IS_MAC, scrollStop, useOutside } from './interni/DEFAULT_NAV';
+import { DEFAULT_NAV, IS_MAC, useOutside } from './interni/DEFAULT_NAV';
 import { APPSHELL_LABELS } from './APPSHELL_LABELS';
 import { Logo } from './Logo';
 import { NotificationItem } from './NotificationItem';
+import { scrollStop } from './interni/SHELL_FOCUSABLE';
 import { useEffect } from './interni/useEffect';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
 import { Menu } from './Menu';
+import '../../css/zeiras/AssistantNav.css';
 
   function AppShell(p) {
     var L = Object.assign({}, APPSHELL_LABELS, p.labels);
@@ -80,6 +82,9 @@ import { Menu } from './Menu';
         it.soon || it.inactive ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), it.soon ? L.soon : L.inactive) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
         it.count ? countParts(it.count, 'zr-count', it.countLabel) : null);
     }
+
+    /* ---- Assistenti (richiesta 306): la sezione (AssistantNav) e il fumetto (AssistantBubble) li porta chi usa la cornice; un loro clic chiude il cassetto ---- */
+    function slotClick(e) { if (e.target.closest('a, button, .zr-asst')) { setDrawer(false); setPop(null); } }
 
     /* ---- Selettore Azienda › workspace ---- */
     var companies = p.companies || [];
@@ -302,17 +307,18 @@ import { Menu } from './Menu';
           wsSwitch),
         createAt && hasCreate ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
-        h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
+        h('nav', { ref: navRef, onClick: p.assistantNav ? slotClick : undefined, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
           groups.map(function (g) {
             return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || (g.group === 'Prodotti' || g.group === 'Moduli')) && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),
               g.items.map(item));
-          })),
+          }), p.assistantNav || null),
         h('div', { ref: footRef, className: cx('zr-side-foot', behind && 'is-dimmed') },
           p.settings === false ? null : item(settingsItem),
           p.plan === false ? null : h('div', { className: 'zr-plan' },
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
+      p.assistantNav ? h('div', { className: 'zr-bubble-zone', role: 'status', onClick: slotClick }, p.assistantBubble || null) : null, /* sempre presente con la sezione: il fumetto nuovo si annuncia (306) */
       h('header', { className: cx('zr-top', noSearch && 'no-search') },
         h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': drawer ? L.closeMenu : L.openMenu, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
           h(Icon, { name: 'menu', size: 20 }), current ? h('span', { className: 'zr-top-product' }, current.label) : null),

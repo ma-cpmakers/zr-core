@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"},{"name":"AddList"},{"name":"AgendaGrid"},{"name":"ColorPicker"},{"name":"LabelsProvider"},{"name":"NotificationItem"},{"name":"ReorderList"},{"name":"CardColorPicker"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Zeiras","components":[{"name":"Logo"},{"name":"Button"},{"name":"Label"},{"name":"Avatar"},{"name":"AppShell"},{"name":"DashboardHome"},{"name":"ProductTile"},{"name":"ProjectFolder"},{"name":"KanbanCard"},{"name":"KanbanColumn"},{"name":"KanbanBoard"},{"name":"LandingPage"},{"name":"SiteHeader"},{"name":"Hero"},{"name":"PricingCard"},{"name":"FAQ"},{"name":"CtaBand"},{"name":"SiteFooter"},{"name":"Icon"},{"name":"BrandIcon"},{"name":"Field"},{"name":"MentionField"},{"name":"AddressField"},{"name":"Checkbox"},{"name":"RadioGroup"},{"name":"ToggleGroup"},{"name":"InlineEdit"},{"name":"Calendar"},{"name":"Switch"},{"name":"Tabs"},{"name":"Alert"},{"name":"Toast"},{"name":"Dialog"},{"name":"EmptyState"},{"name":"Progress"},{"name":"PageHeader"},{"name":"DataTable"},{"name":"StatCard"},{"name":"LineChart"},{"name":"BarChart"},{"name":"DonutChart"},{"name":"CrmContacts"},{"name":"DealPipeline"},{"name":"DescriptionList"},{"name":"ContactDetail"},{"name":"ReportDashboard"},{"name":"AutomationList"},{"name":"WorkflowBuilder"},{"name":"ContentStudio"},{"name":"DetailPanel"},{"name":"AssistantAvatar"},{"name":"AiLabel"},{"name":"AssistantNav"},{"name":"AssistantBubble"},{"name":"AssistantPanel"},{"name":"AssistantSession"},{"name":"Composer"},{"name":"Menu"},{"name":"SectionHeading"},{"name":"StepList"},{"name":"AudienceGrid"},{"name":"Skeleton"},{"name":"FilterBar"},{"name":"ChartCard"},{"name":"SectionCard"},{"name":"Sparkline"},{"name":"StatusLabel"},{"name":"RecordHeader"},{"name":"ActivityTimeline"},{"name":"DealCard"},{"name":"AutomationStep"},{"name":"LanguageSwitch"},{"name":"SectorGrid"},{"name":"Breadcrumb"},{"name":"AppointmentItem"},{"name":"AddList"},{"name":"AgendaGrid"},{"name":"ColorPicker"},{"name":"LabelsProvider"},{"name":"NotificationItem"},{"name":"ReorderList"},{"name":"CardColorPicker"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -159,6 +159,96 @@
   }
   Avatar.Stack = AvatarStack;
 
+  /* ---------- Assistenti (richieste 306-310, design zr-squadra--agenti) ---------- */
+  /* I sette assistenti della squadra: nome fisso (deciso da Luciano) e tono del loro modulo (309) */
+  var ASSISTANTS = {
+    zed: { name: 'Zed', tone: 'pine' }, kai: { name: 'Kai', tone: 'sky' }, ivy: { name: 'Ivy', tone: 'plum' }, dex: { name: 'Dex', tone: 'coral' },
+    rio: { name: 'Rio', tone: 'tang' }, lex: { name: 'Lex', tone: 'indigo' }, ari: { name: 'Ari', tone: 'rose' }
+  };
+  /* i testi degli assistenti nella lingua dell'app, come i testi comuni (186); la prop labels vince (205) */
+  var ASSISTANT_LABELS = {
+    aiLabel: 'Assistente AI', group: 'Assistenti', writing: 'sta scrivendo…', online: 'disponibile', unreadOne: '1 messaggio non letto', unreadMany: '{n} messaggi non letti',
+    openChat: 'Apri la conversazione con {name}', openSession: 'Apri la sessione di {name} a schermo intero',
+    conversation: 'Conversazione con {name}', messages: 'Messaggi', fullScreen: 'Apri a schermo intero', closeChat: 'Chiudi la conversazione',
+    sees: '{name} vede:', removeContext: 'Togli il contesto', noContext: '{name} non vede la pagina.', restoreContext: 'Rimetti il contesto',
+    placeholder: 'Scrivi a {name}…', send: 'Invia',
+    sessions: 'Sessioni', sessionsOf: 'Sessioni di {name}', newSession: 'Nuova sessione', newSessionWith: 'Nuova sessione con {name}', newShort: 'Nuova', view: 'Vista', chat: 'Chat', document: 'Documento', workArea: 'Area di lavoro',
+    emptyTitle: 'Qui compare quello che crei con {name}', emptyText: 'Allega un file, cita un elemento o usa un comando: il documento si scrive qui mentre {name} lavora.',
+    writingDoc: '{name} sta scrivendo…', redo: 'Rifai', redoSection: 'Rifai la sezione {title}', editedBy: 'Modificato da {name}', closeDocument: 'Chiudi il documento'
+  };
+  var ASSISTANT_TEXTS = { it: ASSISTANT_LABELS,
+    en: { aiLabel: 'AI assistant', group: 'Assistants', writing: 'typing…', online: 'available', unreadOne: '1 unread message', unreadMany: '{n} unread messages',
+      openChat: 'Open the conversation with {name}', openSession: 'Open the session with {name} full screen',
+      conversation: 'Conversation with {name}', messages: 'Messages', fullScreen: 'Open full screen', closeChat: 'Close the conversation',
+      sees: '{name} sees:', removeContext: 'Remove the context', noContext: '{name} can’t see the page.', restoreContext: 'Restore the context',
+      placeholder: 'Write to {name}…', send: 'Send',
+      sessions: 'Sessions', sessionsOf: 'Sessions with {name}', newSession: 'New session', newSessionWith: 'New session with {name}', newShort: 'New', view: 'View', chat: 'Chat', document: 'Document', workArea: 'Work area',
+      emptyTitle: 'What you create with {name} shows up here', emptyText: 'Attach a file, mention an item or use a command: the document is written here while {name} works.',
+      writingDoc: '{name} is writing…', redo: 'Redo', redoSection: 'Redo the section {title}', editedBy: 'Edited by {name}', closeDocument: 'Close the document' },
+    es: { aiLabel: 'Asistente de IA', group: 'Asistentes', writing: 'está escribiendo…', online: 'disponible', unreadOne: '1 mensaje sin leer', unreadMany: '{n} mensajes sin leer',
+      openChat: 'Abrir la conversación con {name}', openSession: 'Abrir la sesión con {name} a pantalla completa',
+      conversation: 'Conversación con {name}', messages: 'Mensajes', fullScreen: 'Abrir a pantalla completa', closeChat: 'Cerrar la conversación',
+      sees: '{name} ve:', removeContext: 'Quitar el contexto', noContext: '{name} no ve la página.', restoreContext: 'Volver a poner el contexto',
+      placeholder: 'Escribe a {name}…', send: 'Enviar',
+      sessions: 'Sesiones', sessionsOf: 'Sesiones con {name}', newSession: 'Nueva sesión', newSessionWith: 'Nueva sesión con {name}', newShort: 'Nueva', view: 'Vista', chat: 'Chat', document: 'Documento', workArea: 'Área de trabajo',
+      emptyTitle: 'Aquí aparece lo que creas con {name}', emptyText: 'Adjunta un archivo, menciona un elemento o usa un comando: el documento se escribe aquí mientras {name} trabaja.',
+      writingDoc: '{name} está escribiendo…', redo: 'Rehacer', redoSection: 'Rehacer la sección {title}', editedBy: 'Modificado por {name}', closeDocument: 'Cerrar el documento' }
+  };
+  function tpl(t, o) { return String(t).replace(/\{(\w+)\}/g, function (m, k) { return o[k] != null ? o[k] : m; }); }
+  function assistantOf(id) { return ASSISTANTS[id] || ASSISTANTS.zed; }
+  var BOT_BASE = [["rect","fa",{"x":9,"y":46,"width":10,"height":24,"rx":5}],["rect","fa",{"x":101,"y":46,"width":10,"height":24,"rx":5}],["rect","fc",{"x":16,"y":22,"width":88,"height":70,"rx":22}],["rect","fs",{"x":25,"y":31,"width":70,"height":52,"rx":15}],["rect","fe",{"x":41,"y":47,"width":10,"height":14,"rx":5}],["rect","fe",{"x":69,"y":47,"width":10,"height":14,"rx":5}],["path","se",{"strokeWidth":3,"d":"M39 41q6-4 13-1M68 40q7-3 13 1"}],["path","se",{"strokeWidth":3.5,"d":"M50 70q10 7 20 0"}],["circle","fc",{"cx":24,"cy":118,"r":7.5}],["circle","fc",{"cx":96,"cy":118,"r":7.5}],["rect","fa",{"x":30,"y":97,"width":60,"height":38,"rx":14}],["path","si",{"strokeWidth":3,"d":"M60 22V13"}]];
+  var BOT_PARTS = {"zed":[["circle","fa",{"cx":60,"cy":9,"r":5.5}],["rect","fs",{"x":45,"y":103,"width":30,"height":30,"rx":6}],["path","se",{"strokeWidth":3,"d":"M51 113l3 3 6-6M53 125h16"}]],"kai":[["path","fa",{"d":"M60 2l6 7-6 7-6-7z"}],["path","fs",{"d":"M42 104h36a5 5 0 0 1 5 5v11a5 5 0 0 1-5 5H62l-8 7v-7H42a5 5 0 0 1-5-5v-11a5 5 0 0 1 5-5z"}],["circle","fe",{"cx":51,"cy":114.5,"r":2.2}],["circle","fe",{"cx":60,"cy":114.5,"r":2.2}],["circle","fe",{"cx":69,"cy":114.5,"r":2.2}]],"ivy":[["circle","sa",{"cx":60,"cy":9,"r":5,"strokeWidth":3}],["rect","fs",{"x":44,"y":103,"width":32,"height":30,"rx":6}],["rect","fe",{"x":44,"y":103,"width":32,"height":9,"rx":4}],["circle","fe",{"cx":53,"cy":121,"r":2.4}],["circle","fe",{"cx":62,"cy":121,"r":2.4}],["circle","fe",{"cx":71,"cy":121,"r":2.4}],["circle","fe",{"cx":53,"cy":127.5,"r":2.4}]],"dex":[["rect","fa",{"x":55,"y":4,"width":10,"height":10,"rx":2,"transform":"rotate(45 60 9)"}],["circle","fs",{"cx":60,"cy":118,"r":15}],["path","se",{"strokeWidth":2.6,"d":"M66 111.500a8 8 0 1 0 0 13M52 116.500h12M52 120.500h12"}]],"rio":[["path","fa",{"d":"M60 0l2.800 6.700L69.500 9.500l-6.700 2.800L60 19l-2.800-6.700L50.500 9.500l6.700-2.800z"}],["path","fs",{"d":"M44 114h7l15-8v24l-15-8h-7z"}],["path","ss",{"strokeWidth":2.5,"d":"M71 112q5 6 0 12"}]],"lex":[["path","fa",{"d":"M60 3l6 10H54z"}],["path","se",{"strokeWidth":2.8,"d":"M60 105v26M46 110h28M46 110l-6 12h12zM74 110l-6 12h12zM50 131h20"}]],"ari":[["path","sa",{"strokeWidth":3,"d":"M60 3v12M54 9h12"}],["rect","fs",{"x":42,"y":104,"width":36,"height":26,"rx":5}],["circle","fe",{"cx":53,"cy":114,"r":4}],["rect","fe",{"x":61,"y":111,"width":12,"height":3,"rx":1.5}],["rect","fe",{"x":61,"y":117,"width":9,"height":3,"rx":1.5}],["rect","fe",{"x":47,"y":122,"width":26,"height":3,"rx":1.5}]]};
+
+  function botEl(e, i) { return h(e[0], Object.assign({ key: i, className: 'zr-bot-' + e[1] }, e[2])); }
+  /* il personaggio: i blocchi del logo, quadrato con gli angoli arrotondati (le persone sono tonde), il colore del suo modulo (309) */
+  function AssistantAvatar(p) {
+    var a = assistantOf(p.assistant), size = p.size || 32, full = !!p.full;
+    var name = p.label || a.name;
+    return h('span', {
+      className: cx('zr-bot', 'is-' + (p.muted ? 'muted' : a.tone), full && 'is-full', p.className),
+      style: full ? { width: size, height: Math.round(size * 140 / 120) } : { width: size, height: size },
+      role: p.decorative ? undefined : 'img', 'aria-label': p.decorative ? undefined : name, title: p.decorative ? undefined : name, 'aria-hidden': p.decorative ? 'true' : undefined
+    }, h('svg', { viewBox: full ? '0 0 120 140' : '4 0 112 112', 'aria-hidden': 'true', focusable: 'false' },
+      BOT_BASE.map(botEl), (BOT_PARTS[p.assistant] || BOT_PARTS.zed).map(function (e, i) { return botEl(e, 'p' + i); })));
+  }
+  /* «Assistente AI»: chi scrive è un assistente e non una persona (310) */
+  function AiLabel(p) {
+    var T = useCompLabels(ASSISTANT_TEXTS, p.labels);
+    return h('span', { className: cx('zr-ai-label', p.className) }, h(Icon, { name: 'sparkle', size: 12 }), p.label || T.aiLabel);
+  }
+  /* la sezione «Assistenti» del menu (306): nello spazio assistantNav dell'AppShell, sotto i moduli e nel cassetto */
+  function AssistantNav(p) {
+    var AT = useCompLabels(ASSISTANT_TEXTS, p.labels), sid = useId('asst');
+    var assistants = p.assistants || [];
+    function open(a, e) { if (p.onOpen) p.onOpen(a, e); }
+    function row(a) {
+      var who = assistantOf(a.assistant), name = a.name || who.name, writing = a.status === 'writing', un = a.unread || 0;
+      var unText = un ? (un === 1 ? AT.unreadOne : tpl(AT.unreadMany, { n: un > 99 ? '99+' : un })) : '';
+      var openName = tpl(AT.openChat, { name: name }) + (a.role ? ', ' + a.role : '') + (writing ? ', ' + AT.writing : '') + (un ? ', ' + unText : '');
+      return h('div', { key: a.id, className: cx('zr-asst', a.id === p.active && 'is-active', a.alert && 'is-alert'),
+        onClick: function (e) { if (e.target.closest && e.target.closest('a, button')) return; open(a, e); } /* il resto della riga (il numero) apre la conversazione col puntatore; dalla tastiera la apre l'avatar */ },
+        h('button', { type: 'button', className: 'zr-asst-open', 'aria-label': openName, 'aria-current': a.id === p.active ? 'true' : undefined, onClick: function (e) { open(a, e); } },
+          h(AssistantAvatar, { assistant: a.assistant, size: 28, decorative: true }),
+          h('i', { className: cx('zr-asst-dot', writing && 'is-writing'), 'aria-hidden': 'true' })),
+        a.href ? h('a', { className: 'zr-asst-label', href: a.href, title: tpl(AT.openSession, { name: name }), onClick: function (e) { var l = e.currentTarget, to = p.navigate && !e.defaultPrevented && !e.button && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && l.host === location.host ? l.href : null; if (to) e.preventDefault(); if (p.onSession) p.onSession(a, e); if (to) p.navigate(to); } },
+          h('span', { className: 'zr-asst-name' }, name), h('small', null, writing ? AT.writing : a.role))
+          : h('span', { className: 'zr-asst-label' }, h('span', { className: 'zr-asst-name' }, name), h('small', null, writing ? AT.writing : a.role)),
+        un ? h('span', { className: 'zr-asst-count', 'aria-hidden': 'true' }, un > 99 ? '99+' : un) : null);
+    }
+    return assistants.length ? h('div', { className: 'zr-nav-group is-assistants', role: 'group', 'aria-labelledby': sid },
+      h('div', { className: 'zr-nav-title', id: sid }, AT.group),
+      assistants.map(row)) : null;
+  }
+  /* il fumetto di un messaggio nuovo (306): nello spazio assistantBubble dell'AppShell, dentro la sua zona role="status" */
+  function AssistantBubble(p) {
+    var AT = useCompLabels(ASSISTANT_TEXTS, p.labels), a = p.assistant;
+    if (!a) return null;
+    var name = a.name || assistantOf(a.assistant).name;
+    return h('button', { type: 'button', className: 'zr-asst-bubble', onClick: function (e) { if (p.onOpen) p.onOpen(a, e); }, 'aria-label': tpl(AT.openChat, { name: name }) + ': ' + p.text },
+      h(AssistantAvatar, { assistant: a.assistant, size: 32, decorative: true }),
+      h('span', { className: 'zr-asst-bubble-text' }, h('b', null, name), ': ', p.text, p.hint ? h('small', null, p.hint) : null));
+  }
+
   /* ---------- AppShell (portale) ---------- */
   /* Menu dei moduli: unico, uguale in ogni schermata e su telefono (decisione del 21 ott 2026).
      «Modulo» = Board, CRM, Bookings, Finanze…; «prodotto» e «servizio» sono solo le voci del Catalogo del CRM. */
@@ -316,6 +406,9 @@
         it.soon || it.inactive ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), it.soon ? L.soon : L.inactive) : it.off ? h('span', { className: 'zr-nav-soon' }, h('span', { className: 'zr-visually-hidden' }, ', '), L.off) : null,
         it.count ? countParts(it.count, 'zr-count', it.countLabel) : null);
     }
+
+    /* ---- Assistenti (richiesta 306): la sezione (AssistantNav) e il fumetto (AssistantBubble) li porta chi usa la cornice; un loro clic chiude il cassetto ---- */
+    function slotClick(e) { if (e.target.closest('a, button, .zr-asst')) { setDrawer(false); setPop(null); } }
 
     /* ---- Selettore Azienda › workspace ---- */
     var companies = p.companies || [];
@@ -538,17 +631,18 @@
           wsSwitch),
         createAt && hasCreate ? h(Menu, { anchor: createAt, items: p.create, label: p.createLabel || L.create, onClose: function () { setCreateAt(null); } }) : null,
         switcher,
-        h('nav', { ref: navRef, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
+        h('nav', { ref: navRef, onClick: p.assistantNav ? slotClick : undefined, className: cx('zr-nav', behind && 'is-dimmed'), 'aria-label': L.sideNav, 'aria-hidden': behind ? 'true' : undefined }, /* il nome del nav della barra, accanto al «Percorso» (richiesta 223) */
           groups.map(function (g) {
             return h('div', { key: g.group, className: cx('zr-nav-group', (g.products || (g.group === 'Prodotti' || g.group === 'Moduli')) && 'is-products') },
               h('div', { className: 'zr-nav-title' }, g.group),
               g.items.map(item));
-          })),
+          }), p.assistantNav || null),
         h('div', { ref: footRef, className: cx('zr-side-foot', behind && 'is-dimmed') },
           p.settings === false ? null : item(settingsItem),
           p.plan === false ? null : h('div', { className: 'zr-plan' },
             h('strong', null, L.planTitle),
             h('span', null, L.planText)))),
+      p.assistantNav ? h('div', { className: 'zr-bubble-zone', role: 'status', onClick: slotClick }, p.assistantBubble || null) : null, /* sempre presente con la sezione: il fumetto nuovo si annuncia (306) */
       h('header', { className: cx('zr-top', noSearch && 'no-search') },
         h('button', { type: 'button', className: 'zr-btn zr-btn-ghost zr-btn-md zr-top-menu', 'aria-label': drawer ? L.closeMenu : L.openMenu, 'aria-expanded': drawer ? 'true' : 'false', 'aria-controls': sid + '-side', onClick: function () { setDrawer(!drawer); setPop(null); } },
           h(Icon, { name: 'menu', size: 20 }), current ? h('span', { className: 'zr-top-product' }, current.label) : null),
@@ -3078,6 +3172,154 @@
   /* ---------- DetailPanel (P-15: dettaglio nel pannello a destra) ---------- */
   var PANEL_FULL = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, il pannello copre la pagina */
   var FOCUSABLE = ['a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])', 'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]'].map(function (s) { return s + ':not([tabindex="-1"])'; }).join(', ');
+  /* ---------- Assistenti: la conversazione (307) e la sessione a schermo intero (308) ---------- */
+  function assistantName(p) { return p.name || assistantOf(p.assistant).name; }
+  /* i messaggi di una conversazione: dell'assistente a sinistra con l'avatar, miei a destra, i passaggi fra assistenti al centro */
+  function AssistantMessages(p) {
+    var T = p.T, name = assistantName(p), ref = useRef(null), n = (p.messages || []).length;
+    useEffect(function () { var el = ref.current; if (el) el.scrollTop = el.scrollHeight; }, [n, !!p.typing]); /* il messaggio nuovo in vista */
+    useEffect(function () { var el = ref.current; if (el) return scrollStop(el, true); }, []); /* la lista che scorre è nel giro del Tab finché dentro niente prende il fuoco */
+    function msg(m, i) {
+      if (m.from === 'handoff') return h('div', { key: m.id || i, className: 'zr-amsg is-handoff' },
+        h(AssistantAvatar, { assistant: m.assistant || p.assistant, size: 22, decorative: true }), h(Icon, { name: 'arrow', size: 14 }),
+        h(AssistantAvatar, { assistant: m.to, size: 22, decorative: true }), h('span', null, m.text));
+      if (m.from === 'me') return h('div', { key: m.id || i, className: 'zr-amsg is-me' },
+        h('div', { className: 'zr-amsg-wrap' }, m.attachments || null, h('div', { className: 'zr-amsg-bubble' }, m.text)));
+      var who = m.assistant || p.assistant, whoName = m.name || (m.assistant ? assistantOf(m.assistant).name : name);
+      return h('div', { key: m.id || i, className: 'zr-amsg' },
+        h(AssistantAvatar, { assistant: who, size: 28, decorative: true }),
+        h('div', { className: 'zr-amsg-wrap' },
+          h('div', { className: 'zr-amsg-meta' }, [whoName, m.time].filter(Boolean).join(' · ')),
+          m.text != null ? h('div', { className: 'zr-amsg-bubble' }, m.text) : null,
+          m.content || null,
+          m.actions ? h('div', { className: 'zr-amsg-actions' }, m.actions) : null));
+    }
+    return h('div', { ref: ref, className: 'zr-amsgs', role: 'log', 'aria-live': 'polite', 'aria-label': p.label || T.messages },
+      p.empty && !n ? p.empty : null,
+      (p.messages || []).map(msg),
+      p.typing ? h('div', { className: 'zr-amsg is-typing' },
+        h(AssistantAvatar, { assistant: p.assistant, size: 28, decorative: true }),
+        h('div', { className: 'zr-amsg-wrap' },
+          h('div', { className: 'zr-amsg-bubble' }, h('span', { className: 'zr-typing', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))),
+          h('div', { className: 'zr-amsg-meta' }, tpl(T.writingDoc, { name: name })))) : null);
+  }
+  /* il campo per scrivere: Invio manda, il testo resta se onSend dice di no (torna false) */
+  function AssistantComposer(p) {
+    var T = p.T, st = useState(''), v = p.value !== undefined ? p.value : st[0];
+    function set(x) { if (p.onChange) p.onChange(x); if (p.value === undefined) st[1](x); }
+    function send(e) { e.preventDefault(); var t = String(v).trim(); if (!t || p.disabled) return; var r = p.onSend ? p.onSend(t) : undefined; if (r !== false) set(''); }
+    return h('form', { className: 'zr-acomp', onSubmit: send },
+      p.before || null,
+      h('input', { className: 'zr-acomp-input', type: 'text', value: v, autoComplete: 'off', 'data-autofocus': p.autoFocus ? '' : undefined, placeholder: p.placeholder || tpl(T.placeholder, { name: p.name }), 'aria-label': p.placeholder || tpl(T.placeholder, { name: p.name }), disabled: p.disabled, onChange: function (e) { set(e.target.value); } }),
+      h(Button, { type: 'submit', variant: 'primary', size: 'sm', icon: 'arrow', 'aria-label': T.send, className: 'zr-acomp-send' }));
+  }
+  /* la conversazione con un assistente: il pannello a destra sopra la pagina, sul modello del DetailPanel (307) */
+  function AssistantPanel(p) {
+    var T = useCompLabels(ASSISTANT_TEXTS, p.labels), C = useLabels(), name = assistantName(p);
+    var ref = useRef(null), last = useRef(p); last.current = p;
+    var mqRef = useRef(undefined); if (mqRef.current === undefined) mqRef.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PANEL_FULL) : null;
+    var fullSt = useState(mqRef.current ? mqRef.current.matches : false), full = fullSt[0];
+    useEffect(function () { var mq = mqRef.current; if (!mq) return; function ch() { fullSt[1](mq.matches); } if (mq.addEventListener) mq.addEventListener('change', ch); else mq.addListener(ch); return function () { if (mq.removeEventListener) mq.removeEventListener('change', ch); else mq.removeListener(ch); }; }, []);
+    var modal = p.modal !== undefined ? !!p.modal : (!p.inline && full); /* sotto i 720 px copre la pagina: modale, come il DetailPanel */
+    useEffect(function () {
+      var origin = document.activeElement;
+      var t = ref.current && (ref.current.querySelector('[data-autofocus]') || ref.current);
+      if (t && t.focus && !p.inline) try { t.focus({ preventScroll: true }); } catch (e) {}
+      function key(e) { if (e.key !== 'Escape' || e.defaultPrevented || !last.current.onClose) return; if (Array.prototype.some.call(document.querySelectorAll('.zr-scrim, .zr-menu, dialog[open], [role="menu"]'), function (el) { return el.getClientRects().length > 0; })) return; last.current.onClose(); }
+      if (!p.inline) document.addEventListener('keydown', key);
+      return function () {
+        document.removeEventListener('keydown', key);
+        var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf;
+        function vis(el) { return el && document.contains(el) && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+        var back = vis(target) ? target : vis(origin) ? origin : document.querySelector('.zr-top-menu'); /* aperto dal cassetto, che si è chiuso: torna ad «Apri il menu» */
+        if (!last.current.inline && vis(back) && back.focus) try { back.focus({ preventScroll: true }); } catch (e) {}
+      };
+    }, []);
+    function trap(e) {
+      if (!modal || e.key !== 'Tab' || e.defaultPrevented || !ref.current || document.querySelector('.zr-scrim, dialog[open]')) return;
+      var els = Array.prototype.filter.call(ref.current.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; });
+      if (!els.length) { e.preventDefault(); ref.current.focus(); return; }
+      var first = els[0], lastEl = els[els.length - 1], a = document.activeElement;
+      if (e.shiftKey && (a === first || a === ref.current)) { e.preventDefault(); lastEl.focus(); } else if (!e.shiftKey && a === lastEl) { e.preventDefault(); first.focus(); }
+    }
+    var writing = p.status === 'writing', ctxMoved = useRef(false);
+    /* togliere o rimettere il contesto cambia il pulsante sotto il fuoco: il fuoco passa al pulsante nuovo, non al body */
+    useEffect(function () { if (!ctxMoved.current) return; ctxMoved.current = false; var b = ref.current && (ref.current.querySelector('.zr-actx button') || ref.current.querySelector('.zr-acomp-input') || ref.current); if (b) b.focus(); }, [!!p.contextOff]);
+    var ctx = p.context == null ? null : p.contextOff
+      ? h('div', { className: 'zr-actx is-off' }, h('span', null, tpl(T.noContext, { name: name })), p.onContextRestore ? h(Button, { variant: 'ghost', size: 'sm', onClick: function (e) { ctxMoved.current = true; p.onContextRestore(e); } }, T.restoreContext) : null)
+      : h('div', { className: 'zr-actx' }, h(Icon, { name: 'eye', size: 16 }), h('span', { className: 'zr-actx-text' }, h('b', null, tpl(T.sees, { name: name })), ' ', p.context),
+        p.onContextRemove ? h('button', { type: 'button', className: 'zr-actx-x', 'aria-label': T.removeContext, title: T.removeContext, onClick: function (e) { ctxMoved.current = true; p.onContextRemove(e); } }, h(Icon, { name: 'close', size: 16 })) : null);
+    var full_ = p.fullScreenHref ? h('a', { className: 'zr-btn zr-btn-secondary zr-btn-sm zr-apanel-full', href: p.fullScreenHref, onClick: p.onFullScreen }, h(Icon, { name: 'arrow', size: 16 }), h('span', null, T.fullScreen))
+      : p.onFullScreen ? h(Button, { variant: 'secondary', size: 'sm', icon: 'arrow', className: 'zr-apanel-full', onClick: p.onFullScreen }, T.fullScreen) : null;
+    return h('div', { ref: ref, tabIndex: -1, className: cx('zr-apanel', p.inline && 'is-inline', p.className), role: 'dialog', 'aria-modal': modal ? 'true' : 'false', 'aria-label': tpl(T.conversation, { name: name }), onKeyDown: trap },
+      h('header', { className: 'zr-apanel-head' },
+        h(AssistantAvatar, { assistant: p.assistant, size: 40, decorative: true }),
+        h('div', { className: 'zr-apanel-who' },
+          h('div', { className: 'zr-apanel-name' }, h('b', null, name), h(AiLabel, { labels: p.labels })),
+          h('div', { className: 'zr-apanel-status' }, h('i', { className: cx('zr-asst-dot', 'is-inline', writing && 'is-writing'), 'aria-hidden': 'true' }), [writing ? T.writing : T.online, p.role].filter(Boolean).join(' · '))),
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'close', className: 'zr-apanel-close', 'aria-label': p.closeLabel || T.closeChat || C.close, onClick: p.onClose }),
+        full_), /* «Apri a schermo intero» sotto il nome quando la riga non basta: a 400 px il nome e l'etichetta restano interi */
+      ctx,
+      p.notice ? h('div', { className: 'zr-apanel-notice' }, p.notice) : null,
+      h(AssistantMessages, { T: T, assistant: p.assistant, name: name, messages: p.messages, typing: p.typing }),
+      h('div', { className: 'zr-apanel-foot' },
+        p.suggestions && p.suggestions.length ? h('div', { className: 'zr-asugg' }, p.suggestions.map(function (s, i) { return h(Button, { key: i, variant: 'secondary', size: 'sm', className: 'zr-asugg-item', onClick: function () { if (p.onSuggestion) p.onSuggestion(s); } }, s); })) : null,
+        h(AssistantComposer, { T: T, name: name, autoFocus: true, onSend: p.onSend, value: p.draft, onChange: p.onDraftChange, disabled: p.disabled })));
+  }
+  /* la sessione con un assistente a tutta pagina: sessioni, chat, documento (308); sotto i 1180 px una colonna con le linguette Chat e Documento */
+  var SESSION_NARROW = '(max-width: 1179px)';
+  function AssistantSession(p) {
+    var T = useCompLabels(ASSISTANT_TEXTS, p.labels), name = assistantName(p), sid = useId('ases');
+    var mq = useRef(undefined); if (mq.current === undefined) mq.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(SESSION_NARROW) : null;
+    var nSt = useState(mq.current ? mq.current.matches : false), narrow = nSt[0];
+    useEffect(function () { var m = mq.current; if (!m) return; function ch() { nSt[1](m.matches); } if (m.addEventListener) m.addEventListener('change', ch); else m.addListener(ch); return function () { if (m.removeEventListener) m.removeEventListener('change', ch); else m.removeListener(ch); }; }, []);
+    var tabSt = useState('chat'), tab = p.tab || tabSt[0];
+    function setTab(t) { if (p.onTabChange) p.onTabChange(t); if (!p.tab) tabSt[1](t); }
+    var sessions = p.sessions || [], doc = p.document, docOpen = p.documentOpen !== false;
+    var list = h('aside', { className: 'zr-ases-list', 'aria-label': T.sessions },
+      h(Button, { variant: 'primary', size: 'sm', icon: 'plus', className: 'zr-ases-new', onClick: p.onNewSession }, T.newSession),
+      h('div', { className: 'zr-ases-over', id: sid + '-l' }, tpl(T.sessionsOf, { name: name })),
+      h('ul', { className: 'zr-ases-items', 'aria-labelledby': sid + '-l' }, sessions.map(function (x) {
+        var on = x.id === p.activeSession;
+        return h('li', { key: x.id }, h('button', { type: 'button', className: cx('zr-ases-item', on && 'is-active'), 'aria-current': on ? 'true' : undefined, onClick: function () { if (p.onSessionSelect) p.onSessionSelect(x.id); } },
+          h('b', null, x.title), x.meta ? h('small', null, x.meta) : null));
+      })));
+    var picker = h('div', { className: 'zr-ases-pick' },
+      h('select', { className: 'zr-ases-select', 'aria-label': T.sessions, value: p.activeSession || '', onChange: function (e) { if (p.onSessionSelect) p.onSessionSelect(e.target.value); } },
+        sessions.map(function (x) { return h('option', { key: x.id, value: x.id }, x.title); })),
+      h(Button, { variant: 'secondary', size: 'sm', onClick: p.onNewSession }, T.newShort));
+    var empty = h('div', { className: 'zr-ases-empty' }, h(AssistantAvatar, { assistant: p.assistant, size: 64, decorative: true }),
+      h('h3', null, p.emptyTitle || tpl(T.emptyTitle, { name: name })), h('p', null, p.emptyText || tpl(T.emptyText, { name: name })), p.emptyActions ? h('div', { className: 'zr-ases-empty-acts' }, p.emptyActions) : null);
+    var work = !docOpen ? null : h('section', { className: 'zr-ases-doc', 'aria-label': T.workArea, id: sid + '-doc', role: narrow ? 'tabpanel' : undefined, 'aria-labelledby': narrow ? sid + '-tdoc' : undefined, hidden: narrow && tab !== 'doc' ? true : undefined },
+      doc ? [
+        h('div', { key: 'h', className: 'zr-ases-doc-head' }, h('div', { className: 'zr-ases-doc-title' }, doc.kind ? h('div', { className: 'zr-ases-over' }, doc.kind) : null, h('h2', null, doc.title)),
+          p.onDocumentClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': T.closeDocument, onClick: p.onDocumentClose }) : null),
+        doc.tools || doc.writing ? h('div', { key: 't', className: 'zr-ases-doc-tools' }, doc.writing ? h('span', { className: 'zr-ai-label zr-ases-writing' }, h('span', { className: 'zr-typing', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')), tpl(T.writingDoc, { name: name })) : doc.tools) : null,
+        h('div', { key: 'b', className: 'zr-ases-doc-body', 'aria-busy': doc.writing ? 'true' : undefined }, doc.before || null, (doc.sections || []).map(function (sec, i) {
+          return h('section', { key: sec.id || i, className: cx('zr-ases-sec', sec.fresh && 'is-fresh') },
+            h('div', { className: 'zr-ases-sec-head' }, h('h3', null, sec.title), sec.editedBy ? h(Label, null, tpl(T.editedBy, { name: sec.editedBy })) : null,
+              p.onRedoSection && !doc.writing ? h(Button, { variant: 'ghost', size: 'sm', icon: 'refresh', 'aria-label': tpl(T.redoSection, { title: sec.title }), onClick: function () { p.onRedoSection(sec, i); } }, T.redo) : null),
+            sec.body);
+        }), doc.writing ? h('div', { className: 'zr-ases-sec' }, h('span', { className: 'zr-typing', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))) : null),
+        doc.foot ? h('div', { key: 'f', className: 'zr-ases-doc-foot' }, doc.foot) : null
+      ] : empty);
+    var chat = h('section', { className: 'zr-ases-chat', 'aria-label': T.chat, id: sid + '-chat', role: narrow ? 'tabpanel' : undefined, 'aria-labelledby': narrow ? sid + '-tchat' : undefined, hidden: narrow && docOpen && tab !== 'chat' ? true : undefined },
+      narrow ? picker : null,
+      h(AssistantMessages, { T: T, assistant: p.assistant, name: name, messages: p.messages, typing: p.typing, label: T.chat,
+        empty: h('div', { className: 'zr-ases-empty is-chat' }, h(AssistantAvatar, { assistant: p.assistant, size: 72, decorative: true }), h('h3', null, p.newTitle || tpl(T.newSessionWith, { name: name })), p.newText ? h('p', null, p.newText) : null) }),
+      h('div', { className: 'zr-ases-foot' }, p.commands || null,
+        h(AssistantComposer, { T: T, name: name, onSend: p.onSend, value: p.draft, onChange: p.onDraftChange, disabled: p.disabled, before: p.attachments, placeholder: p.placeholder })));
+    function tabBtn(id, label) { var on = tab === id; return h('button', { type: 'button', role: 'tab', id: sid + '-t' + id, 'aria-selected': on ? 'true' : 'false', 'aria-controls': sid + '-' + id, tabIndex: on ? 0 : -1, className: cx('zr-seg-item', on && 'is-active'), onClick: function () { setTab(id); },
+      onKeyDown: function (e) { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') { e.preventDefault(); var to = id === 'chat' ? 'doc' : 'chat'; if (e.key === 'Home') to = 'chat'; if (e.key === 'End') to = 'doc'; setTab(to); var el = document.getElementById(sid + '-t' + to); if (el) el.focus(); } } }, label); }
+    return h('div', { className: cx('zr-ases', !docOpen && 'is-doc-off', narrow && 'is-narrow', p.className) },
+      h('header', { className: 'zr-ases-head' },
+        p.back || null,
+        h(AssistantAvatar, { assistant: p.assistant, size: 40, decorative: true }),
+        h('div', { className: 'zr-ases-who' }, h('div', { className: 'zr-apanel-name' }, h('h1', null, name), h(AiLabel, { labels: p.labels })), p.subtitle ? h('div', { className: 'zr-ases-sub' }, p.subtitle) : null),
+        narrow && docOpen ? h('div', { className: 'zr-seg zr-ases-tabs', role: 'tablist', 'aria-label': T.view }, tabBtn('chat', T.chat), tabBtn('doc', T.document)) : null,
+        p.actions || null),
+      h('div', { className: 'zr-ases-body' }, narrow ? null : list, chat, work));
+  }
   function DetailPanel(p) {
     var ref = useRef(null), last = useRef(p), C = useLabels(); last.current = p;
     var mqRef = useRef(undefined); if (mqRef.current === undefined) mqRef.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PANEL_FULL) : null;
@@ -3140,6 +3382,6 @@
     ICON_NAMES: ICON_NAMES, BrandIcon: BrandIcon, BRAND_ICON_NAMES: BRAND_ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, CardColorPicker: CardColorPicker, CARD_COLORS: CARD_COLORS, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, AgendaGrid: AgendaGrid, AGENDA_LABELS: AGENDA_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, ReorderList: ReorderList, REORDER_LABELS: REORDER_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
-    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, AppointmentItem: AppointmentItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
+    ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, AssistantAvatar: AssistantAvatar, AiLabel: AiLabel, AssistantNav: AssistantNav, AssistantBubble: AssistantBubble, AssistantPanel: AssistantPanel, AssistantSession: AssistantSession, ASSISTANTS: ASSISTANTS, ASSISTANT_LABELS: ASSISTANT_LABELS, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, AppointmentItem: AppointmentItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER
   });
 })();

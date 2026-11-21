@@ -1,0 +1,19 @@
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AssistantAvatar di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in `@layer zeiras`: li importa il modulo resources/js/zeiras/AssistantAvatar.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer zeiras {
+/* AssistantAvatar e AiLabel (richieste 309 e 310): il personaggio, quadrato con gli angoli arrotondati (le persone sono tonde), nel tono del suo modulo, e l’etichetta «Assistente AI» */
+.zr-bot { display: inline-block; flex: none; overflow: hidden; vertical-align: middle; border-radius: var(--radius-md); background: var(--bot-soft); --bot-acc: var(--citrus); }
+.zr-bot.is-full { border-radius: var(--radius-md-lg); }
+.zr-bot svg { display: block; width: 100%; height: 100%; }
+.zr-bot.is-pine { --bot: var(--pine); --bot-soft: var(--pine-soft); } .zr-bot.is-sky { --bot: var(--sky); --bot-soft: var(--sky-soft); } .zr-bot.is-plum { --bot: var(--plum); --bot-soft: var(--plum-soft); } .zr-bot.is-coral { --bot: var(--coral); --bot-soft: var(--coral-soft); }
+.zr-bot.is-tang { --bot: var(--tang); --bot-soft: var(--tang-soft); } .zr-bot.is-indigo { --bot: var(--indigo); --bot-soft: var(--indigo-soft); } .zr-bot.is-rose { --bot: var(--rose); --bot-soft: var(--rose-soft); }
+.zr-bot.is-muted { --bot: var(--line-strong); --bot-soft: var(--surface-sunken); --bot-acc: var(--line); }
+.zr-bot-fc { fill: var(--bot); } .zr-bot-fs { fill: var(--bot-soft); } .zr-bot-fe { fill: var(--bot); } .zr-bot-fa { fill: var(--bot-acc); }
+.zr-bot-se, .zr-bot-sa, .zr-bot-ss, .zr-bot-si { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.zr-bot-se { stroke: var(--bot); } .zr-bot-sa { stroke: var(--bot-acc); } .zr-bot-ss { stroke: var(--bot-soft); } .zr-bot-si { stroke: var(--ink); }
+.zr-bot.is-muted .zr-bot-fe, .zr-bot.is-muted .zr-bot-se { fill: var(--ink-muted); stroke: var(--ink-muted); } .zr-bot.is-muted .zr-bot-se { fill: none; }
+@media (forced-colors: active) { .zr-bot { forced-color-adjust: none; border: 1px solid CanvasText; } }
+.zr-ai-label { display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 7px; border-radius: var(--radius-pill); background: var(--plum-soft); color: var(--plum); font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; flex: none; }
+.zr-ai-label .zr-icon { width: 12px; height: 12px; flex: none; }
+@media (forced-colors: active) { .zr-ai-label { border: 1px solid CanvasText; } }
+}

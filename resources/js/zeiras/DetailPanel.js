@@ -9,10 +9,9 @@ import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
 import { Button } from './Button';
 import { useLabels } from './useLabels';
+import { PANEL_FULL } from './interni/PANEL_FULL';
 import { FOCUSABLE } from './interni/FOCUSABLE';
 
-  /* ---------- DetailPanel (P-15: dettaglio nel pannello a destra) ---------- */
-  var PANEL_FULL = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, il pannello copre la pagina */
   function DetailPanel(p) {
     var ref = useRef(null), last = useRef(p), C = useLabels(); last.current = p;
     var mqRef = useRef(undefined); if (mqRef.current === undefined) mqRef.current = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(PANEL_FULL) : null;

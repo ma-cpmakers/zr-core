@@ -1,0 +1,52 @@
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AssistantPanel di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in `@layer zeiras`: li importa il modulo resources/js/zeiras/AssistantPanel.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer zeiras {
+/* AssistantPanel (307): la conversazione a destra sopra la pagina, coi messaggi e il campo che usa anche AssistantSession */
+.zr-typing { display: inline-flex; gap: 3px; padding: 6px 0; }
+.zr-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-muted); animation: zr-typing 1s infinite; }
+.zr-typing i:nth-child(2) { animation-delay: .15s; } .zr-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes zr-typing { 50% { opacity: .3; } }
+.zr-amsgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3-5); padding: var(--space-4); }
+.zr-amsgs:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.zr-amsg { display: flex; gap: var(--space-2); align-items: flex-start; }
+.zr-amsg > .zr-bot { margin-top: var(--space-4-5); }
+.zr-amsg.is-me { justify-content: flex-end; }
+.zr-amsg-wrap { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; max-width: calc(100% - 40px); }
+.zr-amsg.is-me .zr-amsg-wrap { align-items: flex-end; }
+.zr-amsg-meta { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.zr-amsg-bubble { padding: 9px var(--space-3); border-radius: 14px 14px 14px 4px; background: var(--surface-sunken); color: var(--ink); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+.zr-amsg.is-me .zr-amsg-bubble { background: var(--pine); color: var(--on-pine); border-radius: 14px 14px 4px 14px; max-width: 88%; }
+.zr-amsg-actions { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+.zr-amsg.is-handoff { justify-content: center; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; padding: 2px 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); text-align: center; }
+.zr-amsg.is-handoff > .zr-bot { margin-top: 0; }
+.zr-acomp { display: flex; gap: var(--space-2); }
+.zr-acomp-input { flex: 1; min-width: 0; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 15px; }
+.zr-acomp-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-acomp-send { flex: none; width: 40px; height: 40px; }
+.zr-asugg { display: flex; gap: var(--space-1-5); overflow-x: auto; padding-bottom: 2px; }
+.zr-asugg-item { flex: none; max-width: 250px; border-radius: var(--radius-pill); }
+.zr-apanel { position: fixed; z-index: calc(var(--z-dropdown) - 1); top: var(--topbar-height); right: 0; bottom: 0; width: min(400px, 100%); box-sizing: border-box; display: flex; flex-direction: column; background: var(--surface-raised); border-left: 1px solid var(--line); box-shadow: var(--shadow-overlay); }
+.zr-apanel[aria-modal="true"] { z-index: var(--z-dialog); }
+.zr-apanel.is-inline { position: relative; top: auto; height: 100%; min-height: 480px; }
+.zr-apanel:focus { outline: none; }
+.zr-apanel-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+.zr-apanel-who { flex: 1 1 180px; min-width: 0; }
+.zr-apanel-head > .zr-apanel-full { margin-left: calc(40px + var(--space-3)); }
+.zr-apanel-name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
+.zr-apanel-name b { font-size: 16px; line-height: 22px; }
+.zr-apanel-name h1 { margin: 0; font-family: var(--font-display); font-size: 19px; line-height: 24px; font-weight: 650; }
+.zr-apanel-status { display: flex; align-items: center; gap: var(--space-1-5); font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.zr-asst-dot.is-inline { position: static; width: 8px; height: 8px; box-shadow: none; flex: none; }
+.zr-apanel-full { flex: none; white-space: nowrap; text-decoration: none; }
+.zr-actx { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) var(--space-2) var(--space-1-5) var(--space-4); border-bottom: 1px solid var(--line); background: var(--sky-soft); color: var(--ink); font-size: 12px; line-height: 16px; }
+.zr-actx > .zr-icon { flex: none; color: var(--sky); }
+.zr-actx-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zr-actx.is-off { justify-content: space-between; color: var(--ink-muted); background: var(--surface); }
+.zr-actx-x { display: grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); cursor: pointer; }
+.zr-actx-x:hover { background: var(--surface-raised); color: var(--ink); }
+.zr-actx-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+.zr-apanel-notice { padding: var(--space-1-5) var(--space-4); border-bottom: 1px solid var(--line); background: var(--surface); font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.zr-apanel-foot { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2-5) var(--space-3) calc(var(--space-2-5) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+@media (max-width: 720px) { .zr-apanel:not(.is-inline) { top: 0; width: 100%; border-left: 0; z-index: calc(var(--z-dialog) + 1); } }
+@media (pointer: coarse) { .zr-actx-x { position: relative; } .zr-actx-x::after { content: ""; position: absolute; inset: -8px; } .zr-acomp-input { height: 44px; } .zr-acomp-send { width: 44px; height: 44px; } }
+}

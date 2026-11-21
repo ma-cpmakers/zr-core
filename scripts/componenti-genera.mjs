@@ -147,7 +147,7 @@ export function leggi(bundle) {
 // I componenti coi loro stili in resources/css/zeiras/<Nome>.css (dalla `v3.3.0`, sprint 75, voce 2570): il modulo che usa le loro
 // classi li importa, e un'app che li prende solo in una pagina a richiesta non li porta nel CSS del primo carico. Gli stili degli
 // altri restano in resources/css/zeiras.css (quelli dell'Alert anche: servono al Toast della cornice, #3055).
-export const STILI_A_PARTE = ['MentionField', 'AddressField'];
+export const STILI_A_PARTE = ['MentionField', 'AddressField', 'AssistantAvatar', 'AssistantNav', 'AssistantPanel', 'AssistantSession'];
 
 const INIZIO_DEL_BLOCCO = (nome) => `  /* ---------- ${nome}: `;
 
