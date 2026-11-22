@@ -31,7 +31,9 @@ export interface BarraProps {
 // Dalla `v5.2.0` (#3847) la barra va a capo invece di scorrere di lato: a 320 px col testo al 200% (WCAG 1.4.10 e 1.4.4) la nav
 // stretta fra il logo ed «Esci» scorreva (zr-crm: 1.027 px di voci in 96) e le voci finivano sotto il marchio. Le voci vanno a capo
 // dentro la nav, e la nav, che non scende sotto la sua voce più larga (`min-content`), va sulla riga dopo quando accanto al logo non
-// ci sta. L'altezza è almeno quella della topbar: quando le voci ci stanno su una riga, la barra è quella di prima.
+// ci sta. L'altezza è almeno quella della topbar: quando le voci ci stanno su una riga, la barra è quella di prima. Dalla `v5.2.1` il
+// box-sizing lo dice la barra (`border-box`, bordo compreso): nei moduli il preflight di Tailwind 4 lo mette a tutto, e un min-height
+// pensato per `content-box` la faceva alta 49 px (R1 della revisione della v5.2.0).
 export default function Barra({ h, Button, Logo, t, nav, active, onNavigate, onLogout }: BarraProps) {
     return h(
         'header',
@@ -41,7 +43,8 @@ export default function Barra({ h, Button, Logo, t, nav, active, onNavigate, onL
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: 'var(--space-2) var(--space-3)',
-                minHeight: 'calc(var(--topbar-height) - 2 * var(--space-2))',
+                boxSizing: 'border-box',
+                minHeight: 'var(--topbar-height)',
                 padding: 'var(--space-2) var(--space-4)',
                 background: 'var(--surface-raised)',
                 borderBottom: '1px solid var(--line)',

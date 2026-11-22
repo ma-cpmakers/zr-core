@@ -394,7 +394,10 @@ describe('LayoutDellaCornice', () => {
 
             const barra = (uno('header') as HTMLElement).style;
             const nav = (uno('header nav') as HTMLElement).style;
-            expect([barra.flexWrap, barra.height, barra.minHeight]).toStrictEqual(['wrap', '', 'calc(var(--topbar-height) - 2 * var(--space-2))']);
+            expect([barra.flexWrap, barra.height, barra.minHeight]).toStrictEqual(['wrap', '', 'var(--topbar-height)']);
+            // R1 della revisione della v5.2.0: il preflight di Tailwind 4 dei moduli mette `border-box` a tutto, e un min-height
+            // pensato per `content-box` faceva la barra alta 49 px invece che quanto la topbar. La barra dice da sé il suo box-sizing.
+            expect(barra.boxSizing).toBe('border-box');
             expect([nav.flexWrap, nav.overflowX, nav.overflow, nav.minWidth, nav.flexBasis]).toStrictEqual(['wrap', '', '', 'min-content', '0%']);
             expect([barra.padding, barra.minHeight, barra.background, barra.borderBottom].filter((valore) => !valore.includes('var(--'))).toStrictEqual([]);
         });
