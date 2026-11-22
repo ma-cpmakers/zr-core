@@ -22,21 +22,23 @@ import { REORDER_LABELS } from './REORDER_LABELS';
     var listRef = useRef(null), want = useRef(null), dragRef = useRef(null);
     function fill(t, k, v) { return t.replace(k, function () { return v; }); }
     function nameOf(it) { return typeof it.label === 'string' || typeof it.label === 'number' ? String(it.label) : String(it.id); }
+    /* un gesto scartato non si annuncia e non sposta il fuoco: con disabled la lista non si muove, e onChange che risponde false dice «scartato» (richiesta 289) */
     function move(from, to, how) {
-      if (from === to || to < 0 || to >= items.length) return;
+      if (p.disabled || from === to || to < 0 || to >= items.length) return;
       var n = items.slice(), it = n.splice(from, 1)[0]; n.splice(to, 0, it);
+      if (p.onChange && p.onChange(n) === false) return;
       say(fill(fill(fill(L.moved, '{item}', nameOf(it)), '{n}', String(to + 1)), '{total}', String(n.length)));
       want.current = how ? { id: String(it.id), how: how } : null;
-      if (p.onChange) p.onChange(n);
     }
     useEffect(function () { /* la riga spostata coi pulsanti si porta dietro il fuoco; all'estremo passa all'altro pulsante */
       var w = want.current, u = listRef.current; if (!w || !u) return; want.current = null;
       var li = [].filter.call(u.children, function (x) { return x.getAttribute('data-id') === w.id; })[0], b = li && li.querySelector('[data-move="' + w.how + '"]');
-      if (b && b.getAttribute('aria-disabled') === 'true') b = li.querySelector('[data-move="' + (w.how === 'up' ? 'down' : 'up') + '"]');
+      var k = [].indexOf.call(u.children, li); /* all'estremo, non con aria-disabled: anche disabled lo mette (revisione del lotto 0534, R1) */
+      if (b && (w.how === 'up' ? k === 0 : k === u.children.length - 1)) b = li.querySelector('[data-move="' + (w.how === 'up' ? 'down' : 'up') + '"]');
       if (b) b.focus();
     });
     function grab(e, i) {
-      if (e.button > 0 || items.length < 2) return;
+      if (e.button > 0 || items.length < 2 || p.disabled) return;
       e.preventDefault();
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) { /* senza cattura si segue lo stesso */ }
       var rows = [].map.call(listRef.current.children, function (x) { var r = x.getBoundingClientRect(); return { top: r.top, h: r.height }; });
@@ -62,12 +64,12 @@ import { REORDER_LABELS } from './REORDER_LABELS';
       return drag.i < k && k <= drag.to ? -hd : drag.to <= k && k < drag.i ? hd : 0;
     }
     return h('div', { className: cx('zr-reorder-wrap', p.className) },
-      h('ul', { ref: listRef, className: cx('zr-reorder', drag && 'is-dragging'), 'aria-label': p['aria-label'] },
+      h('ul', { ref: listRef, className: cx('zr-reorder', drag && 'is-dragging', p.disabled && 'is-disabled'), 'aria-label': p['aria-label'] },
         items.map(function (it, k) {
           var y = shift(k), last = k === items.length - 1;
           function mv(dir, off, to) {
             return h(Button, { variant: 'ghost', size: 'sm', icon: dir === 'up' ? 'chevronUp' : 'chevronDown', 'data-move': dir, 'aria-label': (dir === 'up' ? L.up : L.down) + ': ' + nameOf(it),
-              'aria-disabled': off ? true : undefined, onClick: function () { if (!off) move(k, to, dir); } });
+              'aria-disabled': off || p.disabled ? true : undefined, onClick: function () { if (!off) move(k, to, dir); } });
           }
           return h('li', { key: it.id, 'data-id': it.id, className: cx('zr-reorder-item', drag && drag.i === k && 'is-dragging'), style: y ? { transform: 'translateY(' + y + 'px)' } : undefined },
             h('span', { className: 'zr-reorder-handle', 'aria-hidden': true, onPointerDown: function (e) { grab(e, k); }, onPointerMove: follow, onPointerUp: drop, onPointerCancel: cancel }, h(Icon, { name: 'menu', size: 18 })),

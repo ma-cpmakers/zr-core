@@ -347,17 +347,27 @@ const POSTO_DELLE_FONTI = '{sources}';
  */
 export function testiDellaRicerca(lingua: string, fonti: readonly (TipoDiRisorsa | TipoDellaRicerca)[]): Pick<TestiDellaCornice, 'searchPlaceholder' | 'searchHint'> {
     const t = testi(lingua);
-    const conFonti = fonti.length > 0;
+    const elenco = elencoDelleFonti(lingua, fonti);
 
     return {
-        searchPlaceholder: conFonti ? t.searchPlaceholderSources : t.searchPlaceholder,
-        searchHint:
-            conFonti && typeof Intl.ListFormat === 'function'
-                ? t.searchHintSources.replace(POSTO_DELLE_FONTI, () =>
-                      new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' }).format(fonti.map((fonte) => t[`searchSource.${fonte}`])),
-                  )
-                : t.searchHint,
+        searchPlaceholder: fonti.length > 0 ? t.searchPlaceholderSources : t.searchPlaceholder,
+        searchHint: elenco === undefined ? t.searchHint : t.searchHintSources.replace(POSTO_DELLE_FONTI, () => elenco),
     };
+}
+
+/**
+ * Le fonti della ricerca in un workspace, coi loro nomi da elenco, unite come la lingua dei testi unisce un elenco («schede,
+ * board e aree»): le dice l'invito, e dalla `v5.12.0` (#4112, richiesta 295) anche il pannello senza risultati, a cui la
+ * cornice le passa già unite (`searchSources` dell'`AppShell`, un elenco di un nome solo), così la congiunzione è quella dei
+ * testi e non quella della pagina. Senza fonti, o in un browser senza `Intl.ListFormat`, niente.
+ */
+export function elencoDelleFonti(lingua: string, fonti: readonly (TipoDiRisorsa | TipoDellaRicerca)[]): string | undefined {
+    if (fonti.length === 0 || typeof Intl.ListFormat !== 'function') {
+        return undefined;
+    }
+    const t = testi(lingua);
+
+    return new Intl.ListFormat(linguaDeiTesti(lingua), { type: 'conjunction' }).format(fonti.map((fonte) => t[`searchSource.${fonte}`]));
 }
 
 /**

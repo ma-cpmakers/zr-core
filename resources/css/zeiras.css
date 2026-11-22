@@ -516,7 +516,8 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-color-list { display: flex; flex-wrap: wrap; margin: calc(-1 * var(--space-2-5)) 0 calc(-1 * var(--space-2-5)) calc(-1 * var(--space-2-5)); } /* i pallini allineati alla legenda; a destra niente, la pagina non scorre di lato */
 .zr-color { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
 .zr-color input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: inherit; }
-.zr-color-dot { box-sizing: border-box; width: var(--space-5); height: var(--space-5); border-radius: var(--radius-pill); border: 1px solid transparent; }
+.zr-color-dot { box-sizing: border-box; display: grid; place-items: center; width: var(--space-5); height: var(--space-5); border-radius: var(--radius-pill); border: 1px solid transparent; }
+.zr-color-dot.is-pine { color: var(--on-pine); } .zr-color-dot.is-citrus { color: var(--on-citrus); } .zr-color-dot.is-coral { color: var(--on-coral); } .zr-color-dot:is(.is-sky, .is-plum, .is-neutral) { color: var(--surface-raised); } .zr-color-dot.is-none, .zr-card-color-picker .zr-color-dot { color: var(--ink); } /* la spunta del colore scelto, leggibile su ogni tono in chiaro e in scuro; coi colori forzati prende il colore del testo (richiesta 266) */
 .zr-color-dot.is-pine { background: var(--pine); } .zr-color-dot.is-citrus { background: var(--citrus); } .zr-color-dot.is-coral { background: var(--coral); } .zr-color-dot.is-sky { background: var(--sky); } .zr-color-dot.is-plum { background: var(--plum); } .zr-color-dot.is-neutral { background: var(--ink-muted); }
 .zr-color-dot.is-none { border: var(--border-strong) dashed var(--line-strong); }
 .zr-color-dot.is-card-rose { background: var(--card-rose); } .zr-color-dot.is-card-peach { background: var(--card-peach); } .zr-color-dot.is-card-sand { background: var(--card-sand); } .zr-color-dot.is-card-lemon { background: var(--card-lemon); } .zr-color-dot.is-card-lime { background: var(--card-lime); } .zr-color-dot.is-card-mint { background: var(--card-mint); } .zr-color-dot.is-card-sage { background: var(--card-sage); } .zr-color-dot.is-card-aqua { background: var(--card-aqua); } .zr-color-dot.is-card-azure { background: var(--card-azure); } .zr-color-dot.is-card-lavender { background: var(--card-lavender); } .zr-color-dot.is-card-lilac { background: var(--card-lilac); } .zr-color-dot.is-card-stone { background: var(--card-stone); }
@@ -674,6 +675,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-toast { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 280px; max-width: 420px; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--ink); color: var(--surface); box-shadow: var(--shadow-overlay); font-size: 14px; line-height: 20px; }
 .zr-toast-text { flex: 1; }
 .zr-toast-action { border: 0; background: none; font: inherit; font-weight: 700; color: var(--surface); text-decoration: underline; cursor: pointer; }
+.zr-toast-action[aria-disabled="true"] { opacity: .7; cursor: progress; } /* l'azione in corso (actionBusy) non si riattiva (richiesta 269) */
 .zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); } /* sul fondo ink del Toast l'anello del fuoco ha il colore del testo: 15,47:1 chiaro e 16,46:1 scuro, contro 2,82:1 e 1,88:1 di --focus (richiesta 291) */
 @media (pointer: coarse) { .zr-toast-action, .zr-toast-close { position: relative; } .zr-toast-action::after, .zr-toast-close::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); } } /* al tocco «×» e azione si prendono su 44 px, l'avviso non cresce (richiesta 10) */
 .zr-toast-close { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--surface); cursor: pointer; }
@@ -736,6 +738,9 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-table tbody tr:hover { background: var(--surface); }
 .zr-table tr.is-selected { background: var(--pine-soft); }
 .zr-table tr.is-clickable { cursor: pointer; }
+.zr-table tr.is-clickable:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; } /* la riga che si apre da tastiera ha il suo anello del fuoco (richiesta 258) */
+@media not all and (max-width: 720px) { .zr-table tr.is-clickable:focus-visible { outline: 0; } .zr-table tr.is-clickable:focus-visible > td { box-shadow: inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); } .zr-table tr.is-clickable:focus-visible > td:first-child { box-shadow: inset 2px 0 0 var(--focus), inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); } .zr-table tr.is-clickable:focus-visible > td:last-child { box-shadow: inset -2px 0 0 var(--focus), inset 0 2px 0 var(--focus), inset 0 -2px 0 var(--focus); } } /* sopra i 720 px l'anello lo disegnano le celle: anche quelle ferme di stickyFirst, che coprirebbero quello della riga (revisione del lotto 0534, R4) */
+@media (forced-colors: active) { .zr-table tr.is-clickable:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; } } /* coi colori forzati le ombre non si vedono: torna l'anello della riga */
 .zr-td-check { width: 40px; padding-right: 0 !important; }
 @media (pointer: coarse) { .zr-td-check .zr-check::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); } } /* al tocco la casella di riga si prende su 44×44, centrata e dentro la sua cella: il tocco accanto seleziona e non apre la riga (richiesta 272) */
 .zr-th-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: inherit; cursor: pointer; }
@@ -764,6 +769,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-reorder-desc { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .zr-reorder-moves { display: flex; gap: var(--space-1); flex: none; }
 .zr-reorder-moves .zr-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.zr-reorder.is-disabled .zr-reorder-handle { cursor: not-allowed; } /* la lista ferma (disabled) non si trascina (richiesta 289) */
 .zr-reorder.is-dragging { user-select: none; }
 .zr-reorder.is-dragging .zr-reorder-item { transition: transform .15s ease; }
 .zr-reorder .zr-reorder-item.is-dragging { z-index: 1; transition: none; border-radius: var(--radius-sm-md); box-shadow: var(--shadow-lift); cursor: grabbing; }

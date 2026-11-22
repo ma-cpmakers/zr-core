@@ -7,6 +7,7 @@ import { useState } from './interni/useState';
 import { cx } from './interni/cx';
 import { Icon } from './Icon';
 import { Button } from './Button';
+import { useId } from './AppShell';
 import { fmtNum } from './interni/fmtNum';
 import { Field } from './Field';
 import { Checkbox } from './Checkbox';
@@ -15,7 +16,7 @@ import { EmptyState } from './EmptyState';
 import { DATATABLE_TEXTS } from './interni/DATATABLE_TEXTS';
 
   function DataTable(p) {
-    var cols = p.columns || [], rows = p.rows || [];
+    var cols = p.columns || [], rows = p.rows || [], tid = useId('tbl');
     var L = useCompLabels(DATATABLE_TEXTS, p.labels);
     var loc = p.locale, nf = null;
     if (loc) try { nf = new Intl.NumberFormat(loc); } catch (e) { loc = null; } /* una lingua che il browser non conosce non rompe la tabella: si usa la forma italiana */
@@ -50,6 +51,7 @@ import { DATATABLE_TEXTS } from './interni/DATATABLE_TEXTS';
       return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label || c.srLabel || '') }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label || c.srLabel || '') }];
     })));
     return h('div', { className: 'zr-table-wrap' },
+      p.onRowClick && shown.length ? h('span', { id: tid + '-o', hidden: true }, L.openRow) : null, /* nascosto: si legge solo dalla riga col fuoco, non come una riga a sé, e senza righe non c'è (revisione del lotto 0534, N3) */
       p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(selText, '{n}', num(sel.length))), p.bulkActions || null,
         h(Button, { variant: 'ghost', size: 'sm', disabled: off, onClick: function () { setSel([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
@@ -66,7 +68,11 @@ import { DATATABLE_TEXTS } from './interni/DATATABLE_TEXTS';
             }))),
           h('tbody', null, shown.length ? shown.map(function (r, i) {
             var id = rid(r, from + i), on = sel.indexOf(id) >= 0;
-            return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
+            /* la riga che si apre col clic si apre anche da tastiera: una fermata del Tab per riga, Invio la apre; il Tab non entra nelle righe senza onRowClick (richiesta 258) */
+            /* Invio apre la riga solo dalla riga, non da ciò che sta dentro; il clic su un controllo dentro la riga sale alla riga come prima del lotto (chi non deve aprirla ferma il suo clic: un pulsante senza onClick suo che apriva la riga la apre ancora, revisione del lotto 0534, N1); la riga col fuoco dice che Invio la apre (R3) */
+            return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), tabIndex: p.onRowClick ? 0 : undefined, 'aria-describedby': p.onRowClick ? tid + '-o' : undefined,
+              onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined,
+              onKeyDown: p.onRowClick ? function (e) { if (e.key === 'Enter' && e.target === e.currentTarget && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.repeat) { e.preventDefault(); p.onRowClick(r); } } : undefined },
               p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': rowLabel(r), checked: on, disabled: off, onChange: function () { toggle(id); } })) : null,
               cols.map(function (c, k) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),

@@ -1,13 +1,13 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it } from 'vitest';
 import { DealCard, DealPipeline } from './zeiras/componenti';
 
-// Richiesta 259 al design system, rimedio provvisorio della v5.1.0 (Decisione 26298, sì di zr-pm-74 del 18/11; #3930 di zr-crm):
-// la DealCard di un'opportunità senza importo. Il modulo scrive `amountText="—"`: si vede «—», e il lettore di schermo legge
-// «valore non indicato» nella lingua della pagina, non un trattino che tace. In un file suo: i rimedi si mettono in ascolto
-// una volta sola, quando arrivano.
+// Richiesta 259 al design system: la DealCard di un'opportunità senza importo. Il modulo scrive `amountText="—"`: si vede «—», e il
+// lettore di schermo legge «valore non indicato» nella lingua della pagina, non un trattino che tace. Dalla v5.1.0 alla v5.11.0 lo
+// faceva un rimedio provvisorio della cornice (Decisione 26298); dalla v5.12.0 (#4112, lotto 0534) lo fa la DealCard da sé, e questi
+// casi girano senza i rimedi e senza la cornice in pagina.
 
 const cambiato = () => new Promise((fatto) => setTimeout(fatto));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -37,8 +37,6 @@ const monta = async (figlio: React.ReactNode) => {
 };
 
 it('una carta con `amountText="—"` mostra «—» e al lettore di schermo dice «valore non indicato»; quella con un importo resta com\'è (richiesta 259)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"></div>';
-    await import('./rimedi');
     await monta(<>
         <DealCard title="Senza valore" amount={0} amountText="—" />
         <DealCard title="Con valore" amount={1200} amountText="1.200 €" />
@@ -48,8 +46,6 @@ it('una carta con `amountText="—"` mostra «—» e al lettore di schermo dice
 });
 
 it('nella lingua della pagina: «valor no indicado» in spagnolo, «value not specified» in inglese e in una lingua che zr-core non ha (richiesta 259)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"></div>';
-    await import('./rimedi');
     const letti: string[] = [];
     for (const lingua of ['es-ES', 'en', 'de']) {
         document.documentElement.lang = lingua;
@@ -63,8 +59,6 @@ it('nella lingua della pagina: «valor no indicado» in spagnolo, «value not sp
 });
 
 it('quando l\'importo arriva il rimedio se ne va, e torna quando l\'importo manca di nuovo: React riscrive il testo della carta (richiesta 259)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"></div>';
-    await import('./rimedi');
     await monta(<DealCard title="Opportunità" amount={0} amountText="—" />);
     const prima = importi();
     act(() => radice!.render(<DealCard title="Opportunità" amount={500} amountText="500 €" />));
@@ -77,30 +71,16 @@ it('quando l\'importo arriva il rimedio se ne va, e torna quando l\'importo manc
 });
 
 it('anche sulle carte della DealPipeline, che le disegna da sé (richiesta 259)', async () => {
-    document.body.innerHTML = '<div class="zr-shell"></div>';
-    await import('./rimedi');
     await monta(<DealPipeline stages={[{ id: 'a', title: 'Nuovo', deals: [{ id: '1', title: 'Senza valore', company: 'Acme', amount: 0, amountText: '—' }, { id: '2', title: 'Con valore', company: 'Acme', amount: 10, amountText: '10 €' }] }]} />);
 
     expect(importi()).toStrictEqual([['—', 'valore non indicato'], ['10 €', '10 €']]);
 });
 
-it('senza la cornice in pagina i rimedi non toccano la carta (richiesta 259)', async () => {
-    document.body.innerHTML = '';
-    await import('./rimedi');
-    await monta(<DealCard title="Senza valore" amount={0} amountText="—" />);
-
-    expect(document.querySelector('.zr-deal-amount')!.innerHTML).toBe('—');
-});
-
-// La sentinella: oggi la DealCard del design system scrive `amountText` così com'è dentro l'importo, e il tipo `Deal` non ha un
-// testo per il lettore di schermo. Quando la 259 arriva, uno dei due cambia: questo caso diventa rosso e il rimedio si toglie
-// (`importiNonIndicati` in rimedi.ts, i testi in resources/lingue/rimedi, la riga TC.11 di uat-cornice, la carta 1.2 della pagina di prova).
-// I file si leggono dalla radice del repo, da dove gira vitest.
-it('la DealCard del design system non dice ancora da sé l\'importo che manca: quando lo fa, il rimedio si toglie (richiesta 259)', () => {
-    const bundle = readFileSync('resources/zeiras/bundle.js', 'utf8');
-    const tipi = readFileSync('resources/zeiras/index.d.ts', 'utf8');
-    const deal = tipi.slice(tipi.indexOf('export interface Deal '), tipi.indexOf('}', tipi.indexOf('export interface Deal ')));
-
-    expect(bundle).toContain('h(\'strong\', { className: \'zr-deal-amount\' }, p.amountText != null ? p.amountText : dealMoney(p))');
-    expect(deal.match(/\b\w+(?=\?: )/g)).toStrictEqual(['color', 'amountText', 'owner', 'probability', 'age']);
+// La sentinella rovesciata: dalla v5.12.0 (#4112, lotto 0534, ds-1795313750-49a0) la DealCard lo fa da sé, e il rimedio è tolto:
+// in rimedi.ts nessun ascolto sugli importi, e i suoi testi (resources/lingue/rimedi) non ci sono più. Deve fallire se il rimedio
+// torna accanto al design system che lo fa già (il trattino e il testo nascosto due volte). I file si leggono dalla radice del repo.
+it('il rimedio della 259 è tolto: rimedi.ts non tocca gli importi e i suoi testi non ci sono più, perché la DealCard lo fa da sé (v5.12.0, #4112)', () => {
+    expect(readFileSync('resources/js/rimedi.ts', 'utf8')).not.toContain('zr-deal-amount');
+    expect(existsSync('resources/lingue/rimedi')).toBe(false);
+    expect(readFileSync('resources/zeiras/bundle.js', 'utf8')).toContain('amountMissingLabel');
 });

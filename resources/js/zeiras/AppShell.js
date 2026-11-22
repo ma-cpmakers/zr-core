@@ -9,7 +9,7 @@ import { h } from './interni/h';
 import { useState } from './interni/useState';
 import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
-import { DEFAULT_NAV, IS_MAC, SIDE_DLG, TOP_NARROW, sideShown, useOutside } from './interni/SIDE_DLG';
+import { DEFAULT_NAV, IS_MAC, SEARCH_SOURCES_TEXTS, SIDE_DLG, TOP_NARROW, listOf, sideShown, useOutside } from './interni/SIDE_DLG';
 import { countParts } from './interni/countParts';
 import { Icon } from './Icon';
 import { Button } from './Button';
@@ -19,12 +19,13 @@ import { Logo } from './Logo';
 import { NotificationItem } from './NotificationItem';
 import { scrollStop } from './interni/SHELL_FOCUSABLE';
 import { useEffect } from './interni/useEffect';
+import { useLabels } from './useLabels';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
 import { Menu } from './Menu';
 
   function AppShell(p) {
-    var L = Object.assign({}, APPSHELL_LABELS, p.labels);
+    var L = Object.assign({}, APPSHELL_LABELS, p.labels), lang = useLabels().lang || 'it';
     var nav = p.nav || DEFAULT_NAV;
     var active = p.active === null ? null : (p.active || 'home'); /* null: nessuna voce attiva (richiesta 29) */
     var user = p.user || L.userFallback;
@@ -221,7 +222,8 @@ import { Menu } from './Menu';
     else if (onSubmit && q.trim() !== asked) panelBody = h('p', { className: 'zr-search-note' }, h('strong', null, L.searchPressEnter + ' «' + q.trim() + '»'));
     else if (sState === 'loading') panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('span', { className: 'zr-visually-hidden' }, L.searchLoading), h(Skeleton, { lines: 3 }));
     else if (sState === 'error') panelBody = h('p', { className: 'zr-search-note is-error', role: 'alert' }, L.searchError);
-    else if (!results.length) panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('strong', null, L.searchEmpty + ' «' + q.trim() + '»'), h('span', null, L.searchEmptyText));
+    else if (!results.length) panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('strong', null, L.searchEmpty + ' «' + q.trim() + '»'), h('span', null, L.searchEmptyText),
+      p.searchSources && p.searchSources.length ? h('span', null, ((p.labels && p.labels.searchSources) || SEARCH_SOURCES_TEXTS[lang] || SEARCH_SOURCES_TEXTS.it).replace('{sources}', function () { return listOf(p.searchSources, lang); })) : null); /* che cosa si può cercare: le fonti che la cornice passa (richiesta 295) */
     else {
       var lastGroup = null, rows = [];
       results.forEach(function (r, i) {

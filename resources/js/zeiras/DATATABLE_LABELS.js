@@ -4,6 +4,6 @@
 // A un riallineamento si rigenera con `npm run componenti`.
 
   /* ---------- Data ---------- */
-  var DATATABLE_LABELS = { selected: '{n} selezionati', selectedOne: '{n} selezionato', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', selectRowName: 'Seleziona {name}', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri' };
+  var DATATABLE_LABELS = { selected: '{n} selezionati', selectedOne: '{n} selezionato', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', selectRowName: 'Seleziona {name}', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri', openRow: 'Invio per aprire' };
 
 export { DATATABLE_LABELS };

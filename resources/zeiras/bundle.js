@@ -285,7 +285,7 @@
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
     personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
-    searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
+    searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.', searchSources: 'Qui puoi cercare {sources}.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca', searchCount: 'Risultati: {n}',
     notifications: 'Notifiche', unread: 'non lette', unreadOne: 'non letta', unreadNone: 'Nessuna notifica non letta', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
     notificationsEmpty: 'Nessuna notifica', notificationsEmptyText: 'Ti avviseremo qui quando qualcuno ti menziona o ti assegna qualcosa.',
@@ -293,6 +293,9 @@
     account: 'Il tuo account', profile: 'Profilo', accountSettings: 'Impostazioni', plan: 'Piano', company: 'Azienda', logout: 'Esci',
     crumbs: 'Percorso', mainContent: 'Contenuto', skipToContent: 'Salta al contenuto', sideNav: 'Moduli e pagine'
   };
+  /* la frase delle fonti a zero risultati nella lingua dell'app, se labels.searchSources non la dà (richiesta 295) */
+  var SEARCH_SOURCES_TEXTS = { it: APPSHELL_LABELS.searchSources, en: 'You can search {sources}.', es: 'Aquí puedes buscar {sources}.' };
+  function listOf(items, lang) { try { return new Intl.ListFormat(lang, { type: 'conjunction' }).format(items); } catch (e) { return items.join(', '); } }
   var TOP_NARROW = '(max-width: 720px)'; /* la stessa misura di bundle.css: sotto, la barra in alto ha il menu e la ricerca chiusa a icona */
   var IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 
@@ -363,7 +366,7 @@
     return function () { mo.disconnect(); el.removeEventListener('blur', fix); if (ro) ro.disconnect(); if (mine) el.removeAttribute('tabindex'); };
   }
   function AppShell(p) {
-    var L = Object.assign({}, APPSHELL_LABELS, p.labels);
+    var L = Object.assign({}, APPSHELL_LABELS, p.labels), lang = useLabels().lang || 'it';
     var nav = p.nav || DEFAULT_NAV;
     var active = p.active === null ? null : (p.active || 'home'); /* null: nessuna voce attiva (richiesta 29) */
     var user = p.user || L.userFallback;
@@ -560,7 +563,8 @@
     else if (onSubmit && q.trim() !== asked) panelBody = h('p', { className: 'zr-search-note' }, h('strong', null, L.searchPressEnter + ' «' + q.trim() + '»'));
     else if (sState === 'loading') panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('span', { className: 'zr-visually-hidden' }, L.searchLoading), h(Skeleton, { lines: 3 }));
     else if (sState === 'error') panelBody = h('p', { className: 'zr-search-note is-error', role: 'alert' }, L.searchError);
-    else if (!results.length) panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('strong', null, L.searchEmpty + ' «' + q.trim() + '»'), h('span', null, L.searchEmptyText));
+    else if (!results.length) panelBody = h('div', { className: 'zr-search-note', role: 'status' }, h('strong', null, L.searchEmpty + ' «' + q.trim() + '»'), h('span', null, L.searchEmptyText),
+      p.searchSources && p.searchSources.length ? h('span', null, ((p.labels && p.labels.searchSources) || SEARCH_SOURCES_TEXTS[lang] || SEARCH_SOURCES_TEXTS.it).replace('{sources}', function () { return listOf(p.searchSources, lang); })) : null); /* che cosa si può cercare: le fonti che la cornice passa (richiesta 295) */
     else {
       var lastGroup = null, rows = [];
       results.forEach(function (r, i) {
@@ -1847,7 +1851,7 @@
         return h('label', { key: t || 'none', className: 'zr-color', title: name },
           h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined, 'data-autofocus': p.autoFocus && !p.disabled && t === first ? '' : undefined,
             onChange: function () { if (!ctrl) st[1](t); if (p.onChange) p.onChange(t); } }),
-          h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }, t === val ? h(Icon, { name: 'check', size: 14 }) : null), /* la scelta ha la spunta, non solo l'anello (richiesta 266) */
           h('span', { className: 'zr-visually-hidden' }, name));
       })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
@@ -1884,7 +1888,7 @@
         return h('label', { key: c || 'none', className: 'zr-color', title: name },
           h('input', { type: 'radio', name: p.name || id, value: c || '', checked: c === val, 'aria-invalid': p.error ? true : undefined,
             onChange: function () { pick(c); } }),
-          h('span', { className: cx('zr-color-dot', c ? 'is-card-' + c : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: cx('zr-color-dot', c ? 'is-card-' + c : 'is-none'), 'aria-hidden': true }, c === val ? h(Icon, { name: 'check', size: 14 }) : null), /* come ColorPicker (richiesta 266) */
           h('span', { className: 'zr-visually-hidden' }, name));
       })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
@@ -2313,12 +2317,20 @@
       p.onClose ? h(Button, { variant: 'ghost', size: 'sm', icon: 'close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }) : null);
   }
 
+  /* ToastRegion: la regione aria-live che sta nella pagina prima dei Toast; un Toast che ci entra si annuncia anche coi lettori di schermo
+     che leggono solo ciò che cambia in una regione che c'era già, e non ha più role="status" suo, per non essere detto due volte (richiesta 269) */
+  var toastRegionCtx = null;
+  function toastRegionContext() { if (!toastRegionCtx) toastRegionCtx = React.createContext(false); return toastRegionCtx; }
+  function ToastRegion(p) {
+    return h('div', { className: cx('zr-toast-region', p.className), 'aria-live': 'polite', 'aria-relevant': 'additions text' }, h(toastRegionContext().Provider, { value: true }, p.children));
+  }
   function Toast(p) {
-    var tone = p.tone || 'success', C = useLabels();
-    return h('div', { className: cx('zr-toast', 'zr-toast-' + tone), role: 'status' },
+    var tone = p.tone || 'success', C = useLabels(), inRegion = React.useContext(toastRegionContext());
+    /* l'azione col suo nome (actionAriaLabel: «Annulla l'archiviazione di …»), il suo ref per portarci il fuoco, e aria-disabled mentre è in corso (actionBusy): non si riattiva */
+    return h('div', { className: cx('zr-toast', 'zr-toast-' + tone), role: inRegion ? undefined : 'status' },
       h(Icon, { name: TONE_ICON[tone], size: 18 }),
       h('span', { className: 'zr-toast-text' }, p.children),
-      p.actionLabel ? h('button', { type: 'button', className: 'zr-toast-action', onClick: p.onAction }, p.actionLabel) : null,
+      p.actionLabel ? h('button', { ref: p.actionRef, type: 'button', className: 'zr-toast-action', 'aria-label': p.actionAriaLabel, 'aria-disabled': p.actionBusy ? true : undefined, onClick: function (e) { if (!p.actionBusy && p.onAction) p.onAction(e); } }, p.actionLabel) : null,
       p.onClose ? h('button', { type: 'button', className: 'zr-toast-close', 'aria-label': p.closeLabel || C.close, onClick: p.onClose }, h(Icon, { name: 'close', size: 16 })) : null);
   }
 
@@ -2406,12 +2418,12 @@
   }
 
   /* ---------- Data ---------- */
-  var DATATABLE_LABELS = { selected: '{n} selezionati', selectedOne: '{n} selezionato', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', selectRowName: 'Seleziona {name}', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri' };
+  var DATATABLE_LABELS = { selected: '{n} selezionati', selectedOne: '{n} selezionato', deselect: 'Deseleziona', selectAll: 'Seleziona tutti', selectRow: 'Seleziona riga', selectRowName: 'Seleziona {name}', range: '{from}–{to} di {total}', prev: 'Pagina precedente', next: 'Pagina successiva', emptyTitle: 'Nessun risultato', emptyText: 'Prova a cambiare i filtri.', sortBy: 'Ordina per', sortNone: 'Ordine iniziale', ascending: '{col}, crescente', descending: '{col}, decrescente', more: 'Mostra altri', openRow: 'Invio per aprire' };
   var DATATABLE_TEXTS = { it: DATATABLE_LABELS, /* nella lingua dell'app, da LabelsProvider o dalla pagina (richiesta 205) */
-    en: { selected: '{n} selected', selectedOne: '{n} selected', deselect: 'Deselect', selectAll: 'Select all', selectRow: 'Select row', selectRowName: 'Select {name}', range: '{from}–{to} of {total}', prev: 'Previous page', next: 'Next page', emptyTitle: 'No results', emptyText: 'Try changing the filters.', sortBy: 'Sort by', sortNone: 'Original order', ascending: '{col}, ascending', descending: '{col}, descending', more: 'Show more' },
-    es: { selected: '{n} seleccionados', selectedOne: '{n} seleccionado', deselect: 'Deseleccionar', selectAll: 'Seleccionar todos', selectRow: 'Seleccionar fila', selectRowName: 'Seleccionar {name}', range: '{from}–{to} de {total}', prev: 'Página anterior', next: 'Página siguiente', emptyTitle: 'Sin resultados', emptyText: 'Prueba a cambiar los filtros.', sortBy: 'Ordenar por', sortNone: 'Orden inicial', ascending: '{col}, ascendente', descending: '{col}, descendente', more: 'Mostrar más' } };
+    en: { selected: '{n} selected', selectedOne: '{n} selected', deselect: 'Deselect', selectAll: 'Select all', selectRow: 'Select row', selectRowName: 'Select {name}', range: '{from}–{to} of {total}', prev: 'Previous page', next: 'Next page', emptyTitle: 'No results', emptyText: 'Try changing the filters.', sortBy: 'Sort by', sortNone: 'Original order', ascending: '{col}, ascending', descending: '{col}, descending', more: 'Show more', openRow: 'Press Enter to open' },
+    es: { selected: '{n} seleccionados', selectedOne: '{n} seleccionado', deselect: 'Deseleccionar', selectAll: 'Seleccionar todos', selectRow: 'Seleccionar fila', selectRowName: 'Seleccionar {name}', range: '{from}–{to} de {total}', prev: 'Página anterior', next: 'Página siguiente', emptyTitle: 'Sin resultados', emptyText: 'Prueba a cambiar los filtros.', sortBy: 'Ordenar por', sortNone: 'Orden inicial', ascending: '{col}, ascendente', descending: '{col}, descendente', more: 'Mostrar más', openRow: 'Pulsa Intro para abrir' } };
   function DataTable(p) {
-    var cols = p.columns || [], rows = p.rows || [];
+    var cols = p.columns || [], rows = p.rows || [], tid = useId('tbl');
     var L = useCompLabels(DATATABLE_TEXTS, p.labels);
     var loc = p.locale, nf = null;
     if (loc) try { nf = new Intl.NumberFormat(loc); } catch (e) { loc = null; } /* una lingua che il browser non conosce non rompe la tabella: si usa la forma italiana */
@@ -2446,6 +2458,7 @@
       return [{ value: c.key + ':asc', label: fill(L.ascending, '{col}', c.label || c.srLabel || '') }, { value: c.key + ':desc', label: fill(L.descending, '{col}', c.label || c.srLabel || '') }];
     })));
     return h('div', { className: 'zr-table-wrap' },
+      p.onRowClick && shown.length ? h('span', { id: tid + '-o', hidden: true }, L.openRow) : null, /* nascosto: si legge solo dalla riga col fuoco, non come una riga a sé, e senza righe non c'è (revisione del lotto 0534, N3) */
       p.selectable && sel.length ? h('div', { className: 'zr-bulk' }, h('strong', null, fill(selText, '{n}', num(sel.length))), p.bulkActions || null,
         h(Button, { variant: 'ghost', size: 'sm', disabled: off, onClick: function () { setSel([]); } }, L.deselect)) : null,
       sortCols.length && rows.length > 1 ? h(Field, { className: 'zr-table-sortbar', label: L.sortBy, options: sortOpts, value: sort ? sort.key + ':' + sort.dir : '',
@@ -2462,7 +2475,11 @@
             }))),
           h('tbody', null, shown.length ? shown.map(function (r, i) {
             var id = rid(r, from + i), on = sel.indexOf(id) >= 0;
-            return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined },
+            /* la riga che si apre col clic si apre anche da tastiera: una fermata del Tab per riga, Invio la apre; il Tab non entra nelle righe senza onRowClick (richiesta 258) */
+            /* Invio apre la riga solo dalla riga, non da ciò che sta dentro; il clic su un controllo dentro la riga sale alla riga come prima del lotto (chi non deve aprirla ferma il suo clic: un pulsante senza onClick suo che apriva la riga la apre ancora, revisione del lotto 0534, N1); la riga col fuoco dice che Invio la apre (R3) */
+            return h('tr', { key: id, className: cx(on && 'is-selected', p.onRowClick && 'is-clickable'), tabIndex: p.onRowClick ? 0 : undefined, 'aria-describedby': p.onRowClick ? tid + '-o' : undefined,
+              onClick: p.onRowClick ? function () { p.onRowClick(r); } : undefined,
+              onKeyDown: p.onRowClick ? function (e) { if (e.key === 'Enter' && e.target === e.currentTarget && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.repeat) { e.preventDefault(); p.onRowClick(r); } } : undefined },
               p.selectable ? h('td', { className: 'zr-td-check', onClick: function (e) { e.stopPropagation(); } }, h(Checkbox, { 'aria-label': rowLabel(r), checked: on, disabled: off, onChange: function () { toggle(id); } })) : null,
               cols.map(function (c, k) { return h('td', { key: c.key, 'data-label': typeof c.label === 'string' && c.label ? c.label : c.srLabel, /* la colonna senza titolo visibile (il ⋯) ha comunque un nome (richiesta 15) */ className: cx(c.align === 'right' && 'is-right', !k && 'zr-td-first') }, c.render ? c.render(r) : r[c.key]); }));
           }) : h('tr', null, h('td', { colSpan: cols.length + (p.selectable ? 1 : 0) }, p.empty || h(EmptyState, { compact: true, icon: 'search', title: L.emptyTitle, text: L.emptyText })))))),
@@ -2500,21 +2517,23 @@
     var listRef = useRef(null), want = useRef(null), dragRef = useRef(null);
     function fill(t, k, v) { return t.replace(k, function () { return v; }); }
     function nameOf(it) { return typeof it.label === 'string' || typeof it.label === 'number' ? String(it.label) : String(it.id); }
+    /* un gesto scartato non si annuncia e non sposta il fuoco: con disabled la lista non si muove, e onChange che risponde false dice «scartato» (richiesta 289) */
     function move(from, to, how) {
-      if (from === to || to < 0 || to >= items.length) return;
+      if (p.disabled || from === to || to < 0 || to >= items.length) return;
       var n = items.slice(), it = n.splice(from, 1)[0]; n.splice(to, 0, it);
+      if (p.onChange && p.onChange(n) === false) return;
       say(fill(fill(fill(L.moved, '{item}', nameOf(it)), '{n}', String(to + 1)), '{total}', String(n.length)));
       want.current = how ? { id: String(it.id), how: how } : null;
-      if (p.onChange) p.onChange(n);
     }
     useEffect(function () { /* la riga spostata coi pulsanti si porta dietro il fuoco; all'estremo passa all'altro pulsante */
       var w = want.current, u = listRef.current; if (!w || !u) return; want.current = null;
       var li = [].filter.call(u.children, function (x) { return x.getAttribute('data-id') === w.id; })[0], b = li && li.querySelector('[data-move="' + w.how + '"]');
-      if (b && b.getAttribute('aria-disabled') === 'true') b = li.querySelector('[data-move="' + (w.how === 'up' ? 'down' : 'up') + '"]');
+      var k = [].indexOf.call(u.children, li); /* all'estremo, non con aria-disabled: anche disabled lo mette (revisione del lotto 0534, R1) */
+      if (b && (w.how === 'up' ? k === 0 : k === u.children.length - 1)) b = li.querySelector('[data-move="' + (w.how === 'up' ? 'down' : 'up') + '"]');
       if (b) b.focus();
     });
     function grab(e, i) {
-      if (e.button > 0 || items.length < 2) return;
+      if (e.button > 0 || items.length < 2 || p.disabled) return;
       e.preventDefault();
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) { /* senza cattura si segue lo stesso */ }
       var rows = [].map.call(listRef.current.children, function (x) { var r = x.getBoundingClientRect(); return { top: r.top, h: r.height }; });
@@ -2540,12 +2559,12 @@
       return drag.i < k && k <= drag.to ? -hd : drag.to <= k && k < drag.i ? hd : 0;
     }
     return h('div', { className: cx('zr-reorder-wrap', p.className) },
-      h('ul', { ref: listRef, className: cx('zr-reorder', drag && 'is-dragging'), 'aria-label': p['aria-label'] },
+      h('ul', { ref: listRef, className: cx('zr-reorder', drag && 'is-dragging', p.disabled && 'is-disabled'), 'aria-label': p['aria-label'] },
         items.map(function (it, k) {
           var y = shift(k), last = k === items.length - 1;
           function mv(dir, off, to) {
             return h(Button, { variant: 'ghost', size: 'sm', icon: dir === 'up' ? 'chevronUp' : 'chevronDown', 'data-move': dir, 'aria-label': (dir === 'up' ? L.up : L.down) + ': ' + nameOf(it),
-              'aria-disabled': off ? true : undefined, onClick: function () { if (!off) move(k, to, dir); } });
+              'aria-disabled': off || p.disabled ? true : undefined, onClick: function () { if (!off) move(k, to, dir); } });
           }
           return h('li', { key: it.id, 'data-id': it.id, className: cx('zr-reorder-item', drag && drag.i === k && 'is-dragging'), style: y ? { transform: 'translateY(' + y + 'px)' } : undefined },
             h('span', { className: 'zr-reorder-handle', 'aria-hidden': true, onPointerDown: function (e) { grab(e, k); }, onPointerMove: follow, onPointerUp: drop, onPointerCancel: cancel }, h(Icon, { name: 'menu', size: 18 })),
@@ -2751,13 +2770,18 @@
   }
 
   function dealMoney(p) { if (p.formatAmount) try { return p.formatAmount(p.amount); } catch (e) {} return fmtMoney(p.amount, p.currency); }
+  var DEAL_CARD_TEXTS = { it: { noAmount: 'valore non indicato' }, en: { noAmount: 'value not specified' }, es: { noAmount: 'valor no indicado' } };
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy', 'color', 'colorNames']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'amountMissingLabel', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy', 'color', 'colorNames']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length && !p.busy ? p.actions : null, name = p.actionsLabel || KANBAN_TEXTS.cardActions;
     /* il colore della carta (richiesta 297): lo sfondo di tutta la carta, e il suo nome per il lettore di schermo */
     var cc = cardColorOf(p.color), ccn = useCompLabels(CARD_COLOR_TEXTS, p.colorNames);
+    /* l'opportunità senza importo (amount assente, o amountText «—»): si vede «—» e il lettore di schermo sente «valore non indicato», nella lingua dell'app (richiesta 259) */
+    var amt = p.amountText != null ? p.amountText : p.amount == null || !isFinite(p.amount) ? '—' : dealMoney(p); /* anche NaN (un parseFloat di niente): non «NaN €» (revisione del lotto 0534, N6) */
+    if (/^\s*[—–-]?\s*$/.test(amt)) amt = '—'; /* anche «», « — », «–» e «-»: un importo vuoto o un trattino non restano muti (revisione del lotto 0534, R6) */
+    var noAmt = useCompLabels(DEAL_CARD_TEXTS, p.amountMissingLabel ? { noAmount: p.amountMissingLabel } : null).noAmount;
     /* il «⋯» delle azioni, come in KanbanCard (richiesta 157): fuori dal Tab, dalla scheda con «.», Maiusc+F10 o il tasto Menu; al tocco su 44 px (richiesta 1) */
     if (acts) rest.onKeyDown = function (e) {
       if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
@@ -2773,7 +2797,7 @@
       h('h4', { className: 'zr-card-title' }, p.title),
       cc ? h('span', { className: 'zr-visually-hidden' }, ccn.color + ': ' + ccn[cc]) : null,
       h('div', { className: 'zr-deal-foot' },
-        h('strong', { className: 'zr-deal-amount' }, p.amountText != null ? p.amountText : dealMoney(p)), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
+        h('strong', { className: 'zr-deal-amount' }, amt === '—' ? [h('span', { key: 'v', 'aria-hidden': true }, '—'), h('span', { key: 'n', className: 'zr-visually-hidden' }, noAmt)] : amt), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
           p.age ? h('span', { className: cx('zr-meta', p.age > 14 && 'is-overdue'), title: p.ageTitle || 'Giorni in questa fase' }, h(Icon, { name: 'clock', size: 14 }), p.age + ' ' + (p.ageLabel || 'gg')) : null)));
     return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: name, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card;
@@ -2916,7 +2940,7 @@
             var extra = p.dealActions ? p.dealActions(d) || [] : [];
             if (extra.length) acts = acts.concat([{ sep: true }], extra);
             /* la scheda non è un role="button": dentro c'è il «⋯», che deve restare raggiungibile; «Apri» sta anche nel menu */
-            return h(DealCard, Object.assign({ key: d.id, colorNames: p.colorNames, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
+            return h(DealCard, Object.assign({ key: d.id, colorNames: p.colorNames, companyIcon: p.companyIcon, currency: cy, formatAmount: p.formatAmount, ageLabel: p.labels && p.labels.days, ageTitle: p.labels && p.labels.daysTitle, amountMissingLabel: p.labels && p.labels.noAmount }, d, { 'data-deal-id': d.id, busy: !!busy[d.id], actions: acts, actionsLabel: L.dealActions + ': ' + d.title,
               draggable: true, dragging: drag === d.id, onDragStart: function (e) { setDrag(d.id); try { e.dataTransfer.setData('text/plain', d.id); } catch (x) {} }, onDragEnd: function () { setDrag(null); setOver(null); },
               onClick: p.onOpen ? function () { p.onOpen(d); } : undefined,
               onKeyDown: p.onOpen ? function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onOpen(d); } } : undefined })); }).concat(more ? [more] : []));
@@ -3437,7 +3461,7 @@
     KanbanCard: KanbanCard, KanbanColumn: KanbanColumn, KanbanBoard: KanbanBoard, AddList: AddList, KANBAN_TEXTS: KANBAN_TEXTS,
     SiteHeader: SiteHeader, Hero: Hero, SectionHeading: SectionHeading, StepList: StepList, AudienceGrid: AudienceGrid,
     PricingCard: PricingCard, FAQ: FAQ, CtaBand: CtaBand, SiteFooter: SiteFooter, LandingPage: LandingPage, LanguageSwitch: LanguageSwitch, SectorGrid: SectorGrid, Breadcrumb: Breadcrumb,
-    ICON_NAMES: ICON_NAMES, BrandIcon: BrandIcon, BRAND_ICON_NAMES: BRAND_ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, CardColorPicker: CardColorPicker, CARD_COLORS: CARD_COLORS, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, AgendaGrid: AgendaGrid, AGENDA_LABELS: AGENDA_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
+    ICON_NAMES: ICON_NAMES, BrandIcon: BrandIcon, BRAND_ICON_NAMES: BRAND_ICON_NAMES, Field: Field, MentionField: MentionField, MENTION_LABELS: MENTION_LABELS, AddressField: AddressField, ADDRESS_LABELS: ADDRESS_LABELS, Checkbox: Checkbox, RadioGroup: RadioGroup, ColorPicker: ColorPicker, COLOR_NAMES: COLOR_NAMES, CardColorPicker: CardColorPicker, CARD_COLORS: CARD_COLORS, ToggleGroup: ToggleGroup, InlineEdit: InlineEdit, INLINE_EDIT_LABELS: INLINE_EDIT_LABELS, Calendar: Calendar, CALENDAR_LABELS: CALENDAR_LABELS, AgendaGrid: AgendaGrid, AGENDA_LABELS: AGENDA_LABELS, Switch: Switch, Tabs: Tabs, Alert: Alert, Toast: Toast, ToastRegion: ToastRegion, Dialog: Dialog, EmptyState: EmptyState, Progress: Progress, Skeleton: Skeleton, PageHeader: PageHeader,
     DataTable: DataTable, DATATABLE_LABELS: DATATABLE_LABELS, ReorderList: ReorderList, REORDER_LABELS: REORDER_LABELS, FilterBar: FilterBar, StatCard: StatCard, ChartCard: ChartCard, SectionCard: SectionCard, LineChart: LineChart, BarChart: BarChart, DonutChart: DonutChart, Sparkline: Sparkline,
     StatusLabel: StatusLabel, RecordHeader: RecordHeader, ActivityTimeline: ActivityTimeline, DescriptionList: DescriptionList, DealCard: DealCard, DealPipeline: DealPipeline, CrmContacts: CrmContacts, ContactDetail: ContactDetail,
     ReportDashboard: ReportDashboard, AutomationStep: AutomationStep, WorkflowBuilder: WorkflowBuilder, AutomationList: AutomationList, ContentStudio: ContentStudio, DetailPanel: DetailPanel, AssistantAvatar: AssistantAvatar, AiLabel: AiLabel, AssistantNav: AssistantNav, AssistantBubble: AssistantBubble, AssistantPanel: AssistantPanel, AssistantSession: AssistantSession, ASSISTANTS: ASSISTANTS, ASSISTANT_LABELS: ASSISTANT_LABELS, Composer: Composer, Menu: Menu, NotificationItem: NotificationItem, AppointmentItem: AppointmentItem, LabelsProvider: LabelsProvider, useLabels: useLabels, COMMON_LABELS: COMMON_LABELS, APPSHELL_LABELS: APPSHELL_LABELS, MODULES_NAV: MODULES_NAV, PUBLISHER: PUBLISHER

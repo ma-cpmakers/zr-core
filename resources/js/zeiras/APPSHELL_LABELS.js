@@ -10,7 +10,7 @@
     workspaceSwitch: 'Cambia workspace', newWorkspace: 'Nuovo workspace', workspaceSettings: 'Impostazioni del workspace',
     personal: 'Il mio spazio', personalGroup: 'Come cliente', firstWorkspace: 'Crea il tuo workspace',
     search: 'Cerca', searchPlaceholder: 'Cerca progetti, schede, contatti…', searchHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri.', searchSubmitHint: 'Cerca in tutti i moduli: scrivi almeno 2 caratteri e premi Invio.', searchPressEnter: 'Premi Invio per cercare',
-    searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.',
+    searchLoading: 'Sto cercando…', searchEmpty: 'Nessun risultato per', searchEmptyText: 'Prova con un\'altra parola o controlla di essere nel workspace giusto.', searchSources: 'Qui puoi cercare {sources}.',
     searchError: 'La ricerca non ha risposto. Riprova tra poco.', searchResults: 'Risultati della ricerca', searchCount: 'Risultati: {n}',
     notifications: 'Notifiche', unread: 'non lette', unreadOne: 'non letta', unreadNone: 'Nessuna notifica non letta', forMe: 'Per me', all: 'Tutte', markAllRead: 'Segna tutte come lette', seeAll: 'Vedi tutte',
     notificationsEmpty: 'Nessuna notifica', notificationsEmptyText: 'Ti avviseremo qui quando qualcuno ti menziona o ti assegna qualcosa.',

@@ -7472,10 +7472,11 @@ describe('chi non ha accettato i documenti legali', () => {
 
         const senza = await date(diSempre);
         // Le prop che la cornice dà all'`AppShell` a una pagina così, com'erano nella `v1.13.0`, più `navigate` dalla `v4.17.0` e
-        // `plan` (sempre `false`: niente riquadro del piano) dalla `v4.31.0`.
+        // `plan` (sempre `false`: niente riquadro del piano) dalla `v4.31.0`, e `searchSources` (le fonti del workspace per il
+        // pannello senza risultati) dalla `v5.12.0`.
         expect(Object.keys(senza).sort()).toStrictEqual([
             'accountItems', 'children', 'companies', 'email', 'flush', 'labels', 'nav', 'navigate', 'notifications', 'notificationsState', 'onAccount', 'onAllNotifications', 'onNotificationsOpen',
-            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'plan', 'product', 'searchResults', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
+            'onOpenNotification', 'onRetryNotifications', 'onSearch', 'onSelectResult', 'onSelectWorkspace', 'plan', 'product', 'searchResults', 'searchSources', 'searchState', 'settingsHref', 'unreadCount', 'user', 'workspace', 'workspaceSlug',
         ]);
         expect([senza.product, senza.flush, senza.unreadCount, senza.notificationsState, senza.searchState]).toStrictEqual(['pm', true, 7, 'ready', 'ready']);
         expect([avviso(), uno('main')?.textContent]).toStrictEqual([null, 'La pagina']);
@@ -7735,7 +7736,9 @@ describe('chi non ha accettato i documenti legali', () => {
         // Lettura della PR #59, R4. Con la ricerca pronta e vuota e una parola rimasta nel campo, sotto il campo l'`AppShell` scrive
         // «Nessun risultato» per quella parola, che la cornice non ha cercato: lo dice il README, ed è chiesto al design system
         // (un campo che si svuota). Il giorno che cambia, questi casi sono rossi e la frase del README si riscrive.
-        const nessunRisultatoPer = (parola: string) => [`Nessun risultato per «${parola}»Prova con un'altra parola o controlla di essere nel workspace giusto.`];
+        // Dalla v5.12.0 (#4112, richiesta 295) il pannello senza risultati dice anche che cosa si può cercare: le fonti del
+        // workspace, le stesse dell'invito, unite nella lingua della persona.
+        const nessunRisultatoPer = (parola: string) => [`Nessun risultato per «${parola}»Prova con un'altra parola o controlla di essere nel workspace giusto.Qui puoi cercare schede, board, aree, prenotazioni, calendari e membri.`];
         /** Ciò che si legge sotto il campo quando non ci sono righe di risultati. */
         const sottoIlCampo = () => tutti('.zr-search-note').map((nota) => nota.textContent);
         const trovato = (parola: unknown) => risposta({ data: [{ tipo: 'board.board', id: 'uat-1', titolo: `Risultato di «${String(parola)}»` }], workspace: 'acme-marketing' });

@@ -27,7 +27,7 @@ import { useCompLabels } from './interni/useCompLabels';
         return h('label', { key: t || 'none', className: 'zr-color', title: name },
           h('input', { type: 'radio', name: p.name || id, value: t || '', checked: t === val, 'aria-invalid': p.error ? true : undefined, 'data-autofocus': p.autoFocus && !p.disabled && t === first ? '' : undefined,
             onChange: function () { if (!ctrl) st[1](t); if (p.onChange) p.onChange(t); } }),
-          h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: cx('zr-color-dot', t ? 'is-' + t : 'is-none'), 'aria-hidden': true }, t === val ? h(Icon, { name: 'check', size: 14 }) : null), /* la scelta ha la spunta, non solo l'anello (richiesta 266) */
           h('span', { className: 'zr-visually-hidden' }, name));
       })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
