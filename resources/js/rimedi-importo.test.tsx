@@ -6,7 +6,7 @@ import { DealCard, DealPipeline } from './zeiras/componenti';
 
 // Richiesta 259 al design system: la DealCard di un'opportunità senza importo. Il modulo scrive `amountText="—"`: si vede «—», e il
 // lettore di schermo legge «valore non indicato» nella lingua della pagina, non un trattino che tace. Dalla v5.1.0 alla v5.11.0 lo
-// faceva un rimedio provvisorio della cornice (Decisione 26298); dalla v5.12.0 (#4112, lotto 0534) lo fa la DealCard da sé, e questi
+// faceva un rimedio provvisorio della cornice (Decisione 26298); dalla v5.12.0 (voce 4112, lotto 0534) lo fa la DealCard da sé, e questi
 // casi girano senza i rimedi e senza la cornice in pagina.
 
 const cambiato = () => new Promise((fatto) => setTimeout(fatto));
@@ -76,10 +76,10 @@ it('anche sulle carte della DealPipeline, che le disegna da sé (richiesta 259)'
     expect(importi()).toStrictEqual([['—', 'valore non indicato'], ['10 €', '10 €']]);
 });
 
-// La sentinella rovesciata: dalla v5.12.0 (#4112, lotto 0534, ds-1795313750-49a0) la DealCard lo fa da sé, e il rimedio è tolto:
+// La sentinella rovesciata: dalla v5.12.0 (voce 4112, lotto 0534, ds-1795313750-49a0) la DealCard lo fa da sé, e il rimedio è tolto:
 // in rimedi.ts nessun ascolto sugli importi, e i suoi testi (resources/lingue/rimedi) non ci sono più. Deve fallire se il rimedio
 // torna accanto al design system che lo fa già (il trattino e il testo nascosto due volte). I file si leggono dalla radice del repo.
-it('il rimedio della 259 è tolto: rimedi.ts non tocca gli importi e i suoi testi non ci sono più, perché la DealCard lo fa da sé (v5.12.0, #4112)', () => {
+it('il rimedio della 259 è tolto: rimedi.ts non tocca gli importi e i suoi testi non ci sono più, perché la DealCard lo fa da sé (v5.12.0, voce 4112)', () => {
     expect(readFileSync('resources/js/rimedi.ts', 'utf8')).not.toContain('zr-deal-amount');
     expect(existsSync('resources/lingue/rimedi')).toBe(false);
     expect(readFileSync('resources/zeiras/bundle.js', 'utf8')).toContain('amountMissingLabel');

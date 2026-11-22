@@ -810,10 +810,10 @@ describe('le lingue della cornice', () => {
             .toStrictEqual(['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca nel workspace…', 'Cerca {sources}: scrivi almeno 2 caratteri.']);
     });
 
-    // v5.12.0 (#4112, richiesta 295): le fonti unite sono anche la frase del pannello senza risultati, «Qui puoi cercare {sources}.»,
+    // v5.12.0 (voce 4112, richiesta 295): le fonti unite sono anche la frase del pannello senza risultati, «Qui puoi cercare {sources}.»,
     // che la cornice passa all'`AppShell` come `searchSources` di un nome solo. Deve fallire se l'elenco del pannello non è quello
     // dell'invito, o se senza fonti la frase c'è lo stesso.
-    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s" l\'elenco delle fonti è quello dell\'invito, la frase del pannello ha il posto dell\'elenco una volta, e senza fonti non c\'è elenco (v5.12.0, #4112)', (lingua) => {
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s" l\'elenco delle fonti è quello dell\'invito, la frase del pannello ha il posto dell\'elenco una volta, e senza fonti non c\'è elenco (v5.12.0, voce 4112)', (lingua) => {
         const elenco = elencoDelleFonti(lingua, diProjectManagement);
         expect(elenco).toBeTypeOf('string');
         expect(testiDellaRicerca(lingua, diProjectManagement).searchHint).toBe(testi(lingua).searchHintSources.replace('{sources}', () => elenco ?? ''));
