@@ -72,13 +72,14 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-nav { display: flex; flex-direction: column; gap: var(--space-5); flex: 1; }
 .zr-nav-group { display: flex; flex-direction: column; gap: 2px; }
 .zr-nav-title { padding: 0 var(--space-3) var(--space-1); font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
-.zr-nav-item { display: flex; align-items: center; gap: var(--space-3); height: 38px; padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
+.zr-nav-item { display: flex; align-items: center; gap: var(--space-3); min-height: 38px; padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
 .zr-nav-item:hover { background: var(--surface-sunken); color: var(--ink); }
 .zr-nav-item.is-active { background: var(--pine-soft); color: var(--pine); font-weight: 600; }
 @media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible), .zr-toggle.is-on:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } } /* coi colori forzati sfondo e ombra della voce attiva del menu, del segmento scelto e della scelta del ToggleGroup si azzerano: un contorno, come .zr-radio-card e .zr-color; col fuoco sopra vale l'anello del fuoco (richiesta 288) */
 .zr-nav-item.is-soon { cursor: default; }
 .zr-nav-item.is-soon:hover { background: transparent; color: var(--ink-muted); }
-.zr-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zr-nav-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.zr-nav-group:not(.is-products) .zr-nav-item > .zr-nav-label { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; } /* al più due righe, poi «…»: il testo intero resta nel nome della voce (Decisione: zr-pm-a0 22/11) */ /* un'etichetta lunga va a capo invece di finire subito in «…», anche col testo al 200% (richiesta 276) */
 .zr-nav-item.is-off .zr-icon { opacity: .6; }
 .zr-nav-soon { font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 var(--space-1-5); border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); }
 .zr-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 var(--space-1-5); border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted); font-size: 12px; line-height: 16px; font-weight: 600; box-sizing: border-box; }
@@ -234,7 +235,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-btn-onpine:hover { background: var(--pine-soft); }
 .zr-site { background: var(--surface); color: var(--ink); }
 .zr-site-wrap { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--space-6); box-sizing: border-box; }
-.zr-overline { display: block; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--pine); }
+.zr-overline { display: block; overflow-wrap: anywhere; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--pine); }
 
 .zr-site-head { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--line); }
 .zr-site-head-row { display: flex; align-items: center; gap: var(--space-6); height: 72px; }
@@ -410,7 +411,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 
 /* Page header */
 .zr-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
-.zr-page-head-text { display: flex; flex-direction: column; gap: 2px; }
+.zr-page-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; } /* non allarga la pagina (richiesta 275) */
 .zr-page-head h1 { margin: 0; display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-size: 26px; line-height: 32px; font-weight: 650; letter-spacing: -.01em; }
 .zr-page-head p { margin: 0; color: var(--ink-muted); font-size: 14px; }
 .zr-page-count { font-family: var(--font-sans); }
@@ -665,6 +666,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-alert { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid transparent; font-size: 14px; line-height: 20px; color: var(--ink); }
 .zr-alert > .zr-icon { margin-top: 1px; }
 .zr-alert-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 720px) { .zr-alert { flex-wrap: wrap; row-gap: 0; } .zr-alert::after { content: ''; flex-basis: 100%; order: 1; } .zr-alert-body { min-width: 0; overflow-wrap: break-word; } .zr-alert > .zr-alert-body ~ :not(.zr-btn-icon:last-child) { order: 2; margin-top: var(--space-3); } .zr-alert > .zr-alert-body + :not(.zr-btn-icon:last-child) { margin-left: calc(20px + var(--space-3)); } } /* sotto i 720 px l'azione va sempre a capo, sotto il testo e allineata a lui, nell'ordine del Tab; la ✕ resta in alto a destra. La riga vuota di ::after fa il ritorno a capo: senza azione è alta 0 (richiesta 274) */
 .zr-alert-info { background: var(--info-soft); } .zr-alert-info > .zr-icon { color: var(--info); }
 .zr-alert-success { background: var(--success-soft); } .zr-alert-success > .zr-icon { color: var(--success); }
 .zr-alert-warning { background: var(--warning-soft); } .zr-alert-warning > .zr-icon { color: var(--warning); }
@@ -675,7 +677,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); } /* sul fondo ink del Toast l'anello del fuoco ha il colore del testo: 15,47:1 chiaro e 16,46:1 scuro, contro 2,82:1 e 1,88:1 di --focus (richiesta 291) */
 @media (pointer: coarse) { .zr-toast-action, .zr-toast-close { position: relative; } .zr-toast-action::after, .zr-toast-close::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); } } /* al tocco «×» e azione si prendono su 44 px, l'avviso non cresce (richiesta 10) */
 .zr-toast-close { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--surface); cursor: pointer; }
-.zr-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: grid; place-items: center; padding: var(--space-4); background: var(--scrim); }
+.zr-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: var(--space-4); background: var(--scrim); }
 .zr-scrim.is-inline { position: absolute; }
 .zr-dialog { width: min(var(--dialog-width), 100%); max-height: calc(100% - 32px); display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); overflow: hidden; }
 .zr-dialog.is-lg { width: min(760px, 100%); }
@@ -1028,11 +1030,14 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
   .zr-table-sortbar, .zr-table-selectall { display: flex; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
   .zr-table, .zr-table tbody, .zr-table tr, .zr-table td { display: block; width: 100%; box-sizing: border-box; }
   .zr-table tr { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
-  .zr-table td { padding: 2px 0; border: 0; text-align: left; }
+  .zr-table td { padding: 2px 0; border: 0; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+  .zr-table .zr-cell-person { display: flex; max-width: 100%; } .zr-table .zr-cell-person > span:last-child { min-width: 0; } .zr-table .zr-cell-owner { display: flex; flex-wrap: wrap; max-width: 100%; } .zr-table .zr-avatar { overflow-wrap: normal; } /* nella scheda il contenuto va a capo invece di uscire (richiesta 277) */
+  .zr-table-wrap { overflow-x: auto; } /* ciò che ancora non sta si scorre, non si nasconde (277) */
   .zr-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); }
-  .zr-table td.zr-td-check { float: right; width: auto; }
+  .zr-table td.zr-td-check { float: left; width: auto; margin-right: var(--space-3); } /* a sinistra del nome, come sopra i 720 px: il Tab segue l'ordine di lettura (richiesta 285) */
   .zr-table-scroll { overflow: visible; }
   .zr-table.is-sticky-first .zr-td-first, .zr-table.is-sticky-first .zr-td-check { position: static; background: none; }
+  .zr-table.is-sticky-first .zr-td-check { min-width: 0; } /* nelle schede lo stesso rientro con e senza stickyFirst */
 }
 
 /* ---------- AppShell: workspace, ricerca, notifiche, profilo, percorso ---------- */
