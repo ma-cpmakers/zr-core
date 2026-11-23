@@ -1,5 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
+import { testi } from './lingue';
+
 // v3.8.1 (revisione 381). Ciò che i rimedi fanno senza aspettare un tasto: chi usa un lettore di schermo col tocco, o in
 // modalità navigazione, non ne preme nessuno che arrivi alla pagina. In un file suo: il modulo si mette in ascolto una volta
 // sola, quando arriva, e qui nessun tasto chiede il pezzo di tastiera.
@@ -101,4 +103,24 @@ it('il pulsante del profilo prende il nome dall\'immagine delle iniziali, col no
     await cambiato();
 
     expect([prima, stato()]).toStrictEqual([[null, 'Account', 'Ada Lovelace'], [null, 'Cuenta', 'Ada Lovelace']]);
+});
+
+it.each(['it', 'es', 'en'])('in %s il pulsante del menu sotto i 720 px prende il nome dal modulo che mostra, con «Apri il menu» e poi «Chiudi il menu» nella descrizione; senza il modulo tiene il suo `aria-label` (WCAG 2.5.3, riga 281, voce voce 3858)', async (lingua) => {
+    const { openMenu, closeMenu, crm } = testi(lingua);
+    // Come l'`AppShell` (`bundle.js` r. 553-554): l'icona e, con un modulo corrente, il suo nome; l'`aria-label` segue il cassetto.
+    const menu = (modulo: string) => `<button type="button" class="zr-btn zr-btn-ghost zr-btn-md zr-top-menu" aria-label="${openMenu}" aria-expanded="false"><svg aria-hidden="true"></svg>${modulo}</button>`;
+    document.body.innerHTML = `<div class="zr-shell"><header class="zr-top">${menu(`<span class="zr-top-product">${crm}</span>`)}</header><header class="zr-top">${menu('')}</header></div>`;
+    await import('./rimedi');
+    await cambiato();
+    const [conModulo, senzaModulo] = document.querySelectorAll('.zr-top-menu');
+    const stato = () => [conModulo!.getAttribute('aria-label'), conModulo!.getAttribute('aria-description'), conModulo!.textContent];
+    const chiuso = stato();
+
+    // Il cassetto si apre: l'`AppShell` riscrive l'`aria-label`.
+    conModulo!.setAttribute('aria-expanded', 'true');
+    conModulo!.setAttribute('aria-label', closeMenu);
+    await cambiato();
+
+    expect([chiuso, stato(), senzaModulo!.getAttribute('aria-label'), senzaModulo!.getAttribute('aria-description')])
+        .toStrictEqual([[null, openMenu, crm], [null, closeMenu, crm], openMenu, null]);
 });

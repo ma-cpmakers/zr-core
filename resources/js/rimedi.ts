@@ -231,12 +231,15 @@ function cassetto(): void {
  * selettore i due testi, e l'azienda col nome del workspace fuori dal nome, che non lo dice due volte; nel profilo l'immagine
  * delle iniziali, col nome della persona. «Cambia workspace» e «Account», la parte dell'`aria-label` prima dei due punti, vanno
  * nella descrizione. Si rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra persona, un'altra lingua),
- * che cambia coi nomi (righe 240 e 241). Accessibilità dei due pulsanti: si toglie quando l'`AppShell` lo fa da sé.
+ * che cambia coi nomi (righe 240 e 241). Lo stesso il pulsante del menu sotto i 720 px quando mostra il nome del modulo
+ * («CRM» con «Apri il menu»): il nome è il modulo, «Apri il menu» o «Chiudi il menu» la descrizione; senza il nome del modulo
+ * non ha testo e tiene il suo `aria-label` (riga 281, voce #3858, Decisione 25240). Accessibilità dei tre pulsanti: si toglie
+ * quando l'`AppShell` lo fa da sé.
  */
 function nomiDaiTesti(): void {
-    document.querySelectorAll('.zr-shell :is(.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
+    document.querySelectorAll('.zr-shell :is(.zr-top-menu,.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
         const nome = pulsante.getAttribute('aria-label');
-        if (nome) {
+        if (nome && pulsante.textContent) {
             pulsante.removeAttribute('aria-label');
             pulsante.setAttribute('aria-description', nome.split(': ')[0] ?? '');
         }

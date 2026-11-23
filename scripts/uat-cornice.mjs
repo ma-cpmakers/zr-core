@@ -4,7 +4,7 @@
  * campanella e i menu della barra sopra il pannello di dettaglio, dalla v3.15 i font dal pacchetto e dalla v4.0 la CSP che non ferma niente (R.C), su una
  * pagina vera del modulo. Non sta nello zip del pacchetto: si prende dal repo al tag.
  *
- *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente | --campo-file | --ripiego] [--spazio] [--barra] [--tocco] [--scuro]
+ *   node uat-cornice.mjs <indirizzo> [--parola <testo>] [--cartella <dir>] [--staff | --cliente | --campo-file | --ripiego] [--spazio] [--barra] [--tocco] [--scuro] [--accessibilita]
  *
  * <indirizzo> è una pagina del modulo con la cornice, meglio se ha il percorso e il «+». --parola è una parola che nel
  * workspace trova qualcosa (di norma «pro»), e per V.1-V.2 abbastanza risultati da far scorrere il pannello (altrimenti ➖).
@@ -25,6 +25,9 @@
  *
  * Dalla v4.36.0 con `--scuro` tutta la UAT gira col tema scuro scelto (`data-theme="dark"` su `<html>` e il sistema chiaro),
  * axe compreso, e le righe TS guardano i quattro casi del tema (#3757).
+ * Con `--accessibilita` (#3862) girano solo le righe AC: non è un controllo prima del tag ma il giro che trova i difetti della
+ * cornice prima dei moduli (320 px e 1280 px col testo al 200%, contrasto dei campi e dell'anello); un ❌ già chiesto al design
+ * system porta il numero della richiesta.
  * Dalla v4.35.0 le righe PV guardano l'informativa privacy nel menu del profilo, nel layout e nella cornice del cliente (#3753),
  * e dalla v4.35.1 anche nella cornice dello staff.
  * Dalla v4.35.2 con `--tocco` le righe TC trascinano col dito le carte della `DealPipeline`, in un telefono emulato (richiesta 293),
@@ -80,6 +83,10 @@ const colCampoFile = argomenti.includes('--campo-file') && argomenti.splice(argo
 // girano axe e le righe RP, la CSP ed E.1. Prima del tag zr-core la lancia su `layout.html?pagina=senza-dati`, in italiano,
 // spagnolo e inglese (`&lingua=`).
 const colRipiego = argomenti.includes('--ripiego') && argomenti.splice(argomenti.indexOf('--ripiego'), 1).length > 0;
+// --accessibilita (#3862): solo le righe AC, la cornice a 320 px col testo al 200% coi pannelli aperti, a 1280 px col testo al
+// 200%, e il contrasto non testuale dei campi e dell'anello di fuoco. Si lancia su `layout.html`, `staff.html` e `cliente.html`
+// (con `--cliente`), in italiano, spagnolo e inglese; un ❌ già chiesto al design system porta il numero della richiesta.
+const colAccessibilita = argomenti.includes('--accessibilita') && argomenti.splice(argomenti.indexOf('--accessibilita'), 1).length > 0;
 const cartella = opzione('--cartella', undefined) ?? mkdtempSync(join(tmpdir(), 'uat-cornice-'));
 const [indirizzo] = argomenti;
 if (!indirizzo) {
@@ -1700,6 +1707,228 @@ async function barraDiRipiego(page, apri) {
     }
 }
 
+/**
+ * Il testo al 200% (WCAG 1.4.4) come lo misurano i moduli: ogni `font-size`, `line-height` e `font` in px dei fogli della pagina
+ * raddoppia, e con loro gli stili sugli elementi. Si cambiano le regole e non gli elementi, così anche i pannelli che si aprono
+ * dopo (il cassetto, il profilo, la campanella) nascono al doppio. #3862.
+ */
+async function testoAlDoppio(page) {
+    await page.evaluate(() => {
+        const doppio = (valore) => valore.replace(/(-?\d*\.?\d+)px/g, (_, n) => `${parseFloat(n) * 2}px`);
+        const raddoppia = (stile) => {
+            for (const proprieta of ['font-size', 'line-height', 'font']) {
+                const valore = stile.getPropertyValue(proprieta);
+                if (/px/.test(valore)) stile.setProperty(proprieta, doppio(valore), stile.getPropertyPriority(proprieta));
+            }
+        };
+        const scorri = (regole) => {
+            for (const regola of regole) {
+                if (regola.style) raddoppia(regola.style);
+                if (regola.cssRules) scorri(regola.cssRules);
+            }
+        };
+        for (const foglio of [...document.styleSheets, ...(document.adoptedStyleSheets ?? [])]) {
+            try { scorri(foglio.cssRules); } catch { /* un foglio di un'altra origine: non si legge */ }
+        }
+        document.querySelectorAll('[style]').forEach((el) => raddoppia(el.style));
+        if (getComputedStyle(document.documentElement).fontSize === '16px') document.documentElement.style.fontSize = '32px';
+    });
+    await pausa(300);
+}
+
+/** Le misure della cornice nella pagina: ciò che esce dalla finestra, ciò che è tagliato, i campi e il loro contrasto. */
+const MISURE_DELLA_CORNICE = () => {
+    const COMANDI = 'a[href], button, input:not([type="hidden"]), select, textarea, [role="menuitem"], [role="tab"], [role="option"], [tabindex]:not([tabindex="-1"])';
+    const dellaPagina = (el) => { const main = el.closest('main.zr-main'); return !!main && el !== main && !el.closest('.zr-crumbbar'); };
+    // Visibile e non «solo per il lettore di schermo»: il «Salta al contenuto» fuori dal fuoco e `.zr-visually-hidden` sono 1×1 px.
+    const visibile = (el) => { const r = el.getBoundingClientRect(); return el.checkVisibility({ visibilityProperty: true, opacityProperty: true }) && !el.closest('[inert], [aria-hidden="true"], .zr-visually-hidden') && r.width > 2 && r.height > 2; };
+    const nome = (el) => `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : ''}${el.textContent?.trim() ? ` «${el.textContent.trim().replace(/\s+/g, ' ').slice(0, 30)}»` : ''}`;
+    const larghezza = document.documentElement.clientWidth;
+    const comandi = [...document.querySelectorAll(COMANDI)].filter((el) => !dellaPagina(el) && visibile(el));
+    // Nelle coordinate della pagina: se la pagina è già scorsa di lato, ciò che è a sinistra non è «fuori».
+    const fuori = comandi.filter((el) => { const r = el.getBoundingClientRect(); return r.right + scrollX > larghezza + 1 || r.left + scrollX < -1; })
+        .map((el) => { const r = el.getBoundingClientRect(); return `${nome(el)} ${Math.round(r.left + scrollX)}→${Math.round(r.right + scrollX)}`; });
+    // Tagliato da un contenitore che nasconde ciò che esce (non uno che scorre: lì ci si arriva).
+    const tagliati = comandi.flatMap((el) => {
+        const r = el.getBoundingClientRect();
+        for (let su = el.parentElement; su && su !== document.body; su = su.parentElement) {
+            const s = getComputedStyle(su);
+            if (/hidden|clip/.test(s.overflowX)) {
+                const c = su.getBoundingClientRect();
+                if (r.right > c.right + 1 || r.left < c.left - 1) return [`${nome(el)} oltre ${nome(su).split(' «')[0]} di ${Math.round(Math.max(r.right - c.right, c.left - r.left))} px`];
+            }
+        }
+        return [];
+    });
+    // Testi coi puntini o nascosti: un elemento della cornice con testo suo, che nasconde ciò che esce, più largo dentro che fuori.
+    const puntini = [...document.querySelectorAll('body *')].filter((el) => !dellaPagina(el) && visibile(el)
+        && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())
+        && /hidden|clip/.test(getComputedStyle(el).overflowX) && el.scrollWidth > el.clientWidth + 1)
+        .map((el) => `${nome(el)} ${el.scrollWidth}/${el.clientWidth}`);
+    // Se la pagina scorre di lato senza comandi fuori, chi la allarga: gli elementi della cornice più esterni che escono a destra
+    // (non dentro un contenitore che scorre o taglia: lì l'uscita non allarga la pagina), anche se coperti o `inert`, come le azioni
+    // della barra sotto il campo della ricerca aperto: la pagina la allargano lo stesso.
+    const esce = (el) => el.getBoundingClientRect().right + scrollX > larghezza + 1;
+    const contenuto = (el) => { for (let su = el.parentElement; su && su !== document.body; su = su.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(su).overflowX)) return true; return false; };
+    // Un elemento `fixed` (o dentro uno) sta nella finestra, non nella pagina: non la allarga, e coi conti della pagina sembrerebbe
+    // spostato di quanto la pagina è già scorsa.
+    const fisso = (el) => { for (let su = el; su && su !== document.body; su = su.parentElement) if (getComputedStyle(su).position === 'fixed') return true; return false; };
+    const larghi = [...document.querySelectorAll('body *')].filter((el) => !dellaPagina(el) && el.checkVisibility() && el.getBoundingClientRect().width > 0 && !fisso(el) && esce(el) && !contenuto(el)
+        && !(el.parentElement && el.parentElement !== document.body && esce(el.parentElement) && el.parentElement.checkVisibility()))
+        .map((el) => { const r = el.getBoundingClientRect(); return `${nome(el)} ${Math.round(r.left + scrollX)}→${Math.round(r.right + scrollX)}`; });
+    return {
+        pagina: [document.documentElement.scrollWidth, larghezza],
+        comandi: comandi.length,
+        fuori,
+        tagliati,
+        puntini,
+        larghi,
+    };
+};
+
+/** Il contrasto non testuale (WCAG 1.4.11) dei campi della cornice e dell'anello di fuoco dei suoi comandi. */
+const CONTRASTI_DELLA_CORNICE = () => {
+    const rgba = (testo) => { const n = testo.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0, 0]; return [n[0], n[1], n[2], n[3] ?? 1]; };
+    const sopra = (c, sotto) => [0, 1, 2].map((i) => c[i] * c[3] + sotto[i] * (1 - c[3])).concat(1);
+    const fondo = (el) => {
+        const strati = [];
+        for (let su = el; su; su = su.parentElement) {
+            const c = rgba(getComputedStyle(su).backgroundColor);
+            if (c[3] > 0) { strati.push(c); if (c[3] >= 1) break; }
+        }
+        return strati.reverse().reduce((sotto, c) => sopra(c, sotto), [255, 255, 255, 1]);
+    };
+    const luce = (c) => { const l = c.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2]; };
+    const rapporto = (a, b) => { const [x, y] = [luce(a), luce(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const dellaPagina = (el) => { const main = el.closest('main.zr-main'); return !!main && el !== main && !el.closest('.zr-crumbbar'); };
+    const nome = (el) => `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : ''}`;
+    // Il confine di un campo: il suo bordo, o il suo fondo sul fondo dietro, sul campo o sui due contenitori che lo avvolgono.
+    const campi = [...document.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea')]
+        .filter((el) => !dellaPagina(el) && el.checkVisibility({ visibilityProperty: true, opacityProperty: true }) && el.getBoundingClientRect().width > 0)
+        .map((el) => {
+            let migliore = 0;
+            let dove = '';
+            for (let su = el, passi = 0; su && passi < 3; su = su.parentElement, passi++) {
+                const s = getComputedStyle(su);
+                const dietro = fondo(su.parentElement ?? su);
+                const bordo = rgba(s.borderTopColor);
+                if (parseFloat(s.borderTopWidth) > 0 && bordo[3] > 0) {
+                    const r = rapporto(sopra(bordo, dietro), dietro);
+                    if (r > migliore) { migliore = r; dove = `bordo di ${nome(su)}`; }
+                }
+                const proprio = rgba(s.backgroundColor);
+                if (proprio[3] > 0) {
+                    const r = rapporto(sopra(proprio, dietro), dietro);
+                    if (r > migliore) { migliore = r; dove = `fondo di ${nome(su)}`; }
+                }
+                // Un'ombra interna netta (sfocatura 0, almeno 1 px) disegna il bordo come lo fa `border`: il campo Cerca chiuso sopra
+                // i 720 px dalla v4.36.0 (#3889, richiesta 279), `inset 0 0 0 1px var(--line-strong)`.
+                for (const [, colore, sfocatura, allargo] of s.boxShadow.matchAll(/(rgba?\([^)]*\))\s+-?[\d.]+px\s+-?[\d.]+px\s+([\d.]+)px\s+([\d.]+)px\s+inset/g)) {
+                    const linea = rgba(colore);
+                    if (parseFloat(sfocatura) > 0 || parseFloat(allargo) < 1 || linea[3] === 0) continue;
+                    const r = rapporto(sopra(linea, dietro), dietro);
+                    if (r > migliore) { migliore = r; dove = `ombra interna di ${nome(su)}`; }
+                }
+            }
+            return { campo: nome(el), rapporto: Math.round(migliore * 100) / 100, dove: dove || 'né bordo né fondo' };
+        });
+    return { campi };
+};
+
+/** L'anello di fuoco del comando che ha il fuoco: colore e spessore, contro il fondo dietro il comando. */
+const ANELLO = () => {
+    const a = document.activeElement;
+    if (!a || a === document.body) return null;
+    const main = a.closest('main.zr-main');
+    if (main && a !== main && !a.closest('.zr-crumbbar')) return { dellaPagina: true };
+    const s = getComputedStyle(a);
+    const rgba = (testo) => { const n = testo.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0, 0]; return [n[0], n[1], n[2], n[3] ?? 1]; };
+    const luce = (c) => { const l = c.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2]; };
+    const rapporto = (x, y) => { const [p, q] = [luce(x), luce(y)].sort((m, n) => n - m); return (p + 0.05) / (q + 0.05); };
+    let dietro = [255, 255, 255];
+    for (let su = a.parentElement; su; su = su.parentElement) { const c = rgba(getComputedStyle(su).backgroundColor); if (c[3] >= 1) { dietro = c; break; } }
+    const detto = a.getAttribute('aria-label') || a.textContent?.trim().replace(/\s+/g, ' ') || '';
+    const nome = `${a.tagName.toLowerCase()}${typeof a.className === 'string' && a.className ? '.' + a.className.trim().split(/\s+/).join('.') : ''}${detto ? ` «${detto.slice(0, 30)}»` : ''}`;
+    if (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 1) {
+        return { nome, anello: `outline ${s.outlineWidth}`, rapporto: Math.round(rapporto(rgba(s.outlineColor), dietro) * 100) / 100 };
+    }
+    const ombra = s.boxShadow !== 'none' ? s.boxShadow.match(/rgba?\([^)]*\)/) : null;
+    if (ombra) return { nome, anello: 'box-shadow', rapporto: Math.round(rapporto(rgba(ombra[0]), dietro) * 100) / 100 };
+    return { nome, anello: 'nessuno', rapporto: 0 };
+};
+
+/** Le richieste al design system già aperte per un difetto: il numero accanto al ❌, perché chi legge non ne apra un doppione. */
+const RICHIESTE_NOTE = [[/zr-search(?![\w-])/, 279], [/zr-nav-label/, 276], [/zr-dialog/, 280], [/zr-alert/, 274], [/zr-bell|zr-avatar-btn|zr-top-actions|zr-menu-item/, 283]];
+const conLaRichiesta = (righe) => righe.map((riga) => { const nota = RICHIESTE_NOTE.find(([chi]) => chi.test(riga)); return nota ? `${riga} [richiesta ${nota[1]}]` : riga; });
+
+/**
+ * --accessibilita (#3862): la cornice a 320 px col testo al 200% (WCAG 1.4.10 e 1.4.4) a pannelli chiusi e aperti, a 1280 px col
+ * testo al 200% (i testi tagliati), e a 1280 px il contrasto non testuale (1.4.11) dei campi e dell'anello di fuoco.
+ */
+async function accessibilitaDellaCornice(page, apri) {
+    const pannelli = [
+        ['chiusa', null],
+        ['cassetto', '.zr-shell .zr-top-menu'],
+        ['profilo', '.zr-shell .zr-avatar-btn'],
+        ['campanella', '.zr-shell .zr-bell'],
+        ['ricerca', '.zr-shell .zr-search'],
+    ];
+    for (const [larghezza, conIPannelli] of [[320, true], [1280, false]]) {
+        await page.setViewportSize({ width: larghezza, height: 800 });
+        await apri(indirizzo);
+        await page.waitForSelector('.zr-shell', { timeout: 15000 });
+        await pausa(800);
+        await testoAlDoppio(page);
+        const vista = `a ${larghezza} px col testo al 200%`;
+        for (const [quale, pulsante] of conIPannelli ? pannelli : pannelli.slice(0, 1)) {
+            if (pulsante) {
+                await page.keyboard.press('Escape');
+                await pausa(200);
+                const c = page.locator(pulsante).first();
+                if (!(await c.count()) || !(await c.isVisible())) {
+                    scrivi('➖', `AC.1 ${quale}`, `${vista} col pannello «${quale}» aperto`, 'il comando che lo apre non c\'è in questa pagina');
+                    continue;
+                }
+                await c.click();
+                await pausa(500);
+            }
+            const m = await page.evaluate(MISURE_DELLA_CORNICE);
+            const scorre = m.pagina[0] > m.pagina[1] + 1;
+            const difetti = conLaRichiesta([...m.fuori.map((f) => `fuori dalla finestra: ${f}`), ...m.tagliati.map((t) => `tagliato: ${t}`), ...(scorre && !m.fuori.length ? m.larghi.slice(0, 3).map((l) => `allarga la pagina: ${l}`) : [])]);
+            if (larghezza === 320) {
+                scrivi(!scorre && difetti.length === 0 ? '✅' : '❌', `AC.1 ${quale}`, `${vista}, pannello «${quale}»: la pagina non scorre di lato e ogni comando della cornice sta nella finestra`, `pagina ${m.pagina.join('/')}, ${m.comandi} comandi${difetti.length ? `; ${difetti.slice(0, 8).join('; ')}${difetti.length > 8 ? ` (e altri ${difetti.length - 8})` : ''}` : ''}`);
+            }
+            const puntini = conLaRichiesta(m.puntini);
+            scrivi(puntini.length ? '❌' : '✅', `AC.2 ${larghezza} ${quale}`, `${vista}, pannello «${quale}»: nessun testo della cornice tagliato coi puntini o nascosto`, puntini.slice(0, 8).join('; ') || 'nessuno');
+            await page.screenshot({ path: join(cartella, `accessibilita-${larghezza}-200-${quale}.png`) });
+            if (larghezza === 320 && quale === 'chiusa') await controllaAxe(page, 'AC.A', `${vista}, a pannelli chiusi`);
+        }
+    }
+    // Il contrasto non testuale, col testo com'è: i campi della cornice, poi l'anello di ogni fermata del Tab.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await apri(indirizzo);
+    await page.waitForSelector('.zr-shell', { timeout: 15000 });
+    await pausa(800);
+    const { campi } = await page.evaluate(CONTRASTI_DELLA_CORNICE);
+    for (const campo of campi) {
+        scrivi(campo.rapporto >= 3 ? '✅' : '❌', `AC.3 ${campo.campo}`, 'a 1280 px il campo della cornice si distingue dal fondo: bordo o fondo almeno a 3:1', campo.rapporto >= 3 ? `${campo.rapporto}:1, ${campo.dove}` : conLaRichiesta([`${campo.rapporto}:1, ${campo.dove}`])[0] + (campo.campo.includes('zr-search') && !/richiesta 279/.test(conLaRichiesta([campo.dove])[0]) ? ' [richiesta 279]' : ''));
+    }
+    if (!campi.length) scrivi('➖', 'AC.3', 'a 1280 px i campi della cornice', 'nessun campo visibile');
+    await page.locator('body').focus();
+    await page.evaluate(() => document.activeElement?.blur());
+    const visti = new Map();
+    for (let i = 0; i < 60; i++) {
+        await page.keyboard.press('Tab');
+        await pausa(60);
+        const anello = await page.evaluate(ANELLO);
+        if (!anello || anello.dellaPagina) continue;
+        if (visti.has(anello.nome)) break;
+        visti.set(anello.nome, anello);
+    }
+    const deboli = [...visti.values()].filter((a) => a.rapporto < 3);
+    scrivi(visti.size && !deboli.length ? '✅' : '❌', 'AC.4', 'a 1280 px ogni fermata del Tab nella cornice ha l\'anello di fuoco almeno a 3:1 sul fondo', deboli.length ? deboli.slice(0, 8).map((a) => `${a.nome}: ${a.anello} ${a.rapporto}:1`).join('; ') : `${visti.size} fermate`);
+}
+
 async function uat(page, apri) {
     const errori = [];
     const diGoogle = [];
@@ -1732,6 +1961,11 @@ async function uat(page, apri) {
     if (colRipiego) {
         await barraDiRipiego(page, apri);
         cspSenzaBlocchi(csp.politica, csp.blocchi);
+        scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
+        return;
+    }
+    if (colAccessibilita) {
+        await accessibilitaDellaCornice(page, apri);
         scrivi(errori.length ? '❌' : '✅', 'E.1', 'nessun errore in console', errori.slice(0, 5).join(' | '));
         return;
     }
