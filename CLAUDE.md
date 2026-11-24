@@ -156,6 +156,6 @@ riga «Progetto sulla board» del modello di `ma-board` (FASE A), compreso «rip
 ## Progetto sulla board
 → progetto #95 «zr-core — la cornice comune» · agente `zr-core` · sprint 119 chiuso (#2916, `v4.27.0`). Una versione al giorno
    (Decisione 23424): `v4.28.0` il lotto 0526 (09/11), `v4.29.0` la #3567 (10/11), `v4.30.0` la #3511 (11/11), poi #3530,
-   #3534-#3537 fino a `v5.0.0` (#3538) il 17/11, coi rami locali `voce-*`; la #3569 quando la #314 è deployata e zr-cashflow conferma. La 206 (tema) dopo zr-home #2780.
+   #3534-#3537 fino a `v5.0.0` (#3538) il 17/11, coi rami locali `voce-*`; `v5.4.0` la #3569 (24/11), poi la pila fino alla `v5.16.0` (06/12). La 206 (tema) dopo zr-home #2780.
    La storia degli sprint sta nelle note `registro` e `consegna` della board, non qui.
    Carica `ma-board` + `ma-dev-agent` e riprendi con `/ma-board-continue`. (Niente in docs/agile/ oltre ad allegati/.)
