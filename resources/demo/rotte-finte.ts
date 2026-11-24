@@ -71,6 +71,9 @@ const scadenze = new URLSearchParams(window.location.search).has('scadenze');
 // Con `?preventivi=1` (v3.2.2), dopo quelle di `?scadenze=1`, c'è la notifica della modifica che un cliente chiede dal link di
 // un preventivo, letta e senza chi: apre il preventivo, col suo `id`.
 const preventivi = new URLSearchParams(window.location.search).has('preventivi');
+// Con `?avvisi=1` (voce 3569), dopo quella di `?preventivi=1`, ci sono i due avvisi di Finanze che arrivano alla campanella, letti,
+// personali e senza chi: aprono l'avviso col suo `avviso_id`, il solo id che la parte server dà.
+const avvisi = new URLSearchParams(window.location.search).has('avvisi');
 // Con `?prenotazioni=1` (v3.6.0, sprint 74 · T1), in cima, ci sono le tre notifiche di Bookings, da leggere, senza chi (l'ospite
 // non è un membro), col nome del servizio e `quando` nel fuso di Roma — la spostata col fuso di Tokyo, l'annullata senza il nome
 // del servizio —, e il preavviso di una scadenza col nome del tipo e il giorno.
@@ -258,6 +261,13 @@ const notificheDiProva = [
     // dell'opportunità resta lì. Un clic apre il preventivo.
     ...(preventivi
         ? [{ id: 'uat-r1', creata_il: fa(39 * 24 * 60), letta: true, app: 'crm', tipo: 'crm.preventivo.richiesta', ...detti(null, null, true), ids: { id: 'uat-preventivo-1' } as Record<string, string> }]
+        : []),
+    // Solo con `?avvisi=1`, dopo quella di `?preventivi=1`: i due avvisi di Finanze (voce 3569), letti, per la persona e senza chi.
+    ...(avvisi
+        ? ([
+              ['uat-f1', 'flow.avviso.saldo_non_basta', 'uat-avviso-1'],
+              ['uat-f2', 'flow.avviso.addebito_non_arrivato', 'uat-avviso-2'],
+          ] as [string, string, string][]).map(([id, tipo, avviso_id], indice) => ({ id, creata_il: fa((39 * 24 + 4 * (indice + 1)) * 60), letta: true, app: 'flow', tipo, ...detti(null, null, true), ids: { avviso_id } as Record<string, string> }))
         : []),
     // Solo con `?schede=1`, la più vecchia di tutte: una scheda eliminata, letta. Non ha più una pagina, e non porta id.
     ...(schede ? [{ id: 'uat-s2', creata_il: fa(40 * 24 * 60), letta: true, app: 'pm', tipo: 'com.zeiras.board.scheda.eliminata', ...nonDetti, ids: {} as Record<string, string> }] : []),

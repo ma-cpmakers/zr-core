@@ -316,9 +316,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 72,7 KB | 16,6 KB |
-| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 72,7 KB | 16,7 KB |
-| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 72,2 KB | 16,5 KB |
+| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 73,5 KB | 16,9 KB |
+| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 73,5 KB | 17,0 KB |
+| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 73,0 KB | 16,8 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -423,7 +423,7 @@ Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la ve
 «Informativa privacy» nel menu del profilo (#3753, Decisione di zr-pm-cc del 13/11). I file dell'inglese e dello spagnolo
 salgono a 977 e 1.103 byte, la misura più 20.
 Hanno
-un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.685 byte la campanella, 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
+un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.741 byte la campanella (2.685 fino alla `v5.3.0`), 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
@@ -454,7 +454,8 @@ contropartita). Nella `v4.20.0` è salito a 2.592, la misura più 20: le due chi
 d'ingresso (Decisione 22247). Nella `v4.23.0` è salito a 2.729, la misura più 20: le quattro righe delle notifiche da cliente
 nel registro, la funzione che apre una notifica da cliente in «Il mio spazio» e le due chiamate che segnano lette con le
 rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Nella `v4.30.0` è sceso a 2.685, la misura
-più 20: chiede solo il file delle frasi della lingua della pagina, senza l'inglese (#3511). Dalla `v2.0.0` l'eccezione per i
+più 20: chiede solo il file delle frasi della lingua della pagina, senza l'inglese (#3511). Nella `v5.4.0` è salito a 2.741, la
+misura più 20: le due righe degli avvisi di Finanze nel registro delle destinazioni e i loro titoli (#3569). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -670,6 +671,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.2.0` | la barra minima di chi non ha i dati della cornice va a capo invece di scorrere di lato (#3847): a 320 px col testo al 200% le voci stanno nella barra e nessuna finisce sotto il logo; dove le voci non stanno su una riga (anche a 390 px) vanno a capo dentro la nav, e la barra cresce; a 1280 px resta una riga alta quanto la topbar | niente | niente | la pagina senza i dati della cornice a 320 px col testo al 200%: niente scorrimento di lato, nessuna voce coperta (`uat-cornice.mjs --ripiego`) |
 | `v5.2.1` | la barra minima della `v5.2.0` alta quanto la topbar anche nei moduli con Tailwind 4: il suo `box-sizing` lo dice la barra (`border-box`), e il preflight del modulo non la accorcia più a 49 px (R1 della revisione della `v5.2.0`) | niente | niente | la pagina senza i dati della cornice a 1280 px, col `border-box` del preflight: la barra è alta quanto la topbar (`uat-cornice.mjs --ripiego`, RP.3b) |
 | `v5.3.0` | sotto i 720 px il pulsante del menu che mostra il nome del modulo prende il nome da quel testo (riga 281, WCAG 2.5.3, #3858): chi dice «CRM» a voce lo trova, e «Apri il menu» o «Chiudi il menu» restano come descrizione; senza il nome del modulo il pulsante tiene il suo `aria-label`. `uat-cornice.mjs --accessibilita` (#3862) è il giro che trova i difetti di accessibilità della cornice, non un controllo prima del tag | niente | un caso che cerca il pulsante del menu per `aria-label` «Apri il menu» quando mostra il nome del modulo lo trova per nome, il nome del modulo | il pulsante del menu a 390 px: nome uguale al testo che si vede |
+| `v5.4.0` | i titoli e la destinazione dei due avvisi di Finanze che arrivano alla campanella (#3569): «Nei prossimi 30 giorni i soldi non bastano» (`flow.avviso.saldo_non_basta`) e «Un addebito atteso non è ancora arrivato» (`flow.avviso.addebito_non_arrivato`), in italiano, inglese e spagnolo; con Finanze attiva o disponibile nel workspace un clic apre l'avviso in Finanze, `/avvisi/{avviso_id}`, e senza `avviso_id` la lista degli avvisi; senza Finanze, la pagina delle notifiche | niente | niente | una notifica di ciascun tipo nel pannello, in tre lingue, col suo titolo e l'indirizzo del clic |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
@@ -1638,7 +1640,11 @@ cornice === null ? pagina : (
   sono 59: 40 tipi di evento e i diciannove che non sono eventi. Dalla `v4.16.0` il titolo del Gate dice com'è stato deciso,
   dall'esito che il backoffice dà nei `dati` della notifica (`esito`): «Gate approvato», «Gate approvato con prescrizioni» e
   «Gate respinto», con le parole di zr-board (`notificationTitleOutcome.board.gate.deciso.<esito>`); senza l'esito, o con uno
-  che le lingue non hanno, resta «Gate deciso». I titoli per esito non sono tipi: i titoli restano 59. Nel repo di zr-core la copia
+  che le lingue non hanno, resta «Gate deciso». I titoli per esito non sono tipi: i titoli restano 59. Dalla `v5.4.0` (#3569) hanno
+  un titolo anche i due avvisi di Finanze che arrivano alla campanella, che scrive il compito degli avvisi del backoffice e non
+  sono eventi: «Nei prossimi 30 giorni i soldi non bastano» (`flow.avviso.saldo_non_basta`) e «Un addebito atteso non è ancora
+  arrivato» (`flow.avviso.addebito_non_arrivato`), senza chi l'ha fatto; gli altri due avvisi di Finanze non arrivano alla
+  campanella e non hanno un titolo. Con loro i titoli sono 65. Nel repo di zr-core la copia
   dei tipi di evento del contratto e l'elenco di quelli che non arrivano mai alla campanella, con la fonte nel backoffice,
   stanno in `tests/contratto/x-eventi.json`: un caso fallisce se un tipo non ha né un titolo né un posto nell'elenco, o se
   la copia non ha più l'impronta dei tipi del contratto (sha256 dei tipi in ordine), e prima di ogni tag
@@ -2313,7 +2319,9 @@ non è nel percorso. Dalla `v3.0.0` il CRM ha anche le due notifiche delle scade
 `/scadenze`, e il riepilogo del giorno (`crm.scadenze.riepilogo_del_giorno`), con `/scadenze`; l'`id` della scadenza, che i
 `dati` portano, non è nel percorso. Dalla `v3.2.2` il CRM ha anche la richiesta di un cliente sul preventivo
 (`crm.preventivo.richiesta`), con `/preventivi/{id}`: apre il preventivo, e `trattativa_id`, che i `dati` portano, non è
-nel percorso. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
+nel percorso. Dalla `v5.4.0` (#3569) c'è anche la voce di Finanze, `flow`, coi due avvisi che arrivano alla campanella
+(`flow.avviso.saldo_non_basta`, `flow.avviso.addebito_non_arrivato`), con `/avvisi/{avviso_id}`, altrimenti `/avvisi`: apre
+l'avviso con l'`avviso_id` dei `dati`, mai l'id del soggetto o quello della notifica. Un modulo che vuole i titoli e le destinazioni delle sue notifiche
 li chiede all'agente di zr-core, e arrivano con una versione.
 Nel registro stanno anche le risorse che la ricerca mostra: una voce ha in `risorse` una riga per tipo, col tipo com'è nel
 backoffice (`board.scheda`), l'icona, il percorso dopo `/w/<slug>`, se è un contenitore e le chiavi di `contesto` che fanno

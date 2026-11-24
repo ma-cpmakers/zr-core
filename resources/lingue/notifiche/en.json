@@ -65,6 +65,8 @@
     "notificationTitleOutcome.board.gate.deciso.con_prescrizioni": "Gate approved with prescriptions",
     "notificationTitleOutcome.board.gate.deciso.respinto": "Gate rejected",
     "notificationTitle.io.invito.accettato": "Your invitation was accepted",
+    "notificationTitle.flow.avviso.saldo_non_basta": "Money won't last the next 30 days",
+    "notificationTitle.flow.avviso.addebito_non_arrivato": "An expected charge hasn't arrived yet",
     "notificationTitleWhoWhat.com.zeiras.board.cartella.creata": "{who} created the area “{what}”",
     "notificationTitleWhoWhat.com.zeiras.board.cartella.modificata": "{who} changed the area “{what}”",
     "notificationTitleWhoWhat.com.zeiras.board.board.creata": "{who} created the board “{what}”",

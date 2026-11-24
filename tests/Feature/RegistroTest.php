@@ -42,7 +42,7 @@ const CHIAVE_DI_UN_SEGNAPOSTO = 'id|[a-z][a-z_]*_id';
  * notifiche da cliente, `bookings.cliente.`, sono della Dashboard: le apre «Il mio spazio» di zr-home (#3398). Vince l'inizio più lungo,
  * che sta dopo.
  */
-const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'bookings.cliente.' => 'home', 'io.' => 'home'];
+const APP_DI_UN_TIPO_DI_NOTIFICA = ['com.zeiras.crm.' => 'crm', 'com.zeiras.board.' => 'pm', 'crm.' => 'crm', 'board.' => 'pm', 'bookings.' => 'bookings', 'bookings.cliente.' => 'home', 'io.' => 'home', 'flow.' => 'flow'];
 
 /** @return list<string> i valori di un tipo fatto di stringhe, di index.d.ts o di un altro file: `export type Tone = 'pine' | …;` */
 function valoriDelTipo(string $tipo, string $file = 'resources/zeiras/index.d.ts'): array
@@ -304,7 +304,9 @@ it('il registro elenca nell\'ordine della linea guida 10 Dashboard e i sei prodo
             // Dallo sprint 74 (T1.3) anche Bookings ha `notifiche`, e (T2) `fonti`, coi tipi delle sue risorse della ricerca, che
             // `Registro::voci()` rimette in `risorse` da resources/registro/ricerca.json.
             ['fonti', 'icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'risorse', 'tono'],
-            ...array_fill(0, 4, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
+            // Voce 3569: anche Finanze ha `notifiche`, i due avvisi.
+            ['icona', 'id', 'in_arrivo', 'indirizzo', 'notifiche', 'presto', 'tono'],
+            ...array_fill(0, 3, ['icona', 'id', 'in_arrivo', 'indirizzo', 'presto', 'tono']),
         ])
         ->and(array_column($voci, 'icona', 'id'))->toBe([
             'home' => 'grid', 'pm' => 'board', 'crm' => 'users', 'bookings' => 'calendar', 'flow' => 'euro', 'reports' => 'chart',
@@ -528,7 +530,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
 
     expect(array_filter($file, fn (array $voce): bool => array_key_exists('notifiche', $voce)))->toBe([])
         // v3.6.1: per prima la Dashboard, con l'invito accettato.
-        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings'])
+        // Voce #3569: e Finanze, coi due avvisi.
+        ->and(array_keys($righe))->toBe(['home', 'pm', 'crm', 'bookings', 'flow'])
         ->and(array_map(fn (array $voce) => $voce['notifiche'] ?? null, Registro::voci()))->toBe(array_map(fn (array $voce) => $righe[$voce['id']] ?? null, $file))
         // Dalla v3.2.2 ventotto: in più la richiesta sul preventivo; dalla v3.6.1 trentuno: le due scadenze di una scheda e il
         // promemoria di una To-do; dalla v4.12.0 trentadue: il Gate deciso.
@@ -536,7 +539,8 @@ it('le voci del file del registro non hanno `notifiche`; le righe stanno in reso
         // Sprint 116 · T2.2: con l'invito accettato le quattro da cliente di Bookings, che aprono «Il mio spazio».
         ->and(count($righe['home']))->toBe(5)
         // Sprint 74 · T1.3: e le tre di Bookings.
-        ->and(count($righe['bookings']))->toBe(3);
+        ->and(count($righe['bookings']))->toBe(3)
+        ->and($righe['flow'])->toBe(array_map(fn (string $fine) => ['tipo' => "flow.avviso.$fine", 'percorso' => '/avvisi/{avviso_id}', 'altrimenti' => ['/avvisi']], ['saldo_non_basta', 'addebito_non_arrivato']));
 });
 
 // Sprint 74 · T1.3 (voce #2548). Le tre notifiche di Bookings — un ospite ha prenotato, spostato o annullato — aprono il pannello
@@ -662,7 +666,7 @@ it('nel registro le notifiche del CRM che aprono la loro risorsa sono ventiquatt
             ['tipo' => 'crm.preventivo.richiesta', 'percorso' => '/preventivi/{id}'],
         ])
         // Sprint 24 · T3: anche Project Management ha le sue, tre, col loro caso qui sotto; quelle del CRM erano venti dalla `v2.7.0`, ventuno dalla v2.25.3, ventitré dalla v3.0.0, ventiquattro dalla v3.2.2.
-        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings'])
+        ->and(array_keys(array_filter(array_column($voci, 'notifiche', 'id'))))->toBe(['home', 'pm', 'crm', 'bookings', 'flow'])
         // I nomi del backoffice non entrano in un indirizzo, e l'id di un'attività nemmeno.
         ->and(preg_match('~/(trattative|attivita|organizzazioni|persone)\\b|/da-fare/~', (string) json_encode($voci[2]['notifiche'], JSON_UNESCAPED_SLASHES)))->toBe(0);
 });
