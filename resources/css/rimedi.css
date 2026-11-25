@@ -77,3 +77,42 @@
  */
 .zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }
 .zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }
+
+/*
+ * Richieste 272, 273, 242 e 298 (verifica a 320/390/1280 del 17/11; zr-pm-74, Decisione 25922; voci #3948-#3951, v5.5.0): al tocco
+ * quattro aree che il design system lascia sotto i 44 px. Solo con `pointer: coarse`: col mouse niente cambia.
+ * 272: la casella di riga della DataTable si prende su 24×44, e accanto il tocco cade sulla riga e la apre. Un'area da 44×44
+ * centrata sulla casella (come `.zr-btn::after`), che sta nella cella della casella: il tocco seleziona e la riga non si apre.
+ * 273: le azioni che vanno a capo hanno 8 px fra le righe, e l'area da 44 di un pulsante sm (32 px) è coperta da quella della
+ * riga sotto: 12 px, come la paginazione (richiesta 233). Il selettore porta il tag perché il `gap` del bundle viene dopo.
+ * 242: lo Switch si prende su 24 px di altezza: 44, come Checkbox (183) e ToggleGroup.
+ * 298: il campo della ricerca è alto 40 px nella barra di 60: 44, come Field (185); aperto sotto i 720 px sta a `--space-2` dall'alto,
+ * e la barra resta di 60.
+ */
+@media (pointer: coarse) {
+  .zr-td-check .zr-check::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+  :is(div, footer):is(.zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions) { row-gap: var(--space-3); }
+  button.zr-switch { min-height: 44px; }
+  .zr-top .zr-search { height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 720px) {
+  .zr-top .zr-search.is-open { top: var(--space-2); }
+}
+
+/*
+ * Richieste 302, 304 e 305 (21/11; zr-pm-a0; voci #4055-#4057, v5.5.0).
+ * 302: a 320 px col testo al 200% il contesto dell'intestazione del DetailPanel finisce in puntini e il nome non si legge: va a
+ * capo, come il titolo della SectionCard (290). Due classi: il bundle lo scrive con una.
+ * 304: al tocco il pulsante che ordina una colonna della DataTable è alto circa 20 px e, non essendo un `.zr-btn`, non ha l'area
+ * da 44 della 150: la prende, e l'intestazione è alta 44, così l'area non copre la prima riga.
+ * 305: al tocco le azioni dell'intestazione del DetailPanel e la ✕ stanno a 4 px, e le aree da 44 dei pulsanti da 32 si coprono:
+ * 12 px, come la paginazione (233) e le righe di azioni (273). Col mouse la 304 e la 305 non cambiano niente.
+ */
+.zr-detail-head > .zr-detail-ctx { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+@media (pointer: coarse) {
+  table.zr-table th { height: 44px; }
+  .zr-th-sort { position: relative; }
+  .zr-th-sort::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }
+  div.zr-detail-actions { gap: var(--space-3); }
+  .zr-detail-actions + button.zr-detail-close { margin-left: 0; }
+}

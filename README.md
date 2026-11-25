@@ -97,6 +97,18 @@ not specified» in inglese e nelle lingue che zr-core non ha). I testi stanno in
 rimedi, che dentro l'importo mette il trattino nascosto al lettore e il testo nascosto alla vista; quando `amountText` cambia, React
 riscrive l'importo e il rimedio se ne va da sé. Il modulo non scrive altro: niente `aria-label` e niente testo nascosto suo.
 
+Dal nono al dodicesimo (#3948-#3951, richieste 272, 273, 242 e 298, dalla `v5.5.0`): al tocco (`pointer: coarse`) quattro aree che
+il design system lascia sotto i 44 px arrivano a 44. La casella di riga della `DataTable` si prende su 44×44, nella sua cella:
+il tocco accanto alla casella la seleziona e non apre più la riga. Le azioni che vanno a capo (`PageHeader`, `SectionCard`, i
+piedi di `Dialog` e `DetailPanel`) hanno 12 px fra le righe, e «Filtra» ed «Esporta» non sono più coperte dalla riga sotto. Lo
+`Switch` è alto 44 px, come `Checkbox`; il campo della ricerca è alto 44 nella barra di 60. Col mouse niente cambia.
+
+Dal tredicesimo al quindicesimo (#4055-#4057, richieste 302, 304 e 305, dalla `v5.5.0`): il contesto nell'intestazione del
+`DetailPanel` va a capo invece di finire in puntini, e a 320 px col testo al 200% il nome si legge per intero. Al tocco il
+pulsante che ordina una colonna della `DataTable` si prende su 44 px, in un'intestazione alta 44 che l'area non supera, e le
+azioni dell'intestazione del pannello stanno a 12 px fra loro e dalla ✕: il dito non prende più il pulsante accanto. Col
+mouse l'ordinamento e le azioni non cambiano.
+
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
 quando in pagina entra una lavagna (`.zr-lanes`), il pezzo dei rimedi chiede il pezzo del tocco (`resources/js/tocco.ts`), che
@@ -470,8 +482,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 111,6 KB | 18,5 KB | 4,8 KB | 1,7 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 108,4 KB | 18,0 KB | 4,8 KB | 1,7 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 112,1 KB | 18,7 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 108,9 KB | 18,3 KB | 5,1 KB | 1,8 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -672,6 +684,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.2.1` | la barra minima della `v5.2.0` alta quanto la topbar anche nei moduli con Tailwind 4: il suo `box-sizing` lo dice la barra (`border-box`), e il preflight del modulo non la accorcia più a 49 px (R1 della revisione della `v5.2.0`) | niente | niente | la pagina senza i dati della cornice a 1280 px, col `border-box` del preflight: la barra è alta quanto la topbar (`uat-cornice.mjs --ripiego`, RP.3b) |
 | `v5.3.0` | sotto i 720 px il pulsante del menu che mostra il nome del modulo prende il nome da quel testo (riga 281, WCAG 2.5.3, #3858): chi dice «CRM» a voce lo trova, e «Apri il menu» o «Chiudi il menu» restano come descrizione; senza il nome del modulo il pulsante tiene il suo `aria-label`. `uat-cornice.mjs --accessibilita` (#3862) è il giro che trova i difetti di accessibilità della cornice, non un controllo prima del tag | niente | un caso che cerca il pulsante del menu per `aria-label` «Apri il menu» quando mostra il nome del modulo lo trova per nome, il nome del modulo | il pulsante del menu a 390 px: nome uguale al testo che si vede |
 | `v5.4.0` | i titoli e la destinazione dei due avvisi di Finanze che arrivano alla campanella (#3569): «Nei prossimi 30 giorni i soldi non bastano» (`flow.avviso.saldo_non_basta`) e «Un addebito atteso non è ancora arrivato» (`flow.avviso.addebito_non_arrivato`), in italiano, inglese e spagnolo; con Finanze attiva o disponibile nel workspace un clic apre l'avviso in Finanze, `/avvisi/{avviso_id}`, e senza `avviso_id` la lista degli avvisi; senza Finanze, la pagina delle notifiche | niente | niente | una notifica di ciascun tipo nel pannello, in tre lingue, col suo titolo e l'indirizzo del clic |
+| `v5.5.0` | al tocco 44 px per la casella di riga della `DataTable` (che non apre più la riga), le azioni che vanno a capo, lo `Switch` e il campo della ricerca (#3948-#3951, richieste 272, 273, 242 e 298): rimedi provvisori in `rimedi.css`, solo con `pointer: coarse`. Con loro (#4055-#4057, richieste 302, 304 e 305) il contesto del `DetailPanel` che va a capo e, al tocco, 44 px per l'ordinamento della `DataTable` e 12 px fra le azioni del pannello | niente; chi ha scritto a mano l'altezza dello `Switch` al tocco la può togliere | niente | al tocco (o con `pointer: coarse` simulato): la casella di riga della `DataTable` si prende senza aprire la riga, le azioni della testata a capo stanno a 12 px fra le righe, lo `Switch` e il campo della ricerca aperta sono alti 44 px; un contesto lungo del `DetailPanel` va a capo |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a
