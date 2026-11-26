@@ -1,5 +1,5 @@
 @layer theme, base, zeiras, components, utilities;
-/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di MentionField e di AddressField, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css), la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css), con le regole del design system e i rimedi in `@layer zeiras`. A un riallineamento si rigenera con `npm run componenti`. */
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. È resources/zeiras/bundle.css (il design system di Zeiras, copia derivata) senza gli stili di MentionField e di AddressField e di AssistantAvatar e di AssistantNav e di AssistantPanel e di AssistantSession, che stanno in resources/css/zeiras/ e arrivano col loro modulo, coi font del pacchetto (resources/css/font.css) al posto di Google Fonts, la regola del pacchetto per chi chiede meno movimento (resources/css/movimento.css), la barra d'avanzamento di Inertia (resources/css/avanzamento.css) e i rimedi provvisori al design system (resources/css/rimedi.css), con le regole del design system e i rimedi in `@layer zeiras`. A un riallineamento si rigenera con `npm run componenti`. */
 @import './font.css';
 @import './movimento.css';
 @import './avanzamento.css';
@@ -63,7 +63,6 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .zr-avatars { display: inline-flex; align-items: center; }
 .zr-avatars > * + * { margin-left: -6px; }
-
 /* App shell */
 .zr-shell { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); grid-template-rows: var(--topbar-height) minmax(0, 1fr); height: 100vh; min-height: 560px; background: var(--surface); }
 .zr-side { grid-row: 1 / span 2; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-4) var(--space-3); background: var(--surface-raised); border-right: 1px solid var(--line); overflow-y: auto; }
@@ -96,6 +95,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-main { overflow: auto; padding: var(--space-6); min-width: 0; }
 .zr-main.is-flush { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
+.zr-bubble-zone { position: fixed; top: 0; left: 0; width: 0; height: 0; } /* la zona del fumetto degli assistenti (306): fuori dalla griglia della cornice, resta per l'annuncio */
 /* Dashboard */
 .zr-home { max-width: var(--content-max); margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-7); }
 .zr-home-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }

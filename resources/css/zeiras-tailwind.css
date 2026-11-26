@@ -25,6 +25,13 @@
     --color-sky-soft: var(--sky-soft);
     --color-plum: var(--plum);
     --color-plum-soft: var(--plum-soft);
+    --color-tang: var(--tang);
+    --color-tang-text: var(--tang-text);
+    --color-tang-soft: var(--tang-soft);
+    --color-indigo: var(--indigo);
+    --color-indigo-soft: var(--indigo-soft);
+    --color-rose: var(--rose);
+    --color-rose-soft: var(--rose-soft);
     --color-focus: var(--focus);
     --color-success: var(--success);
     --color-success-soft: var(--success-soft);

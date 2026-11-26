@@ -109,6 +109,14 @@ pulsante che ordina una colonna della `DataTable` si prende su 44 px, in un'inte
 azioni dell'intestazione del pannello stanno a 12 px fra loro e dalla ✕: il dito non prende più il pulsante accanto. Col
 mouse l'ordinamento e le azioni non cambiano.
 
+Il sedicesimo e il diciassettesimo (richiesta 363, dalla `v5.6.0`; sì di zr-pm-a0 del 25/11, da zr-superadmin): li fa il pezzo
+dei rimedi, sul `Dialog`. La `description` prende un id e il dialogo la cita con `aria-describedby`: il lettore di schermo la
+legge all'apertura, dopo il titolo. Finché il dialogo è aperto, il resto della pagina è `inert`: né il lettore di schermo né il
+dito arrivano a ciò che sta dietro il velo. Restano vivi solo il dialogo in cima (di due dialoghi, quello aperto dentro l'altro o
+dopo di lui), le zone che annunciano, come i `Toast`, e un menu o un elenco aperto col pulsante che lo apre. Ciò che era già
+inerte, come la barra dietro il selettore dei workspace, alla chiusura resta inerte; il resto torna com'era, prima che il fuoco
+torni a chi lo aveva. Il modulo non scrive niente: niente `inert` e niente `aria-describedby` suoi.
+
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
 quando in pagina entra una lavagna (`.zr-lanes`), il pezzo dei rimedi chiede il pezzo del tocco (`resources/js/tocco.ts`), che
@@ -328,9 +336,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,6 KB | 19,3 KB | 73,5 KB | 16,9 KB |
-| la cornice e due componenti per nome | 64,6 KB | 21,9 KB | 73,5 KB | 17,0 KB |
-| la stessa cornice, dall'ingresso di sempre | 214,2 KB | 69,4 KB | 73,0 KB | 16,8 KB |
+| solo la cornice, dall'ingresso per le app | 55,5 KB | 19,3 KB | 75,1 KB | 17,5 KB |
+| la cornice e due componenti per nome | 64,5 KB | 22,1 KB | 75,1 KB | 17,5 KB |
+| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,4 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -360,7 +368,7 @@ Il nono, dalla `v4.35.2`, è il pezzo del tocco (circa 1,2 KB con gzip): le cart
 «Le carte della DealPipeline col dito», sotto), che il pezzo dei rimedi chiede solo quando in pagina entra una lavagna. Dalla
 `v4.36.0` anche le schede della `KanbanBoard` (vedi «Le schede della KanbanBoard col dito»).
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.816 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -434,13 +442,18 @@ non stanno più nel CSS di ogni pagina, che perde più di quanto l'ingresso pren
 Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la verifica Google, la voce
 «Informativa privacy» nel menu del profilo (#3753, Decisione di zr-pm-cc del 13/11). I file dell'inglese e dello spagnolo
 salgono a 977 e 1.103 byte, la misura più 20.
+Dalla `v5.6.0` scende di 116, alla misura più 20: gli spazi degli assistenti nell'`AppShell` costano 105 byte (#4088,
+richieste 306-310), e l'ora corta delle notifiche esce dal JS d'ingresso e sta nel pezzo della campanella, che la cornice
+chiede a pannello aperto (222 in meno; zr-pm-a0, 21/11).
 Hanno
-un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.741 byte la campanella (2.685 fino alla `v5.3.0`), 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
+un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.949 byte la campanella (2.741 fino alla `v5.5.0`, 2.685 fino alla `v5.3.0`), 2.337 i rimedi (1.951 fino alla `v5.5.0`, 1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
 del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11), e 1.500 nella stessa, col padding della lavagna a fine corsa (la misura più 20), e 1.541 nella stessa, coi rilievi R5 e R6 della revisione della `v4.35.2` (la misura più 20), e 1.583 dalla `v4.36.1`, con `dragenter` e `dragleave` (R2 della revisione della `v4.36.0`, la misura più 20), e 1.678 dalla `v5.0.1`, col segno della lavagna quando il puntatore ne esce (richiesta 299, regola di zr-pm-74 del 18/11; la misura più 20). I rimedi salgono a 1.951 nella `v5.1.0`, la misura più 20: la carta
-della `DealCard` senza importo (richiesta 259, rimedio provvisorio, sì di zr-pm-74 del 18/11). Quello dei rimedi era di
+della `DealCard` senza importo (richiesta 259, rimedio provvisorio, sì di zr-pm-74 del 18/11), e a 2.337 nella `v5.6.0`, la misura
+più 20: il `Dialog` descritto dalla sua `description` e il resto della pagina inerte a dialogo aperto (richiesta 363, sì di
+zr-pm-a0 del 25/11). Quello dei rimedi era di
 1.922 byte fino alla `v3.13.0`, ed è salito di 57 nella `v3.14.0`, alla misura più 20: il menu a cassetto aperto dice di essere
 una finestra, e sta nel pezzo che si carica sempre perché serve a chi usa un lettore di schermo col tocco (Decisione 19069 di zr-pm).
 Nella `v3.14.2` è salito di altri 69, alla misura più 20: un `Dialog` che si apre prende il fuoco e alla chiusura lo rende, e
@@ -467,7 +480,8 @@ d'ingresso (Decisione 22247). Nella `v4.23.0` è salito a 2.729, la misura più 
 nel registro, la funzione che apre una notifica da cliente in «Il mio spazio» e le due chiamate che segnano lette con le
 rotte del cliente, che la cornice del cliente prende dal pezzo (sì di zr-pm-07). Nella `v4.30.0` è sceso a 2.685, la misura
 più 20: chiede solo il file delle frasi della lingua della pagina, senza l'inglese (#3511). Nella `v5.4.0` è salito a 2.741, la
-misura più 20: le due righe degli avvisi di Finanze nel registro delle destinazioni e i loro titoli (#3569). Dalla `v2.0.0` l'eccezione per i
+misura più 20: le due righe degli avvisi di Finanze nel registro delle destinazioni e i loro titoli (#3569). Nella `v5.6.0` è salito a 2.949, la
+misura più 20: l'ora corta delle notifiche, uscita dal JS d'ingresso (#4088, regola di zr-pm-74 sotto 1 kB). Dalla `v2.0.0` l'eccezione per i
 rimedi provvisori di tastiera è finita: ciò che compone le righe delle notifiche è uscito dal JS d'ingresso, e sta nel
 pezzo della campanella.
 
@@ -482,8 +496,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 112,1 KB | 18,7 KB | 5,1 KB | 1,8 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 108,9 KB | 18,3 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 127,3 KB | 21,2 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 109,7 KB | 18,4 KB | 5,1 KB | 1,8 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -685,6 +699,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.3.0` | sotto i 720 px il pulsante del menu che mostra il nome del modulo prende il nome da quel testo (riga 281, WCAG 2.5.3, #3858): chi dice «CRM» a voce lo trova, e «Apri il menu» o «Chiudi il menu» restano come descrizione; senza il nome del modulo il pulsante tiene il suo `aria-label`. `uat-cornice.mjs --accessibilita` (#3862) è il giro che trova i difetti di accessibilità della cornice, non un controllo prima del tag | niente | un caso che cerca il pulsante del menu per `aria-label` «Apri il menu» quando mostra il nome del modulo lo trova per nome, il nome del modulo | il pulsante del menu a 390 px: nome uguale al testo che si vede |
 | `v5.4.0` | i titoli e la destinazione dei due avvisi di Finanze che arrivano alla campanella (#3569): «Nei prossimi 30 giorni i soldi non bastano» (`flow.avviso.saldo_non_basta`) e «Un addebito atteso non è ancora arrivato» (`flow.avviso.addebito_non_arrivato`), in italiano, inglese e spagnolo; con Finanze attiva o disponibile nel workspace un clic apre l'avviso in Finanze, `/avvisi/{avviso_id}`, e senza `avviso_id` la lista degli avvisi; senza Finanze, la pagina delle notifiche | niente | niente | una notifica di ciascun tipo nel pannello, in tre lingue, col suo titolo e l'indirizzo del clic |
 | `v5.5.0` | al tocco 44 px per la casella di riga della `DataTable` (che non apre più la riga), le azioni che vanno a capo, lo `Switch` e il campo della ricerca (#3948-#3951, richieste 272, 273, 242 e 298): rimedi provvisori in `rimedi.css`, solo con `pointer: coarse`. Con loro (#4055-#4057, richieste 302, 304 e 305) il contesto del `DetailPanel` che va a capo e, al tocco, 44 px per l'ordinamento della `DataTable` e 12 px fra le azioni del pannello | niente; chi ha scritto a mano l'altezza dello `Switch` al tocco la può togliere | niente | al tocco (o con `pointer: coarse` simulato): la casella di riga della `DataTable` si prende senza aprire la riga, le azioni della testata a capo stanno a 12 px fra le righe, lo `Switch` e il campo della ricerca aperta sono alti 44 px; un contesto lungo del `DetailPanel` va a capo |
+| `v5.6.0` | la squadra degli assistenti dal design system `ds-1795291945-0b6b` (#4088, richieste 306-310): i toni `tang`, `tang-text`, `tang-soft`, `indigo`, `indigo-soft`, `rose` e `rose-soft` in chiaro e scuro; i componenti `AssistantAvatar`, `AiLabel`, `AssistantPanel`, `AssistantSession`, `AssistantNav` e `AssistantBubble`, ognuno col suo modulo, e gli stili di `AssistantAvatar`, `AssistantNav`, `AssistantPanel` e `AssistantSession` in un CSS a parte, che il modulo importa (un'app senza assistenti non ne porta il peso); gli spazi `assistantNav` e `assistantBubble` dell'`AppShell`, che la cornice non riempie. L'ora corta delle notifiche passa nel pezzo della campanella. Dal pezzo dei rimedi, il `Dialog` descritto dalla sua `description` con `aria-describedby` e il resto della pagina `inert` finché è aperto (richiesta 363, da zr-superadmin). Nessun modulo cambia niente; chi mostra un assistente prende i componenti da qui invece di rifarli |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

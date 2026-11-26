@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { MenuItem, ShellCrumb, ShellNotification } from '../zeiras/index';
 import { chiama, mostra } from './chiamate';
-import { ilPezzoDegliAvvisi, nelSelettore, pagineDiApp, piuRecente, quando, senzaUndefined, vocePrivacy, type DatiDellaCornice, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
+import { ilPezzoDegliAvvisi, nelSelettore, pagineDiApp, piuRecente, senzaUndefined, vocePrivacy, type DatiDellaCornice, type GruppoDiVoci, type WorkspaceDeiDati } from './cornice';
 import { campanella, chiediLaCampanella, DELL_INGRESSO, fileDelleLingue, linguaDeiTesti, linguaPronta, nomePulito, testi, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { nelWorkspace, prodottoDelRegistro, registro } from './registro';
 import type { NotificaDellaCornice } from './servizi';
@@ -163,7 +163,7 @@ function NellaSuaLingua({ lingua, dati, nav = [], active, nuovoWorkspace, onLogo
               const riga = campanella!.rigaConLeFrasi(frasi, notifica, lingua);
               const delProdotto = prodottoDelRegistro(notifica.app);
 
-              return senzaUndefined({ id: notifica.id, title: riga.titolo, text: [riga.sotto, nomePulito(notifica.azienda)].filter(Boolean).join(' · ') || undefined, time: quando(notifica.creata_il, linguaDeiTesti(lingua), adesso), icon: delProdotto?.icona, tone: delProdotto?.tono, unread: !notifica.letta });
+              return senzaUndefined({ id: notifica.id, title: riga.titolo, text: [riga.sotto, nomePulito(notifica.azienda)].filter(Boolean).join(' · ') || undefined, time: campanella!.quando(notifica.creata_il, linguaDeiTesti(lingua), adesso), icon: delProdotto?.icona, tone: delProdotto?.tono, unread: !notifica.letta });
           })
         : [];
     // Il clic su una riga la segna letta, letta o no, e alla lettura riuscita apre la sua pagina in «Il mio spazio», se ne ha una

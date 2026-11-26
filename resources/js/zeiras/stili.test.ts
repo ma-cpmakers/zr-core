@@ -31,7 +31,7 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
     it('i tre CSS sui file sono quelli che il bundle genera, e il bundle è quello del design system', () => {
         const divisi = dividiIlCss(bundleCss);
 
-        expect(NOMI).toStrictEqual(['MentionField', 'AddressField']);
+        expect(NOMI).toStrictEqual(['MentionField', 'AddressField', 'AssistantAvatar', 'AssistantNav', 'AssistantPanel', 'AssistantSession']);
         expect(divisi.zeiras).toContain('.zr-alert {');
         expect(readFileSync(delRepo('resources/css/zeiras.css'), 'utf8')).toBe(divisi.zeiras);
         for (const nome of NOMI) {
@@ -45,11 +45,18 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
 
         expect([...piene(delCss), ...NOMI.flatMap((nome) => piene(corpo(divisi.stili[nome])))].sort()).toStrictEqual(piene(coiCssDelPacchetto(bundleCss)).sort());
         expect(delCss).not.toMatch(/\.zr-(mention|address)/);
+        // Dalla `v5.6.0` (voce 4088): degli assistenti nel CSS del primo carico c'è solo la zona del fumetto, che è dell'AppShell.
+        expect(delCss).not.toMatch(/\.zr-(asst|bot|amsg|ases)\b/);
+        expect(delCss).toContain('.zr-bubble-zone');
         expect(piene(corpo(divisi.stili.MentionField!)).every((riga) => /^\/\* MentionField[: ]|zr-mention/.test(riga))).toBe(true);
         expect(piene(corpo(divisi.stili.AddressField!)).every((riga) => /^\/\* AddressField[: ]|zr-address/.test(riga))).toBe(true);
         expect(divisi.proprie).toStrictEqual({
             MentionField: expect.arrayContaining(['zr-mention', 'zr-mention-x', 'zr-mention-list', 'zr-mention-opt']),
             AddressField: expect.arrayContaining(['zr-address-box', 'zr-address-list', 'zr-address-ok']),
+            AssistantAvatar: expect.arrayContaining(['zr-bot']),
+            AssistantNav: expect.arrayContaining(['zr-asst', 'zr-asst-dot', 'zr-asst-bubble']),
+            AssistantPanel: expect.arrayContaining(['zr-amsg', 'zr-typing']),
+            AssistantSession: expect.arrayContaining(['zr-ases']),
         });
         expect(divisi.proprie.AddressField).not.toContain('zr-mention-x');
         expect(divisi.proprie.MentionField).not.toContain('zr-avatar');
@@ -79,9 +86,11 @@ describe('gli stili dei componenti a parte escono dal CSS del primo carico (spri
         expect(importati('MentionField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';"]);
         expect(importati('AddressField')).toStrictEqual(["import '../../css/zeiras/MentionField.css';", "import '../../css/zeiras/AddressField.css';"]);
         expect(importati('Alert')).toStrictEqual([]);
-        // Dalla `v4.30.0` (voce #3511) ogni modulo: solo quei due importano un CSS.
+        // Dalla `v4.30.0` (voce #3511) ogni modulo: solo quei due importano un CSS. Dalla `v5.6.0` (voce 4088) anche gli assistenti, ognuno
+        // coi blocchi di cui usa le classi; l'AppShell nessuno: riconosce la riga di una voce da `data-asst`, non dalla classe.
         const conIlCss = Object.entries(moduli(letto, divisi)).filter(([, testo]) => /^import '.*\.css';$/m.test(testo)).map(([nome]) => nome);
-        expect(conIlCss.sort()).toStrictEqual(['AddressField.js', 'MentionField.js']);
+        expect(conIlCss.sort()).toStrictEqual(['AddressField.js', 'AiLabel.js', 'AssistantAvatar.js', 'AssistantBubble.js', 'AssistantNav.js', 'AssistantPanel.js', 'AssistantSession.js', 'MentionField.js', 'interni/assistantName.js']);
+        expect(importati('AppShell')).toStrictEqual([]);
         // Senza le classi di MentionField nel suo codice, AddressField non importa i suoi stili.
         const senzaMention = moduli(leggi(bundleJs.replaceAll('zr-mention-', 'zr-nessuno-')), divisi)['AddressField.js'];
         expect(senzaMention).not.toContain('MentionField.css');

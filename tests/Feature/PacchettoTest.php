@@ -5102,8 +5102,8 @@ function ingressoJs(string $file): string
 it('lo zip porta l\'ingresso per le app e il modulo dei componenti coi suoi tipi, accanto all\'ingresso di sempre, e non ciò che li genera e li pesa (sprint 25 · T2.5)', function () {
     $zip = fileDelloZipDiHead();
     // Dalla `v3.1.0` (sprint 71 · T1.5) anche il modulo di MentionField coi suoi tipi, dalla `v3.2.0` (sprint 72 · T1.5) quello di
-    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css, dalla `v4.8.1` (#3055) il modulo dell'Alert.
-    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/Alert.js', 'resources/js/zeiras/Alert.d.ts', 'resources/js/zeiras/AddressField.d.ts'];
+    // AddressField, dalla `v3.3.0` (sprint 75 · T1.1) i CSS divisi da bundle.css, dalla `v4.8.1` (#3055) il modulo dell'Alert, dalla `v5.6.0` (#4088) i CSS degli assistenti.
+    $delPacchetto = ['resources/css/zeiras.css', 'resources/css/zeiras/MentionField.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/AssistantAvatar.css', 'resources/css/zeiras/AssistantNav.css', 'resources/css/zeiras/AssistantPanel.css', 'resources/css/zeiras/AssistantSession.css', 'resources/js/app.ts', 'resources/js/index.ts', 'resources/js/zeiras/componenti.js', 'resources/js/zeiras/componenti.d.ts', 'resources/js/zeiras/MentionField.js', 'resources/js/zeiras/MentionField.d.ts', 'resources/js/zeiras/AddressField.js', 'resources/js/zeiras/Alert.js', 'resources/js/zeiras/Alert.d.ts', 'resources/js/zeiras/AddressField.d.ts'];
     $degliStrumenti = fn (string $file): bool => str_starts_with($file, 'scripts/') || str_starts_with($file, 'resources/demo/') || str_ends_with($file, '.test.ts');
 
     expect(array_values(array_diff($delPacchetto, $zip)))->toBe([])
@@ -5654,7 +5654,7 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // (voce #2056): coi dati di esempio e i formattatori fuori dall'ingresso scende a ciò che l'ingresso pesa a fine sprint.
     // Sprint 70 · T1 (voce #2429): dalla `v3.0.0` 17.478, con le righe delle destinazioni nel pezzo della campanella (Decisione 16181).
     // Patch v3.2.3 (voce #2544): 17.495, il modulo spento che non si mostra a chi non può attivarlo (Decisioni 16812 e 16828).
-    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.932 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
+    'i pesi: il tetto' => ['pesi', 'Il JS d\'ingresso dell\'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.816 byte con gzip. Dalla `v2.11.5` è sceso di 440 byte'],
     // v4.26.0 (sì di zr-pm-07 del 07/11): +238 byte, i lotti 0522 e 0523 del design system, coi rimedi delle righe 4 e 136 tolti.
     'i pesi: i 238 byte della v4.26.0' => ['pesi', 'Dalla `v4.26.0` sono 238 byte in più, la misura più 20 (sì di zr-pm-07 del 07/11): il lotto 0522 del design system porta il `Dialog`'],
     // v4.25.0 (Decisione 22468 di zr-pm): +40 byte, «Il mio spazio» nella cornice dei membri, coi testi nel pezzo degli avvisi.
@@ -5683,8 +5683,9 @@ it('il README dice delle frasi delle notifiche dove stanno, quando la cornice le
     // v4.25.0 (voce #3417): gli avvisi a 1.776, con «Il mio spazio», la misura più 20 (Decisione 22468). v4.30.0 (voce #3511): a 1.730.
     // v4.34.1 (revisione della v4.34.0, R2): a 1.859, la misura più 20 (sì di zr-pm-74, 15/11).
     // v4.35.2 (richiesta 293, sì di zr-pm-74 16/11): i rimedi a 1.640 e il pezzo del tocco a 1.240, la misura più 20.
+    // v5.6.0 (richiesta 363, sì di zr-pm-a0 25/11): i rimedi a 2.337, la misura più 20, col Dialog descritto e lo sfondo inerte.
     'i pesi: il pezzo del tocco' => ['pesi', 'e dalla `v4.35.2` 1.240 il pezzo del tocco, 1.359 dalla `v4.35.3`, 1.390 dalla `v4.35.4` (la misura più 20; i rimedi salgono a 1.640, la misura più 20, per ciò che lo chiede e gli passa il dito: sì di zr-pm-74 del 16/11), 1.443 dalla `v4.36.0`, con le schede della `KanbanBoard` (richiesta 294, la misura più 20, sì di zr-pm-74 del 16/11)'],
-    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.741 byte la campanella (2.685 fino alla `v5.3.0`), 1.951 i rimedi (1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera'],
+    'i pesi: i tetti dei pezzi' => ['pesi', 'Hanno un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.949 byte la campanella (2.741 fino alla `v5.5.0`, 2.685 fino alla `v5.3.0`), 2.337 i rimedi (1.951 fino alla `v5.5.0`, 1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l\'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera'],
     // Sprint 77 · v3.5.0: +3 byte alla campanella per le impronte delle frasi, codice invariato (zr-pm-07, 25/10).
     'i pesi: la campanella nella v3.5.0' => ['pesi', 'e di altri 3 nella `v3.5.0`: il codice del pezzo è quello di prima, ma coi titoli delle schede senza assegnatario i file delle frasi hanno impronte nuove nel nome'],
     // Sprint 87 · v3.14.0 (voce #2341, riga 111): +57 byte ai rimedi per il cassetto che dice di essere una finestra (Decisione 19069).
@@ -5780,7 +5781,8 @@ it('«Salta al contenuto» non ha un foglio di stile suo e non ritocca il design
     // Voce #3723: dalla `v4.34.0` gli stili della fascia di assistenza, che bundle.css e zeiras.css importano.
     // Voce #3887: dalla `v4.35.0` i rimedi provvisori al CSS del design system, che bundle.css e zeiras.css importano.
     // Voce #3536: dalla `v5.0.0` il tema di Tailwind 4 coi nomi dei token, che `npm run token` genera.
-    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
+    // Voce #4088: dalla `v5.6.0` gli stili dei quattro componenti degli assistenti, divisi da bundle.css come quelli di MentionField.
+    expect($css)->toBe(['resources/css/assistenza.css', 'resources/css/avanzamento.css', 'resources/css/bundle.css', 'resources/css/cliente.css', 'resources/css/font.css', 'resources/css/movimento.css', 'resources/css/rimedi.css', 'resources/css/zeiras-tailwind.css', 'resources/css/zeiras-token.css', 'resources/css/zeiras.css', 'resources/css/zeiras/AddressField.css', 'resources/css/zeiras/AssistantAvatar.css', 'resources/css/zeiras/AssistantNav.css', 'resources/css/zeiras/AssistantPanel.css', 'resources/css/zeiras/AssistantSession.css', 'resources/css/zeiras/MentionField.css', 'resources/zeiras/bundle.css'])
         ->and(substr_count((string) file_get_contents(__DIR__.'/../../resources/zeiras/bundle.css'), '.zr-visually-hidden {'))->toBe(1)
         ->and(file_exists(__DIR__.'/../../resources/js/salto.tsx'))->toBe(false)
         ->and(str_contains($cornice, 'SaltaAlContenuto'))->toBe(false)

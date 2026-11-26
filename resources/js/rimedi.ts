@@ -273,6 +273,75 @@ function importiNonIndicati(): void {
     });
 }
 
+/**
+ * Richiesta 363 (zr-superadmin, sì di zr-pm-a0 del 25/11), punto 1: la `description` del `Dialog` sta in un `<p>` senza id, e il
+ * dialogo è nominato dal titolo ma non descritto, quindi un lettore di schermo all'apertura non la legge. Il paragrafo prende un
+ * id suo e il dialogo lo cita con `aria-describedby`; senza la descrizione l'attributo non resta. Vale anche per
+ * l'anteprima.
+ *
+ * Punto 2: a dialogo aperto il resto della pagina restava raggiungibile al lettore di schermo e al dito, e la trappola del Tab
+ * non bastava. Fuori dal velo del dialogo in cima (l'ultimo nel documento: un dialogo dentro un altro, o una conferma sopra il
+ * pannello) tutto è `inert`, tranne ciò che dice `RESTANO`: i `Toast`, per esempio, si leggono e si azionano anche a dialogo
+ * aperto (richiesta 356). Di un dialogo annidato resta inerte, sotto, solo ciò che gli sta accanto: mai un elemento che lo
+ * contiene. Ciò che era già `inert` (la barra dietro il selettore, richiesta 110) non si tocca, e alla chiusura resta inerte;
+ * il resto torna com'era. L'attributo lo scrive il DOM, non React, e vale anche con React 18. Si toglie con la 363.
+ */
+let inerti = new Set<Element>();
+let descritti = 0;
+
+/**
+ * Ciò che a dialogo aperto resta vivo anche fuori dal velo: le zone che annunciano (i `Toast`), un menu o un elenco aperto (un
+ * `Menu` che il modulo scrive accanto al dialogo, richiesta 93) e il pulsante che lo ha aperto.
+ */
+const RESTANO = '[role="status"], [role="alert"], [aria-live="polite"], [aria-live="assertive"], [role="menu"], [role="listbox"], [aria-haspopup][aria-expanded="true"]';
+
+function dialogoDescrittoEInCima(): void {
+    document.querySelectorAll<HTMLElement>('.zr-dialog[role="dialog"]').forEach((dialogo) => {
+        const descrizione = dialogo.querySelector(':scope > .zr-dialog-desc');
+
+        if (descrizione) {
+            descrizione.id ||= `zr-dialogo-desc-${++descritti}`;
+            dialogo.setAttribute('aria-describedby', descrizione.id);
+        } else {
+            dialogo.removeAttribute('aria-describedby');
+        }
+    });
+
+    const inCima = [...document.querySelectorAll(DIALOGO_APERTO)].pop()?.parentElement;
+    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima))] : []);
+
+    if (inCima && !inCima.querySelector(':scope > zr-velo')) {
+        inCima.append(Object.assign(document.createElement('zr-velo'), { hidden: true }));
+    }
+    const strada = new Set<Element>();
+    const ora = new Set<Element>();
+
+    tenuti.forEach((tenuto) => {
+        for (let su = tenuto.parentElement; su && su !== document.documentElement && !strada.has(su); su = su.parentElement) {
+            strada.add(su);
+        }
+    });
+    strada.forEach((su) => tenuti.has(su) || [...su.children].forEach((figlio) => {
+        if (!strada.has(figlio) && !tenuti.has(figlio) && (inerti.has(figlio) || !figlio.hasAttribute('inert'))) {
+            ora.add(figlio);
+        }
+    }));
+    inerti.forEach((prima) => ora.has(prima) || prima.removeAttribute('inert'));
+    ora.forEach((adesso) => adesso.setAttribute('inert', ''));
+    inerti = ora;
+}
+
+/**
+ * Chiuso il dialogo, il `Dialog` rende il fuoco a chi lo aveva nello stesso giro in cui React toglie il velo, prima che l'ascolto
+ * dei cambi arrivi: su un elemento ancora `inert` il fuoco non andrebbe. Un elemento vuoto e nascosto dentro il velo, quando il
+ * velo esce, toglie l'inerzia subito, senza aspettare.
+ */
+customElements.get('zr-velo') || customElements.define('zr-velo', class extends HTMLElement {
+    disconnectedCallback(): void {
+        dialogoDescrittoEInCima();
+    }
+});
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
@@ -292,6 +361,7 @@ new MutationObserver((cambi) => {
     cassetto();
     nomiDaiTesti();
     importiNonIndicati();
+    dialogoDescrittoEInCima();
     tastiera?.aOgniCambio();
     lavagneColDito();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label', 'draggable'] });
@@ -302,6 +372,7 @@ new MutationObserver((cambi) => cambi.some((cambio) => cambio.target.parentEleme
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
+    dialogoDescrittoEInCima();
     nomiDaiTesti();
     importiNonIndicati();
     lavagneColDito();

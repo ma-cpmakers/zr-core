@@ -1,0 +1,51 @@
+@layer theme, base, zeiras, components, utilities;
+/* Generato da scripts/componenti.mjs: non si ritocca a mano. Sono gli stili di AssistantSession di resources/zeiras/bundle.css (il design system di Zeiras, copia derivata), in `@layer zeiras`: li importa il modulo resources/js/zeiras/AssistantSession.js. A un riallineamento si rigenera con `npm run componenti`. */
+@layer zeiras {
+/* AssistantSession (308): la sessione a schermo intero, sessioni, chat e documento */
+.zr-ases { display: flex; flex-direction: column; height: calc(100dvh - var(--topbar-height)); min-height: 560px; background: var(--surface-raised); }
+.zr-ases-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-2-5) max(var(--space-4), env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.zr-ases-who { flex: 1 1 160px; min-width: 0; }
+.zr-ases-sub { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.zr-ases-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px minmax(0, 1fr) minmax(380px, 46%); }
+.zr-ases.is-doc-off .zr-ases-body { grid-template-columns: 260px minmax(0, 1fr); }
+.zr-ases-list { overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3-5); border-right: 1px solid var(--line); background: var(--surface); }
+.zr-ases-new { width: 100%; }
+.zr-ases-over { margin-top: var(--space-2); font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+.zr-ases-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.zr-ases-item { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: var(--space-2) var(--space-2-5); border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: 14px; line-height: 20px; cursor: pointer; }
+.zr-ases-item:hover { background: var(--surface-sunken); }
+.zr-ases-item.is-active { background: var(--pine-soft); border-color: var(--pine); }
+.zr-ases-item small { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.zr-ases-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-ases-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface-raised); }
+.zr-ases-chat .zr-amsgs { width: 100%; max-width: 780px; margin: 0 auto; box-sizing: border-box; }
+.zr-ases-foot { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; max-width: 812px; margin: 0 auto; box-sizing: border-box; padding: var(--space-2-5) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.zr-ases-doc { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--line); background: var(--surface); }
+.zr-ases-doc-head { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-2); }
+.zr-ases-doc-title { flex: 1; min-width: 0; }
+.zr-ases-doc-title .zr-ases-over { margin-top: 0; }
+.zr-ases-doc-head h2 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 650; overflow-wrap: anywhere; }
+.zr-ases-doc-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: 0 var(--space-5) var(--space-3); border-bottom: 1px solid var(--line); }
+.zr-ases-writing .zr-typing { padding: 0; }
+.zr-ases-doc-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: var(--space-4) var(--space-5); }
+.zr-ases-sec h3 { flex: 1; min-width: 0; margin: 0; font-size: 15px; line-height: 22px; font-weight: 700; }
+.zr-ases-sec-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.zr-ases-sec p { margin: var(--space-1-5) 0 0; font-size: 14px; line-height: 22px; }
+.zr-ases-sec.is-fresh { background: var(--citrus-soft); box-shadow: 0 0 0 var(--space-1-5) var(--citrus-soft); border-radius: var(--radius-sm); }
+.zr-ases-doc-foot { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2-5); padding: var(--space-3) var(--space-5) calc(var(--space-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line-strong); background: var(--surface-raised); font-size: 14px; line-height: 20px; }
+.zr-ases-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2-5); padding: var(--space-7) var(--space-6); text-align: center; }
+.zr-ases-empty.is-chat { padding: var(--space-6) var(--space-2); }
+.zr-ases-empty h3 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 650; }
+.zr-ases-empty p { margin: 0; max-width: 44ch; color: var(--ink-muted); }
+.zr-ases-empty-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.zr-ases-pick { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+.zr-ases-select { flex: 1; min-width: 0; height: 36px; padding: 0 var(--space-2-5); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 14px; }
+.zr-ases-select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-ases.is-narrow .zr-ases-body { grid-template-columns: minmax(0, 1fr); }
+.zr-ases.is-narrow .zr-ases-doc { border-left: 0; }
+@media (max-width: 1179px) { .zr-ases-body, .zr-ases.is-doc-off .zr-ases-body { grid-template-columns: minmax(0, 1fr); } .zr-ases-doc { border-left: 0; } .zr-ases:not(.is-narrow) .zr-ases-list { display: none; } } /* prima che il JS misuri la larghezza: niente tre colonne a 1024 px */
+.zr-ases [hidden] { display: none; }
+@media (pointer: coarse) { .zr-ases-select { height: 44px; } .zr-ases-item { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .zr-typing i { animation: none; } }
+@media (forced-colors: active) { .zr-ases-item.is-active { outline: 2px solid Highlight; } .zr-amsg-bubble { border: 1px solid CanvasText; } }
+}

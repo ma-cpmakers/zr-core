@@ -110,8 +110,12 @@ function variabiliDiBundleCss(): array
     // Le variabili che un componente scrive da sé nel suo `style` (`'--foot-cols': …` in SiteFooter, col suo valore di ripiego nel
     // CSS) sono sue, non token: non vengono da zeiras-token.css.
     preg_match_all("/'(--[a-z0-9-]+)':/", File::get(__DIR__.'/../../resources/zeiras/bundle.js'), $proprie);
+    // Dalla `v5.6.0` (voce 4088) anche quelle che un componente dichiara nelle sue regole (`.zr-bot.is-pine { --bot: var(--pine) }`
+    // negli assistenti): il colore del personaggio passa per una variabile sua, che vale un token. Solo nelle regole `.zr-…`, mai in `:root`.
+    preg_match_all('/\.zr-[^{}]*\{[^{}]*\}/', File::get(__DIR__.'/../../resources/zeiras/bundle.css'), $regole);
+    preg_match_all('/(?<![\w-])(--[a-z0-9-]+)\s*:/', implode("\n", $regole[0]), $nelleRegole);
 
-    return array_values(array_diff(array_unique($usate[1]), $proprie[1]));
+    return array_values(array_diff(array_unique($usate[1]), $proprie[1], $nelleRegole[1]));
 }
 
 /**

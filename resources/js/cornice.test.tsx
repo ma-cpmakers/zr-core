@@ -8960,7 +8960,8 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
             const [pulsante, conIlPulsante] = useState<HTMLButtonElement | null>(null);
 
             return <>
-                <button type="button" id="azioni" ref={conIlPulsante}>Azioni</button>
+                {/* Dalla v5.6.0 (richiesta 363) dietro un dialogo aperto è tutto `inert`, tranne un menu aperto e il pulsante che lo apre. */}
+                <button type="button" id="azioni" ref={conIlPulsante} aria-haspopup="menu" aria-expanded={!!pulsante}>Azioni</button>
                 {pulsante && <Menu inline anchor={pulsante} label="Azioni" items={[{ label: 'Rinomina' }, { label: 'Elimina' }]} onClose={menuChiuso} />}
             </>;
         }
@@ -9053,7 +9054,8 @@ describe('con un dialogo aperto, o un pannello di dettaglio sotto 720 px, Tab re
         const pagina = (aperto: boolean, colPulsante = true) => (
             <>
                 {colPulsante ? <button type="button" id="dietro">Dietro il dialogo</button> : null}
-                <input id="della-pagina" />
+                {/* Dalla v5.6.0 (richiesta 363) dietro un dialogo aperto è tutto `inert`, tranne le zone che annunciano: il campo ne sta in una. */}
+                <div role="status"><input id="della-pagina" /></div>
                 <Dialog open={aperto} title="Attendi"><p>Solo testo</p></Dialog>
             </>
         );

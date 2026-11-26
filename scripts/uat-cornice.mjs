@@ -504,6 +504,34 @@ async function dialogoColMouse(page) {
     scrivi(dentro[0] && dopo[0] && dopo[1] ? '✅' : '❌', 'G.1', nome, `fuoco nel dialogo: ${dentro[0]} («${dentro[1]}»); dialogo chiuso: ${dopo[0]}, fuoco su ${dopo[1] ? 'il pulsante che lo ha aperto' : dopo[2]}`);
 }
 
+// Richiesta 363 (dalla `v5.6.0`, rimedio nel pezzo dei rimedi): il `Dialog` aperto è descritto dalla sua `description`
+// (`aria-describedby`), e finché è aperto il resto della pagina è `inert` (il pulsante che lo ha aperto, la barra laterale);
+// chiuso con la «×», nessun elemento resta inerte che prima non lo era, e il fuoco torna al pulsante. Gli stessi dialoghi
+// veri di G.1; senza, ➖.
+async function dialogoDescrittoESfondoInerte(page) {
+    const nome = 'il `Dialog` aperto è descritto dalla sua `description` e il resto della pagina è `inert`; chiuso, la pagina torna com\'era e il fuoco al pulsante (richiesta 363)';
+    if (!(await page.$('[data-uat="apre-ds"]'))) {
+        scrivi('➖', 'G.3', nome, 'la pagina non ha un `Dialog` del design system da aprire (la pagina di prova del layout con `?dialogo=1`)');
+        return;
+    }
+    const inerti = () => page.evaluate(() => [...document.querySelectorAll('[inert]')].map((elemento) => elemento.tagName + '.' + elemento.className).sort().join(' '));
+    const prima = await inerti();
+    await page.click('[data-uat="apre-ds"]');
+    await pausa(400);
+    const aperto = await page.evaluate(() => {
+        const dialogo = document.querySelector('.zr-scrim:not(.is-inline) > .zr-dialog');
+        const descritto = document.getElementById(dialogo?.getAttribute('aria-describedby') ?? '')?.textContent ?? '';
+
+        return [descritto, !!document.querySelector('[data-uat="apre-ds"]')?.closest('[inert]'), !!document.querySelector('.zr-shell .zr-nav')?.closest('[inert]'), !!dialogo?.closest('[inert]')];
+    });
+    await page.click('.zr-scrim:not(.is-inline) > .zr-dialog .zr-dialog-head button');
+    await pausa(400);
+    const dopo = await inerti();
+    const alPulsante = await page.evaluate(() => document.activeElement?.matches('[data-uat="apre-ds"]') ?? false);
+    const bene = aperto[0] === 'UAT descrizione' && aperto[1] && aperto[2] && !aperto[3] && dopo === prima && alPulsante;
+    scrivi(bene ? '✅' : '❌', 'G.3', nome, `descrizione letta: «${aperto[0]}»; pulsante dietro inerte: ${aperto[1]}, barra laterale inerte: ${aperto[2]}, dialogo inerte: ${aperto[3]}; dopo la chiusura gli inerti di prima: ${dopo === prima} («${dopo}»); fuoco al pulsante: ${alPulsante}`);
+}
+
 // Un «Attendi» — un `Dialog` senza niente che prenda il fuoco — aperto dal «Salva» di un dialogo che subito dopo si chiude: il
 // fuoco va sull'«Attendi», che lo prende su di sé, e non torna al pulsante dietro il velo, dove Invio lo premerebbe (v3.14.3,
 // Decisione 19428; dal lotto 0522 lo fa il `Dialog`). Gli stessi dialoghi veri di G.1; senza, ➖.
@@ -2084,6 +2112,7 @@ async function uat(page, apri) {
     await dialogoDalPiu(page);
     await tornaAllaPagina();
     await dialogoColMouse(page);
+    await dialogoDescrittoESfondoInerte(page);
     await attendiDaUnDialogo(page);
 
     await a390(page, apri, diGoogle, errori, csp);
