@@ -259,7 +259,7 @@ function DialogoDelDesignSystem() {
     return (
         <>
             <button type="button" data-uat="apre-ds" onClick={() => setAperto('dialogo')}>UAT apre il Dialog</button>
-            <Zeiras.Dialog open={aperto === 'dialogo'} title="UAT" onClose={() => setAperto('no')} footer={<button type="button" data-uat="salva-ds" onClick={() => setAperto('attendi')}>Salva</button>}>
+            <Zeiras.Dialog open={aperto === 'dialogo'} title="UAT" description="UAT descrizione" onClose={() => setAperto('no')} footer={<button type="button" data-uat="salva-ds" onClick={() => setAperto('attendi')}>Salva</button>}>
                 <input type="hidden" name="uat" />
                 <button type="button" disabled>Spento</button>
             </Zeiras.Dialog>
