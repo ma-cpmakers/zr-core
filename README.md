@@ -350,7 +350,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 55,5 KB | 19,3 KB | 75,1 KB | 17,5 KB |
 | la cornice e due componenti per nome | 64,5 KB | 22,1 KB | 75,1 KB | 17,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,4 KB |
+| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
