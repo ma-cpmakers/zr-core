@@ -276,7 +276,7 @@ function importiNonIndicati(): void {
 /**
  * Richiesta 363 (zr-superadmin, sì di zr-pm-a0 del 25/11), punto 1: la `description` del `Dialog` sta in un `<p>` senza id, e il
  * dialogo è nominato dal titolo ma non descritto, quindi un lettore di schermo all'apertura non la legge. Il paragrafo prende un
- * id dal titolo e il dialogo lo cita con `aria-describedby`; senza la descrizione l'attributo non resta. Vale anche per
+ * id suo e il dialogo lo cita con `aria-describedby`; senza la descrizione l'attributo non resta. Vale anche per
  * l'anteprima.
  *
  * Punto 2: a dialogo aperto il resto della pagina restava raggiungibile al lettore di schermo e al dito, e la trappola del Tab
@@ -287,6 +287,7 @@ function importiNonIndicati(): void {
  * il resto torna com'era. L'attributo lo scrive il DOM, non React, e vale anche con React 18. Si toglie con la 363.
  */
 let inerti = new Set<Element>();
+let descritti = 0;
 
 /**
  * Ciò che a dialogo aperto resta vivo anche fuori dal velo: le zone che annunciano (i `Toast`), un menu o un elenco aperto (un
@@ -299,7 +300,7 @@ function dialogoDescrittoEInCima(): void {
         const descrizione = dialogo.querySelector(':scope > .zr-dialog-desc');
 
         if (descrizione) {
-            descrizione.id ||= `${dialogo.getAttribute('aria-labelledby')}-desc`;
+            descrizione.id ||= `zr-dialogo-desc-${++descritti}`;
             dialogo.setAttribute('aria-describedby', descrizione.id);
         } else {
             dialogo.removeAttribute('aria-describedby');
@@ -307,7 +308,7 @@ function dialogoDescrittoEInCima(): void {
     });
 
     const inCima = [...document.querySelectorAll(DIALOGO_APERTO)].pop()?.parentElement;
-    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso))] : []);
+    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima))] : []);
 
     if (inCima && !inCima.querySelector(':scope > zr-velo')) {
         inCima.append(Object.assign(document.createElement('zr-velo'), { hidden: true }));

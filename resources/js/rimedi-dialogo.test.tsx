@@ -99,6 +99,16 @@ it('un dialogo aperto dentro un altro rende inerte ciò che gli sta accanto, mai
     expect(document.getElementById('fuori')?.hasAttribute('inert')).toBe(true);
 });
 
+it('una zona che annuncia e contiene il dialogo non resta viva per intero: ciò che sta accanto al dialogo dentro la zona è `inert` (richiesta 363, revisione R1)', async () => {
+    document.body.innerHTML = '<div class="zr-shell"><section aria-live="polite"><button id="nella-zona" type="button">Copia</button><div id="pagina"></div></section></div>';
+    await monta(<Pagina />);
+    act(() => apri('uno'));
+    await cambiato();
+
+    expect(document.getElementById('nella-zona')?.hasAttribute('inert')).toBe(true);
+    expect(document.querySelector('.zr-dialog')?.closest('[inert]')).toBeNull();
+});
+
 it('un\'anteprima del dialogo (`inline`) non rende inerte niente', async () => {
     document.body.innerHTML = '<div class="zr-shell"><div id="pagina"></div></div>';
     await monta(<Dialog open inline title="Anteprima">Testo</Dialog>);
