@@ -943,7 +943,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_949);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 1.951 byte, il tetto della v5.1.0 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293; richiesta 259)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 2.337 byte, il tetto della v5.6.0 (sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293; richiesta 259; richiesta 363)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -978,8 +978,10 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // (`tocco.ts`), chiesto quando entra una lavagna, e gli passa la pressione e i `touchmove` della lavagna: 1.620 misurati,
         // tetto alla misura più 20; si toglie con la 293. v5.1.0 (richiesta 259, Decisione 26298, sì di zr-pm-74 del 18/11): la
         // carta della DealCard senza importo, «—» che si vede e «valore non indicato» che si legge, coi testi delle tre lingue
-        // (`resources/lingue/rimedi/`): 1.636 prima, 1.931 dopo, tetto alla misura più 20; si toglie con la 259.
-        expect(gzip(rimedi)).toBeLessThanOrEqual(1_951);
+        // (`resources/lingue/rimedi/`): 1.636 prima, 1.931 dopo, tetto alla misura più 20; si toglie con la 259. v5.6.0 (richiesta
+        // 363, sì di zr-pm-a0 del 25/11, da zr-superadmin): il `Dialog` descritto dalla sua `description` e il resto della pagina
+        // `inert` finché è aperto: 2.317 misurati, tetto alla misura più 20 (sotto +1 kB: regola di zr-pm-74); si toglie con la 363.
+        expect(gzip(rimedi)).toBeLessThanOrEqual(2_337);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {
