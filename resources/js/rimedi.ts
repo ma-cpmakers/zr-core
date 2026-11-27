@@ -265,6 +265,11 @@ let descritti = 0;
  * `Menu` che il modulo scrive accanto al dialogo, richiesta 93) e il pulsante che lo ha aperto.
  */
 const RESTANO = '[role="status"], [role="alert"], [aria-live="polite"], [aria-live="assertive"], [role="menu"], [role="listbox"], [aria-haspopup][aria-expanded="true"]';
+/**
+ * Una zona che annuncia resta viva, un comando no: un pulsante o un collegamento che annuncia da sé (`aria-live` sul pulsante «Copia
+ * l'id» di zr-superadmin, 27/11) si azionerebbe dietro il dialogo. Restano solo il menu aperto e il pulsante che lo ha aperto.
+ */
+const COMANDO = 'button:not([aria-expanded="true"]), a[href], input, select, textarea, summary';
 
 function dialogoDescrittoEInCima(): void {
     document.querySelectorAll<HTMLElement>('.zr-dialog[role="dialog"]').forEach((dialogo) => {
@@ -279,7 +284,7 @@ function dialogoDescrittoEInCima(): void {
     });
 
     const inCima = [...document.querySelectorAll(DIALOGO_APERTO)].pop()?.parentElement;
-    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima))] : []);
+    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima) && !avviso.matches(COMANDO))] : []);
 
     if (inCima && !inCima.querySelector(':scope > zr-velo')) {
         inCima.append(Object.assign(document.createElement('zr-velo'), { hidden: true }));
