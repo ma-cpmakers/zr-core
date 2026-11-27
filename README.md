@@ -109,6 +109,18 @@ pulsante che ordina una colonna della `DataTable` si prende su 44 px, in un'inte
 azioni dell'intestazione del pannello stanno a 12 px fra loro e dalla ✕: il dito non prende più il pulsante accanto. Col
 mouse l'ordinamento e le azioni non cambiano.
 
+**Dalla `v5.7.0` tredici rimedi li porta il design system** (#4089, lotto 0529, `ds-1795294374-d3db`): quelli delle richieste 290, 278, 288,
+279, 291, 272, 273, 242, 298, 302, 304 e 305, più la 292, sono usciti da `rimedi.css` e valgono come prima, misurati in Chromium
+in sette modi (tocco, mouse, testo al 200%, colori forzati). In `rimedi.css` restano il quinto (283), il settimo (299) e quelli
+del dito (293 e 294); l'ottavo (259), il sedicesimo e il diciassettesimo (363)
+sono del pezzo dei rimedi. Con la 292 il padding sopra dell'area che scorre è la variabile
+`--zr-main-body-pt`: un modulo con un elemento sticky dentro l'area che scorre scrive `top: calc(-1 * var(--zr-main-body-pt))`
+e toglie la sua copia dei valori. Un modulo che aveva scritto una di queste regole nel suo CSS la può togliere.
+Il design system fa anche ciò che le richieste chiedevano oltre il rimedio: la variabile vale anche senza percorso, dove l'area
+che scorre è `.zr-main` (32 px, 16 sotto i 720 px); coi colori forzati ha il contorno anche la scelta di `ToggleGroup`; vanno a
+capo anche i titoli di `PageHeader`, `RecordHeader`, `ChartCard`, delle carte della lavagna e del `Dialog`; al tocco hanno 12 px
+fra le righe anche i comandi di `ActivityTimeline` e i gruppi degli assistenti.
+
 Il sedicesimo e il diciassettesimo (richiesta 363, dalla `v5.6.0`; sì di zr-pm-a0 del 25/11, da zr-superadmin): li fa il pezzo
 dei rimedi, sul `Dialog`. La `description` prende un id e il dialogo la cita con `aria-describedby`: il lettore di schermo la
 legge all'apertura, dopo il titolo. Finché il dialogo è aperto, il resto della pagina è `inert`: né il lettore di schermo né il
@@ -217,7 +229,14 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
 È per chi prende quei due campi **solo** dai loro moduli (dalla `v4.30.0` anche da `componenti`), in pagine caricate a richiesta: il CSS del primo carico pesa circa
-0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto. Si importa al posto di
+0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto.
+
+Dalla `v5.6.0` (#4088) fuori da `zeiras.css` stanno anche gli stili della squadra degli assistenti: `AssistantAvatar.css`,
+`AssistantNav.css`, `AssistantPanel.css` e `AssistantSession.css`, in `resources/css/zeiras/`, che arrivano col modulo di chi li
+usa (`AssistantAvatar`, `AssistantBubble`, `AssistantNav`, `AssistantPanel`, `AssistantSession`, `AiLabel`), da `componenti` o
+da `window.Zeiras`. Chi importa `bundle.css` li paga anche se non li usa: con `zeiras-token.css`, 26,5 KB con gzip contro i
+23,2 KB di `zeiras.css`, 3,2 KB in più (2,9 KB sono gli assistenti, il resto i due campi). Un modulo che passa a `zeiras.css`
+cambia una riga sola, qui sotto, e ciò che si vede non cambia, anche se usa uno di questi pezzi: arriva coi suoi stili. Si importa al posto di
 `bundle.css`, nello stesso ordine:
 
 ```css
@@ -338,7 +357,7 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 |---|---|---|---|---|
 | solo la cornice, dall'ingresso per le app | 55,5 KB | 19,3 KB | 75,1 KB | 17,5 KB |
 | la cornice e due componenti per nome | 64,5 KB | 22,1 KB | 75,1 KB | 17,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,4 KB |
+| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,3 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -496,8 +515,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 127,3 KB | 21,2 KB | 5,1 KB | 1,8 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 109,7 KB | 18,4 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 128,1 KB | 21,2 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 110,3 KB | 18,4 KB | 5,1 KB | 1,8 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -700,6 +719,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.4.0` | i titoli e la destinazione dei due avvisi di Finanze che arrivano alla campanella (#3569): «Nei prossimi 30 giorni i soldi non bastano» (`flow.avviso.saldo_non_basta`) e «Un addebito atteso non è ancora arrivato» (`flow.avviso.addebito_non_arrivato`), in italiano, inglese e spagnolo; con Finanze attiva o disponibile nel workspace un clic apre l'avviso in Finanze, `/avvisi/{avviso_id}`, e senza `avviso_id` la lista degli avvisi; senza Finanze, la pagina delle notifiche | niente | niente | una notifica di ciascun tipo nel pannello, in tre lingue, col suo titolo e l'indirizzo del clic |
 | `v5.5.0` | al tocco 44 px per la casella di riga della `DataTable` (che non apre più la riga), le azioni che vanno a capo, lo `Switch` e il campo della ricerca (#3948-#3951, richieste 272, 273, 242 e 298): rimedi provvisori in `rimedi.css`, solo con `pointer: coarse`. Con loro (#4055-#4057, richieste 302, 304 e 305) il contesto del `DetailPanel` che va a capo e, al tocco, 44 px per l'ordinamento della `DataTable` e 12 px fra le azioni del pannello | niente; chi ha scritto a mano l'altezza dello `Switch` al tocco la può togliere | niente | al tocco (o con `pointer: coarse` simulato): la casella di riga della `DataTable` si prende senza aprire la riga, le azioni della testata a capo stanno a 12 px fra le righe, lo `Switch` e il campo della ricerca aperta sono alti 44 px; un contesto lungo del `DetailPanel` va a capo |
 | `v5.6.0` | la squadra degli assistenti dal design system `ds-1795291945-0b6b` (#4088, richieste 306-310): i toni `tang`, `tang-text`, `tang-soft`, `indigo`, `indigo-soft`, `rose` e `rose-soft` in chiaro e scuro; i componenti `AssistantAvatar`, `AiLabel`, `AssistantPanel`, `AssistantSession`, `AssistantNav` e `AssistantBubble`, ognuno col suo modulo, e gli stili di `AssistantAvatar`, `AssistantNav`, `AssistantPanel` e `AssistantSession` in un CSS a parte, che il modulo importa (un'app senza assistenti non ne porta il peso); gli spazi `assistantNav` e `assistantBubble` dell'`AppShell`, che la cornice non riempie. L'ora corta delle notifiche passa nel pezzo della campanella. Dal pezzo dei rimedi, il `Dialog` descritto dalla sua `description` con `aria-describedby` e il resto della pagina `inert` finché è aperto (richiesta 363, da zr-superadmin). Nessun modulo cambia niente; chi mostra un assistente prende i componenti da qui invece di rifarli |
+| `v5.7.0` | tredici rimedi provvisori li porta il design system `ds-1795294374-d3db` (lotto 0529, #4089, richieste 242, 272, 273, 278, 279, 288, 290, 291, 292, 298, 302, 304 e 305): escono da `resources/css/rimedi.css`, dove restano 283, 293, 294 e 299; `--zr-main-body-pt` per gli elementi sticky dell'area che scorre (292). Niente da fare per chi aggiorna; un modulo che aveva copiato una di queste regole la può togliere |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

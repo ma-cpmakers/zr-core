@@ -85,6 +85,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-nav-item { display: flex; align-items: center; gap: var(--space-3); height: 38px; padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
 .zr-nav-item:hover { background: var(--surface-sunken); color: var(--ink); }
 .zr-nav-item.is-active { background: var(--pine-soft); color: var(--pine); font-weight: 600; }
+@media (forced-colors: active) { .zr-nav-item.is-active:not(:focus-visible), .zr-seg-item.is-active:not(:focus-visible), .zr-toggle.is-on:not(:focus-visible) { outline: var(--border-ring) solid Highlight; outline-offset: calc(-1 * var(--border-ring)); } } /* coi colori forzati sfondo e ombra della voce attiva del menu, del segmento scelto e della scelta del ToggleGroup si azzerano: un contorno, come .zr-radio-card e .zr-color; col fuoco sopra vale l'anello del fuoco (richiesta 288) */
 .zr-nav-item.is-soon { cursor: default; }
 .zr-nav-item.is-soon:hover { background: transparent; color: var(--ink-muted); }
 .zr-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -102,8 +103,8 @@ body { margin: 0; font-family: var(--font-sans); font-size: 15px; line-height: 2
 .zr-search kbd { font: inherit; font-size: 11px; line-height: 16px; padding: 1px var(--space-1-5); border-radius: var(--radius-sm); border: 1px solid var(--line); color: var(--ink-muted); background: var(--surface-raised); }
 .zr-top-actions { display: flex; align-items: center; gap: var(--space-2); }
 .zr-top.no-search .zr-top-actions { margin-left: auto; } /* senza la ricerca le azioni restano a destra (richiesta 201) */
-.zr-main { overflow: auto; padding: var(--space-6); min-width: 0; }
-.zr-main.is-flush { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.zr-main { --zr-main-body-pt: var(--space-6); overflow: auto; padding: var(--space-6); padding-top: var(--zr-main-body-pt); min-width: 0; } /* senza percorso l'area che scorre è .zr-main: anche qui il padding sopra è --zr-main-body-pt (richiesta 292) */
+.zr-main.is-flush { --zr-main-body-pt: 0px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .zr-bubble-zone { position: fixed; top: 0; left: 0; width: 0; height: 0; } /* la zona del fumetto degli assistenti (306): fuori dalla griglia della cornice, resta per l'annuncio */
 /* AssistantNav e AssistantBubble (richiesta 306): la sezione «Assistenti» del menu, una voce alta 44 px per assistente sotto i moduli, e il fumetto dei messaggi nuovi */
@@ -429,6 +430,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-danger-text:hover { color: var(--danger); background: var(--danger-soft); }
 .zr-iconbox-xs { width: 28px; height: 28px; border-radius: var(--radius-sm); }
 :where(.zr-seg-item, .zr-switch, .zr-th-sort, .zr-flow-add, .zr-step-node, .zr-toast-action, .zr-toast-close, .zr-check input):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zr-detail-body, .zr-table-scroll, .zr-seg, .zr-main, .zr-main-body { scroll-padding: var(--space-1); } /* un comando portato in vista dentro un contenitore che scorre si ferma a 4 px dal bordo, lo spazio dell'anello del fuoco (2 px più 2 di scostamento), dove il contenitore può scorrere fin lì (richiesta 278) */
 
 /* fills for tones & chart series */
 .zr-bg-pine, .zr-bg-success { background: var(--success); }
@@ -479,6 +481,7 @@ a.zr-sector:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 .zr-check input:disabled, .zr-check input:disabled ~ * { cursor: not-allowed; } .zr-check input:disabled ~ * { opacity: .5; } /* una casella spenta si vede spenta, come Switch e Radio (richiesta 215) */
 
 .zr-switch { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 24px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; }
+@media (pointer: coarse) { .zr-switch { min-height: 44px; } } /* al tocco l'interruttore si prende su 44 px di altezza, come Checkbox (183) e ToggleGroup (richiesta 242) */
 .zr-switch:disabled, .zr-switch[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .zr-switch-track { position: relative; width: 36px; height: 20px; border-radius: var(--radius-pill); background: var(--line-strong); transition: background-color .15s; flex: none; }
 .zr-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--radius-pill); background: var(--surface-raised); transition: transform .15s; }
@@ -698,6 +701,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-toast { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 280px; max-width: 420px; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--ink); color: var(--surface); box-shadow: var(--shadow-overlay); font-size: 14px; line-height: 20px; }
 .zr-toast-text { flex: 1; }
 .zr-toast-action { border: 0; background: none; font: inherit; font-weight: 700; color: var(--surface); text-decoration: underline; cursor: pointer; }
+.zr-toast :is(.zr-toast-action, .zr-toast-close):focus-visible { outline-color: var(--surface); } /* sul fondo ink del Toast l'anello del fuoco ha il colore del testo: 15,47:1 chiaro e 16,46:1 scuro, contro 2,82:1 e 1,88:1 di --focus (richiesta 291) */
 @media (pointer: coarse) { .zr-toast-action, .zr-toast-close { position: relative; } .zr-toast-action::after, .zr-toast-close::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); } } /* al tocco «×» e azione si prendono su 44 px, l'avviso non cresce (richiesta 10) */
 .zr-toast-close { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--surface); cursor: pointer; }
 .zr-scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: grid; place-items: center; padding: var(--space-4); background: var(--scrim); }
@@ -728,7 +732,8 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-section-card.is-standalone { gap: var(--space-5); padding: var(--space-6); box-shadow: var(--shadow-card); }
 .zr-section-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .zr-section-card-heading { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.zr-section-card-title { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.zr-section-card-title { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; overflow-wrap: anywhere; } /* una parola lunga senza spazi va a capo: la pagina non scorre di lato (richiesta 290) */
+.zr-page-head h1, .zr-record-title h1, .zr-panel-head :is(h2, h3, h4), .zr-card-title, .zr-dialog-head h2 { overflow-wrap: anywhere; } .zr-panel-head { flex-wrap: wrap; } .zr-panel-head > :is(h2, h3, h4) { flex: 1 1 0%; } .zr-panel-head > div:not(.zr-panel-actions), .zr-dialog-head > h2 { min-width: 0; } /* lo stesso sui titoli degli altri riquadri che possono portare un dato: intestazione della pagina, RecordHeader, ChartCard, carte della lavagna, Dialog (richiesta 290) */
 .zr-section-card-sub { margin: 0; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--ink-muted); }
 .zr-section-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .zr-section-card-body { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
@@ -759,7 +764,9 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-table tr.is-selected { background: var(--pine-soft); }
 .zr-table tr.is-clickable { cursor: pointer; }
 .zr-td-check { width: 40px; padding-right: 0 !important; }
+@media (pointer: coarse) { .zr-td-check .zr-check::after { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); } } /* al tocco la casella di riga si prende su 44×44, centrata e dentro la sua cella: il tocco accanto seleziona e non apre la riga (richiesta 272) */
 .zr-th-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: inherit; cursor: pointer; }
+@media (pointer: coarse) { .zr-table th { height: 44px; } .zr-th-sort { position: relative; } .zr-th-sort::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); } } /* al tocco il pulsante che ordina una colonna si prende su 44 px, e l'intestazione è alta 44: l'area non copre la prima riga (richiesta 304) */
 /* stickyFirst: la prima colonna, e la casella prima di lei, restano ferme quando la tabella scorre di lato (richiesta 203) */
 .zr-table.is-sticky-first .zr-td-first, .zr-table.is-sticky-first .zr-td-check { position: sticky; left: 0; z-index: 1; background: var(--surface-raised); }
 .zr-table.is-sticky-first .zr-td-check { box-sizing: content-box; min-width: 40px; } /* la casella larga quanto il «left» della colonna dopo di lei, anche quando la tabella è stretta */
@@ -930,7 +937,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 }
 @media (max-width: 720px) {
   .zr-grid-4 { grid-template-columns: 1fr; }
-  .zr-main { padding: var(--space-4); }
+  .zr-main { --zr-main-body-pt: var(--space-4); padding: var(--space-4); }
   .zr-filter-search, .zr-filter-search-wrap { width: 100%; }
   /* compact: i filtri in una riga sola che scorre (richiesta 51) */
   .zr-filterbar.is-compact { gap: var(--space-2); }
@@ -994,10 +1001,11 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-detail.is-inline { position: relative; top: auto; height: 100%; }
 .zr-detail:focus { outline: none; }
 .zr-detail-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); border-bottom: 1px solid var(--line); }
-.zr-detail-ctx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); }
+.zr-detail-ctx { flex: 1; min-width: 0; overflow: hidden; overflow-wrap: anywhere; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-muted); } /* il contesto va a capo invece di finire in puntini: a 320 px col testo al 200% si legge per intero (richiesta 302) */
 .zr-detail-back { display: none; }
 .zr-detail-actions { flex: none; display: flex; align-items: center; gap: var(--space-1); } /* le azioni del pannello accanto alla ✕ (richiesta 191) */
 .zr-detail-actions + .zr-detail-close { margin-left: calc(var(--space-1) - var(--space-3)); }
+@media (pointer: coarse) { .zr-detail-actions { gap: var(--space-3); } .zr-detail-actions + .zr-detail-close { margin-left: 0; } } /* al tocco 12 px fra le azioni e la ✕: le aree da 44 dei pulsanti da 32 si toccano senza coprirsi, come la paginazione (233) (richiesta 305) */
 .zr-detail-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-5); }
 .zr-detail-body > * { flex: none; }
 .zr-detail-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--line); background: var(--surface); }
@@ -1025,6 +1033,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-amsg-bubble { padding: 9px var(--space-3); border-radius: 14px 14px 14px 4px; background: var(--surface-sunken); color: var(--ink); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
 .zr-amsg.is-me .zr-amsg-bubble { background: var(--pine); color: var(--on-pine); border-radius: 14px 14px 4px 14px; max-width: 88%; }
 .zr-amsg-actions { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+@media (pointer: coarse) { .zr-amsg-actions { row-gap: var(--space-3); } } /* al tocco 12 px fra le righe, come i gruppi in fondo al file: qui perché gli stili degli assistenti hanno un CSS loro (richiesta 273) */
 .zr-amsg.is-handoff { justify-content: center; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; padding: 2px 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); text-align: center; }
 .zr-amsg.is-handoff > .zr-bot { margin-top: 0; }
 .zr-acomp { display: flex; gap: var(--space-2); }
@@ -1094,6 +1103,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
 .zr-ases-empty h3 { margin: 0; font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 650; }
 .zr-ases-empty p { margin: 0; max-width: 44ch; color: var(--ink-muted); }
 .zr-ases-empty-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+@media (pointer: coarse) { .zr-ases-doc-tools, .zr-ases-empty-acts, .zr-ases-doc-foot { row-gap: var(--space-3); } } /* al tocco 12 px fra le righe, come i gruppi in fondo al file (richiesta 273) */
 .zr-ases-pick { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
 .zr-ases-select { flex: 1; min-width: 0; height: 36px; padding: 0 var(--space-2-5); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 14px; }
 .zr-ases-select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -1125,7 +1135,7 @@ button.zr-agenda-ev:focus-visible { outline: 2px solid var(--focus); outline-off
   .zr-search { width: 44px; flex: none; justify-content: center; padding: 0; background: transparent; cursor: pointer; }
   .zr-search input { width: 0; flex: 0 0 0; padding: 0; opacity: 0; }
   .zr-search:not(.is-open):has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; } /* chiusa con Esc il fuoco resta nel campo: si vede l'icona col contorno, il campo largo torna col pannello */
-  .zr-main { padding: var(--space-4) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
+  .zr-main { --zr-main-body-pt: var(--space-4); padding: var(--space-4) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
   .zr-page-head h1 { font-size: 22px; line-height: 28px; }
   .zr-page-head { align-items: flex-start; }
   .zr-scrim { padding: 0; place-items: stretch; }
@@ -1184,6 +1194,9 @@ a.zr-ws-item { text-decoration: none; }
 .zr-search { position: relative; cursor: text; }
 .zr-search-icon { display: inline-flex; color: var(--ink-muted); }
 .zr-search.is-open { box-shadow: inset 0 0 0 1px var(--line-strong); }
+@media not all and (max-width: 720px) { .zr-search { box-shadow: inset 0 0 0 1px var(--line-strong); } } /* sopra i 720 px anche chiuso il campo ha il contorno che ha da aperto: 4,04:1 sulla barra contro 1,18:1 del solo fondo (richiesta 279) */
+@media not all and (max-width: 720px) { @media (forced-colors: active) { .zr-search { outline: 1px solid CanvasText; outline-offset: -1px; } } } /* il complemento esatto di (max-width: 720px), in una sintassi che vale anche prima di Safari 16.4 */
+@media (forced-colors: active) { .zr-search.is-open { outline: 1px solid CanvasText; outline-offset: -1px; } } /* coi colori forzati l'ombra sparisce: un contorno vero (richiesta 279) */
 .zr-search-panel { position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-dropdown); width: max(100%, 440px); max-width: calc(100vw - 16px); max-height: min(480px, 70vh); overflow-y: auto; box-sizing: border-box; padding: var(--space-1); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-lift); cursor: default; }
 .zr-search-note { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: var(--space-3); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .zr-search-note strong { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
@@ -1231,18 +1244,18 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
 .zr-profile-head > span:last-child { display: flex; flex-direction: column; min-width: 0; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .zr-profile-head strong { font-size: 14px; line-height: 20px; color: var(--ink); overflow-wrap: anywhere; }
 
-.zr-main.has-crumbs { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.zr-main.has-crumbs { --zr-main-body-pt: 0px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 .zr-crumbbar { flex: none; padding: var(--space-3) var(--space-6) 0; }
 .zr-shell-crumbs { flex-wrap: wrap; row-gap: 2px; }
 .zr-shell-crumbs a, .zr-shell-crumbs [aria-current] { overflow-wrap: anywhere; }
 @media (pointer: coarse) { .zr-breadcrumb ol, .zr-shell-crumbs { row-gap: 26px; } .zr-breadcrumb a, .zr-crumbs a { position: relative; } .zr-breadcrumb a::after, .zr-crumbs a::after { content: ''; position: absolute; left: 50%; top: -12px; bottom: -14px; width: max(100%, 44px); transform: translateX(-50%); } .zr-board-head .zr-crumbs a::after { top: -14px; bottom: -12px; } } /* al tocco le voci del percorso si prendono su 44 px senza cambiare aspetto: 12 px sopra, nel margine del percorso dentro la cornice, e 14 sotto (nella board 14 sopra e 12 sotto, fra percorso e titolo); su due righe le righe si distanziano perché le aree non si coprano (richiesta 221) */
-.zr-main-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-4) var(--space-6) var(--space-6); }
+.zr-main-body { --zr-main-body-pt: var(--space-4); flex: 1; min-height: 0; overflow: auto; padding: var(--zr-main-body-pt) var(--space-6) var(--space-6); } /* il padding sopra è una variabile, ridefinita negli stessi @media: un elemento sticky del modulo scrive top: calc(-1 * var(--zr-main-body-pt)) (richiesta 292) */
 .zr-main[tabindex]:focus-visible, .zr-main-body[tabindex]:focus-visible, .zr-search-panel[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* «Salta al contenuto»: nascosto finché non ha il fuoco, poi in alto a sinistra sopra la cornice (richiesta 5) */
 .zr-skip:not(:focus) { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .zr-skip:focus { position: fixed; top: var(--space-2); left: var(--space-2); z-index: var(--z-toast); }
 .zr-main.is-flush .zr-crumbbar { padding-bottom: var(--space-2); }
-.zr-main.is-flush .zr-main-body { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.zr-main.is-flush .zr-main-body { --zr-main-body-pt: 0px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 @media (max-width: 1023px) {
   .zr-ws-item, .zr-notif-item, .zr-search-item, .zr-menu-item { min-height: 44px; }
@@ -1258,10 +1271,12 @@ a.zr-notif-item { box-sizing: border-box; color: inherit; text-decoration: none;
   .zr-search-panel { position: fixed; top: calc(var(--topbar-height) + 4px); left: var(--space-2); right: var(--space-2); width: auto; max-width: none; max-height: calc(100dvh - var(--topbar-height) - 16px); }
   .zr-pop, .zr-top-actions .zr-profile-menu { position: fixed; left: var(--space-2); right: var(--space-2); width: auto; top: calc(var(--topbar-height) + 4px); max-height: calc(100dvh - var(--topbar-height) - 16px - env(safe-area-inset-bottom, 0px)); }
   .zr-crumbbar { padding: var(--space-3) var(--space-4) 0; }
-  .zr-main-body { padding: var(--space-3) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
+  .zr-main-body { --zr-main-body-pt: var(--space-3); padding: var(--zr-main-body-pt) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
 }
-@media (pointer: coarse) { .zr-crumbbar, .zr-main.is-flush .zr-crumbbar { padding-bottom: 14px; } .zr-main-body { padding-top: 2px; } } /* al tocco i 14 px sotto il percorso sono della barra del percorso, non del corpo che scorre: il contenuto scorso non finisce sotto l'area delle voci; la distanza dal contenuto resta 16 px (con flush 14, prima 8: richiesta 221) */
-@media (pointer: coarse) and (max-width: 720px) { .zr-main-body { padding-top: 0; } } /* sotto 720 px: 14 al posto di 12 */
+@media (pointer: coarse) { .zr-crumbbar, .zr-main.is-flush .zr-crumbbar { padding-bottom: 14px; } .zr-main-body { --zr-main-body-pt: 2px; padding-top: var(--zr-main-body-pt); } } /* al tocco i 14 px sotto il percorso sono della barra del percorso, non del corpo che scorre: il contenuto scorso non finisce sotto l'area delle voci; la distanza dal contenuto resta 16 px (con flush 14, prima 8: richiesta 221) */
+@media (pointer: coarse) and (max-width: 720px) { .zr-main-body { --zr-main-body-pt: 0px; padding-top: var(--zr-main-body-pt); } } /* sotto 720 px: 14 al posto di 12 */
+@media (pointer: coarse) { .zr-top .zr-search { height: 44px; } } /* al tocco il campo della ricerca è alto 44 px nella barra di 60, come Field (185) (richiesta 298) */
+@media (pointer: coarse) and (max-width: 720px) { .zr-top .zr-search.is-open { top: var(--space-2); } } /* aperto sotto i 720 px sta a 8 px dall'alto: la barra resta di 60 (richiesta 298) */
 @media (prefers-reduced-motion: reduce) { .zr-ws-chev { transition: none; } }
 .zr-notif-item .zr-avatar { width: 32px; height: 32px; flex: none; font-size: 12px; }
 
@@ -1352,3 +1367,6 @@ a.zr-appt-title:focus-visible, button.zr-appt-title:focus-visible { outline: 2px
   .zr-appt-date { width: 48px; }
   .zr-appt-day { font-size: 20px; line-height: 24px; }
 }
+
+/* Al tocco i gruppi di pulsanti che vanno a capo hanno 12 px fra le righe, come la paginazione (richiesta 233): con 8 l'area da 44 di un pulsante sm (32 px) è coperta da quella della riga sotto. In fondo al file perché vale su tutti i gap di prima; un gruppo che il modulo fa da sé usa lo stesso row-gap (richiesta 273) */
+@media (pointer: coarse) { .zr-page-actions, .zr-section-card-actions, .zr-section-card-foot, .zr-detail-foot, .zr-dialog-foot, .zr-variant-actions, .zr-appt-actions, .zr-tl-actions { row-gap: var(--space-3); } .zr-tl-actions { column-gap: var(--space-3); } }
