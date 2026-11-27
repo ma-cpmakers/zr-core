@@ -293,10 +293,11 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (richieste 293, 294 e 299; dalla v5.7.0, voce 4089, tredici li porta il design system, e dalla v5.8.0, voce 4095, anche la 283)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (richieste 293, 294 e 299; dalla v5.7.0, voce 4089, tredici li porta il design system, e dalla v5.8.0, voce 4095, anche la 283; dalla v5.12.0 la 247, i campi a 16 px col dito che il design system non porta)', () => {
         expect(regole).toBe([
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
+            '@media (pointer: coarse) { :root :is(.zr-composer textarea, .zr-acomp-input, .zr-ases-select, .zr-search input) { font-size: 1rem; } }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }',
         ].join(' '));

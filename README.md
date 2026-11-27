@@ -128,7 +128,14 @@ legge all'apertura, dopo il titolo. Finché il dialogo è aperto, il resto della
 dito arrivano a ciò che sta dietro il velo. Restano vivi solo il dialogo in cima (di due dialoghi, quello aperto dentro l'altro o
 dopo di lui), le zone che annunciano, come i `Toast`, e un menu o un elenco aperto col pulsante che lo apre. Ciò che era già
 inerte, come la barra dietro il selettore dei workspace, alla chiusura resta inerte; il resto torna com'era, prima che il fuoco
-torni a chi lo aveva. Il modulo non scrive niente: niente `inert` e niente `aria-describedby` suoi.
+torni a chi lo aveva. Dalla `v5.12.0` è inerte anche un comando che annuncia da sé, un pulsante con `aria-live` (zr-superadmin,
+27/11: «Copia l'id» restava vivo dietro il dialogo). Il modulo non scrive niente: niente `inert` e niente `aria-describedby` suoi.
+
+Il diciottesimo (richiesta 247, dalla `v5.12.0`; Decisione di zr-pm-a0 del 27/11, misura di zr-bookings a 390 px): col dito i
+campi di testo del pacchetto sono a 16 px, e iOS non ingrandisce più la pagina quando prendono il fuoco. Il design system
+(lotto 0532) li porta per `Field` (`input`, `select`, `textarea`), `AddressField`, `MentionField` e `InlineEdit`; il pacchetto
+per gli altri, la casella della `Composer`, il campo e il menu della sessione dell'assistente e la ricerca, finché il design
+system non porta la richiesta 370. Col mouse niente cambia.
 
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:

@@ -19,6 +19,13 @@
 .zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }
 
 /*
+ * Richiesta 247 (Decisione di zr-pm-a0 del 27/11, misura di zr-bookings a 390 px; v5.12.0): col dito i campi di testo a 16 px, perché
+ * iOS non ingrandisca la pagina al fuoco; col mouse niente cambia. Field, AddressField, MentionField e InlineEdit li porta il design
+ * system (lotto 0532): qui restano gli altri finché il design system non porta la richiesta 370.
+ */
+@media (pointer: coarse) { :root :is(.zr-composer textarea, .zr-acomp-input, .zr-ases-select, .zr-search input) { font-size: 1rem; } }
+
+/*
  * Richiesta 299 (zr-crm-35, regola di zr-pm-74 del 18/11; v5.0.1): fuori dalla lavagna nessuna colonna segnata, nemmeno durante
  * il trascinamento. La DealPipeline azzera la colonna segnata solo al rilascio; resources/js/tocco.ts segna la lavagna con
  * data-zr-fuori quando il puntatore ne esce, e qui la colonna torna come le altre: lo sfondo e il bordo di .zr-col, e quello
