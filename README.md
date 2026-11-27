@@ -229,7 +229,14 @@ file lo scrive `npm run token` da `tokens.json`, e la CI lo rigenera e lo confro
 **`zeiras.css`** (dalla `v3.3.0`) è lo stesso CSS senza gli stili di MentionField e AddressField, che stanno in
 `resources/css/zeiras/` e arrivano col modulo di ognuno, `…/resources/js/zeiras/MentionField` e `…/AddressField` (qui sotto).
 È per chi prende quei due campi **solo** dai loro moduli (dalla `v4.30.0` anche da `componenti`), in pagine caricate a richiesta: il CSS del primo carico pesa circa
-0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto. Si importa al posto di
+0,5 KB di meno con gzip (vedi «Quanto pesa il CSS»), e ha anche lui i font del pacchetto.
+
+Dalla `v5.6.0` (#4088) fuori da `zeiras.css` stanno anche gli stili della squadra degli assistenti: `AssistantAvatar.css`,
+`AssistantNav.css`, `AssistantPanel.css` e `AssistantSession.css`, in `resources/css/zeiras/`, che arrivano col modulo di chi li
+usa (`AssistantAvatar`, `AssistantBubble`, `AssistantNav`, `AssistantPanel`, `AssistantSession`, `AiLabel`), da `componenti` o
+da `window.Zeiras`. Chi importa `bundle.css` li paga anche se non li usa: con `zeiras-token.css`, 26,5 KB con gzip contro i
+23,2 KB di `zeiras.css`, 3,2 KB in più (2,9 KB sono gli assistenti, il resto i due campi). Un modulo che passa a `zeiras.css`
+cambia una riga sola, qui sotto, e ciò che si vede non cambia, anche se usa uno di questi pezzi: arriva coi suoi stili. Si importa al posto di
 `bundle.css`, nello stesso ordine:
 
 ```css
