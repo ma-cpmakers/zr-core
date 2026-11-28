@@ -5,7 +5,7 @@
 import { h } from './interni/h';
 import { cx } from './interni/cx';
 import { Icon } from './Icon';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { useLabels } from './useLabels';
 
   /* La riga di una notifica (P-07): la stessa nel pannello della campanella e in una pagina; con href è un link (richiesta 166) */

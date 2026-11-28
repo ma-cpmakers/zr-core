@@ -80,7 +80,9 @@ grassetto; sopra i 720 px il campo Cerca chiuso ha il contorno che il design sys
 4,04:1 sulla barra, e coi colori forzati un contorno vero. Sotto i 720 px, chiuso, resta l'icona.
 Il quinto (#3890, richiesta 283): sotto i 720 px il campo della ricerca aperto copre la barra, e le azioni del modulo, la
 campanella e il profilo, che restano sotto, a 320 px col testo al 200% allargavano la pagina; mentre la ricerca è aperta il
-loro contenitore si stringe e taglia ciò che esce, e restano nel giro del Tab dopo la ricerca. A ricerca chiusa la barra aspetta la richiesta.
+loro contenitore si stringeva e tagliava ciò che usciva, e restavano nel giro del Tab dopo la ricerca. Dalla `v5.12.0` lo fa il
+design system (lotto 0530, `ds-1795297647-ba18`), a ricerca aperta e chiusa: le azioni del modulo che non stanno nella barra vanno
+in cima al cassetto, e il rimedio è uscito da `rimedi.css`.
 Il sesto (#3891, richiesta 291, dalla `v5.0.0`): l'anello del fuoco su «Annulla» e sulla ✕ del `Toast` ha il colore del testo
 del Toast (`var(--surface)`) invece di `var(--focus)`, che sul fondo scuro del Toast stava sotto i 3:1 (2,82 nel tema chiaro,
 1,88 nello scuro); fuori dal Toast l'anello non cambia.
@@ -90,12 +92,10 @@ durante il trascinamento. La `DealPipeline` toglie il segno alla colonna solo al
 col pezzo del tocco) esce dalla lavagna, il pezzo del tocco dà alla `.zr-lanes` l'attributo `data-zr-fuori`, e lì la colonna
 segnata torna come le altre; rientrato il puntatore, o finito il trascinamento, l'attributo si toglie.
 
-L'ottavo (richiesta 259, dalla `v5.1.0`; sì di zr-pm-74 del 18/11, per la #3930 di zr-crm): la `DealCard` di un'opportunità
-senza importo. Il modulo le dà `amountText="—"`, da sola o dentro la `DealPipeline`: il trattino si vede, e il lettore di schermo
-non lo legge ma legge «valore non indicato» nella lingua della pagina (`<html lang>`: «valor no indicado» in spagnolo, «value
-not specified» in inglese e nelle lingue che zr-core non ha). I testi stanno in `resources/lingue/rimedi/`. Lo fa il pezzo dei
-rimedi, che dentro l'importo mette il trattino nascosto al lettore e il testo nascosto alla vista; quando `amountText` cambia, React
-riscrive l'importo e il rimedio se ne va da sé. Il modulo non scrive altro: niente `aria-label` e niente testo nascosto suo.
+L'ottavo (richiesta 259, dalla `v5.1.0` alla `v5.7.0`; sì di zr-pm-74 del 18/11, per la #3930 di zr-crm): la `DealCard` di
+un'opportunità senza importo, a cui il modulo dà `amountText="—"`: il trattino si vedeva e non si leggeva. Dalla `v5.12.0` lo fa la
+`DealCard` da sé (lotto 0534, #4112): il trattino si vede, e il lettore di schermo legge «valore non indicato» nella lingua dell'app;
+il rimedio è tolto, coi suoi testi. Il modulo non scrive altro: niente `aria-label` e niente testo nascosto suo.
 
 Dal nono al dodicesimo (#3948-#3951, richieste 272, 273, 242 e 298, dalla `v5.5.0`): al tocco (`pointer: coarse`) quattro aree che
 il design system lascia sotto i 44 px arrivano a 44. La casella di riga della `DataTable` si prende su 44×44, nella sua cella:
@@ -111,9 +111,10 @@ mouse l'ordinamento e le azioni non cambiano.
 
 **Dalla `v5.7.0` tredici rimedi li porta il design system** (#4089, lotto 0529, `ds-1795294374-d3db`): quelli delle richieste 290, 278, 288,
 279, 291, 272, 273, 242, 298, 302, 304 e 305, più la 292, sono usciti da `rimedi.css` e valgono come prima, misurati in Chromium
-in sette modi (tocco, mouse, testo al 200%, colori forzati). In `rimedi.css` restano il quinto (283), il settimo (299) e quelli
+in sette modi (tocco, mouse, testo al 200%, colori forzati). In `rimedi.css` restavano il quinto (283), il settimo (299) e quelli
 del dito (293 e 294); l'ottavo (259), il sedicesimo e il diciassettesimo (363)
-sono del pezzo dei rimedi. Con la 292 il padding sopra dell'area che scorre è la variabile
+sono del pezzo dei rimedi. **Dalla `v5.12.0` esce anche il quinto** (#4095, lotto 0530,
+`ds-1795297647-ba18`): in `rimedi.css` restano il settimo (299) e quelli del dito (293 e 294). Con la 292 il padding sopra dell'area che scorre è la variabile
 `--zr-main-body-pt`: un modulo con un elemento sticky dentro l'area che scorre scrive `top: calc(-1 * var(--zr-main-body-pt))`
 e toglie la sua copia dei valori. Un modulo che aveva scritto una di queste regole nel suo CSS la può togliere.
 Il design system fa anche ciò che le richieste chiedevano oltre il rimedio: la variabile vale anche senza percorso, dove l'area
@@ -127,7 +128,14 @@ legge all'apertura, dopo il titolo. Finché il dialogo è aperto, il resto della
 dito arrivano a ciò che sta dietro il velo. Restano vivi solo il dialogo in cima (di due dialoghi, quello aperto dentro l'altro o
 dopo di lui), le zone che annunciano, come i `Toast`, e un menu o un elenco aperto col pulsante che lo apre. Ciò che era già
 inerte, come la barra dietro il selettore dei workspace, alla chiusura resta inerte; il resto torna com'era, prima che il fuoco
-torni a chi lo aveva. Il modulo non scrive niente: niente `inert` e niente `aria-describedby` suoi.
+torni a chi lo aveva. Dalla `v5.12.0` è inerte anche un comando che annuncia da sé, un pulsante con `aria-live` (zr-superadmin,
+27/11: «Copia l'id» restava vivo dietro il dialogo). Il modulo non scrive niente: niente `inert` e niente `aria-describedby` suoi.
+
+Il diciottesimo (richiesta 247, dalla `v5.12.0`; Decisione di zr-pm-a0 del 27/11, misura di zr-bookings a 390 px): col dito i
+campi di testo del pacchetto sono a 16 px, e iOS non ingrandisce più la pagina quando prendono il fuoco. Il design system
+(lotto 0532) li porta per `Field` (`input`, `select`, `textarea`), `AddressField`, `MentionField` e `InlineEdit`; il pacchetto
+per gli altri, la casella della `Composer`, il campo e il menu della sessione dell'assistente e la ricerca, finché il design
+system non porta la richiesta 370. Col mouse niente cambia.
 
 **Le carte della DealPipeline col dito** (dalla `v4.35.2`, richiesta 293; sì di zr-pm-74 del 16/11): la `DealPipeline` del design
 system sposta una carta solo col drag HTML5, che col dito non parte. Finché il design system non lo fa da sé, lo fa il pacchetto:
@@ -355,9 +363,9 @@ zr-core le ricostruisce e le pesa a ogni giro: i numeri sono di questa versione)
 
 | App di prova | JS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| solo la cornice, dall'ingresso per le app | 55,5 KB | 19,3 KB | 75,1 KB | 17,5 KB |
-| la cornice e due componenti per nome | 64,5 KB | 22,1 KB | 75,1 KB | 17,5 KB |
-| la stessa cornice, dall'ingresso di sempre | 233,9 KB | 74,7 KB | 74,6 KB | 17,3 KB |
+| solo la cornice, dall'ingresso per le app | 58,9 KB | 20,4 KB | 74,3 KB | 17,3 KB |
+| la cornice e due componenti per nome | 68,6 KB | 23,4 KB | 74,3 KB | 17,3 KB |
+| la stessa cornice, dall'ingresso di sempre | 241,4 KB | 77,4 KB | 73,8 KB | 17,1 KB |
 
 Le prime due colonne sono il JS d'ingresso, quello che la pagina scarica subito. «A richiesta» sono le frasi delle
 notifiche, dalla `v1.20.0`: tre file `.json`, uno per lingua (circa 1,9 KB l'uno con gzip), che la cornice chiede con
@@ -387,7 +395,7 @@ Il nono, dalla `v4.35.2`, è il pezzo del tocco (circa 1,2 KB con gzip): le cart
 «Le carte della DealPipeline col dito», sotto), che il pezzo dei rimedi chiede solo quando in pagina entra una lavagna. Dalla
 `v4.36.0` anche le schede della `KanbanBoard` (vedi «Le schede della KanbanBoard col dito»).
 I pesi fra parentesi sono misure del 12/10/2026 (quelli dei rimedi, della campanella e della ricerca, del 13/10/2026, quello della campanella della `v3.0.0` del 24/10/2026, e quelli della tastiera, degli avvisi e dei rimedi delle `v3.7.0`-`v3.8.1` del 26/10/2026), e la CI non li ricontrolla: quelli che ricontrolla sono i numeri della
-tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 19.816 byte con
+tabella, e i tetti. Il JS d'ingresso dell'app che prende solo la cornice ha un tetto, che la CI misura a ogni giro: 20.874 byte con
 gzip. Dalla `v2.11.5` è sceso di 440 byte: i dati di esempio e i formattatori dei numeri del design system sono usciti dal JS
 d'ingresso, e il tetto è ciò che pesa con le correzioni di questa versione dentro, e niente oltre. Dalla `v2.20.0` sono
 30 byte in più, quelli dell'impronta di zr-auth che ogni richiesta della cornice porta in `X-Zr-Persona` (un'eccezione per la
@@ -463,9 +471,11 @@ Dalla `v4.35.0` sale di 109, alla misura più 20: il link alla privacy per la ve
 salgono a 977 e 1.103 byte, la misura più 20.
 Dalla `v5.6.0` scende di 116, alla misura più 20: gli spazi degli assistenti nell'`AppShell` costano 105 byte (#4088,
 richieste 306-310), e l'ora corta delle notifiche esce dal JS d'ingresso e sta nel pezzo della campanella, che la cornice
-chiede a pannello aperto (222 in meno; zr-pm-a0, 21/11).
+chiede a pannello aperto (222 in meno; zr-pm-a0, 21/11). Dalla `v5.12.0` sale di 900, alla misura più 20: l'`AppShell` del lotto
+0530 porta nel cassetto le azioni del modulo che a 320 px col testo al 200% non stanno nella barra, e rende il fuoco ad «Apri il
+menu» (#4095, richiesta 283; sì di zr-pm-a0, 21/11).
 Hanno
-un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.949 byte la campanella (2.741 fino alla `v5.5.0`, 2.685 fino alla `v5.3.0`), 2.337 i rimedi (1.951 fino alla `v5.5.0`, 1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
+un tetto anche i sei pezzi di JS a richiesta, ognuno alla sua misura: 2.949 byte la campanella (2.741 fino alla `v5.5.0`, 2.685 fino alla `v5.3.0`), 2.085 i rimedi (2.337 fino alla `v5.7.0`, 1.951 fino alla `v5.5.0`, 1.640 fino alla `v5.0.1`, 1.472 fino alla `v4.35.1`), 1.797 la
 ricerca, dalla `v3.7.0` 778 gli avvisi e dalla `v4.8.1` 1.108, con l'Alert, e dalla `v4.22.0` 1.554, con la fascia di assistenza (la misura più 20), e dalla `v4.25.0` 1.776, con «Il mio spazio», e dalla `v4.30.0` 1.730, coi moduli per componente, e dalla `v4.34.1` 1.859, col foglio di stile non arrivato richiesto una volta, e dalla `v3.8.0` 1.201 la tastiera, 1.438 dalla `v3.8.1`, 1.993 dalla `v3.10.0`, 2.000 dalla `v3.14.1` e 1.576 dalla `v4.18.0` (la misura più 20, di riga in riga per i rimedi di tastiera e al più
 2.000 byte: Decisione 18611; i byte che
 lascia liberi nel pezzo dei rimedi restano nel suo tetto, per i prossimi rimedi: zr-pm, 26/10/2026), e dalla `v4.35.2` 1.240 il pezzo
@@ -515,8 +525,8 @@ la pesa a ogni giro):
 
 | App di prova | CSS | con gzip | a richiesta | con gzip |
 |---|---|---|---|---|
-| la cornice e i due campi a richiesta, con `bundle.css` | 128,1 KB | 21,2 KB | 5,1 KB | 1,8 KB |
-| la cornice e i due campi a richiesta, con `zeiras.css` | 110,3 KB | 18,4 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `bundle.css` | 131,0 KB | 21,8 KB | 5,1 KB | 1,8 KB |
+| la cornice e i due campi a richiesta, con `zeiras.css` | 113,1 KB | 19,0 KB | 5,1 KB | 1,8 KB |
 
 Le prime due colonne sono il CSS d'ingresso, quello che la pagina scarica subito; «a richiesta» sono i file CSS che
 arrivano coi pezzi, ognuno una volta, gli stessi nelle due righe: quelli dei due campi e, dalla `v4.34.0`, quello della fascia
@@ -720,6 +730,7 @@ zeiras/zr-core`, poi la build), e un modulo indietro di più versioni le fa tutt
 | `v5.5.0` | al tocco 44 px per la casella di riga della `DataTable` (che non apre più la riga), le azioni che vanno a capo, lo `Switch` e il campo della ricerca (#3948-#3951, richieste 272, 273, 242 e 298): rimedi provvisori in `rimedi.css`, solo con `pointer: coarse`. Con loro (#4055-#4057, richieste 302, 304 e 305) il contesto del `DetailPanel` che va a capo e, al tocco, 44 px per l'ordinamento della `DataTable` e 12 px fra le azioni del pannello | niente; chi ha scritto a mano l'altezza dello `Switch` al tocco la può togliere | niente | al tocco (o con `pointer: coarse` simulato): la casella di riga della `DataTable` si prende senza aprire la riga, le azioni della testata a capo stanno a 12 px fra le righe, lo `Switch` e il campo della ricerca aperta sono alti 44 px; un contesto lungo del `DetailPanel` va a capo |
 | `v5.6.0` | la squadra degli assistenti dal design system `ds-1795291945-0b6b` (#4088, richieste 306-310): i toni `tang`, `tang-text`, `tang-soft`, `indigo`, `indigo-soft`, `rose` e `rose-soft` in chiaro e scuro; i componenti `AssistantAvatar`, `AiLabel`, `AssistantPanel`, `AssistantSession`, `AssistantNav` e `AssistantBubble`, ognuno col suo modulo, e gli stili di `AssistantAvatar`, `AssistantNav`, `AssistantPanel` e `AssistantSession` in un CSS a parte, che il modulo importa (un'app senza assistenti non ne porta il peso); gli spazi `assistantNav` e `assistantBubble` dell'`AppShell`, che la cornice non riempie. L'ora corta delle notifiche passa nel pezzo della campanella. Dal pezzo dei rimedi, il `Dialog` descritto dalla sua `description` con `aria-describedby` e il resto della pagina `inert` finché è aperto (richiesta 363, da zr-superadmin). Nessun modulo cambia niente; chi mostra un assistente prende i componenti da qui invece di rifarli |
 | `v5.7.0` | tredici rimedi provvisori li porta il design system `ds-1795294374-d3db` (lotto 0529, #4089, richieste 242, 272, 273, 278, 279, 288, 290, 291, 292, 298, 302, 304 e 305): escono da `resources/css/rimedi.css`, dove restano 283, 293, 294 e 299; `--zr-main-body-pt` per gli elementi sticky dell'area che scorre (292). Niente da fare per chi aggiorna; un modulo che aveva copiato una di queste regole la può togliere |
+| `v5.12.0` | cinque lotti del design system in una versione sola (Decisione di zr-pm 30131: le versioni dalla `v5.8.0` alla `v5.11.0` non sono uscite da sole). (1) la cornice a 320 px col testo al 200%, col dito e col lettore di schermo, dal design system `ds-1795297647-ba18` (lotto 0530, #4095, richieste 283, 281, 244, 284, 286 e 303): sotto i 720 px le azioni del modulo (`actions`) che non stanno nella barra vanno in cima al cassetto, campanella e profilo restano nella barra, e tornano nella barra quando ci stanno; un clic su un'azione del cassetto lo chiude, e `Dialog` e `DetailPanel` che si chiudono rendono il fuoco ad «Apri il menu» (283; il rimedio esce da `rimedi.css`, dove restano 293, 294 e 299); il pulsante del menu col nome del modulo ha «Apri il menu» in `aria-description` (281: il rimedio esce dal pezzo dei rimedi); col dito anche sopra i 1024 px campanella, profilo e voci dei menu della barra a 44 px (244); il numero delle non lette dentro il pulsante col testo al 200% (284); `aria-controls` solo quando l'elemento c'è (286); il `DetailPanel` è un `div` col ruolo `dialog` (303) | un modulo che disegna un `Dialog` aperto da un'azione lo mette nella pagina, fuori da `actions`; il `Menu` di un'azione sta dentro `actions`, col pulsante che ha `aria-haspopup`; un'azione che comanda un pannello fuori dal cassetto gli dà `aria-controls` | un caso che cerca il `DetailPanel` per `aside` (o `complementary`) lo trova per ruolo `dialog`; un caso che cerca le azioni nella barra a 320 px le trova nel cassetto | le azioni del modulo a 320 px col testo al 200%: nel cassetto, la pagina non scorre di lato, un clic chiude il cassetto e apre ciò che l'azione apre; a dialogo aperto è inerte anche un comando che annuncia da sé, un pulsante con `aria-live` (zr-superadmin, 27/11: «Copia l'id» restava vivo dietro il dialogo) — (2) le persone negli avatar, i nomi dei colori e delle barre d'avanzamento dal design system `ds-1795301095-7dd3` (lotto 0531, #4102, richieste 260, 261, 262, 265, 267, 270 e 300), senza cambi d'aspetto: l'`Avatar` prende `initials` già fatte, uno o due caratteri mostrati come arrivano, e `name` resta il nome letto, il tooltip e il colore (260); quelle ricavate dal nome prendono la prima lettera intera di ogni parola, coi suoi segni, e saltano emoji e simboli (267); `people` dell'`AvatarStack` e `assignees` della `KanbanCard` accettano anche persone `{ id, name, initials, tone }`: l'`id` tiene distinte due persone con lo stesso nome e `tone` ne sceglie il colore (265, 270, 300); il «+n» ha un nome per il lettore di schermo nella lingua dell'app («altre 3 persone»; `labels.moreOne` e `labels.moreMany` lo cambiano); il `ColorPicker` con `autoFocus` dà il fuoco al colore scelto quando si apre dentro un `Dialog` (261); la `Progress` senza `label` prende `aria-labelledby` o `aria-label` (262). Nella build l'`AvatarStack` non entra più con l'`Avatar`: chi usa solo l'`Avatar` non lo porta, e `Avatar.Stack` c'è per chi prende l'`Avatar` per nome | un modulo che ha l'id delle persone lo passa a `people` e `assignees` come oggetti; chi legge `assignees` da `onOpenCard` o `onChange` della `KanbanBoard` come `string[]` gestisce anche le persone (il codice gira, i tipi non compilano più); una barra che il titolo della sezione già nomina prende `aria-labelledby` | un caso che legge il «+n» dal `title` «n altri» lo trova nel nome del ruolo `img`, «altre n persone» | due persone con lo stesso nome in una scheda: due avatar, e il «+n» letto dal lettore di schermo nella lingua della pagina — (3) i campi dei moduli col dito, coi `ref` e nella lingua dell'app, dal design system `ds-1795304173-8156` (lotto 0532, #4103, richieste 243, 245, 246, 247, 249, 250, 251, 263, 282 e 296); col mouse nessun cambio d'aspetto. Col dito le opzioni del `RadioGroup` sono alte 44 px (243), i link e «Nuova board» del `ProjectFolder` e «Aggiungi scheda» della `KanbanColumn` anche (245), e il testo di `Field`, `AddressField`, `MentionField` e del campo aperto dell'`InlineEdit` è di 16 px (247); il clic sul riquadro del `MentionField` fuori dal campo porta il fuoco nel campo (246); lo `Switch` passa `id`, `name`, `ref`, `data-*` e gli `aria-*` al pulsante, e il suo `onClick` arriva prima del cambio (249), con l'etichetta a capo allineata a sinistra (296); `Button` e `Checkbox` dichiarano `ref` nei tipi (250, 251), e la `Checkbox` col `ref` del modulo tiene `indeterminate` (251); `MentionField` e `AddressField` scrivono testi e segnaposto nella lingua dell'app, `labels` vince (263); l'`InlineEdit` vuoto ha nel nome il testo che si vede (282) | un modulo che portava da sé il testo dei campi a 16 px col dito lo toglie (zr-home: `app.css`); chi legava a mano `ref` o `indeterminate` di una `Checkbox` passa il `ref`; un `onClick` dello `Switch` che chiama `preventDefault()` ferma il cambio | un caso che legge i testi italiani del `MentionField` o dell'`AddressField` in una pagina inglese o spagnola trova quelli della lingua; un caso che cerca l'`InlineEdit` vuoto per il solo nome del campo lo trova con «, Aggiungi» o il segnaposto | col dito, a 320 px, un campo che non ingrandisce la pagina su iOS e uno `Switch` dentro un modulo che si attiva col suo `id`; col dito i campi di testo che il design system non porta ancora (la casella della `Composer`, la sessione dell'assistente, la ricerca) sono a 16 px dal pezzo dei rimedi, finché non arriva la richiesta 370 (247; Decisione di zr-pm-a0 27/11, misura di zr-bookings) — (4) i componenti a 320 px col testo al 200% e l'ordine del Tab nelle schede, dal design system `ds-1795311043-5a7a` (lotto 0533, #4111, richieste 274, 275, 276, 277, 280 e 285), con due cambi d'aspetto accettati da zr-pm (Decisione 27214): un'etichetta del menu laterale più larga di circa 185 px va su due righe invece di finire in «…», e oltre le due righe «…», col testo intero nel nome della voce (276); sotto i 720 px l'azione dell'`Alert` va sempre a capo, sotto il testo e allineata a lui, e la ✕ resta in alto a destra (274), e nelle schede della `DataTable` la casella di riga sta a sinistra del nome, così il Tab segue l'ordine di lettura (285). Senza cambi d'aspetto: l'overline del `PageHeader` va a capo e non allarga la pagina (275); nelle schede della `DataTable` le celle vanno a capo e ciò che non sta si scorre (277); il `Dialog` non è mai più largo della finestra (280). Solo CSS: `bundle.js` e `index.d.ts` non cambiano | un `Alert` con più azioni le mette in un contenitore solo; un modulo che accorciava a mano le etichette del menu per non vederle tagliate può tornare al nome intero | un caso che misura l'altezza di una voce del menu con un'etichetta lunga la trova alta due righe; un caso che cerca l'azione dell'`Alert` accanto al testo sotto i 720 px la trova sotto | a 320 px col testo al 200% un `Alert` con azione e ✕, una `DataTable` a schede con la casella e una voce del menu con un nome lungo — (5) tastiera, lettore di schermo e testi nei componenti, dal design system `ds-1795313750-49a0` (lotto 0534, #4112, richieste 258, 259, 266, 269, 289 e 295), con un cambio d'aspetto: il colore scelto di `ColorPicker` e `CardColorPicker` ha la spunta dentro (266). La riga della `DataTable` con `onRowClick` è una fermata del Tab e si apre con Invio (258): un modulo che ha già un link o un pulsante della riga lo toglie, o il Tab passa due volte (il clic col mouse resta com'era); la `DealCard` senza importo dice «valore non indicato» da sé, e il rimedio della 259 è tolto coi suoi testi; prop nuove: `ToastRegion` e `actionAriaLabel`, `actionRef`, `actionBusy` del `Toast` (269), `disabled` della `ReorderList` e `onChange` che risponde `false` (289), `amountMissingLabel` della `DealCard`. La cornice passa all'`AppShell` le fonti della ricerca del workspace (`searchSources`): a zero risultati il pannello dice anche che cosa si può cercare, nella lingua della persona (295). Niente da cambiare nei moduli per aggiornare. |
 
 Lo script UAT della cornice sta nel repo, non nello zip: si prende dal tag e si lancia su una pagina vera del modulo
 (`node uat-cornice.mjs <indirizzo> --parola <testo>`, il resto nel suo commento in testa). Dice una riga per controllo: axe a

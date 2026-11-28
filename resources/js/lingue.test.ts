@@ -14,7 +14,7 @@ import ricercaItaliana from '../lingue/ricerca/it.json';
 import risorseDellaRicerca from '../registro/ricerca.json';
 import { testiDegliAvvisi } from './avvisi';
 import { frasiARichiesta, frasiDiOgniLingua, rigaConLeFrasi } from './campanella';
-import { caricaLingue, indirizziDelleLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
+import { caricaLingue, elencoDelleFonti, indirizziDelleLingue, linguaDeiTesti, lingue, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, type FrasiDelleNotifiche, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, registro, type RisorsaDelProdotto, type TipoDellaRicerca, type TipoDiRisorsa } from './registro';
 
 // Sprint 1 · T5 (voce #1255). Il ripiego sull'inglese, testo per testo, e le lingue scoperte dai file di resources/lingue. Che
@@ -808,6 +808,17 @@ describe('le lingue della cornice', () => {
 
         expect([testi('it').searchPlaceholder, testi('it').searchHint, testi('it').searchPlaceholderSources, testi('it').searchHintSources])
             .toStrictEqual(['Cerca…', 'Scrivi almeno 2 caratteri.', 'Cerca nel workspace…', 'Cerca {sources}: scrivi almeno 2 caratteri.']);
+    });
+
+    // v5.12.0 (voce 4112, richiesta 295): le fonti unite sono anche la frase del pannello senza risultati, «Qui puoi cercare {sources}.»,
+    // che la cornice passa all'`AppShell` come `searchSources` di un nome solo. Deve fallire se l'elenco del pannello non è quello
+    // dell'invito, o se senza fonti la frase c'è lo stesso.
+    it.each(['it', 'es', 'en', 'pt-BR'])('con la lingua "%s" l\'elenco delle fonti è quello dell\'invito, la frase del pannello ha il posto dell\'elenco una volta, e senza fonti non c\'è elenco (v5.12.0, voce 4112)', (lingua) => {
+        const elenco = elencoDelleFonti(lingua, diProjectManagement);
+        expect(elenco).toBeTypeOf('string');
+        expect(testiDellaRicerca(lingua, diProjectManagement).searchHint).toBe(testi(lingua).searchHintSources.replace('{sources}', () => elenco ?? ''));
+        expect(testi(lingua).searchSources.split('{sources}')).toHaveLength(2);
+        expect(elencoDelleFonti(lingua, [])).toBeUndefined();
     });
 
     // Sprint 26 · T5 (voce #1767; lettura della PR #56, R9). L'elenco delle fonti lo scrive `Intl.ListFormat`, e un browser può non

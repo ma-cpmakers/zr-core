@@ -7,6 +7,7 @@
 .zr-mention-box:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 .zr-mention.is-error .zr-mention-box { border-color: var(--danger); }
 .zr-mention-box input { flex: 1 1 120px; min-width: 120px; min-height: 30px; border: 0; outline: 0; padding: 0 var(--space-1); background: transparent; font: inherit; font-size: 14px; line-height: 20px; color: var(--ink); }
+@media (pointer: coarse) { .zr-mention-box input { font-size: 16px; } } /* al tocco 16 px, come Field (richiesta 247) */
 .zr-mention-box input::placeholder { color: var(--ink-muted); }
 .zr-mention-chip { display: inline-flex; align-items: center; gap: var(--space-1-5); height: 30px; padding: 0 2px 0 3px; border-radius: var(--radius-pill); background: var(--sky-soft); color: var(--ink); font-size: 13px; font-weight: 600; max-width: 100%; }
 .zr-mention-chip .zr-avatar { box-shadow: none; }

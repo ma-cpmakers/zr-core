@@ -9,7 +9,9 @@ import { h } from './interni/h';
     var tone = p.tone || (pct >= 90 ? 'danger' : pct >= 75 ? 'warning' : 'pine');
     return h('div', { className: 'zr-progress' },
       p.label ? h('div', { className: 'zr-progress-top' }, h('span', null, p.label), h('span', null, p.valueLabel || pct + '%')) : null,
-      h('div', { className: 'zr-progress-track', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': p.label },
+      h('div', { className: 'zr-progress-track', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
+        /* senza label la barra prende il nome da aria-labelledby o aria-label: il titolo della sezione non si ripete (richiesta 262) */
+        'aria-label': p.label || p['aria-label'], 'aria-labelledby': p.label ? undefined : p['aria-labelledby'] },
         h('div', { className: 'zr-progress-bar zr-bg-' + tone, style: { width: pct + '%' } })));
   }
 

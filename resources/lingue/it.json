@@ -17,6 +17,7 @@
     "searchLoading": "Sto cercando…",
     "searchEmpty": "Nessun risultato per",
     "searchEmptyText": "Prova con un'altra parola o controlla di essere nel workspace giusto.",
+    "searchSources": "Qui puoi cercare {sources}.",
     "searchError": "La ricerca non ha risposto. Riprova tra poco.",
     "searchResults": "Risultati della ricerca",
     "notifications": "Notifiche",

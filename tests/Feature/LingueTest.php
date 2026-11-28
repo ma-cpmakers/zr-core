@@ -1636,13 +1636,8 @@ it('i testi del campo file stanno in resources/lingue/campo-file, un file per og
         ->and(array_filter(array_map(fn (array $delCodice): bool => array_key_exists('choose', $delCodice), fileDelleLingue(''))))->toBe([]);
 });
 
-it('«valore non indicato» della DealCard senza importo sta in resources/lingue/rimedi, un file per ogni lingua dei testi con lo stesso nome e la sola chiave noAmount, e non nelle lingue della cornice (v5.1.0, richiesta 259)', function () {
-    $rimedi = fileDelleLingue('rimedi/');
-
-    expect(array_keys($rimedi))->toEqualCanonicalizing(array_keys(fileDelleLingue('')))
-        ->and(array_map(fn (array $delCodice): array => array_keys($delCodice), $rimedi))->toBe(array_fill_keys(array_keys($rimedi), ['noAmount']))
-        ->and(array_map(fn (array $delCodice): bool => is_string($delCodice['noAmount']) && trim($delCodice['noAmount']) !== '', $rimedi))->each->toBeTrue()
-        ->and(['it' => $rimedi['it']['noAmount'] ?? null, 'es' => $rimedi['es']['noAmount'] ?? null, 'en' => $rimedi['en']['noAmount'] ?? null])->toBe(['it' => 'valore non indicato', 'es' => 'valor no indicado', 'en' => 'value not specified'])
+it('i testi del rimedio della 259 non ci sono più: dalla v5.12.0 «valore non indicato» lo dice la DealCard del design system, nella lingua dell\'app (#4112, lotto 0534)', function () {
+    expect(File::exists(__DIR__.'/../../resources/lingue/rimedi'))->toBeFalse()
         ->and(array_filter(array_map(fn (array $delCodice): bool => array_key_exists('noAmount', $delCodice), fileDelleLingue(''))))->toBe([]);
 });
 
@@ -1783,8 +1778,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
     // (R1): e quelli della cornice dello staff, in resources/lingue/staff. Sprint 110 · T2.5: e quelli della cornice del cliente.
     // Voce #3537 · AC 4: e «Annulla» del Toast di turno, in resources/lingue/toast. Voce #3813 · T5.4: e i testi del campo file, in
     // resources/lingue/campo-file.
-    // v5.1.0 (richiesta 259): e «valore non indicato» della DealCard senza importo, in resources/lingue/rimedi.
-    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/')), ...array_values(fileDelleLingue('toast/')), ...array_values(fileDelleLingue('campo-file/')), ...array_values(fileDelleLingue('rimedi/'))])))), idDeiProdotti()));
+    $testi = array_values(array_diff(array_unique(array_merge(...array_values(array_map('array_values', [...lingueDellaCornice(), ...array_values(fileDelleLingue('ricerca/')), ...array_values(fileDelleLingue('staff/')), ...array_values(fileDelleLingue('cliente/')), ...array_values(fileDelleLingue('toast/')), ...array_values(fileDelleLingue('campo-file/'))])))), idDeiProdotti()));
 
     $scritti = [];
     foreach (fileDelCodice() as $file) {
@@ -1793,7 +1787,7 @@ it('nessun testo dell\'interfaccia è scritto nel codice TS/TSX di zr-core (T5.4
         }
     }
 
-    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office', 'Annulla', 'Deshacer', 'Undo', 'Scegli un file', 'Elige un archivo', 'Choose a file', 'valore non indicato', 'valor no indicado', 'value not specified')
+    expect($testi)->toContain('Moduli', 'Dashboard', 'Esci', 'calendars', 'prenotazioni', 'Calendari di prenotazione', 'Confermata', 'No-show', 'Esci dal backoffice', 'Log out of the back office', 'Annulla', 'Deshacer', 'Undo', 'Scegli un file', 'Elige un archivo', 'Choose a file')
         ->not->toContain('bookings')
         ->and(array_map(fn (SplFileInfo $file) => $file->getFilename(), fileDelCodice()))->toContain('lingue.ts', 'registro.ts')
         ->and($scritti)->toBe([]);

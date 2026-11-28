@@ -68,6 +68,7 @@ export { COMMON_LABELS } from './COMMON_LABELS';
 export { useLabels } from './useLabels';
 export { LabelsProvider } from './LabelsProvider';
 export { Alert } from './Alert';
+export { ToastRegion } from './ToastRegion';
 export { Toast } from './Toast';
 export { Dialog } from './Dialog';
 export { EmptyState } from './EmptyState';

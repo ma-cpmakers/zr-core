@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { AccountAction, MenuItem, NavItem, ShellCrumb, ShellNotification, ShellWorkspace, Tone } from '../zeiras/index';
-import { campanella, chiediLaCampanella, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, useLinguaPronta, type TestiDellaCornice } from './lingue';
+import { campanella, chiediLaCampanella, elencoDelleFonti, linguaDeiTesti, nomeDellaVoce, nomePulito, pezzoARichiesta, testi, testiDellaRicerca, useLinguaPronta, type TestiDellaCornice } from './lingue';
 import { fontiDellaRicerca, nelWorkspace, prodottoDelRegistro, raggiungibile, registro, type IdDiProdotto } from './registro';
 import { AccettazioneRichiesta, aSchermo, caricaNotifiche, chiama, chiediLaRicerca, mostra, ricerca as laRicerca, segno, type NotificaDellaCornice, type RisultatoDellaRicerca } from './servizi';
 import { tonoDelWorkspace } from './tono';
@@ -509,6 +509,8 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
     // Composti una volta per lingua e per elenco di fonti: `fonti` è un elenco nuovo a ogni disegno, e conta ciò che contiene.
     const quali = fonti.join();
     const dellaRicerca = useMemo(() => testiDellaRicerca(lingua, fonti), [lingua, quali]);
+    // Le stesse fonti, unite, per il pannello senza risultati, che dice che cosa si può cercare (dalla `v5.12.0`, richiesta 295).
+    const fontiUnite = useMemo(() => elencoDelleFonti(lingua, fonti), [lingua, quali]);
     // Un prodotto che il registro non ha, o la Dashboard, è una pagina di app.zeiras.com: menu esteso.
     const aperto = prodottoDelRegistro(product);
     const prodotti = {
@@ -1044,6 +1046,7 @@ function DiUnaPersona({ dati, chi: { lingua, persona }, product, nav = [], activ
             notifications={ridotta || frasi === undefined || riga === undefined ? [] : elenco.map((notifica) => nelPannello(notifica, riga(frasi, notifica, lingua), lingua, adesso))}
             notificationsState={ridotta ?? statoDelPannello}
             searchResults={risultati}
+            {...(fontiUnite === undefined ? {} : { searchSources: [fontiUnite] })}
             // Un risultato si apre sul suo indirizzo: il prodotto che lo possiede mostra un elemento nel suo pannello, un
             // contenitore a pagina intera.
             onSelectResult={(scelto) => {

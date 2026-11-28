@@ -9,20 +9,24 @@ import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
 import { omit } from './interni/omit';
 import { Icon } from './Icon';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { KANBAN_TEXTS } from './KANBAN_TEXTS';
-import { dealMoney } from './interni/MONEY';
+import { DEAL_CARD_TEXTS, dealMoney } from './interni/MONEY';
 import { CARD_COLOR_TEXTS, cardColorOf } from './interni/CARD_COLOR_TEXTS';
 import { useCompLabels } from './interni/useCompLabels';
 import { Menu } from './Menu';
 
   function DealCard(p) {
-    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy', 'color', 'colorNames']);
+    var rest = omit(p, ['title', 'company', 'companyIcon', 'amount', 'amountText', 'amountMissingLabel', 'formatAmount', 'currency', 'owner', 'probability', 'age', 'ageLabel', 'ageTitle', 'dragging', 'className', 'actions', 'actionsLabel', 'busy', 'color', 'colorNames']);
     var cIcon = p.companyIcon === undefined ? 'building' : p.companyIcon;
     var ms = useState(false), menu = ms[0], btn = useRef(null), kb = useRef(false);
     var acts = p.actions && p.actions.length && !p.busy ? p.actions : null, name = p.actionsLabel || KANBAN_TEXTS.cardActions;
     /* il colore della carta (richiesta 297): lo sfondo di tutta la carta, e il suo nome per il lettore di schermo */
     var cc = cardColorOf(p.color), ccn = useCompLabels(CARD_COLOR_TEXTS, p.colorNames);
+    /* l'opportunità senza importo (amount assente, o amountText «—»): si vede «—» e il lettore di schermo sente «valore non indicato», nella lingua dell'app (richiesta 259) */
+    var amt = p.amountText != null ? p.amountText : p.amount == null || !isFinite(p.amount) ? '—' : dealMoney(p); /* anche NaN (un parseFloat di niente): non «NaN €» (revisione del lotto 0534, N6) */
+    if (/^\s*[—–-]?\s*$/.test(amt)) amt = '—'; /* anche «», « — », «–» e «-»: un importo vuoto o un trattino non restano muti (revisione del lotto 0534, R6) */
+    var noAmt = useCompLabels(DEAL_CARD_TEXTS, p.amountMissingLabel ? { noAmount: p.amountMissingLabel } : null).noAmount;
     /* il «⋯» delle azioni, come in KanbanCard (richiesta 157): fuori dal Tab, dalla scheda con «.», Maiusc+F10 o il tasto Menu; al tocco su 44 px (richiesta 1) */
     if (acts) rest.onKeyDown = function (e) {
       if (e.target === e.currentTarget && (e.key === '.' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { e.preventDefault(); kb.current = true; ms[1](true); return; }
@@ -38,7 +42,7 @@ import { Menu } from './Menu';
       h('h4', { className: 'zr-card-title' }, p.title),
       cc ? h('span', { className: 'zr-visually-hidden' }, ccn.color + ': ' + ccn[cc]) : null,
       h('div', { className: 'zr-deal-foot' },
-        h('strong', { className: 'zr-deal-amount' }, p.amountText != null ? p.amountText : dealMoney(p)), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
+        h('strong', { className: 'zr-deal-amount' }, amt === '—' ? [h('span', { key: 'v', 'aria-hidden': true }, '—'), h('span', { key: 'n', className: 'zr-visually-hidden' }, noAmt)] : amt), /* l'importo già scritto dal modulo, nella sua valuta e lingua (richiesta 68) */
         h('span', { className: 'zr-card-meta' }, p.probability != null ? h('span', { className: 'zr-meta' }, h(Icon, { name: 'target', size: 14 }), p.probability + '%') : null,
           p.age ? h('span', { className: cx('zr-meta', p.age > 14 && 'is-overdue'), title: p.ageTitle || 'Giorni in questa fase' }, h(Icon, { name: 'clock', size: 14 }), p.age + ' ' + (p.ageLabel || 'gg')) : null)));
     return acts ? h(React.Fragment, null, card, menu ? h(Menu, { anchor: btn.current, align: 'end', label: name, items: acts, onClose: function () { ms[1](false); var a = kb.current && btn.current && btn.current.parentNode, b = btn.current; if (a) queueMicrotask(function () { var x = document.activeElement; if (document.contains(a) && (!x || x === document.body || x === b)) a.focus(); }); } }) : null) : card;

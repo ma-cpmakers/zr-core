@@ -233,6 +233,19 @@ describe('il modulo esporta ciò che il bundle registra in window.Zeiras, coi no
     it('Avatar.Stack è AvatarStack', () => {
         expect(come(componenti.Avatar)['Stack']).toBe(componenti.AvatarStack);
     });
+
+    // Lotto 0531 (voce 4102, zr-pm-a0 21/11): Avatar senza Stack sta in interni/Avatar.js e i moduli lo prendono da lì, così chi usa
+    // l'Avatar dentro un componente (la cornice) non porta l'AvatarStack; Avatar.js gli dà Stack per chi prende Avatar per nome.
+    it('Avatar.Stack sta da solo in Avatar.js, e i componenti prendono Avatar da interni/Avatar.js', () => {
+        const file = genera(bundle);
+
+        expect(file['Avatar.js']).toContain('Avatar.Stack = AvatarStack;');
+        expect(file['Avatar.js']).toContain("import { Avatar } from './interni/Avatar';");
+        expect(file['interni/Avatar.js']).not.toContain('AvatarStack');
+        expect(file['interni/Avatar.js']).toContain('function Avatar(p)');
+        for (const nome of ['AppShell.js', 'AvatarStack.js']) expect(file[nome]).toContain("import { Avatar } from './interni/Avatar';");
+        expect(Object.entries(file).filter(([nome, testo]) => nome !== 'Avatar.js' && nome !== 'componenti.js' && testo.includes("from './Avatar'")).map(([nome]) => nome)).toEqual([]);
+    });
 });
 
 describe('davanti a un bundle di un\'altra forma lo script si ferma e dice che cosa non ha trovato (T1.3)', () => {

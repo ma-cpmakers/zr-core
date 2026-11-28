@@ -4,7 +4,7 @@
 // A un riallineamento si rigenera con `npm run componenti`.
 import { h } from './interni/h';
 import { Icon } from './Icon';
-import { Avatar } from './Avatar';
+import { Avatar } from './interni/Avatar';
 import { StatusLabel } from './StatusLabel';
 
   function RecordHeader(p) {

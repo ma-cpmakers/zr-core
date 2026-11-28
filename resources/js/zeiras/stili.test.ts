@@ -293,11 +293,11 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         }
     });
 
-    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (richieste 283, 293, 294 e 299; dalla v5.7.0, voce 4089, gli altri tredici li porta il design system)', () => {
+    it('rimedi.css porta i rimedi delle richieste aperte, uno per riga, e nient\'altro (richieste 293, 294 e 299; dalla v5.7.0, voce 4089, tredici li porta il design system, e dalla v5.8.0, voce 4095, anche la 283; dalla v5.12.0 la 247, i campi a 16 px col dito che il design system non porta)', () => {
         expect(regole).toBe([
             '.zr-lanes .zr-card[draggable="true"] { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }',
             '.zr-card.zr-tocco-ombra { position: fixed; top: 0; left: 0; z-index: var(--z-toast); margin: 0; pointer-events: none; box-shadow: var(--shadow-lift); }',
-            '@media (max-width: 720px) { .zr-top:has(.zr-search.is-open) .zr-top-actions { min-width: 0; overflow: hidden; } }',
+            '@media (pointer: coarse) { :root :is(.zr-composer textarea, .zr-acomp-input, .zr-ases-select, .zr-search input) { font-size: 1rem; } }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-over { background: var(--surface-sunken); border-color: transparent; }',
             '.zr-lanes[data-zr-fuori] .zr-col.is-won.is-over { background: var(--success-soft); }',
         ].join(' '));
@@ -390,17 +390,18 @@ describe('i rimedi provvisori al CSS del design system (voce 3887)', () => {
         expect(readFileSync(delRepo('resources/js/zeiras/KanbanCard.js'), 'utf8')).not.toMatch(/pointerdown|onPointerDown|touchstart/i);
     });
 
-    // Voce #3890 (richiesta 283; zr-pm-74 15/11). Sotto i 720 px il campo della ricerca aperto copre la barra; le azioni restano
-    // sotto e, a 320 px col testo al 200%, allargavano la pagina a 338 px. La prova in Chromium (338 senza, 320 con; R390.9 di
-    // uat-cornice, il Tab dalla ricerca a campanella e profilo della #2805, ancora ✅) è nella voce.
-    it('con la ricerca aperta sotto i 720 px le azioni della barra si stringono e non allargano la pagina, e restano nel DOM (voce 3890, richiesta 283)', () => {
-        // Il bundle di oggi dà a .zr-top-actions solo display, allineamento, spazio e posizione: quando la 283 arriva, questo caso
-        // diventa rosso e il rimedio si toglie.
-        const regole = [...bundleCss.matchAll(/\.zr-top-actions \{([^}]*)\}/g)].map((m) => m[1]).join(' ');
-        expect(regole).toContain('display: flex');
-        expect(regole).not.toMatch(/min-width|overflow|flex-wrap/);
-        // Non `display: none` né `visibility: hidden`: campanella e profilo restano nel giro del Tab dopo la ricerca (#2805).
-        expect(readFileSync(delRepo('resources/css/rimedi.css'), 'utf8')).not.toMatch(/zr-top-actions \{[^}]*(?:display|visibility)/);
+    // Voce #3890 (richiesta 283; zr-pm-74 15/11) e, dalla v5.8.0, voce #4095 (lotto 0530 del design system, Decisione di zr-pm-a0
+    // del 21/11). Sotto i 720 px, quando le azioni del modulo non stanno nella barra in alto (320 px col testo al 200%: 415 px di
+    // pagina col tag di prima), l'AppShell le mette in cima al cassetto, e campanella e profilo restano nella finestra; il rimedio
+    // che le stringeva sotto la ricerca aperta è uscito da rimedi.css. La prova in Chromium (banco tag contro lotto, righe di
+    // uat-cornice a 320 px al 200%) è nella voce.
+    it('sotto i 720 px le azioni del modulo che non stanno nella barra vanno nel cassetto, dal design system, e rimedi.css non le stringe più (richiesta 283, voce 4095)', () => {
+        expect(bundleCss).toMatch(/\.zr-side-actions \{ display: flex; flex-wrap: wrap;[^}]*\}/);
+        const shell = readFileSync(delRepo('resources/js/zeiras/AppShell.js'), 'utf8');
+        expect(shell).toContain("className: 'zr-side-actions'");
+        expect(shell).toContain('new ResizeObserver(fit)');
+        expect(shell).toContain('matchMedia(TOP_NARROW)');
+        expect(readFileSync(delRepo('resources/css/rimedi.css'), 'utf8')).not.toContain('zr-top-actions');
     });
 
     // Voce #3891 (richiesta 291; zr-pm-74 15/11, Decisione 25442). Il Toast ha lo sfondo var(--ink) e l'anello del fuoco del design

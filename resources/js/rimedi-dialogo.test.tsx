@@ -109,6 +109,23 @@ it('una zona che annuncia e contiene il dialogo non resta viva per intero: ciò 
     expect(document.querySelector('.zr-dialog')?.closest('[inert]')).toBeNull();
 });
 
+it('un comando che annuncia da sé (un pulsante con `aria-live`, come «Copia l\'id» di zr-superadmin) non resta vivo a dialogo aperto: è `inert` come il resto; una zona che annuncia, sì (zr-superadmin-d9, 27/11)', async () => {
+    document.body.innerHTML = '<div class="zr-shell"><main id="principale"><button id="copia" type="button" aria-live="polite">Copia</button><a id="vai" href="#x" role="status">Vai</a><p id="detto" aria-live="polite">Copiato</p><div id="pagina"></div></main></div>';
+    await monta(<Pagina />);
+    act(() => apri('uno'));
+    await cambiato();
+
+    expect(document.getElementById('copia')?.hasAttribute('inert')).toBe(true);
+    expect(document.getElementById('vai')?.hasAttribute('inert')).toBe(true);
+    expect(document.getElementById('detto')?.closest('[inert]')).toBeNull();
+    expect(document.querySelector('.zr-toast')?.closest('[inert]')).toBeNull();
+    expect(document.querySelector('.zr-dialog')?.closest('[inert]')).toBeNull();
+
+    act(() => apri(''));
+    await cambiato();
+    expect(document.getElementById('copia')?.hasAttribute('inert')).toBe(false);
+});
+
 it('un\'anteprima del dialogo (`inline`) non rende inerte niente', async () => {
     document.body.innerHTML = '<div class="zr-shell"><div id="pagina"></div></div>';
     await monta(<Dialog open inline title="Anteprima">Testo</Dialog>);

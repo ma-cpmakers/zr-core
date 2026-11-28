@@ -7,5 +7,6 @@ import { EUR } from './EUR';
   var MONEY = {};
   function fmtMoney(v, cur) { if (!cur || cur === 'EUR') return EUR.format(v); try { if (!MONEY[cur]) MONEY[cur] = new Intl.NumberFormat('it-IT', { style: 'currency', currency: cur, maximumFractionDigits: 0 }); return MONEY[cur].format(v); } catch (e) { return EUR.format(v); } }
   function dealMoney(p) { if (p.formatAmount) try { return p.formatAmount(p.amount); } catch (e) {} return fmtMoney(p.amount, p.currency); }
+  var DEAL_CARD_TEXTS = { it: { noAmount: 'valore non indicato' }, en: { noAmount: 'value not specified' }, es: { noAmount: 'valor no indicado' } };
 
-export { dealMoney, fmtMoney };
+export { DEAL_CARD_TEXTS, dealMoney, fmtMoney };

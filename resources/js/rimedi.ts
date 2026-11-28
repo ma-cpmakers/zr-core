@@ -6,8 +6,6 @@
  * si toglie quando il componente porta il suo.
  */
 
-import { fileDelleLingue } from './lingue';
-import inglese from '../lingue/rimedi/en.json';
 
 /**
  * Nel pannello delle notifiche l'avatar di chi ha fatto è un `role="img"` col nome, dentro il pulsante della notifica: quando il
@@ -231,13 +229,11 @@ function cassetto(): void {
  * selettore i due testi, e l'azienda col nome del workspace fuori dal nome, che non lo dice due volte; nel profilo l'immagine
  * delle iniziali, col nome della persona. «Cambia workspace» e «Account», la parte dell'`aria-label` prima dei due punti, vanno
  * nella descrizione. Si rifà a ogni `aria-label` che l'`AppShell` riscrive (un altro workspace, un'altra persona, un'altra lingua),
- * che cambia coi nomi (righe 240 e 241). Lo stesso il pulsante del menu sotto i 720 px quando mostra il nome del modulo
- * («CRM» con «Apri il menu»): il nome è il modulo, «Apri il menu» o «Chiudi il menu» la descrizione; senza il nome del modulo
- * non ha testo e tiene il suo `aria-label` (riga 281, voce #3858, Decisione 25240). Accessibilità dei tre pulsanti: si toglie
- * quando l'`AppShell` lo fa da sé.
+ * che cambia coi nomi (righe 240 e 241). Il pulsante del menu col nome del modulo (riga 281) lo fa l'`AppShell` da sé dalla
+ * v5.8.0 (voce #4095, lotto 0530): qui solo selettore e profilo, e si toglie quando l'`AppShell` lo fa anche per loro.
  */
 function nomiDaiTesti(): void {
-    document.querySelectorAll('.zr-shell :is(.zr-top-menu,.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
+    document.querySelectorAll('.zr-shell :is(.zr-ws-switch,.zr-avatar-btn)').forEach((pulsante) => {
         const nome = pulsante.getAttribute('aria-label');
         if (nome && pulsante.textContent) {
             pulsante.removeAttribute('aria-label');
@@ -245,31 +241,6 @@ function nomiDaiTesti(): void {
         }
         const [azienda, workspace] = pulsante.querySelectorAll('.zr-ws-text>span');
         azienda?.setAttribute('aria-hidden', `${azienda.textContent === workspace?.textContent}`);
-    });
-}
-
-/** I testi dei rimedi, per lingua: un file loro (`resources/lingue/rimedi/`), dalla `v5.1.0`. */
-const testi = import.meta.glob<typeof inglese>('../lingue/rimedi/*.json', { eager: true, import: 'default' });
-
-/**
- * Richiesta 259 al design system, rimedio provvisorio (`v5.1.0`, Decisione 26298, sì di zr-pm-74 del 18/11; #3930 di zr-crm): la
- * `DealCard` di un'opportunità senza importo. Il modulo scrive `amountText="—"`, e un trattino da solo il lettore di schermo lo
- * tace. Allora «—» si vede e non si legge, e si legge «valore non indicato» nella lingua della pagina (`<html lang>`), in
- * inglese in una lingua che zr-core non ha. Quando `amountText` cambia React riscrive il testo per intero, e i due pezzi messi
- * qui se ne vanno con lui; se torna «—», tornano. Anche sulle carte della `DealPipeline`. Si toglie quando la `DealCard` lo fa da sé.
- */
-function importiNonIndicati(): void {
-    document.querySelectorAll('.zr-deal-amount').forEach((importo) => {
-        if (!importo.childElementCount && importo.textContent === '—') {
-            const { perCodice, fileDi } = fileDelleLingue(testi);
-            const visto = document.createElement('span');
-            const letto = document.createElement('span');
-            visto.setAttribute('aria-hidden', 'true');
-            visto.textContent = '—';
-            letto.className = 'zr-visually-hidden';
-            letto.textContent = perCodice.get(fileDi(document.documentElement.lang) ?? '')?.noAmount?.trim() || inglese.noAmount;
-            importo.replaceChildren(visto, letto);
-        }
     });
 }
 
@@ -294,6 +265,11 @@ let descritti = 0;
  * `Menu` che il modulo scrive accanto al dialogo, richiesta 93) e il pulsante che lo ha aperto.
  */
 const RESTANO = '[role="status"], [role="alert"], [aria-live="polite"], [aria-live="assertive"], [role="menu"], [role="listbox"], [aria-haspopup][aria-expanded="true"]';
+/**
+ * Una zona che annuncia resta viva, un comando no: un pulsante o un collegamento che annuncia da sé (`aria-live` sul pulsante «Copia
+ * l'id» di zr-superadmin, 27/11) si azionerebbe dietro il dialogo. Restano solo il menu aperto e il pulsante che lo ha aperto.
+ */
+const COMANDO = 'button:not([aria-expanded="true"]), a[href], input, select, textarea, summary';
 
 function dialogoDescrittoEInCima(): void {
     document.querySelectorAll<HTMLElement>('.zr-dialog[role="dialog"]').forEach((dialogo) => {
@@ -308,7 +284,7 @@ function dialogoDescrittoEInCima(): void {
     });
 
     const inCima = [...document.querySelectorAll(DIALOGO_APERTO)].pop()?.parentElement;
-    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima))] : []);
+    const tenuti = new Set(inCima ? [inCima, ...[...document.querySelectorAll(RESTANO)].filter((avviso) => !inCima.contains(avviso) && !avviso.contains(inCima) && !avviso.matches(COMANDO))] : []);
 
     if (inCima && !inCima.querySelector(':scope > zr-velo')) {
         inCima.append(Object.assign(document.createElement('zr-velo'), { hidden: true }));
@@ -342,6 +318,7 @@ customElements.get('zr-velo') || customElements.define('zr-velo', class extends 
     }
 });
 
+
 /** C'è una cornice in pagina: si chiede una volta per gruppo di cambi, non per ogni nodo. */
 const conLaCornice = (): boolean => !!document.querySelector('.zr-shell');
 
@@ -360,21 +337,16 @@ new MutationObserver((cambi) => {
     azioniSottoLaRicerca();
     cassetto();
     nomiDaiTesti();
-    importiNonIndicati();
     dialogoDescrittoEInCima();
     tastiera?.aOgniCambio();
     lavagneColDito();
 }).observe(document, { childList: true, subtree: true, attributeFilter: ['aria-label', 'draggable'] });
-
-// Richiesta 259: da un importo a «—» React cambia solo il testo che c'è (`nodeValue`), e l'ascolto di sopra non lo vede.
-new MutationObserver((cambi) => cambi.some((cambio) => cambio.target.parentElement?.matches('.zr-deal-amount')) && conLaCornice() && importiNonIndicati()).observe(document, { characterData: true, subtree: true });
 
 // Un dialogo già aperto quando il modulo arriva.
 if (conLaCornice()) {
     dialogoSopraIlPannello(document.body);
     dialogoDescrittoEInCima();
     nomiDaiTesti();
-    importiNonIndicati();
     lavagneColDito();
 }
 

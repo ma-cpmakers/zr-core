@@ -5,6 +5,7 @@
 import { h } from './interni/h';
 import { useRef } from './interni/useRef';
 import { cx } from './interni/cx';
+import { drawerBack } from './interni/drawerBack';
 import { Button } from './Button';
 import { useId } from './AppShell';
 import { useEffect } from './interni/useEffect';
@@ -27,12 +28,13 @@ import { FOCUSABLE } from './interni/FOCUSABLE';
       var box = ref.current, origin = from.current && from.current.el;
       if (!origin || !document.contains(origin)) origin = box.contains(document.activeElement) ? null : document.activeElement; /* un dialogo che ne sostituisce un altro: il pulsante di quello è uscito, e il fuoco è già tornato alla pagina */
       if (!box.contains(document.activeElement)) {
-        var t = box.querySelector('[data-autofocus]') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
+        var t = box.querySelector('[data-autofocus]:not(:disabled)') || Array.prototype.find.call(box.querySelectorAll(FOCUSABLE), function (el) { return el.getClientRects().length > 0; }) || box;
         try { t.focus({ preventScroll: true }); } catch (e) {}
       }
       return function () {
         if (document.contains(box)) return; /* il dialogo è ancora nella pagina (il doppio effetto di StrictMode): niente da rendere */
         var rf = last.current.returnFocus, target = rf && rf.current !== undefined ? rf.current : rf, back = target || origin;
+        back = drawerBack(back); /* aperto da un'azione nel cassetto, che si è chiuso: torna ad «Apri il menu» (richiesta 283) */
         var a = document.activeElement; /* a chi ha preso il fuoco nel frattempo, fuori dal dialogo, non si toglie */
         if (back && back !== document.body && document.contains(back) && back.focus && (!a || a === document.body || box.contains(a) || !document.contains(a))) try { back.focus({ preventScroll: true }); } catch (e) {}
       };

@@ -33,7 +33,7 @@ import { useCompLabels } from './interni/useCompLabels';
         return h('label', { key: c || 'none', className: 'zr-color', title: name },
           h('input', { type: 'radio', name: p.name || id, value: c || '', checked: c === val, 'aria-invalid': p.error ? true : undefined,
             onChange: function () { pick(c); } }),
-          h('span', { className: cx('zr-color-dot', c ? 'is-card-' + c : 'is-none'), 'aria-hidden': true }),
+          h('span', { className: cx('zr-color-dot', c ? 'is-card-' + c : 'is-none'), 'aria-hidden': true }, c === val ? h(Icon, { name: 'check', size: 14 }) : null), /* come ColorPicker (richiesta 266) */
           h('span', { className: 'zr-visually-hidden' }, name));
       })),
       p.error ? h('p', { id: desc, className: 'zr-field-msg is-error', role: 'alert' }, h(Icon, { name: 'alert', size: 14 }), p.error)
