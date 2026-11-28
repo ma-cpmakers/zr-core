@@ -961,7 +961,7 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         expect(gzip(campanella)).toBeLessThanOrEqual(2_949);
     });
 
-    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 2.060 byte, il tetto della v5.12.0, col rimedio della 259 tolto (2.337 dalla v5.6.0, 1.951 dalla v5.1.0; sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293; richiesta 259; richiesta 363)', () => {
+    it('il pezzo dei rimedi provvisori di tastiera pesa, con gzip, al più 2.085 byte, il tetto della v5.12.0, col rimedio della 259 tolto e il comando con aria-live inerte (2.060 senza; 2.337 dalla v5.6.0, 1.951 dalla v5.1.0; sprint 31 · T3.7; sprint 65 · T2; sprint 69 · T3-T4; patch v2.25.2; sprint 76; sprint 74; sprint 87; richiesta 293; richiesta 259; richiesta 363)', () => {
         const [rimedi = ''] = soloCornice.aRichiesta.filter((pezzo) => pezzo.includes(DEI_RIMEDI));
 
         expect(rimedi).not.toBe('');
@@ -999,9 +999,9 @@ describe('le frasi delle notifiche non stanno nel JS d\'ingresso: sono file a ri
         // (`resources/lingue/rimedi/`): 1.636 prima, 1.931 dopo, tetto alla misura più 20; si toglie con la 259. v5.6.0 (richiesta
         // 363, sì di zr-pm-a0 del 25/11, da zr-superadmin): il `Dialog` descritto dalla sua `description` e il resto della pagina
         // `inert` finché è aperto: 2.317 misurati, tetto alla misura più 20; si toglie con la 363. v5.12.0 (voce 4112, lotto
-        // 0534): la `DealCard` lo fa da sé e il rimedio è tolto, coi suoi testi: 1.637 misurati senza la 363, 2.040 con, tetto
-        // alla misura più 20.
-        expect(gzip(rimedi)).toBeLessThanOrEqual(2_060);
+        // 0534): la `DealCard` lo fa da sé e il rimedio è tolto, coi suoi testi: 1.637 misurati senza la 363, 2.040 con; e a dialogo aperto
+        // è inerte anche un comando con `aria-live` (zr-superadmin, 27/11): 2.065 misurati, tetto alla misura più 20.
+        expect(gzip(rimedi)).toBeLessThanOrEqual(2_085);
     });
 
     it('il pezzo dei rimedi della sola tastiera pesa, con gzip, al più 1.576 byte, la misura della v4.18.0 più 20; prima 2.000 byte: la misura della v3.10.0 più 20, con Esc nella ricerca e nel cassetto, il cassetto che trattiene il fuoco, i menu della barra che si chiudono quando il fuoco esce Home e Fine nei menu della barra le linguette del pannello delle notifiche con le frecce e l\'opzione attiva della ricerca in vista, e i rilievi della revisione (1.967 prima, 1.201 nella v3.8.0, 1.321 con la sola riga 6, 1.438 nella v3.8.1; 2.000 dalla v3.14.1 con Ctrl+K fermo sotto un dialogo o un pannello a tutta pagina)', () => {

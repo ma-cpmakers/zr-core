@@ -131,7 +131,7 @@ it('il README dice che dalla v5.8.0 esce anche il quinto rimedio, col tag, e qua
     $radice = dirname(__DIR__, 2);
 
     expect(File::get("$radice/README.md"))
-        ->toContain('**Dalla `v5.8.0` esce anche il quinto** (#4095, lotto 0530,')
+        ->toContain('**Dalla `v5.12.0` esce anche il quinto** (#4095, lotto 0530,')
         ->toContain('`ds-1795297647-ba18`): in `rimedi.css` restano il settimo (299) e quelli del dito (293 e 294).')
         ->not->toContain('In `rimedi.css` restano il quinto (283)')
         ->and(File::get("$radice/resources/css/rimedi.css"))
